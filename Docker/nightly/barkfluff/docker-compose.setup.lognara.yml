@@ -1,0 +1,101 @@
+# Lognara overlay for the setup stack. It uses lognara-relay on the external
+# barkfluff-network created by docker-compose.lognara.yml.
+x-lognara-application-environment: &lognara-application-environment
+  Lognara__AgentExecutable: /usr/local/bin/lognara-agent
+  Lognara__AgentUrl: http://127.0.0.1:7400/v1/logs
+  LOGNARA_SERVER: "${LOGNARA_SERVER:?set LOGNARA_SERVER in the Compose environment}"
+  LOGNARA_BACKEND: "${LOGNARA_BACKEND:-barkfluff}"
+  LOGNARA_ENVIRONMENT: "${LOGNARA_ENVIRONMENT:-}"
+  LOGNARA_RELAY_URL: "${LOGNARA_RELAY_URL:-http://lognara-relay:7401/v1/batches}"
+  LOGNARA_LISTEN_ADDR: 127.0.0.1:7400
+  LOGNARA_SPOOL_DIR: /var/lib/lognara-agent/spool
+
+x-lognara-capture-environment: &lognara-capture-environment
+  LOGNARA_SERVER: "${LOGNARA_SERVER:?set LOGNARA_SERVER in the Compose environment}"
+  LOGNARA_BACKEND: "${LOGNARA_BACKEND:-barkfluff}"
+  LOGNARA_ENVIRONMENT: "${LOGNARA_ENVIRONMENT:-}"
+  LOGNARA_RELAY_URL: "${LOGNARA_RELAY_URL:-http://lognara-relay:7401/v1/batches}"
+  LOGNARA_SPOOL_DIR: /var/lib/lognara-agent/spool
+
+services:
+  setup:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${SETUP_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${SETUP_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${SETUP_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: setup
+      LOGNARA_SERVICE_INSTANCE: "${SETUP_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${SETUP_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-setup:/app/logs
+      - lognara-agent-spool-setup:/var/lib/lognara-agent/spool
+
+  settings:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${SETUP_SETTINGS_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${SETUP_SETTINGS_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${SETUP_SETTINGS_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: settings-setup
+      LOGNARA_SERVICE_INSTANCE: "${SETUP_SETTINGS_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${SETUP_SETTINGS_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-settings-setup:/app/logs
+      - lognara-agent-spool-settings-setup:/var/lib/lognara-agent/spool
+
+  postgres:
+    image: "${POSTGRES_LOGNARA_IMAGE:-barkfluff/lognara-postgres:18}"
+    build:
+      context: ../../..
+      dockerfile: Docker/Lognara/Dockerfile.infrastructure
+      args:
+        BASE_IMAGE: postgres:18
+    entrypoint: ["/usr/local/bin/lognara-agent", "run", "--", "/usr/local/bin/docker-entrypoint.sh"]
+    command: ["postgres"]
+    init: true
+    stop_grace_period: 60s
+    environment:
+      <<: *lognara-capture-environment
+      LOGNARA_SERVICE: postgres-setup
+      LOGNARA_SERVICE_INSTANCE: "${SETUP_POSTGRES_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${SETUP_POSTGRES_LOGNARA_RELAY_TOKEN:?set SETUP_POSTGRES_LOGNARA_RELAY_TOKEN in the Compose environment}"
+    volumes:
+      - lognara-agent-spool-postgres-setup:/var/lib/lognara-agent/spool
+
+  postgres-bootstrap:
+    image: "${POSTGRES_BOOTSTRAP_LOGNARA_IMAGE:-barkfluff/lognara-postgres:18}"
+    entrypoint: ["/usr/local/bin/lognara-agent", "run", "--", "/bin/sh", "-ec"]
+    command:
+      - |
+        for database in "$${SETTINGS_DATABASE:-settings}" identity users messages files onliner calls bots federation developers; do
+          echo "Ensuring PostgreSQL database exists: $$database"
+          createdb --if-not-exists --maintenance-db=postgres "$$database"
+        done
+    init: true
+    stop_grace_period: 60s
+    environment:
+      <<: *lognara-capture-environment
+      LOGNARA_SERVICE: postgres-bootstrap-setup
+      LOGNARA_SERVICE_INSTANCE: "${SETUP_POSTGRES_BOOTSTRAP_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${SETUP_POSTGRES_BOOTSTRAP_LOGNARA_RELAY_TOKEN:?set SETUP_POSTGRES_BOOTSTRAP_LOGNARA_RELAY_TOKEN in the Compose environment}"
+    volumes:
+      - lognara-agent-spool-postgres-bootstrap-setup:/var/lib/lognara-agent/spool
+
+volumes:
+  lognara-buffer-setup:
+    name: barkfluff-lognara-buffer-setup
+  lognara-agent-spool-setup:
+    name: barkfluff-lognara-agent-spool-setup
+  lognara-buffer-settings-setup:
+    name: barkfluff-lognara-buffer-settings-setup
+  lognara-agent-spool-settings-setup:
+    name: barkfluff-lognara-agent-spool-settings-setup
+  lognara-agent-spool-postgres-setup:
+    name: barkfluff-lognara-agent-spool-postgres-setup
+  lognara-agent-spool-postgres-bootstrap-setup:
+    name: barkfluff-lognara-agent-spool-postgres-bootstrap-setup

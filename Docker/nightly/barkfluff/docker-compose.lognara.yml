@@ -1,0 +1,519 @@
+# Opt-in Lognara deployment overlay for the main BarkFluff node.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.lognara.yml up -d --build
+x-lognara-application-environment: &lognara-application-environment
+  Lognara__AgentExecutable: /usr/local/bin/lognara-agent
+  Lognara__AgentUrl: http://127.0.0.1:7400/v1/logs
+  LOGNARA_SERVER: "${LOGNARA_SERVER:?set LOGNARA_SERVER in the Compose environment}"
+  LOGNARA_BACKEND: "${LOGNARA_BACKEND:-barkfluff}"
+  LOGNARA_ENVIRONMENT: "${LOGNARA_ENVIRONMENT:-}"
+  LOGNARA_RELAY_URL: "${LOGNARA_RELAY_URL:-http://lognara-relay:7401/v1/batches}"
+  LOGNARA_LISTEN_ADDR: 127.0.0.1:7400
+  LOGNARA_SPOOL_DIR: /var/lib/lognara-agent/spool
+
+x-lognara-capture-environment: &lognara-capture-environment
+  LOGNARA_SERVER: "${LOGNARA_SERVER:?set LOGNARA_SERVER in the Compose environment}"
+  LOGNARA_BACKEND: "${LOGNARA_BACKEND:-barkfluff}"
+  LOGNARA_ENVIRONMENT: "${LOGNARA_ENVIRONMENT:-}"
+  LOGNARA_RELAY_URL: "${LOGNARA_RELAY_URL:-http://lognara-relay:7401/v1/batches}"
+  LOGNARA_SPOOL_DIR: /var/lib/lognara-agent/spool
+
+services:
+  beacon:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${BEACON_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${BEACON_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${BEACON_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: beacon
+      LOGNARA_SERVICE_INSTANCE: "${BEACON_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${BEACON_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-beacon:/app/logs
+      - lognara-agent-spool-beacon:/var/lib/lognara-agent/spool
+
+  settings:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${SETTINGS_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${SETTINGS_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${SETTINGS_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: settings
+      LOGNARA_SERVICE_INSTANCE: "${SETTINGS_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${SETTINGS_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-settings:/app/logs
+      - lognara-agent-spool-settings:/var/lib/lognara-agent/spool
+
+  files:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${FILES_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${FILES_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${FILES_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: files
+      LOGNARA_SERVICE_INSTANCE: "${FILES_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${FILES_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-files:/app/logs
+      - lognara-agent-spool-files:/var/lib/lognara-agent/spool
+
+  identity:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${IDENTITY_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${IDENTITY_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${IDENTITY_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: identity
+      LOGNARA_SERVICE_INSTANCE: "${IDENTITY_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${IDENTITY_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-identity:/app/logs
+      - lognara-agent-spool-identity:/var/lib/lognara-agent/spool
+
+  messages:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${MESSAGES_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${MESSAGES_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${MESSAGES_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: messages
+      LOGNARA_SERVICE_INSTANCE: "${MESSAGES_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${MESSAGES_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-messages:/app/logs
+      - lognara-agent-spool-messages:/var/lib/lognara-agent/spool
+
+  notification:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${NOTIFICATION_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${NOTIFICATION_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${NOTIFICATION_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: notification
+      LOGNARA_SERVICE_INSTANCE: "${NOTIFICATION_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${NOTIFICATION_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-notification:/app/logs
+      - lognara-agent-spool-notification:/var/lib/lognara-agent/spool
+
+  users:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${USERS_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${USERS_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${USERS_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: users
+      LOGNARA_SERVICE_INSTANCE: "${USERS_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${USERS_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-users:/app/logs
+      - lognara-agent-spool-users:/var/lib/lognara-agent/spool
+
+  fast-auth:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${FAST_AUTH_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${FAST_AUTH_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${FAST_AUTH_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: fast-auth
+      LOGNARA_SERVICE_INSTANCE: "${FAST_AUTH_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${FAST_AUTH_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-fast-auth:/app/logs
+      - lognara-agent-spool-fast-auth:/var/lib/lognara-agent/spool
+
+  updates:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${UPDATES_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${UPDATES_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${UPDATES_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: updates
+      LOGNARA_SERVICE_INSTANCE: "${UPDATES_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${UPDATES_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-updates:/app/logs
+      - lognara-agent-spool-updates:/var/lib/lognara-agent/spool
+
+  onliner:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${ONLINER_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${ONLINER_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${ONLINER_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: onliner
+      LOGNARA_SERVICE_INSTANCE: "${ONLINER_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${ONLINER_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-onliner:/app/logs
+      - lognara-agent-spool-onliner:/var/lib/lognara-agent/spool
+
+  federation:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${FEDERATION_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${FEDERATION_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${FEDERATION_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: federation
+      LOGNARA_SERVICE_INSTANCE: "${FEDERATION_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${FEDERATION_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-federation:/app/logs
+      - lognara-agent-spool-federation:/var/lib/lognara-agent/spool
+
+  cloud-messaging:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${CLOUD_MESSAGING_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${CLOUD_MESSAGING_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${CLOUD_MESSAGING_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: cloud-messaging
+      LOGNARA_SERVICE_INSTANCE: "${CLOUD_MESSAGING_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${CLOUD_MESSAGING_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-cloud-messaging:/app/logs
+      - lognara-agent-spool-cloud-messaging:/var/lib/lognara-agent/spool
+
+  web:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${WEB_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${WEB_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${WEB_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: web
+      LOGNARA_SERVICE_INSTANCE: "${WEB_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${WEB_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-web:/app/logs
+      - lognara-agent-spool-web:/var/lib/lognara-agent/spool
+
+  developers:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${DEVELOPERS_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${DEVELOPERS_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${DEVELOPERS_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: developers
+      LOGNARA_SERVICE_INSTANCE: "${DEVELOPERS_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${DEVELOPERS_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-developers:/app/logs
+      - lognara-agent-spool-developers:/var/lib/lognara-agent/spool
+
+  calls:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${CALLS_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${CALLS_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${CALLS_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: calls
+      LOGNARA_SERVICE_INSTANCE: "${CALLS_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${CALLS_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-calls:/app/logs
+      - lognara-agent-spool-calls:/var/lib/lognara-agent/spool
+
+  bots:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${BOTS_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${BOTS_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${BOTS_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: bots
+      LOGNARA_SERVICE_INSTANCE: "${BOTS_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${BOTS_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-bots:/app/logs
+      - lognara-agent-spool-bots:/var/lib/lognara-agent/spool
+
+  admin-panel:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${ADMIN_PANEL_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${ADMIN_PANEL_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${ADMIN_PANEL_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: admin-panel
+      LOGNARA_SERVICE_INSTANCE: "${ADMIN_PANEL_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${ADMIN_PANEL_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-admin-panel:/app/logs
+      - lognara-agent-spool-admin-panel:/var/lib/lognara-agent/spool
+
+  postgres:
+    image: "${POSTGRES_LOGNARA_IMAGE:-barkfluff/lognara-postgres:18}"
+    build:
+      context: ../../..
+      dockerfile: Docker/Lognara/Dockerfile.infrastructure
+      args:
+        BASE_IMAGE: postgres:18
+    entrypoint: ["/usr/local/bin/lognara-agent", "run", "--", "/usr/local/bin/docker-entrypoint.sh"]
+    command: ["postgres", "-c", "max_connections=150", "-c", "shared_buffers=768MB", "-c", "effective_cache_size=2GB", "-c", "maintenance_work_mem=192MB", "-c", "work_mem=12MB", "-c", "random_page_cost=1.1", "-c", "effective_io_concurrency=200", "-c", "max_wal_size=2GB", "-c", "min_wal_size=512MB", "-c", "checkpoint_completion_target=0.9", "-c", "wal_compression=on", "-c", "jit=off"]
+    init: true
+    stop_grace_period: 60s
+    environment:
+      <<: *lognara-capture-environment
+      LOGNARA_SERVICE: postgres
+      LOGNARA_SERVICE_INSTANCE: "${POSTGRES_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${POSTGRES_LOGNARA_RELAY_TOKEN:?set POSTGRES_LOGNARA_RELAY_TOKEN in the Compose environment}"
+    volumes:
+      - lognara-agent-spool-postgres:/var/lib/lognara-agent/spool
+  postgres-bootstrap:
+    image: "${POSTGRES_BOOTSTRAP_LOGNARA_IMAGE:-barkfluff/lognara-postgres:18}"
+    entrypoint: ["/usr/local/bin/lognara-agent", "run", "--", "/bin/sh", "-ec"]
+    command:
+      - |
+        for database in "$${SETTINGS_DATABASE:-settings}" identity users messages files onliner calls bots federation developers; do
+          echo "Ensuring PostgreSQL database exists: $$database"
+          createdb --if-not-exists --maintenance-db=postgres "$$database"
+        done
+    init: true
+    stop_grace_period: 60s
+    environment:
+      <<: *lognara-capture-environment
+      LOGNARA_SERVICE: postgres-bootstrap
+      LOGNARA_SERVICE_INSTANCE: "${POSTGRES_BOOTSTRAP_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${POSTGRES_BOOTSTRAP_LOGNARA_RELAY_TOKEN:?set POSTGRES_BOOTSTRAP_LOGNARA_RELAY_TOKEN in the Compose environment}"
+    volumes:
+      - lognara-agent-spool-postgres-bootstrap:/var/lib/lognara-agent/spool
+  rabbitmq:
+    image: "${RABBITMQ_LOGNARA_IMAGE:-barkfluff/lognara-rabbitmq:latest}"
+    build:
+      context: ../../..
+      dockerfile: Docker/Lognara/Dockerfile.infrastructure
+      args:
+        BASE_IMAGE: rabbitmq:latest
+    entrypoint: ["/usr/local/bin/lognara-agent", "run", "--", "/usr/local/bin/docker-entrypoint.sh"]
+    command: ["rabbitmq-server"]
+    init: true
+    stop_grace_period: 60s
+    environment:
+      <<: *lognara-capture-environment
+      LOGNARA_SERVICE: rabbitmq
+      LOGNARA_SERVICE_INSTANCE: "${RABBITMQ_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${RABBITMQ_LOGNARA_RELAY_TOKEN:?set RABBITMQ_LOGNARA_RELAY_TOKEN in the Compose environment}"
+    volumes:
+      - lognara-agent-spool-rabbitmq:/var/lib/lognara-agent/spool
+  redis:
+    image: "${REDIS_LOGNARA_IMAGE:-barkfluff/lognara-redis:latest}"
+    build:
+      context: ../../..
+      dockerfile: Docker/Lognara/Dockerfile.infrastructure
+      args:
+        BASE_IMAGE: redis:latest
+    entrypoint: ["/usr/local/bin/lognara-agent", "run", "--", "/usr/local/bin/docker-entrypoint.sh"]
+    command: redis-server --appendonly yes
+    init: true
+    stop_grace_period: 60s
+    environment:
+      <<: *lognara-capture-environment
+      LOGNARA_SERVICE: redis
+      LOGNARA_SERVICE_INSTANCE: "${REDIS_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${REDIS_LOGNARA_RELAY_TOKEN:?set REDIS_LOGNARA_RELAY_TOKEN in the Compose environment}"
+    volumes:
+      - lognara-agent-spool-redis:/var/lib/lognara-agent/spool
+  livekit:
+    image: "${LIVEKIT_LOGNARA_IMAGE:-barkfluff/lognara-livekit:latest}"
+    build:
+      context: ../../..
+      dockerfile: Docker/Lognara/Dockerfile.infrastructure
+      args:
+        BASE_IMAGE: livekit/livekit-server:latest
+    entrypoint: ["/usr/local/bin/lognara-agent", "run", "--", "/livekit-server"]
+    command: --config /etc/livekit/livekit.yaml
+    init: true
+    stop_grace_period: 60s
+    environment:
+      <<: *lognara-capture-environment
+      LOGNARA_SERVICE: livekit
+      LOGNARA_SERVICE_INSTANCE: "${LIVEKIT_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${LIVEKIT_LOGNARA_RELAY_TOKEN:?set LIVEKIT_LOGNARA_RELAY_TOKEN in the Compose environment}"
+    volumes:
+      - lognara-agent-spool-livekit:/var/lib/lognara-agent/spool
+  seq:
+    image: "${SEQ_LOGNARA_IMAGE:-barkfluff/lognara-seq:latest}"
+    build:
+      context: ../../..
+      dockerfile: Docker/Lognara/Dockerfile.infrastructure
+      args:
+        BASE_IMAGE: datalust/seq:latest
+    entrypoint: ["/usr/local/bin/lognara-agent", "run", "--", "/bin/seqentry"]
+    command: []
+    init: true
+    stop_grace_period: 60s
+    environment:
+      <<: *lognara-capture-environment
+      LOGNARA_SERVICE: seq
+      LOGNARA_SERVICE_INSTANCE: "${SEQ_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${SEQ_LOGNARA_RELAY_TOKEN:?set SEQ_LOGNARA_RELAY_TOKEN in the Compose environment}"
+    volumes:
+      - lognara-agent-spool-seq:/var/lib/lognara-agent/spool
+  minio:
+    profiles: [lognara-minio]
+    image: "${MINIO_LOGNARA_IMAGE:-barkfluff/lognara-minio:RELEASE.2025-04-22T22-12-26Z-cpuv1}"
+    build:
+      context: ../../..
+      dockerfile: Docker/Lognara/Dockerfile.infrastructure
+      args:
+        BASE_IMAGE: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
+    entrypoint: ["/usr/local/bin/lognara-agent", "run", "--", "/usr/bin/docker-entrypoint.sh"]
+    command: server /data --console-address ":${MINIO_WEBPORT:-9001}"
+    container_name: minio
+    restart: always
+    init: true
+    stop_grace_period: 60s
+    ports:
+      - "${MINIO_PORT:-9000}:${MINIO_PORT:-9000}"
+      - "${MINIO_WEBPORT:-9001}:${MINIO_WEBPORT:-9001}"
+    environment:
+      <<: *lognara-capture-environment
+      LOGNARA_SERVICE: minio
+      LOGNARA_SERVICE_INSTANCE: "${MINIO_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${MINIO_LOGNARA_RELAY_TOKEN:-}"
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-}"
+    volumes:
+      - ./data/minio:/data
+      - lognara-agent-spool-minio:/var/lib/lognara-agent/spool
+    networks:
+      - barkfluff-network
+  lognara-relay:
+    image: "${LOGNARA_RELAY_IMAGE:-docker.barkfluff.com/lognara-relay:master}"
+    container_name: lognara-relay
+    restart: always
+    user: "1000:1000"
+    init: true
+    stop_grace_period: 60s
+    environment:
+      LOGNARA_LISTEN_ADDR: 0.0.0.0:7401
+      LOGNARA_CORE_URL: "${LOGNARA_CORE_URL:?set LOGNARA_CORE_URL in the Compose environment}"
+      LOGNARA_CORE_TOKEN: "${LOGNARA_CORE_TOKEN:?set LOGNARA_CORE_TOKEN in the Compose environment}"
+      LOGNARA_SPOOL_DIR: /var/lib/lognara-relay/spool
+    volumes:
+      - lognara-relay-spool:/var/lib/lognara-relay/spool
+    networks:
+      - barkfluff-network
+
+volumes:
+  lognara-buffer-beacon:
+    name: barkfluff-lognara-buffer-beacon
+  lognara-agent-spool-beacon:
+    name: barkfluff-lognara-agent-spool-beacon
+  lognara-buffer-settings:
+    name: barkfluff-lognara-buffer-settings
+  lognara-agent-spool-settings:
+    name: barkfluff-lognara-agent-spool-settings
+  lognara-buffer-files:
+    name: barkfluff-lognara-buffer-files
+  lognara-agent-spool-files:
+    name: barkfluff-lognara-agent-spool-files
+  lognara-buffer-identity:
+    name: barkfluff-lognara-buffer-identity
+  lognara-agent-spool-identity:
+    name: barkfluff-lognara-agent-spool-identity
+  lognara-buffer-messages:
+    name: barkfluff-lognara-buffer-messages
+  lognara-agent-spool-messages:
+    name: barkfluff-lognara-agent-spool-messages
+  lognara-buffer-notification:
+    name: barkfluff-lognara-buffer-notification
+  lognara-agent-spool-notification:
+    name: barkfluff-lognara-agent-spool-notification
+  lognara-buffer-users:
+    name: barkfluff-lognara-buffer-users
+  lognara-agent-spool-users:
+    name: barkfluff-lognara-agent-spool-users
+  lognara-buffer-fast-auth:
+    name: barkfluff-lognara-buffer-fast-auth
+  lognara-agent-spool-fast-auth:
+    name: barkfluff-lognara-agent-spool-fast-auth
+  lognara-buffer-updates:
+    name: barkfluff-lognara-buffer-updates
+  lognara-agent-spool-updates:
+    name: barkfluff-lognara-agent-spool-updates
+  lognara-buffer-onliner:
+    name: barkfluff-lognara-buffer-onliner
+  lognara-agent-spool-onliner:
+    name: barkfluff-lognara-agent-spool-onliner
+  lognara-buffer-federation:
+    name: barkfluff-lognara-buffer-federation
+  lognara-agent-spool-federation:
+    name: barkfluff-lognara-agent-spool-federation
+  lognara-buffer-cloud-messaging:
+    name: barkfluff-lognara-buffer-cloud-messaging
+  lognara-agent-spool-cloud-messaging:
+    name: barkfluff-lognara-agent-spool-cloud-messaging
+  lognara-buffer-web:
+    name: barkfluff-lognara-buffer-web
+  lognara-agent-spool-web:
+    name: barkfluff-lognara-agent-spool-web
+  lognara-buffer-developers:
+    name: barkfluff-lognara-buffer-developers
+  lognara-agent-spool-developers:
+    name: barkfluff-lognara-agent-spool-developers
+  lognara-buffer-calls:
+    name: barkfluff-lognara-buffer-calls
+  lognara-agent-spool-calls:
+    name: barkfluff-lognara-agent-spool-calls
+  lognara-buffer-bots:
+    name: barkfluff-lognara-buffer-bots
+  lognara-agent-spool-bots:
+    name: barkfluff-lognara-agent-spool-bots
+  lognara-buffer-admin-panel:
+    name: barkfluff-lognara-buffer-admin-panel
+  lognara-agent-spool-admin-panel:
+    name: barkfluff-lognara-agent-spool-admin-panel
+  lognara-agent-spool-postgres:
+    name: barkfluff-lognara-agent-spool-postgres
+  lognara-agent-spool-postgres-bootstrap:
+    name: barkfluff-lognara-agent-spool-postgres-bootstrap
+  lognara-agent-spool-rabbitmq:
+    name: barkfluff-lognara-agent-spool-rabbitmq
+  lognara-agent-spool-redis:
+    name: barkfluff-lognara-agent-spool-redis
+  lognara-agent-spool-livekit:
+    name: barkfluff-lognara-agent-spool-livekit
+  lognara-agent-spool-seq:
+    name: barkfluff-lognara-agent-spool-seq
+  lognara-agent-spool-minio:
+    name: barkfluff-lognara-agent-spool-minio
+  lognara-relay-spool:
+    name: barkfluff-lognara-relay-spool
+
+networks:
+  barkfluff-network:
+    external: true
+    name: barkfluff-network

@@ -1,0 +1,31 @@
+x-lognara-application-environment: &lognara-application-environment
+  Lognara__AgentExecutable: /usr/local/bin/lognara-agent
+  Lognara__AgentUrl: http://127.0.0.1:7400/v1/logs
+  LOGNARA_SERVER: "${LOGNARA_SERVER:?set LOGNARA_SERVER in the Compose environment}"
+  LOGNARA_BACKEND: "${LOGNARA_BACKEND:-barkfluff}"
+  LOGNARA_ENVIRONMENT: "${LOGNARA_ENVIRONMENT:-}"
+  LOGNARA_RELAY_URL: "${LOGNARA_RELAY_URL:-http://lognara-relay:7401/v1/batches}"
+  LOGNARA_LISTEN_ADDR: 127.0.0.1:7400
+  LOGNARA_SPOOL_DIR: /var/lib/lognara-agent/spool
+
+services:
+  clientstorage-nightly:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${CLIENTSTORAGE_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${CLIENTSTORAGE_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${CLIENTSTORAGE_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: clientstorage
+      LOGNARA_SERVICE_INSTANCE: "${CLIENTSTORAGE_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${CLIENTSTORAGE_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-clientstorage:/app/logs
+      - lognara-agent-spool-clientstorage:/var/lib/lognara-agent/spool
+
+volumes:
+  lognara-buffer-clientstorage:
+    name: barkfluff-lognara-buffer-clientstorage
+  lognara-agent-spool-clientstorage:
+    name: barkfluff-lognara-agent-spool-clientstorage

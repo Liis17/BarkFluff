@@ -14,6 +14,9 @@ services:
       Web__Mode: Proxy
       Web__Proxy__Target: ${WEB_PROXY_TARGET}
       Web__Proxy__MediaHosts: ${WEB_PROXY_MEDIA_HOSTS}
+      LognaraEnable: "${WEB_PROXY_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${WEB_PROXY_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${WEB_PROXY_CONSOLE_OUTPUT:-true}"
     networks:
       - proxy-network
 

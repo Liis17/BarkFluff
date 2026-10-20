@@ -1,0 +1,70 @@
+x-lognara-application-environment: &lognara-application-environment
+  Lognara__AgentExecutable: /usr/local/bin/lognara-agent
+  Lognara__AgentUrl: http://127.0.0.1:7400/v1/logs
+  LOGNARA_SERVER: "${LOGNARA_SERVER:?set LOGNARA_SERVER in the Compose environment}"
+  LOGNARA_BACKEND: "${LOGNARA_BACKEND:-barkfluff}"
+  LOGNARA_ENVIRONMENT: "${LOGNARA_ENVIRONMENT:-}"
+  LOGNARA_RELAY_URL: "${LOGNARA_RELAY_URL:-http://lognara-relay:7401/v1/batches}"
+  LOGNARA_LISTEN_ADDR: 127.0.0.1:7400
+  LOGNARA_SPOOL_DIR: /var/lib/lognara-agent/spool
+
+x-lognara-capture-environment: &lognara-capture-environment
+  LOGNARA_SERVER: "${LOGNARA_SERVER:?set LOGNARA_SERVER in the Compose environment}"
+  LOGNARA_BACKEND: "${LOGNARA_BACKEND:-barkfluff}"
+  LOGNARA_ENVIRONMENT: "${LOGNARA_ENVIRONMENT:-}"
+  LOGNARA_RELAY_URL: "${LOGNARA_RELAY_URL:-http://lognara-relay:7401/v1/batches}"
+  LOGNARA_SPOOL_DIR: /var/lib/lognara-agent/spool
+
+services:
+  navigator-dev:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${NAVIGATOR_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${NAVIGATOR_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${NAVIGATOR_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: navigator
+      LOGNARA_SERVICE_INSTANCE: "${NAVIGATOR_LOGNARA_SERVICE_INSTANCE:-}"
+      LOGNARA_RELAY_TOKEN: "${NAVIGATOR_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-navigator:/app/logs
+      - lognara-agent-spool-navigator:/var/lib/lognara-agent/spool
+    networks:
+      - barkfluff-navigator-network
+      - barkfluff-network
+
+  nginx:
+    image: "${NAVIGATOR_NGINX_LOGNARA_IMAGE:-barkfluff/lognara-nginx:navigator}"
+    build:
+      context: ../../../..
+      dockerfile: Docker/Lognara/Dockerfile.infrastructure
+      args:
+        BASE_IMAGE: nginx:alpine
+    entrypoint: ["/usr/local/bin/lognara-agent", "run", "--", "/docker-entrypoint.sh"]
+    command: ["nginx", "-g", "daemon off;"]
+    init: true
+    stop_grace_period: 60s
+    environment:
+      <<: *lognara-capture-environment
+      LOGNARA_SERVICE: nginx
+      LOGNARA_SERVICE_INSTANCE: navigator
+      LOGNARA_RELAY_TOKEN: "${NAVIGATOR_NGINX_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-agent-spool-navigator-nginx:/var/lib/lognara-agent/spool
+    networks:
+      - barkfluff-navigator-network
+      - barkfluff-network
+
+volumes:
+  lognara-buffer-navigator:
+    name: barkfluff-lognara-buffer-navigator
+  lognara-agent-spool-navigator:
+    name: barkfluff-lognara-agent-spool-navigator
+  lognara-agent-spool-navigator-nginx:
+    name: barkfluff-lognara-agent-spool-navigator-nginx
+
+networks:
+  barkfluff-network:
+    external: true
+    name: barkfluff-network

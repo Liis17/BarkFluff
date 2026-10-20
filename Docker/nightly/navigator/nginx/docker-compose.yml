@@ -17,6 +17,9 @@ services:
       # Этап 1.5 rearch: Navigator вне платформенного шаблона (без LoadConfiguration) — локальная
       # SQLite-БД, путь через переменную окружения напрямую.
       NAVIGATOR_DB: "Data Source=/app/db/navigator.db"
+      LognaraEnable: "${NAVIGATOR_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${NAVIGATOR_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${NAVIGATOR_CONSOLE_OUTPUT:-true}"
     volumes:
       - ./db:/app/db
     expose:
