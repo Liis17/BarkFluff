@@ -1,5 +1,6 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Settings.Catalog;
+using BarkFluff.Settings.Domain;
 using BarkFluff.Settings.Infrastructure;
 using BarkFluff.Settings.Persistence.Contexts;
 using BarkFluff.Settings.Persistence.Services;
@@ -92,6 +93,54 @@ public sealed class SettingsStorageTests
         await storage.AddReservedNameAsync("  MyName  ");
         Assert.Contains("myname", await storage.GetReservedNamesAsync());
         await Assert.ThrowsAsync<InvalidOperationException>(() => storage.AddReservedNameAsync("MYNAME"));
+    }
+
+    [Fact]
+    public async Task Deprecated_logging_backend_row_stays_hidden_while_history_and_rollback_remain_available()
+    {
+        await using var context = CreateContext();
+        var global = SettingsScopes.Get(ServiceId.Unknown);
+        context.Settings(global).Add(new SettingRow
+        {
+            Key = "Logging:Backend",
+            Value = "Lognara",
+            EditedBy = "legacy",
+            EditedAt = DateTime.UtcNow
+        });
+        context.SettingsHistory.Add(new SettingRevision
+        {
+            SettingsTable = global.TableName,
+            Key = "Logging:Backend",
+            PreviousValue = "Seq",
+            NewValue = "Lognara",
+            ChangedAt = DateTime.UtcNow,
+            ChangedBy = "legacy",
+            ChangedFrom = "AdminPanel",
+            ChangeKind = "Update"
+        });
+        await context.SaveChangesAsync();
+
+        var storage = new SettingsStorage(context, new MetricsCollector());
+        var serviceConfiguration = await storage.GetConfigurationAsync(ServiceId.Users);
+        var allConfigurations = await storage.GetAllAsync();
+        Assert.DoesNotContain(serviceConfiguration, item => item.StorageKey == "Logging:Backend");
+        Assert.DoesNotContain(allConfigurations, item => item.StorageKey == "Logging:Backend");
+
+        var seeder = new SettingsSeeder(context, new SettingsSeedOptions("postgres", "postgres", "postgres", "guest", "guest"));
+        await seeder.SeedAsync();
+        await seeder.ValidateAsync();
+
+        var legacyRow = await context.Settings(global).SingleAsync(row => row.Key == "Logging:Backend");
+        Assert.Equal("Lognara", legacyRow.Value);
+        Assert.Throws<UnknownSettingException>(() => SettingsCatalog.ResolveForUpdate(ServiceId.Unknown, "Logging", "Backend"));
+
+        var history = await storage.GetHistoryAsync("Logging", "Backend", ServiceId.Unknown, 20);
+        var revision = Assert.Single(history);
+        await storage.RollbackAsync(revision.Id, "operator", "AdminPanel");
+
+        Assert.Equal("Seq", (await context.Settings(global).SingleAsync(row => row.Key == "Logging:Backend")).Value);
+        Assert.DoesNotContain(await storage.GetAllAsync(), item => item.StorageKey == "Logging:Backend");
+        Assert.Equal(2, (await storage.GetHistoryAsync("Logging", "Backend", ServiceId.Unknown, 20)).Count);
     }
 
     private static SettingsContext CreateContext()
