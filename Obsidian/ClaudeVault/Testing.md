@@ -4,11 +4,13 @@ Parent: [[Index]]
 
 ## Где находятся проверки
 
-Backend unit/integration проекты находятся в `Tests/BarkFluff.*.Tests/` (проекты `.csproj`). `.github/workflows/pr-tests.yml` запускается для каждого PR в `nightly`, `dev`, `master` без фильтра путей. Reusable `test-backend.yml` обнаруживает все backend-проекты и запускает каждый отдельной matrix job; Windows-проекты исключаются по Windows TargetFramework. PostgreSQL 16 в service container включает Messages search и Developers concurrent seed через соответствующие env; рабочие БД не используются.
+Backend unit/integration проекты находятся в `Tests/BarkFluff.*.Tests/` (проекты `.csproj`). `.github/workflows/pr-tests.yml` запускается для каждого PR в `nightly`, `dev`, `master`; job `changes` выбирает затронутые наборы через `.github/scripts/pr_tests.py`. Для Android-only PR запускаются только Android-проверки; backend, Windows и macOS выбираются по своим исходникам/тестам. Shared-контракты и сам механизм выбора запускают все наборы; docs-only PR выполняет выбор и итоговый check без сборок приложений. Manual run запускает все наборы. Diff берётся между synthetic PR merge и его первым родителем (`checkout fetch-depth: 2`), без несвязанных изменений целевой ветки.
+
+Выбранный reusable `test-backend.yml` обнаруживает все backend-проекты и запускает каждый отдельной matrix job; Windows-проекты исключаются по Windows TargetFramework. PostgreSQL 16 в service container включает Messages search и Developers concurrent seed через соответствующие env; рабочие БД не используются.
 
 `test-clients.yml` запускает Windows test projects на Windows, Android JVM tests (`:core:testDebugUnitTest`, `:app-v1:testNightlyDebugUnitTest`) и UI checker на Ubuntu, BFCore Swift tests на macOS 26. Android instrumented tests с эмулятором, iOS UI и Linux Qt в этот набор не входят. `test-scripts.yml` запускает Python CI helper tests и JavaScript-тесты Web/AdminPanel. TRX и Android XML сохраняются как artifacts.
 
-Единый PR check `Tests passed` выполняется с `always()` и успешен только при `success` всех трёх reusable-наборов: failure, cancellation и skipped не разрешают merge. Правило GitHub требует отдельной установки; порядок — [[Architecture#Развёртывание и CI]]. Push/manual workflows сборок сначала выполняют скриптовые проверки и тесты своего компонента; backend также проверяет GrpcServer. Для Beacon/WebServer без собственного test project используется GrpcServer. Это не означает наличие тестов бизнес-логики этих сервисов.
+Единый PR check `Tests passed` выполняется с `always()`: выбор должен завершиться успешно, каждый выбранный набор — иметь `success`, каждый невыбранный — `skipped`. Ошибка выбора, failure/cancellation или неожиданный skip блокируют merge. Для нескольких клиентских платформ используется matrix с `fail-fast: false`. Правило GitHub требует отдельной установки; порядок — [[Architecture#Развёртывание и CI]]. Push/manual workflows сборок сначала выполняют скриптовые проверки и тесты своего компонента; backend также проверяет GrpcServer. Для Beacon/WebServer без собственного test project используется GrpcServer. Это не означает наличие тестов бизнес-логики этих сервисов.
 
 ```bash
 dotnet test Tests/BarkFluff.Messages.Tests/BarkFluff.Messages.Tests.csproj
@@ -49,6 +51,7 @@ python3 .github/tests/test_docker_version.py
 python3 .github/tests/test_client_version.py
 python3 .github/tests/test_send_telegram.py
 python3 .github/tests/test_project_references.py
+python3 .github/tests/test_pr_tests.py
 ```
 
-Наборы проверяют version promotion/pagination/error paths и Telegram helper через локальные фикстуры, а также точное совпадение регистра `ProjectReference` тестовых проектов с путями Git для сборки на Linux. Для PowerShell-кейсов WinUI нужен `pwsh` или `TEST_PWSH`; пропуск такого кейса сообщай отдельно. Эти команды не заменяют сборку приложений. Детали CI — [[Architecture]].
+Наборы проверяют version promotion/pagination/error paths и Telegram helper через локальные фикстуры, точное совпадение регистра `ProjectReference` с путями Git, выбор PR-наборов, shallow merge diff и обработку результатов gate. Для PowerShell-кейсов WinUI нужен `pwsh` или `TEST_PWSH`; пропуск такого кейса сообщай отдельно. Эти команды не заменяют сборку приложений. Детали CI — [[Architecture]].
