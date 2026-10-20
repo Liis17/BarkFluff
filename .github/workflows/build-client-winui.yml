@@ -15,6 +15,12 @@ on:
       - 'global.json'
       - '.github/scripts/send-telegram.sh'
       - '.github/workflows/build-client-winui.yml'
+      - '.github/workflows/test-clients.yml'
+      - 'Tests/BarkFluff.Client.WinUI.Tests/**'
+      - 'Tests/BarkFluff.ClientV2.WPF.Tests/**'
+      - 'Windows/BarkFluff.ClientV2.WPF/**'
+      - '.github/workflows/test-scripts.yml'
+      - '.github/tests/**'
   workflow_dispatch:
 
 permissions:
@@ -26,7 +32,16 @@ concurrency:
   queue: max
 
 jobs:
+  scripts:
+    uses: ./.github/workflows/test-scripts.yml
+
+  tests:
+    uses: ./.github/workflows/test-clients.yml
+    with:
+      platform: windows
+
   build:
+    needs: [tests, scripts]
     name: "🪟 Сборка WinUI Client"
     runs-on: windows-2022
     steps:

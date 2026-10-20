@@ -1,0 +1,39 @@
+name: PR tests
+
+on:
+  pull_request:
+    branches: [nightly, dev, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    uses: ./.github/workflows/test-backend.yml
+
+  clients:
+    uses: ./.github/workflows/test-clients.yml
+
+  scripts:
+    uses: ./.github/workflows/test-scripts.yml
+
+  required:
+    name: Tests passed
+    if: ${{ always() }}
+    needs: [backend, clients, scripts]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every test suite to succeed
+        env:
+          BACKEND: ${{ needs.backend.result }}
+          CLIENTS: ${{ needs.clients.result }}
+          SCRIPTS: ${{ needs.scripts.result }}
+        run: |
+          test "$BACKEND" = success
+          test "$CLIENTS" = success
+          test "$SCRIPTS" = success
