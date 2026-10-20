@@ -37,6 +37,7 @@ PostgreSQL integration-тесты условно пропускаются без
 - `Tests/BarkFluff.Users.Tests/Features/Prekeys/FetchPrekeyBundleQueryHandlerTests.cs` содержит явно пропущенный кейс: EF InMemory не выполняет raw SQL `DELETE … RETURNING`. Для проверки этого поведения нужен PostgreSQL. Точный путь сверять по дереву тестов при переносе feature.
 - `MarkAsReadCommandHandlerTests` в Messages — обычные активные unit tests без PostgreSQL Skip. Наличие unit tests само по себе не доказывает полный relational путь.
 - Redis/MassTransit/gRPC проверки используют mocks/fakes; для каждого теста различай проверку доменной логики и реального транспорта. Moq требует виртуальных перехватываемых методов; нельзя объяснять каждый сбой этим ограничением без воспроизведения.
+- GrpcServer Lognara-тесты меняют общие `Console.Out/Error`, `Log.Logger` и Serilog SelfLog; коллекция `Process logging` с `DisableParallelization` изолирует их от остальных тестовых хостов процесса.
 - Карты компонентов описывают значимые тестовые области, а не процент покрытия. Отсутствие Skip или наличие test project не означает полноту покрытия.
 
 ## Проверки вспомогательных инструментов
@@ -47,6 +48,7 @@ PostgreSQL integration-тесты условно пропускаются без
 python3 .github/tests/test_docker_version.py
 python3 .github/tests/test_client_version.py
 python3 .github/tests/test_send_telegram.py
+python3 .github/tests/test_project_references.py
 ```
 
-Наборы проверяют version promotion/pagination/error paths и Telegram helper через локальные фикстуры. Для PowerShell-кейсов WinUI нужен `pwsh` или `TEST_PWSH`; пропуск такого кейса сообщай отдельно. Эти команды не заменяют сборку приложений. Детали CI — [[Architecture]].
+Наборы проверяют version promotion/pagination/error paths и Telegram helper через локальные фикстуры, а также точное совпадение регистра `ProjectReference` тестовых проектов с путями Git для сборки на Linux. Для PowerShell-кейсов WinUI нужен `pwsh` или `TEST_PWSH`; пропуск такого кейса сообщай отдельно. Эти команды не заменяют сборку приложений. Детали CI — [[Architecture]].
