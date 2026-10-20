@@ -22,6 +22,9 @@ services:
       UPLOAD_TOKEN: ${UPLOAD_TOKEN}
       CLIENTSTORAGE_PORT: ${CLIENTSTORAGE_PORT}
 
+      LognaraEnable: "${CLIENTSTORAGE_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${CLIENTSTORAGE_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${CLIENTSTORAGE_CONSOLE_OUTPUT:-true}"
     networks:
       barkfluff-network:
         aliases:

@@ -1,4 +1,10 @@
 # syntax=docker/dockerfile:1
+FROM alpine:3.22 AS lognara-agent
+ARG TARGETARCH
+RUN apk add --no-cache ca-certificates coreutils curl
+COPY Docker/Lognara/agent/install-agent.sh /tmp/install-agent.sh
+COPY Docker/Lognara/agent/SHA256SUMS /tmp/SHA256SUMS
+RUN /bin/sh /tmp/install-agent.sh "$TARGETARCH"
 
 FROM node:20-slim AS frontend-build
 WORKDIR /repo/Frontend/Developers
@@ -14,6 +20,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled
 WORKDIR /app
 COPY --chown=1654:1654 publish/ .
 COPY --from=frontend-build --chown=1654:1654 /repo/Frontend/Developers/dist/ ./wwwroot/
+COPY --from=lognara-agent --chown=1654:1654 --chmod=0755 /usr/local/bin/lognara-agent /usr/local/bin/lognara-agent
+COPY --chown=1654:1654 Docker/Lognara/runtime/application-buffer/ /app/logs/
+COPY --chown=1654:1654 Docker/Lognara/runtime/agent-spool/ /var/lib/lognara-agent/spool/
 USER $APP_UID
 EXPOSE 7020 7021
 ENTRYPOINT ["dotnet", "Barkfluff.Developers.dll"]

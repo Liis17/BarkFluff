@@ -34,4 +34,15 @@ SettingsSetupApi защищён x-settings-setup-token и доступен то�
 
 ## Backend логирования
 
-Глобальные параметры `Logging:Backend` (`Seq` по умолчанию, либо `Lognara`) и `Lognara:AgentUrl` (по умолчанию `http://127.0.0.1:7400/v1/logs`) задают backend сервисного логирования из [[Backend/GrpcServer]]. Seeder добавляет новые ключи без перезаписи текущих значений. Настройка агента Lognara выполняется отдельно; Seq-поиск и кеш метрик AdminPanel остаются зависимыми от Seq.
+Для 15 сервисных scope Settings задаёт независимые root-level flags `ConsoleOutput` (default `true`),
+`SeqEnable` (default `true`) и `LognaraEnable` (default `false`); это значения конкретного `ServiceId`,
+без наследования logging flags из `GlobalSettings`. Для logging flags и параметров Lognara agent действует
+приоритет CLI → environment → соответствующие Settings values → local configuration. Изменения читаются
+при старте процесса. Settings инициализирует logger до готовности базы, поэтому startup events
+управляются только локальными flags и не меняются задним числом сохранёнными Settings values.
+
+Legacy `Logging:Backend` остаётся в `GlobalSettings` вместе с историей, но больше не выбирает sink.
+`Lognara:AgentUrl` — отдельная глобальная настройка (default `http://127.0.0.1:7400/v1/logs`) с local
+CLI/env override. `Lognara:AgentExecutable` не хранится в Settings и задаётся через конфигурацию
+процесса (local configuration, environment или CLI). Состав sinks, запуск embedded agent и deployment описаны в [[Backend/GrpcServer]] и
+`Docs/Logging.md`. Поиск Seq и rollups AdminPanel по-прежнему используют Seq.

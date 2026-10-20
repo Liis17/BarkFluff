@@ -64,6 +64,7 @@ public static class WebApplicationBuilderExtensions
     public static WebApplicationBuilder LoadConfiguration(this WebApplicationBuilder builder, ServiceId serviceId,
         bool requireValidSettings)
     {
+        var consoleOutput = BarkFluffLoggingOptions.ResolveConsoleOutput(builder.Configuration);
         var configurationServiceAddress = Environment.GetEnvironmentVariable("SETTINGS_SERVICE_URL")
                                           ?? Environment.GetEnvironmentVariable("CONFIGURATION_SERVICE_URL")
                                           ?? builder.Configuration["SettingsServiceAddr"]
@@ -84,7 +85,8 @@ public static class WebApplicationBuilderExtensions
             () => configurationApiClient.GetConfigurationAsync(
                 new GetConfigurationRequest { ServiceId = (int)serviceId },
                 deadline: DateTime.UtcNow.AddSeconds(5)).ResponseAsync,
-            requireValidSettings).GetAwaiter().GetResult();
+            requireValidSettings,
+            consoleOutput: consoleOutput).GetAwaiter().GetResult();
 
         var configurationDictionary = new Dictionary<string, string>();
 

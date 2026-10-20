@@ -16,6 +16,7 @@ on:
       - '.github/scripts/push-docker-image.sh'
       - 'global.json'
       - '.dockerignore'
+      - 'Docker/Lognara/**'
       - 'Shared/**'
       - 'Backend/BarkFluff.GrpcServer/**'
   workflow_dispatch:
