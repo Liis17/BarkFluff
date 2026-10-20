@@ -57,5 +57,7 @@ Seq сохраняет structured properties и disk buffer `logs/seq-buffer` (1
 процесс агента. Неожиданный exit embedded agent останавливает host с exit code 1 даже при включённых
 Seq/Console. При нормальном shutdown сначала завершаются workers, затем Serilog сбрасывает очередь, после
 чего агенту отправляется SIGTERM.
+Истечение 10-секундного readiness deadline сообщает `TimeoutException`; отмена startup вызывающим token
+сохраняет `OperationCanceledException`.
 
 `AddBarkFluffSerilog` также регистрирует `AddBarkFluffTracing`: `RequestTraceStartupFilter` охватывает весь HTTP-конвейер, в том числе все формы gRPC и логи exception interceptors, добавляя `RequestId` и входящий `X-Correlation-ID`. Существующий ASP.NET Activity сохраняется; fallback создаётся только при его отсутствии. `TraceDiagnostics` включает Activities ASP.NET Core, HttpClient, gRPC client и MassTransit с sampling `PropagationData`, без exporter и сбора span payload. Так штатные .NET и MassTransit механизмы переносят контекст исходящих вызовов и очередей. `Tracing/TraceContext` восстанавливает parent/tracestate и business correlation для outbox; каждая попытка получает новый SpanId при прежнем TraceId, старые строки без контекста получают отдельную корневую Activity. Стартап и периодические сводки метрик не получают выдуманный request trace. Инструкция включения и ограничения: `Docs/Logging.md`.

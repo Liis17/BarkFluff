@@ -21,7 +21,7 @@ Endpoint-группы в Program.cs охватывают auth/step-up/admins/aud
 
 Панель опрашивает liveness/readiness, Docker, Seq и инфраструктуру для своей страницы health; собственный HTTP endpoint — /api/health/overview. Это отдельный сборщик, не общий readiness из [[Backend/GrpcServer]]. `HealthCollectorService` опрашивает каждые 30 секунд. `MetricsCollectorService` строит часовые rollups из Seq каждые 5 минут: общая статистика хранится 24 часа, ServiceMetrics — 30 дней; восстановление пробелов идёт до 72 часов, по 6 часов за цикл.
 
-Nightly compose запускает панель от root и монтирует /var/run/docker.sock, данные /app/db, compose-файл и .env. Поэтому панель имеет доступ к Docker host. В исходнике cookie создаётся клиентским JS; не предполагайте HttpOnly.
+Nightly compose запускает панель от root и монтирует /var/run/docker.sock, данные /app/db, compose-файл и .env. Поэтому панель имеет доступ к Docker host. Deploy/update helper читает `com.docker.compose.project.config_files` активного контейнера `admin-panel` и повторно передаёт все Compose-файлы, включая opt-in overlays, для pull/up и отката; каталоги файлов монтируются в helper read-only. В исходнике cookie создаётся клиентским JS; не предполагайте HttpOnly.
 
 Сборка: dotnet build Backend/Barkfluff.AdminPanel/Barkfluff.AdminPanel.csproj. Конфигурация по умолчанию — Backend/Barkfluff.AdminPanel/appsettings.json.
 
