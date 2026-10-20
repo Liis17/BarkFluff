@@ -9,10 +9,12 @@ $config = Get-Content $rulesetPath -Raw | ConvertFrom-Json
 # Install workflows in every target branch before requiring their check.
 foreach ($ref in $config.conditions.ref_name.include) {
     $branch = $ref -replace '^refs/heads/', ''
-    foreach ($workflow in @('pr-tests.yml', 'test-backend.yml', 'test-clients.yml', 'test-scripts.yml')) {
-        gh api "repos/$Repository/contents/.github/workflows/${workflow}?ref=$branch" --silent
+    foreach ($path in @('.github/workflows/pr-tests.yml', '.github/workflows/test-backend.yml',
+                        '.github/workflows/test-clients.yml', '.github/workflows/test-scripts.yml',
+                        '.github/scripts/pr_tests.py')) {
+        gh api "repos/$Repository/contents/${path}?ref=$branch" --silent
         if ($LASTEXITCODE -ne 0) {
-            throw "Install $workflow in $branch before enabling required tests. No rules were changed."
+            throw "Install $path in $branch before enabling required tests. No rules were changed."
         }
     }
 }

@@ -13,27 +13,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.select.outputs.backend }}
+      platforms: ${{ steps.select.outputs.platforms }}
+      scripts: ${{ steps.select.outputs.scripts }}
+      selected: ${{ steps.select.outputs.selected }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - id: select
+        run: python3 .github/scripts/pr_tests.py
+
   backend:
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     uses: ./.github/workflows/test-backend.yml
 
   clients:
+    needs: changes
+    if: ${{ needs.changes.outputs.platforms != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJSON(needs.changes.outputs.platforms) }}
     uses: ./.github/workflows/test-clients.yml
+    with:
+      platform: ${{ matrix.platform }}
 
   scripts:
+    needs: changes
+    if: ${{ needs.changes.outputs.scripts == 'true' }}
     uses: ./.github/workflows/test-scripts.yml
 
   required:
     name: Tests passed
     if: ${{ always() }}
-    needs: [backend, clients, scripts]
+    needs: [changes, backend, clients, scripts]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
       - name: Require every test suite to succeed
         env:
+          SELECTION_RESULT: ${{ needs.changes.result }}
+          SELECTED_JOBS: ${{ needs.changes.outputs.selected }}
           BACKEND: ${{ needs.backend.result }}
           CLIENTS: ${{ needs.clients.result }}
           SCRIPTS: ${{ needs.scripts.result }}
-        run: |
-          test "$BACKEND" = success
-          test "$CLIENTS" = success
-          test "$SCRIPTS" = success
+        run: python3 .github/scripts/pr_tests.py --check
