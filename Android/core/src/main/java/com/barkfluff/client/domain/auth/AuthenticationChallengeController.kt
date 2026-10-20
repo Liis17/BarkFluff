@@ -25,7 +25,9 @@ class AuthenticationChallengeController(
         cancelSilently()
         val requestGeneration = ++generation
         return gateway.start().onSuccess { challenge ->
-            if (requestGeneration == generation) activeReference = challenge.reference
+            if (requestGeneration == generation && challenge.errorCode.isBlank() && challenge.reference.id.isNotBlank()) {
+                activeReference = challenge.reference
+            }
         }
     }
 

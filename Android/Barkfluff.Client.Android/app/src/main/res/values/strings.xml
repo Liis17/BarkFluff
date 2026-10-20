@@ -1124,6 +1124,10 @@
     <string name="login_empty_login">Введите имя пользователя или email</string>
     <string name="login_invalid_email">Некорректный формат email</string>
     <string name="login_username_too_short">Минимум 3 символа (буквы, цифры, . и _)</string>
+    <string name="login_flow_continue">Продолжить</string>
+    <string name="login_account_not_found">Аккаунт не найден</string>
+    <string name="login_mode_changed">Способ входа изменился. Продолжите ещё раз.</string>
+    <string name="login_server_update_required">Обновите сервер ноды, чтобы войти.</string>
     <string name="login_password_too_short">Минимум %1$d символов</string>
     <string name="settings_error_detail">Ошибка: %1$s</string>
     <string name="account_username_taken">Имя пользователя уже занято</string>
