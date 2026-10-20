@@ -1,4 +1,5 @@
 using BarkFluff.Shared.Identity;
+using BarkFluff.Settings.Domain;
 
 namespace BarkFluff.Settings.Catalog;
 
@@ -33,6 +34,15 @@ public sealed class UnknownSettingException : InvalidOperationException
 
 public static class SettingsCatalog
 {
+    private static readonly SettingsCatalogEntry DeprecatedLoggingBackend = new(
+        ServiceId.Unknown,
+        "Logging",
+        "Backend",
+        "Logging:Backend",
+        _ => "Seq",
+        IsSensitive: false,
+        RequiresManualValue: false);
+
     private static readonly IReadOnlyDictionary<ServiceId, int> Ports = new Dictionary<ServiceId, int>
     {
         [ServiceId.Identity] = 7000, [ServiceId.Users] = 7001, [ServiceId.Beacon] = 7002,
@@ -68,6 +78,9 @@ public static class SettingsCatalog
 
     public static SettingsCatalogEntry Resolve(ServiceId serviceId, string section, string key)
     {
+        if (serviceId == ServiceId.Unknown && section == "Logging" && key == "Backend")
+            return DeprecatedLoggingBackend;
+
         return ByLegacy.TryGetValue((serviceId, section, key), out var entry)
             ? entry
             : throw new UnknownSettingException(serviceId, section, key);
@@ -75,16 +88,32 @@ public static class SettingsCatalog
 
     public static SettingsCatalogEntry Resolve(ServiceId serviceId, string storageKey)
     {
+        if (serviceId == ServiceId.Unknown && storageKey == DeprecatedLoggingBackend.StorageKey)
+            return DeprecatedLoggingBackend;
+
         return ByStorage.TryGetValue((serviceId, storageKey), out var entry)
             ? entry
             : throw new UnknownSettingException(serviceId, storageKey, string.Empty);
+    }
+
+    public static bool IsDeprecated(SettingsCatalogEntry entry) =>
+        entry.ServiceId == ServiceId.Unknown && entry.StorageKey == DeprecatedLoggingBackend.StorageKey;
+
+    public static bool IsDeprecated(ServiceId serviceId, string storageKey) =>
+        serviceId == ServiceId.Unknown && storageKey == DeprecatedLoggingBackend.StorageKey;
+
+    public static SettingsCatalogEntry ResolveForUpdate(ServiceId serviceId, string section, string key)
+    {
+        var entry = Resolve(serviceId, section, key);
+        return IsDeprecated(entry)
+            ? throw new UnknownSettingException(serviceId, section, key)
+            : entry;
     }
 
     private static IReadOnlyList<SettingsCatalogEntry> Build()
     {
         var entries = new List<SettingsCatalogEntry>();
 
-        AddLiteral(entries, ServiceId.Unknown, "Logging", "Backend", "Seq");
         AddLiteral(entries, ServiceId.Unknown, "Lognara", "AgentUrl", "http://127.0.0.1:7400/v1/logs");
 
         AddDefault(entries, ServiceId.Unknown, "JwtSettings", "SecretKey", v => v.JwtSecret, true);
@@ -210,6 +239,13 @@ public static class SettingsCatalog
         AddServiceClient(entries, ServiceId.Federation, "MessagesService", ServiceId.Messages);
         AddServiceClient(entries, ServiceId.Federation, "OnlinerService", ServiceId.Onliner);
         AddServiceClient(entries, ServiceId.Federation, "FilesService", ServiceId.Files);
+
+        foreach (var scope in SettingsScopes.All.Where(scope => scope.ServiceId != ServiceId.Unknown))
+        {
+            AddLiteral(entries, scope.ServiceId, "LognaraEnable", "", "false");
+            AddLiteral(entries, scope.ServiceId, "SeqEnable", "", "true");
+            AddLiteral(entries, scope.ServiceId, "ConsoleOutput", "", "true");
+        }
 
         return entries;
     }
