@@ -11,6 +11,7 @@ import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.grpc.RealtimeService
+import com.barkfluff.client.grpc.TokenValidity
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.ChatFolderGateway
@@ -99,7 +100,6 @@ class ChatsViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "ChatsViewModel"
-        private const val TOKEN_BUFFER_MINUTES = 5
     }
 
     private val _uiState = MutableStateFlow(ChatsUiState())
@@ -171,23 +171,11 @@ class ChatsViewModel @Inject constructor(
     private fun checkTokenAndLoadChats() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(syncStatus = ChatsSyncStatus.UPDATING)
-            val hasRefreshToken = globalParam.refreshToken != null
-            val hasAccessToken = globalParam.accessToken != null
-            val isAccessTokenExpired = isAccessTokenExpired()
-
-            when {
-                !hasRefreshToken -> {
-                    _events.tryEmit(ChatsEvent.NavigateToLogin)
-                    return@launch
-                }
-                hasRefreshToken && (!hasAccessToken || isAccessTokenExpired) -> {
-                    val refreshResult = tryRefreshToken()
-                    if (!refreshResult) {
-                        _uiState.value = _uiState.value.copy(syncStatus = ChatsSyncStatus.OFFLINE)
-                        return@launch
-                    }
-                }
+            if (globalParam.refreshToken == null) {
+                _events.tryEmit(ChatsEvent.NavigateToLogin)
+                return@launch
             }
+            if (!applyTokenValidity()) return@launch
 
             if (globalParam.pictureFileId.isBlank() && globalParam.picturePreviewFileId.isBlank()) {
                 Log.d(TAG, "checkTokenAndLoadChats: Аватар не загружен, загружаем данные пользователя")
@@ -310,13 +298,7 @@ class ChatsViewModel @Inject constructor(
         if (globalParam.socketMessages.isBlank()) return
         Log.d(TAG, "reloadFromBackground: checking token and reloading chats")
         viewModelScope.launch {
-            val tokenValid = authGateway.ensureValid()
-            if (!tokenValid) {
-                Log.w(TAG, "reloadFromBackground: Token refresh failed, keeping cached chats")
-                _uiState.value = _uiState.value.copy(syncStatus = ChatsSyncStatus.OFFLINE)
-                return@launch
-            }
-            loadChats()
+            if (applyTokenValidity()) loadChats()
         }
     }
 
@@ -606,37 +588,24 @@ class ChatsViewModel @Inject constructor(
     // Токен
     // ═══════════════════════════════════════════════════════════════
 
-    private fun isAccessTokenExpired(): Boolean {
-        val accessTokenExpiration = globalParam.accessTokenExpiration
-        if (accessTokenExpiration <= 0) return true
-
-        val now = System.currentTimeMillis()
-        val bufferMillis = TOKEN_BUFFER_MINUTES * 60 * 1000L
-        return now + bufferMillis >= accessTokenExpiration
-    }
-
-    private suspend fun tryRefreshToken(): Boolean {
-        return try {
-            val identityAddress = globalParam.socketIdentity
-            if (identityAddress.isBlank()) return false
-
-            val refreshToken = globalParam.refreshToken ?: return false
-            val refreshResult = authGateway.refresh(refreshToken, globalParam.refreshTokenExpiration)
-            if (refreshResult.isSuccess) {
-                val (newAccessToken, newAccessTokenExpiration, newRefreshToken, newRefreshTokenExpiration) = refreshResult.getOrNull()!!
-                globalParam.accessToken = newAccessToken
-                globalParam.accessTokenExpiration = newAccessTokenExpiration
-                globalParam.refreshToken = newRefreshToken
-                globalParam.refreshTokenExpiration = newRefreshTokenExpiration
-                true
-            } else {
+    /**
+     * Обновляет токен через общий TokenCoordinator. Отвергнутая Identity сессия (refresh токен
+     * истёк или устройство отвязано) ведёт на логин — иначе список вечно висит на кеше,
+     * а стримы бесконечно получают 401. Недоступность Identity — только статус offline.
+     */
+    private suspend fun applyTokenValidity(): Boolean =
+        when (authGateway.tokenValidity()) {
+            TokenValidity.VALID -> true
+            TokenValidity.REJECTED -> {
+                Log.w(TAG, "Refresh token rejected, navigating to login")
+                _events.tryEmit(ChatsEvent.NavigateToLogin)
                 false
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка обновления токена", e)
-            false
+            TokenValidity.UNAVAILABLE -> {
+                _uiState.value = _uiState.value.copy(syncStatus = ChatsSyncStatus.OFFLINE)
+                false
+            }
         }
-    }
 
     /**
      * Отправляет Firebase токен на сервер при каждом запуске — нужно для push-уведомлений.

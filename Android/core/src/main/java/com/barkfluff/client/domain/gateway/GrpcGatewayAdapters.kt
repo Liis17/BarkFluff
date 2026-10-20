@@ -56,6 +56,9 @@ class GrpcAuthGateway(
     override suspend fun ensureValid(forceRefresh: Boolean): Boolean =
         grpc.tokenCoordinator().ensureValid(forceRefresh)
 
+    override suspend fun tokenValidity(forceRefresh: Boolean): com.barkfluff.client.grpc.TokenValidity =
+        grpc.tokenCoordinator().validity(forceRefresh)
+
     override suspend fun refresh(
         refreshToken: String,
         currentRefreshTokenExpiration: Long,
