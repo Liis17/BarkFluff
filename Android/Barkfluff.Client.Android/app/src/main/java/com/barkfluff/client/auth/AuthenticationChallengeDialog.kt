@@ -15,6 +15,7 @@ import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
 import com.barkfluff.client.domain.model.AuthenticationChallenge
 import com.barkfluff.client.domain.model.AuthenticationChallengeState
 import com.barkfluff.client.domain.model.AuthenticationCompletion
+import com.barkfluff.client.domain.model.AuthenticationErrorCodes
 import com.barkfluff.client.domain.model.AuthenticationFactor
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -125,8 +126,8 @@ class AuthenticationChallengeDialog(
         render = { challenge ->
             if (challenge.errorCode.isNotBlank()) {
                 val message = when (challenge.errorCode) {
-                    "account_not_found" -> activity.getString(R.string.login_account_not_found)
-                    "login_mode_disabled" -> activity.getString(R.string.auth_login_mode_disabled)
+                    AuthenticationErrorCodes.ACCOUNT_NOT_FOUND -> activity.getString(R.string.login_account_not_found)
+                    AuthenticationErrorCodes.LOGIN_MODE_DISABLED -> activity.getString(R.string.auth_login_mode_disabled)
                     else -> activity.getString(R.string.auth_error)
                 }
                 finish(Result.failure(AuthenticationChallengeErrorException(challenge.errorCode, message)))

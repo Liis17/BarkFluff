@@ -29,6 +29,7 @@ import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.domain.model.AuthSession
 import com.barkfluff.client.domain.model.AuthenticationFactor
+import com.barkfluff.client.domain.model.AuthenticationErrorCodes
 import com.barkfluff.client.domain.model.AuthenticationLoginMode
 import com.barkfluff.client.domain.model.SignInRequest
 import com.barkfluff.client.grpc.GrpcClientRegistry
@@ -284,7 +285,7 @@ class LoginActivity : AppCompatActivity() {
             if (generation != signInGeneration) return@launch
 
             result.onSuccess { resolution ->
-                if (resolution.errorCode == "account_not_found") {
+                if (resolution.errorCode == AuthenticationErrorCodes.ACCOUNT_NOT_FOUND) {
                     setLoadingState(false)
                     showAccountNotFound()
                     return@onSuccess
@@ -393,9 +394,11 @@ class LoginActivity : AppCompatActivity() {
                 ?: showError(getString(R.string.auth_error))
         }.onFailure { failure ->
             when {
-                failure is AuthenticationChallengeErrorException && failure.errorCode == "account_not_found" ->
+                failure is AuthenticationChallengeErrorException &&
+                    failure.errorCode == AuthenticationErrorCodes.ACCOUNT_NOT_FOUND ->
                     showAccountNotFound()
-                failure is AuthenticationChallengeErrorException && failure.errorCode == "login_mode_disabled" ->
+                failure is AuthenticationChallengeErrorException &&
+                    failure.errorCode == AuthenticationErrorCodes.LOGIN_MODE_DISABLED ->
                     handleLoginModeMismatch()
                 failure is java.util.concurrent.CancellationException -> Unit
                 else -> showError(failure.message ?: getString(R.string.auth_error))

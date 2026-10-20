@@ -1,5 +1,11 @@
 package com.barkfluff.client.domain.model
 
+/** Error-code values returned by Identity authentication calls. */
+object AuthenticationErrorCodes {
+    const val ACCOUNT_NOT_FOUND = "account_not_found"
+    const val LOGIN_MODE_DISABLED = "login_mode_disabled"
+}
+
 /** The account policy selected by the user and enforced by Identity. */
 enum class AuthenticationLoginMode {
     PASSWORD,
