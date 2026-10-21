@@ -128,7 +128,7 @@ jobs:
           BUILDER_SAMPLE_OUTPUT: ${{ runner.temp }}/builder-samples
         run: |
           set -euo pipefail
-          for mode in compose compose-lognara external-container host none; do
+          for mode in compose compose-lognara external-container host none environment-specials; do
             test -d "$BUILDER_SAMPLE_OUTPUT/$mode"
           done
           for sample in "$BUILDER_SAMPLE_OUTPUT"/*; do
@@ -137,6 +137,45 @@ jobs:
               docker compose --env-file "$sample/.env" -f "$sample/$compose_file" config -q
             done
           done
+
+      - name: Verify generated service environment values with special characters
+        env:
+          BUILDER_SAMPLE_OUTPUT: ${{ runner.temp }}/builder-samples
+        run: |
+          set -euo pipefail
+          sample="$BUILDER_SAMPLE_OUTPUT/environment-specials"
+          config_json="$RUNNER_TEMP/builder-env-specials-config.json"
+          docker compose --env-file "$sample/.env" -f "$sample/docker-compose.yml" config --format json > "$config_json"
+          python3 - "$sample/expected-env.json" "$config_json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as expected_file:
+              expected = json.load(expected_file)
+          with open(sys.argv[2], encoding="utf-8") as config_file:
+              config = json.load(config_file)
+
+          failures = False
+          for variable, expected_value in expected.items():
+              found = False
+              for service in config.get("services", {}).values():
+                  environment = service.get("environment") or {}
+                  if variable not in environment:
+                      continue
+                  found = True
+                  actual_value = environment[variable]
+                  # Compose config keeps literal dollars escaped as $$ in its serialized model.
+                  if not isinstance(actual_value, str) or actual_value.replace("$$", "$") != expected_value:
+                      print(f"{variable}: value mismatch")
+                      failures = True
+              if not found:
+                  print(f"{variable}: missing")
+                  failures = True
+
+          if failures:
+              sys.exit(1)
+          print(f"Verified {len(expected)} generated service environment values")
+          PY
 
       - name: Validate generated nginx sites
         env:

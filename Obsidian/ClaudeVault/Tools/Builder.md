@@ -51,7 +51,7 @@ docker compose up -d --remove-orphans
 
 ## Lognara
 
-Lognara Relay общий для ноды и использует именованный том `barkfluff-lognara-relay-spool`. Каждый включённый агент использует отдельный именованный `barkfluff-lognara-agent-spool-<service>` для фиксированного пути `/var/lib/lognara-agent/spool`; host spool path в модели отсутствует. Для каждого включённого агента получите relay token в Core и внесите его в соответствующую переменную `*_LOGNARA_RELAY_TOKEN` файла `.env`. Loader принимает неквотированные Compose dotenv-значения и при повторной генерации записывает канонические кавычки.
+Lognara Relay общий для ноды и использует именованный том `barkfluff-lognara-relay-spool`. Каждый включённый агент использует отдельный именованный `barkfluff-lognara-agent-spool-<service>` для фиксированного пути `/var/lib/lognara-agent/spool`; host spool path в модели отсутствует. Для каждого включённого агента получите relay token в Core и внесите его в соответствующую переменную `*_LOGNARA_RELAY_TOKEN` файла `.env`. `ComposeGenerator.BuildEnv` записывает значения в двойных кавычках, экранирует буквальный `$` как `\$`, обратную косую черту и кавычки; перевод строки Firebase-ключа хранится как `\n`. `BuilderConfigLoader` декодирует эти escapes и правила Compose dotenv для неквотированных значений, включая `$$` и комментарий только после ` #`.
 
 ## Ограничения интерфейса и каналов
 

@@ -140,8 +140,41 @@ public sealed class BuilderConfigLoaderTests
     }
 
     [Fact]
+    public void ComposeEscapedDollarAndMultilineSecretsRoundTripExactly()
+    {
+        const string specialValue = "$value|${NOT_A_VAR}|$$|a$|\"|'|\\|\\n|#| # comment| leading and trailing |a=b|first line\nsecond line|Привет雪";
+        var temporaryRoot = CreateTemporaryDirectory();
+        try
+        {
+            var output = Path.Combine(temporaryRoot, "node");
+            var model = CreateModel(output, "Nightly", NginxMode.None, false, false, false);
+            model.FirebasePrivateKey = specialValue;
+            BuilderOutputWriter.Write(model);
+
+            var environmentPath = Path.Combine(output, ".env");
+            var environmentBytes = File.ReadAllBytes(environmentPath);
+            var environmentText = File.ReadAllText(environmentPath);
+            Assert.False(environmentBytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF }));
+            Assert.DoesNotContain("\r\n", environmentText);
+
+            var loaded = BuilderConfigLoader.Load(output);
+            Assert.Equal(specialValue, loaded.FirebasePrivateKey);
+        }
+        finally
+        {
+            Directory.Delete(temporaryRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public void UnquotedComposeDotenvValuesLoadAndAreRewrittenCanonically()
     {
+        const string shellVariable = "BARKFLUFF_BUILDER_LOADER_TEST_VALUE";
+        const string missingVariable = "BARKFLUFF_BUILDER_LOADER_TEST_MISSING";
+        var priorShellValue = Environment.GetEnvironmentVariable(shellVariable);
+        var priorMissingValue = Environment.GetEnvironmentVariable(missingVariable);
+        Environment.SetEnvironmentVariable(shellVariable, "from-shell");
+        Environment.SetEnvironmentVariable(missingVariable, null);
         var temporaryRoot = CreateTemporaryDirectory();
         try
         {
@@ -155,7 +188,12 @@ public sealed class BuilderConfigLoaderTests
                 var value when value.StartsWith("LOGNARA_RELAY_CORE_TOKEN=", StringComparison.Ordinal) => "LOGNARA_RELAY_CORE_TOKEN=manual-core-token # pasted from Core",
                 var value when value.StartsWith("BEACON_LOGNARA_RELAY_TOKEN=", StringComparison.Ordinal) => "BEACON_LOGNARA_RELAY_TOKEN=manual-beacon-token # pasted from Core",
                 var value when value.StartsWith("POSTGRES_PASSWORD=", StringComparison.Ordinal) => "POSTGRES_PASSWORD=p#ss$$x # comment",
-                var value when value.StartsWith("LOGNARA_ENVIRONMENT=", StringComparison.Ordinal) => "LOGNARA_ENVIRONMENT= # intentionally empty",
+                var value when value.StartsWith("RABBITMQ_DEFAULT_PASS=", StringComparison.Ordinal) => "RABBITMQ_DEFAULT_PASS=  rabbit#pass$$word # pasted from Core",
+                var value when value.StartsWith("SEQ_API_KEY=", StringComparison.Ordinal) => "SEQ_API_KEY=  padded value  ",
+                var value when value.StartsWith("SEQ_ADMIN_PASSWORD=", StringComparison.Ordinal) => $"SEQ_ADMIN_PASSWORD=${shellVariable}",
+                var value when value.StartsWith("MINIO_ROOT_PASSWORD=", StringComparison.Ordinal) => "MINIO_ROOT_PASSWORD= # comment",
+                var value when value.StartsWith("S3_ENDPOINT=", StringComparison.Ordinal) => "S3_ENDPOINT=${" + missingVariable + ":-https://fallback.example.com}",
+                var value when value.StartsWith("LOGNARA_ENVIRONMENT=", StringComparison.Ordinal) => "LOGNARA_ENVIRONMENT=",
                 _ => line
             }).ToList();
             lines.Add("BUILDER_LOGNARA_APPLICATION_BEACON_SPOOL_PATH=\"./legacy/spool\"");
@@ -166,17 +204,24 @@ public sealed class BuilderConfigLoaderTests
             Assert.Equal("manual-core-token", loaded.LognaraCoreToken);
             Assert.Equal("manual-beacon-token", loaded.Application("BEACON").RelayToken);
             Assert.Equal("p#ss$x", loaded.PostgresPassword);
+            Assert.Equal("rabbit#pass$word", loaded.RabbitPassword);
+            Assert.Equal("padded value", loaded.SeqApiKey);
+            Assert.Equal("from-shell", loaded.SeqAdminPassword);
+            Assert.Equal("# comment", loaded.MinioRootPassword);
+            Assert.Equal("https://fallback.example.com", loaded.S3Endpoint);
             Assert.Equal(string.Empty, loaded.LognaraEnvironment);
 
             BuilderOutputWriter.Write(loaded);
             var canonical = File.ReadAllText(environmentPath);
             Assert.Contains("LOGNARA_RELAY_CORE_TOKEN=\"manual-core-token\"", canonical);
             Assert.Contains("BEACON_LOGNARA_RELAY_TOKEN=\"manual-beacon-token\"", canonical);
-            Assert.Contains("POSTGRES_PASSWORD=\"p#ss$$x\"", canonical);
+            Assert.Contains("POSTGRES_PASSWORD=\"p#ss\\$x\"", canonical);
             Assert.DoesNotContain("SPOOL_PATH", canonical);
         }
         finally
         {
+            Environment.SetEnvironmentVariable(shellVariable, priorShellValue);
+            Environment.SetEnvironmentVariable(missingVariable, priorMissingValue);
             Directory.Delete(temporaryRoot, recursive: true);
         }
     }

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using BarkFluff.Builder;
 using Xunit;
 
@@ -5,6 +6,8 @@ namespace BarkFluff.Builder.Tests;
 
 public sealed class BuilderSampleOutputTests
 {
+    private const string SpecialEnvironmentValue = "$value|${NOT_A_VAR}|$$|a$|\"|'|\\|\\n|#| # comment| leading and trailing |a=b|first line\nsecond line|Привет雪";
+
     [Fact]
     public void GenerateSamplesWhenOutputDirectoryIsConfigured()
     {
@@ -24,7 +27,8 @@ public sealed class BuilderSampleOutputTests
             new Sample("compose-lognara", NginxMode.Compose, IncludeSeq: true, IncludeMinio: true, IncludeLognara: true),
             new Sample("external-container", NginxMode.ExternalContainer, IncludeSeq: false, IncludeMinio: false, IncludeLognara: false),
             new Sample("host", NginxMode.Host, IncludeSeq: true, IncludeMinio: false, IncludeLognara: false),
-            new Sample("none", NginxMode.None, IncludeSeq: false, IncludeMinio: true, IncludeLognara: false)
+            new Sample("none", NginxMode.None, IncludeSeq: false, IncludeMinio: true, IncludeLognara: false),
+            new Sample("environment-specials", NginxMode.None, IncludeSeq: true, IncludeMinio: true, IncludeLognara: false)
         };
 
         foreach (var sample in samples)
@@ -46,6 +50,8 @@ public sealed class BuilderSampleOutputTests
             model.LognaraCoreToken = "synthetic-lognara-core-token";
             model.LognaraServer = "builder-sample";
             model.LognaraEnvironment = "ci";
+            if (sample.Name == "environment-specials")
+                model.FirebasePrivateKey = SpecialEnvironmentValue;
             model.SetGlobalLognara(sample.IncludeLognara);
 
             var tokenNumber = 0;
@@ -53,6 +59,12 @@ public sealed class BuilderSampleOutputTests
                 target.RelayToken = $"synthetic-lognara-relay-{tokenNumber++}";
 
             BuilderOutputWriter.Write(model);
+            if (sample.Name == "environment-specials")
+            {
+                File.WriteAllText(
+                    Path.Combine(sampleDirectory, "expected-env.json"),
+                    JsonSerializer.Serialize(BuildExpectedEnvironment(model)));
+            }
 
             var certificateDirectory = Path.Combine(sampleDirectory, "certs");
             Directory.CreateDirectory(certificateDirectory);
@@ -60,6 +72,12 @@ public sealed class BuilderSampleOutputTests
             File.Copy(keyPath, Path.Combine(certificateDirectory, "barkfluff-key.pem"), overwrite: true);
         }
     }
+
+    private static IReadOnlyDictionary<string, string> BuildExpectedEnvironment(BuilderModel model) =>
+        new Dictionary<string, string>
+        {
+            ["Firebase__PrivateKey"] = model.FirebasePrivateKey
+        };
 
     private static (string CertificatePath, string KeyPath) GetCertificateSources(string outputDirectory)
     {
