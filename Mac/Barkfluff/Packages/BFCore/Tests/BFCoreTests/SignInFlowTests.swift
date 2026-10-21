@@ -262,6 +262,27 @@ final class SignInFlowTests: XCTestCase {
     }
 
     @MainActor
+    func testIdentifierChangeDuringAttemptCreationInvalidatesTheLateAttempt() async throws {
+        let repository = ScriptedSignInRepository(mode: .password)
+        let admission = ControlledAdmissionService()
+        let controller = SignInFlowController(signInService: repository, admissionService: admission)
+        await admission.holdNextBegin()
+
+        let resolveTask = Task { await controller.resolveIdentifier("old-name") }
+        await admission.waitForBeginStart()
+        controller.identifierChanged(to: "new-name")
+        await admission.releaseBegin()
+        await resolveTask.value
+
+        let invalidated = await admission.invalidatedAttempts()
+        let beginCalls = await repository.beginCalls()
+        XCTAssertEqual(controller.step, .identifier)
+        XCTAssertEqual(invalidated.count, 1)
+        XCTAssertTrue(invalidated[0].isCancelled)
+        XCTAssertTrue(beginCalls.isEmpty)
+    }
+
+    @MainActor
     func testQRAndPasswordCompletionRaceUsesRealAuthServiceFirstCommit() async throws {
         let repository = ScriptedSignInRepository(mode: .passwordSecondFactor)
         let tokens = TestTokenProvider()
@@ -381,7 +402,7 @@ private struct CompletionCall: Sendable {
     let useRecoveryCode: Bool
 }
 
-private actor ScriptedSignInRepository: SignInRepositoryProtocol {
+private actor ScriptedSignInRepository: SignInServiceProtocol {
     private var resolutions: [Result<SignInResolution, SignInRepositoryError>] = []
     private var begins: [Result<SignInChallenge, SignInRepositoryError>] = []
     private var challengeReads: [Result<SignInChallenge, SignInRepositoryError>] = []
@@ -526,6 +547,52 @@ private actor ScriptedSignInRepository: SignInRepositoryProtocol {
             needsCode: true
         )
     }
+}
+
+private actor ControlledAdmissionService: SignInSessionAdmissionService {
+    private var holdBegin = false
+    private var beginStarted = false
+    private var blockedBegin: CheckedContinuation<SignInSessionAdmissionAttempt, Never>?
+    private var beginWaiters: [CheckedContinuation<Void, Never>] = []
+    private var invalidated: [SignInSessionAdmissionAttempt] = []
+
+    func holdNextBegin() { holdBegin = true; beginStarted = false }
+
+    func beginSignInAttempt() async -> SignInSessionAdmissionAttempt {
+        guard holdBegin else { return SignInSessionAdmissionAttempt() }
+        return await withCheckedContinuation { continuation in
+            blockedBegin = continuation
+            beginStarted = true
+            beginWaiters.forEach { $0.resume() }
+            beginWaiters.removeAll()
+        }
+    }
+
+    func waitForBeginStart() async {
+        if beginStarted { return }
+        await withCheckedContinuation { beginWaiters.append($0) }
+    }
+
+    func releaseBegin() {
+        holdBegin = false
+        let attempt = SignInSessionAdmissionAttempt()
+        blockedBegin?.resume(returning: attempt)
+        blockedBegin = nil
+    }
+
+    func invalidateSignInAttempt(_ attempt: SignInSessionAdmissionAttempt) {
+        attempt.cancel()
+        invalidated.append(attempt)
+    }
+
+    func commitSignInSession(
+        _ session: SignInSessionTokens,
+        for attempt: SignInSessionAdmissionAttempt
+    ) async -> SignInSessionAdmissionReceipt? { nil }
+
+    func isCurrentSignInSession(_ receipt: SignInSessionAdmissionReceipt) -> Bool { false }
+
+    func invalidatedAttempts() -> [SignInSessionAdmissionAttempt] { invalidated }
 }
 
 private struct StoredTokens: Sendable {

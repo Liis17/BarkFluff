@@ -102,7 +102,13 @@ public final class SignInFlowController {
         isBusy = true
         step = .resolving
         if attempt == nil {
-            attempt = await admissionService.beginSignInAttempt()
+            let newAttempt = await admissionService.beginSignInAttempt()
+            guard generation == requestGeneration else {
+                newAttempt.cancel()
+                await admissionService.invalidateSignInAttempt(newAttempt)
+                return
+            }
+            attempt = newAttempt
         }
         guard isCurrent(requestGeneration) else { return }
 
