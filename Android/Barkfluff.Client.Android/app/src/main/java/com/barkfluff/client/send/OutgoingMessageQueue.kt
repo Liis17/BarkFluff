@@ -17,6 +17,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.await
 import barkfluff.files.FilesApiOuterClass.UploadFileType
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.ChatCacheRepository
@@ -220,11 +221,12 @@ class OutgoingMessageQueue(
         operationIds.forEach { operationId ->
             cancellationRequests[operationId] = now
         }
-        workManager.cancelAllWorkByTag(workTag(scope))
+        workManager.cancelAllWorkByTag(workTag(scope)).await()
         cache.clearOutgoingKeepReads(scope)
         records.filter { it.state != OutgoingMessageState.SENT }.forEach { record ->
             operationDirectory(scope, record.operationId).deleteRecursively()
         }
+        scheduleNext(scope)
     }
 
     /** Worker seam. It drains at most two different chat heads at one time. */

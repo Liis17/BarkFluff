@@ -275,9 +275,6 @@ interface ChatCacheDao {
     @Query("DELETE FROM cached_chat_drafts WHERE scopeId = :scopeId AND chatId = :chatId")
     suspend fun deleteDraft(scopeId: String, chatId: String)
 
-    @Query("DELETE FROM cached_chat_drafts")
-    suspend fun deleteAllDrafts()
-
     @Query("SELECT * FROM composer_attachments WHERE scopeId = :scopeId AND chatId = :chatId ORDER BY attachmentIndex")
     suspend fun composerAttachments(scopeId: String, chatId: String): List<ComposerAttachmentEntity>
 
@@ -289,9 +286,6 @@ interface ChatCacheDao {
 
     @Query("DELETE FROM composer_attachments WHERE scopeId = :scopeId")
     suspend fun deleteAllComposerAttachments(scopeId: String)
-
-    @Query("DELETE FROM composer_attachments")
-    suspend fun deleteAllComposerRowsUnscoped()
 
     @Query("SELECT DISTINCT chatId FROM composer_attachments WHERE scopeId = :scopeId")
     suspend fun composerChatIds(scopeId: String): List<String>
@@ -496,10 +490,6 @@ class ChatCacheRepository(context: Context) {
 
     suspend fun deleteAllComposerAttachments(scope: CacheScope) = withContext(Dispatchers.IO) {
         database().cacheDao().deleteAllComposerAttachments(scope.id)
-    }
-
-    suspend fun deleteAllComposerRowsUnscoped() = withContext(Dispatchers.IO) {
-        database().cacheDao().deleteAllComposerRowsUnscoped()
     }
 
     suspend fun composerChatIds(scope: CacheScope): List<String> = withContext(Dispatchers.IO) {
@@ -832,12 +822,6 @@ class ChatCacheRepository(context: Context) {
     suspend fun clearSecretHistory() {
         withContext(Dispatchers.IO) {
             database().cacheDao().deleteAllSecretMessages()
-        }
-    }
-
-    suspend fun clearAllDraftsRows() {
-        withContext(Dispatchers.IO) {
-            database().cacheDao().deleteAllDrafts()
         }
     }
 
