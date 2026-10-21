@@ -316,6 +316,138 @@ public sealed class LoginViewModelTests
         await viewModel.CleanupAsync();
     }
 
+    [Fact]
+    public async Task IdentifierEditAfterResolveFailure_RestartsQrOnNewAttemptAndCanAccept()
+    {
+        var authentication = new FakeAuthenticationService
+        {
+            FastAuthSession = new FastAuthSession("qr", new FastAuthQrCode(ValidQrPngBase64, DateTimeOffset.UtcNow.AddMinutes(5))),
+            IgnoreFastAuthCancellation = true
+        };
+        authentication.ResolveResults.Enqueue(SignInResolutionResult.Failure(null, "Error_LoginUnavailable"));
+        var navigation = new TestNavigationService();
+        var viewModel = CreateViewModel(authentication, navigation);
+        viewModel.LoginOrEmail = "alice";
+
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        await authentication.WaitForFastAuthSubscriptionsAsync(1).WaitAsync(TimeSpan.FromSeconds(2));
+        var oldSubscription = authentication.FastAuthSubscriptions[0];
+
+        Assert.Equal("Error_LoginUnavailable", viewModel.ErrorMessage);
+        Assert.Equal(LoginStep.Identifier, viewModel.Step);
+
+        viewModel.LoginOrEmail = "bob";
+        await authentication.WaitForFastAuthSubscriptionsAsync(2).WaitAsync(TimeSpan.FromSeconds(2));
+        var currentSubscription = authentication.FastAuthSubscriptions[1];
+        Assert.True(oldSubscription.CancellationToken.IsCancellationRequested);
+
+        Assert.NotSame(oldSubscription.Attempt, currentSubscription.Attempt);
+        Assert.Equal(2, authentication.FastAuthSessionCalls);
+        Assert.Same(oldSubscription.Attempt, authentication.FastAuthSessionAttempts[0]);
+        Assert.Same(currentSubscription.Attempt, authentication.FastAuthSessionAttempts[1]);
+        Assert.Equal(ValidQrPngBase64, viewModel.FastAuthQrCode);
+        Assert.Equal(LoginStep.Identifier, viewModel.Step);
+
+        oldSubscription.Publish(new FastAuthUpdate(FastAuthUpdateKind.Accepted));
+        await oldSubscription.Terminated.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.True(oldSubscription.CancellationObserved.Task.IsCompleted);
+        Assert.True(authentication.IsCurrentAuthenticationAttempt(currentSubscription.Attempt));
+        Assert.Equal(0, navigation.ShowMessengerCalls);
+        Assert.Equal(ValidQrPngBase64, viewModel.FastAuthQrCode);
+
+        currentSubscription.Publish(new FastAuthUpdate(FastAuthUpdateKind.Accepted));
+        await navigation.WaitForMessengerAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, navigation.ShowMessengerCalls);
+        Assert.Equal("Login_Success", viewModel.StatusMessage);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task IdentifierEditDuringResolve_IgnoresStaleResponseAndCurrentLoginStopsQr()
+    {
+        var authentication = new FakeAuthenticationService
+        {
+            FastAuthSession = new FastAuthSession("qr", new FastAuthQrCode(ValidQrPngBase64, DateTimeOffset.UtcNow.AddMinutes(5)))
+        };
+        var aliceResolution = new TaskCompletionSource<SignInResolutionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        authentication.ResolveHandler = login => login == "alice"
+            ? aliceResolution.Task
+            : Task.FromResult(SignInResolutionResult.Success(AuthLoginMode.Password));
+        var navigation = new TestNavigationService();
+        var viewModel = CreateViewModel(authentication, navigation);
+        viewModel.LoginOrEmail = "alice";
+
+        var aliceLogin = viewModel.LoginCommand.ExecuteAsync(null);
+        viewModel.LoginOrEmail = "bob";
+        await authentication.WaitForFastAuthSubscriptionsAsync(1).WaitAsync(TimeSpan.FromSeconds(2));
+        var currentSubscription = authentication.FastAuthSubscriptions[0];
+
+        aliceResolution.SetResult(SignInResolutionResult.Success(AuthLoginMode.TelegramLogin));
+        await aliceLogin;
+
+        Assert.Equal(LoginStep.Identifier, viewModel.Step);
+        Assert.Empty(authentication.BeginCalls);
+        Assert.Equal(0, navigation.ShowMessengerCalls);
+        Assert.Equal(ValidQrPngBase64, viewModel.FastAuthQrCode);
+        Assert.False(currentSubscription.CancellationObserved.Task.IsCompleted);
+
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        await currentSubscription.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(["alice", "bob"], authentication.ResolvedLogins);
+        Assert.Equal(LoginStep.Password, viewModel.Step);
+        Assert.Null(viewModel.FastAuthQrCode);
+        viewModel.Password = "secret";
+        authentication.BeginResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Authenticator, true));
+        await viewModel.LoginCommand.ExecuteAsync(null);
+
+        Assert.Equal("bob", Assert.Single(authentication.BeginCalls).Login);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task IdentifierEditsKeepHealthyQrAndTrimEquivalentResolvedValue()
+    {
+        var authentication = new FakeAuthenticationService
+        {
+            FastAuthSession = new FastAuthSession("qr", new FastAuthQrCode(ValidQrPngBase64, DateTimeOffset.UtcNow.AddMinutes(5)))
+        };
+        authentication.ResolveResults.Enqueue(SignInResolutionResult.Failure(null, "Error_LoginUnavailable"));
+        authentication.ResolveResults.Enqueue(SignInResolutionResult.Success(AuthLoginMode.Password));
+        var viewModel = CreateViewModel(authentication);
+        viewModel.LoginOrEmail = "alice";
+
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        await authentication.WaitForFastAuthSubscriptionsAsync(1).WaitAsync(TimeSpan.FromSeconds(2));
+        var oldSubscription = authentication.FastAuthSubscriptions[0];
+
+        viewModel.LoginOrEmail = "bob";
+        await authentication.WaitForFastAuthSubscriptionsAsync(2).WaitAsync(TimeSpan.FromSeconds(2));
+        var currentSubscription = authentication.FastAuthSubscriptions[1];
+        await oldSubscription.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        viewModel.LoginOrEmail = "bobb";
+        viewModel.LoginOrEmail = "bobby";
+        viewModel.LoginOrEmail = " bob ";
+
+        Assert.Equal(2, authentication.FastAuthSessionCalls);
+        Assert.False(currentSubscription.CancellationObserved.Task.IsCompleted);
+        Assert.Equal(LoginStep.Identifier, viewModel.Step);
+
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        await currentSubscription.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(["alice", "bob"], authentication.ResolvedLogins);
+        Assert.Equal(LoginStep.Password, viewModel.Step);
+        viewModel.Password = "secret";
+        viewModel.LoginOrEmail = "bob";
+        Assert.Equal(LoginStep.Password, viewModel.Step);
+        Assert.Equal("secret", viewModel.Password);
+        Assert.Equal(2, authentication.FastAuthSessionCalls);
+        await viewModel.CleanupAsync();
+    }
+
     [Theory]
     [InlineData(" alice ", "alice")]
     [InlineData(" alice@example.com ", "alice@example.com")]
@@ -914,6 +1046,8 @@ public sealed class LoginViewModelTests
         public Func<CompleteCall, Task<AuthenticationOperationResult>>? CompleteHandler { get; set; }
         public Func<Task<SignInChallengeResult>>? ResendHandler { get; set; }
         public int FastAuthSessionCalls { get; private set; }
+        public List<AuthenticationAttempt> FastAuthSessionAttempts { get; } = [];
+        public List<FastAuthSubscription> FastAuthSubscriptions { get; } = [];
         public List<string> ResolvedLogins { get; } = [];
         public List<BeginCall> BeginCalls { get; } = [];
         public List<CompleteCall> CompleteCalls { get; } = [];
@@ -926,6 +1060,7 @@ public sealed class LoginViewModelTests
         public Task? FastAuthStreamGate { get; set; }
         public bool IgnoreFastAuthCancellation { get; init; }
         public TaskCompletionSource FastAuthSubscribed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly List<(int Count, TaskCompletionSource Completion)> _fastAuthSubscriptionWaiters = [];
 
         public AuthenticationAttempt? CreateAuthenticationAttempt() => _currentAttempt = AuthenticationAttempt.Create();
 
@@ -1025,6 +1160,7 @@ public sealed class LoginViewModelTests
         public Task<FastAuthSession?> CreateFastAuthSessionAsync(AuthenticationAttempt attempt, CancellationToken cancellationToken = default)
         {
             FastAuthSessionCalls++;
+            FastAuthSessionAttempts.Add(attempt);
             return Task.FromResult(FastAuthSession);
         }
 
@@ -1033,20 +1169,48 @@ public sealed class LoginViewModelTests
             FastAuthSession session,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            var subscription = new FastAuthSubscription(attempt)
+            {
+                CancellationToken = cancellationToken
+            };
+            FastAuthSubscriptions.Add(subscription);
+            CompleteFastAuthSubscriptionWaiters();
             FastAuthSubscribed.TrySetResult();
-            if (FastAuthStreamGate is not null)
+            try
             {
-                await FastAuthStreamGate.WaitAsync(IgnoreFastAuthCancellation ? CancellationToken.None : cancellationToken);
-            }
+                if (FastAuthStreamGate is not null)
+                {
+                    await FastAuthStreamGate.WaitAsync(IgnoreFastAuthCancellation ? CancellationToken.None : cancellationToken);
+                    foreach (var update in FastAuthUpdates)
+                    {
+                        if (update.Kind == FastAuthUpdateKind.Accepted && _currentAttempt == attempt)
+                        {
+                            _currentAttempt = null;
+                        }
 
-            foreach (var update in FastAuthUpdates)
-            {
-                if (update.Kind == FastAuthUpdateKind.Accepted && _currentAttempt == attempt)
+                        yield return update;
+                    }
+
+                    yield break;
+                }
+
+                var nextUpdate = await subscription.Update.Task.WaitAsync(
+                    IgnoreFastAuthCancellation ? CancellationToken.None : cancellationToken);
+                if (nextUpdate.Kind == FastAuthUpdateKind.Accepted && _currentAttempt == attempt)
                 {
                     _currentAttempt = null;
                 }
 
-                yield return update;
+                yield return nextUpdate;
+            }
+            finally
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    subscription.CancellationObserved.TrySetResult();
+                }
+
+                subscription.Terminated.TrySetResult();
             }
         }
 
@@ -1095,6 +1259,27 @@ public sealed class LoginViewModelTests
             return completion.Task;
         }
 
+        public Task WaitForFastAuthSubscriptionsAsync(int count)
+        {
+            if (FastAuthSubscriptions.Count >= count)
+            {
+                return Task.CompletedTask;
+            }
+
+            var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _fastAuthSubscriptionWaiters.Add((count, completion));
+            return completion.Task;
+        }
+
+        private void CompleteFastAuthSubscriptionWaiters()
+        {
+            foreach (var waiter in _fastAuthSubscriptionWaiters.Where(waiter => FastAuthSubscriptions.Count >= waiter.Count).ToArray())
+            {
+                waiter.Completion.TrySetResult();
+                _fastAuthSubscriptionWaiters.Remove(waiter);
+            }
+        }
+
         private static void CompleteWaiters(List<TaskCompletionSource> waiters, int count)
         {
             foreach (var waiter in waiters.ToArray())
@@ -1127,6 +1312,17 @@ public sealed class LoginViewModelTests
         AuthChallengeReference Reference,
         string Code,
         bool UseRecoveryCode);
+
+    private sealed class FastAuthSubscription(AuthenticationAttempt attempt)
+    {
+        public AuthenticationAttempt Attempt { get; } = attempt;
+        public CancellationToken CancellationToken { get; set; }
+        public TaskCompletionSource<FastAuthUpdate> Update { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource CancellationObserved { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Terminated { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void Publish(FastAuthUpdate update) => Update.TrySetResult(update);
+    }
 
     private sealed class TestNavigationService : IOnboardingNavigationService
     {
