@@ -28,25 +28,29 @@ final class FastAuthViewModel {
     // MARK: - Dependencies
 
     private let fastAuthService: FastAuthServiceProtocol
-    private let authService: AuthServiceProtocol
+    private let admissionService: SignInSessionAdmissionService
 
     // MARK: - Callbacks
 
     /// Вызывается после успешного применения токенов FastAuth — повторяет роль
     /// `App.OpenMessengerPage()` из WPF-клиента.
-    var onAuthenticated: (() -> Void)?
+    var onAuthenticated: ((SignInSessionAdmissionReceipt) -> Void)?
 
     // MARK: - Internal
 
     private var sessionTask: Task<Void, Never>?
     private var timerTask: Task<Void, Never>?
     private var hasFinished: Bool = false
+    private var admissionAttempt: SignInSessionAdmissionAttempt?
 
     // MARK: - Init
 
-    init(fastAuthService: FastAuthServiceProtocol, authService: AuthServiceProtocol) {
+    init(
+        fastAuthService: FastAuthServiceProtocol,
+        admissionService: SignInSessionAdmissionService
+    ) {
         self.fastAuthService = fastAuthService
-        self.authService = authService
+        self.admissionService = admissionService
     }
 
     // MARK: - Lifecycle
@@ -67,12 +71,20 @@ final class FastAuthViewModel {
         sessionTask = nil
         timerTask?.cancel()
         timerTask = nil
+        if let admissionAttempt {
+            admissionAttempt.cancel()
+            Task { await admissionService.invalidateSignInAttempt(admissionAttempt) }
+        }
+        admissionAttempt = nil
     }
 
     // MARK: - Session
 
     private func runSession() async {
         guard !hasFinished else { return }
+        if admissionAttempt == nil {
+            admissionAttempt = await admissionService.beginSignInAttempt()
+        }
 
         // 1. Сгенерировать новый токен.
         await generateQRToken()
@@ -123,17 +135,28 @@ final class FastAuthViewModel {
                     continue
 
                 case .accepted:
-                    if let access = result.accessToken,
+                    if let access = result.accessToken, !access.isEmpty,
                        let accessExpires = result.accessTokenExpiresAt,
-                       let refresh = result.refreshToken,
-                       let refreshExpires = result.refreshTokenExpiresAt {
-                        await authService.applyFastAuthTokens(
-                            accessToken: access, accessExpiresAt: accessExpires,
-                            refreshToken: refresh, refreshExpiresAt: refreshExpires
-                        )
+                       let refresh = result.refreshToken, !refresh.isEmpty,
+                       let refreshExpires = result.refreshTokenExpiresAt,
+                       accessExpires > Date(), refreshExpires > Date() {
+                        guard let admissionAttempt,
+                              let receipt = await admissionService.commitSignInSession(
+                                SignInSessionTokens(
+                                    accessToken: access,
+                                    accessExpiresAt: accessExpires,
+                                    refreshToken: refresh,
+                                    refreshExpiresAt: refreshExpires
+                                ),
+                                for: admissionAttempt
+                              ) else {
+                            hasFinished = true
+                            timerTask?.cancel()
+                            return
+                        }
                         hasFinished = true
                         timerTask?.cancel()
-                        onAuthenticated?()
+                        onAuthenticated?(receipt)
                         return
                     } else {
                         errorMessage = String(localized: "fast_auth.qr.error.empty_tokens")

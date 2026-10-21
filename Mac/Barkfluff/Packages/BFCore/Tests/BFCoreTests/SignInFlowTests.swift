@@ -298,6 +298,29 @@ final class SignInFlowTests: XCTestCase {
     }
 
     @MainActor
+    func testSynchronousAttemptCancellationPreventsTokenPersistence() async throws {
+        let tokens = TestTokenProvider()
+        let authService = makeAuthService(repository: ScriptedSignInRepository(mode: .password), tokens: tokens)
+        let attempt = await authService.beginSignInAttempt()
+        attempt.cancel()
+
+        let receipt = await authService.commitSignInSession(
+            SignInSessionTokens(
+                accessToken: "stale-access",
+                accessExpiresAt: Date().addingTimeInterval(3_600),
+                refreshToken: "stale-refresh",
+                refreshExpiresAt: Date().addingTimeInterval(86_400)
+            ),
+            for: attempt
+        )
+        let saved = await tokens.snapshot()
+
+        XCTAssertNil(receipt)
+        XCTAssertNil(saved.accessToken)
+        XCTAssertEqual(saved.saveCount, 0)
+    }
+
+    @MainActor
     private func makeAuthService(repository: SignInRepositoryProtocol, tokens: TestTokenProvider) -> AuthService {
         AuthService(
             identityRepository: UnusedIdentityRepository(),

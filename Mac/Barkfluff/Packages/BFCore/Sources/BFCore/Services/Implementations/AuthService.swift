@@ -211,6 +211,7 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
     }
 
     public func invalidateSignInAttempt(_ attempt: SignInSessionAdmissionAttempt) {
+        attempt.cancel()
         activeSignInAttempts.remove(attempt)
     }
 
@@ -218,7 +219,7 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
         _ session: SignInSessionTokens,
         for attempt: SignInSessionAdmissionAttempt
     ) async -> SignInSessionAdmissionReceipt? {
-        guard winningSignInAttempt == nil, activeSignInAttempts.contains(attempt),
+        guard winningSignInAttempt == nil, activeSignInAttempts.contains(attempt), !attempt.isCancelled,
               !session.accessToken.isEmpty, !session.refreshToken.isEmpty,
               session.accessExpiresAt.timeIntervalSince1970.isFinite,
               session.refreshExpiresAt.timeIntervalSince1970.isFinite,
@@ -242,6 +243,7 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
     }
 
     private func resetSignInAdmission() {
+        activeSignInAttempts.forEach { $0.cancel() }
         activeSignInAttempts.removeAll()
         winningSignInAttempt = nil
     }

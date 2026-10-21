@@ -619,6 +619,7 @@ public final class SignInFlowController {
         pauseForeground()
         let reference = challenge?.reference
         let oldAttempt = attempt
+        oldAttempt?.cancel()
         challenge = nil
         loginMode = nil
         selectedFactor = nil
@@ -635,8 +636,11 @@ public final class SignInFlowController {
         if let oldAttempt { Task { await admissionService.invalidateSignInAttempt(oldAttempt) } }
     }
 
+    /// Request lifetime is controlled by generation. A cancelled Telegram polling task can still
+    /// receive its in-flight Get response; cancellation should stop the next poll, not cancel the
+    /// user's server challenge.
     private func isCurrent(_ requestGeneration: UInt64) -> Bool {
-        generation == requestGeneration && !Task.isCancelled
+        generation == requestGeneration
     }
 
     private func cancelIfStale(_ challenge: SignInChallenge) async {
