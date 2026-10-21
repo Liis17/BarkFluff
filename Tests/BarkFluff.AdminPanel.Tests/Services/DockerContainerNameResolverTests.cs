@@ -120,7 +120,7 @@ public class DockerContainerNameResolverTests
         Assert.True((await docker.UpdateAdminPanelAsync()).Success);
         var updateCommand = Assert.Single(runner.Commands, command => command[0] == "run");
         Assert.Contains("'pull' 'admin-panel'", updateCommand[^1], StringComparison.Ordinal);
-        Assert.Contains("'-f' 'C:\\node\\docker-compose.yml'", updateCommand[^1], StringComparison.Ordinal);
+        Assert.Contains($"'-f' '{Path.GetFullPath("/node/docker-compose.yml")}'", updateCommand[^1], StringComparison.Ordinal);
         Assert.Contains(runner.Commands, command => command[0] == "inspect" && command[^1] == "barkfluff-admin-panel");
     }
 
@@ -146,11 +146,11 @@ public class DockerContainerNameResolverTests
             if (template.Contains(".Mounts", StringComparison.Ordinal))
             {
                 if (template.Contains("/var/run/docker.sock", StringComparison.Ordinal)) return "/var/run/docker.sock";
-                if (template.Contains("/docker-compose.yml", StringComparison.Ordinal)) return "C:\\node\\docker-compose.yml";
-                if (template.Contains("/.env", StringComparison.Ordinal)) return "C:\\node\\.env";
+                if (template.Contains("/docker-compose.yml", StringComparison.Ordinal)) return "/node/docker-compose.yml";
+                if (template.Contains("/.env", StringComparison.Ordinal)) return "/node/.env";
             }
             if (template.Contains("project.config_files", StringComparison.Ordinal))
-                return "C:\\node\\docker-compose.yml,C:\\node\\override.yml";
+                return "/node/docker-compose.yml,/node/override.yml";
             if (template.Contains(".State.Status", StringComparison.Ordinal))
                 return "running|healthy";
             return "";

@@ -163,11 +163,11 @@ public class DeployJobServiceTests
             if (template.Contains(".Mounts", StringComparison.Ordinal))
             {
                 if (template.Contains("/var/run/docker.sock", StringComparison.Ordinal)) return "/var/run/docker.sock";
-                if (template.Contains("/docker-compose.yml", StringComparison.Ordinal)) return "C:\\node\\docker-compose.yml";
-                if (template.Contains("/.env", StringComparison.Ordinal)) return "C:\\node\\.env";
+                if (template.Contains("/docker-compose.yml", StringComparison.Ordinal)) return "/node/docker-compose.yml";
+                if (template.Contains("/.env", StringComparison.Ordinal)) return "/node/.env";
             }
             if (template.Contains("project.config_files", StringComparison.Ordinal))
-                return "C:\\node\\docker-compose.yml,C:\\node\\override.yml";
+                return "/node/docker-compose.yml,/node/override.yml";
             if (template.Contains(".State.Status", StringComparison.Ordinal))
                 return healthOutput;
             return "";
