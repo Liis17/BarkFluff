@@ -12,7 +12,9 @@ namespace BarkFluff.WebApi.Core.Managers
             _webApi = webApi;
         }
 
-        public async Task<(ErrorReturner, GenerateFastAuthTokenResponse?)> GenerateFastAuthToken(TokenFormat format)
+        public async Task<(ErrorReturner, GenerateFastAuthTokenResponse?)> GenerateFastAuthToken(
+            TokenFormat format,
+            CancellationToken cancellationToken = default)
         {
             if (FastAuthAC == null)
                 return (new ErrorReturner(false, "FastAuth клиент не инициализирован"), null);
@@ -20,8 +22,13 @@ namespace BarkFluff.WebApi.Core.Managers
             try
             {
                 var response = await FastAuthAC.GenerateFastAuthTokenAsync(
-                    new GenerateFastAuthTokenRequest { Format = format });
+                    new GenerateFastAuthTokenRequest { Format = format },
+                    cancellationToken: cancellationToken);
                 return (new ErrorReturner(true), response);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {

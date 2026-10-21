@@ -389,6 +389,27 @@ namespace BarkFluff.WebApi.Core.Managers
             }
         }
 
+        public async Task<(ErrorReturner Error, UserData? Data)> GetUserDataForAuthentication(
+            GlobalParam globalParam,
+            CancellationToken cancellationToken)
+        {
+            var response = await UsersAC!.GetUserAsync(
+                new Proto.Users.GetUserRequest { UserId = 0 },
+                cancellationToken: cancellationToken);
+
+            return (new ErrorReturner(true), new UserData
+            {
+                FirstName = response.User.FirstName,
+                LastName = response.User.LastName,
+                Username = response.User.Username,
+                RegistrationDate = response.User.RegistrationDate.ToDateTime(),
+                Id = response.User.Id,
+                ProfilePictureUrl = response.User.ProfilePicture,
+                Description = response.User.Bio,
+                ProfilePicturePreviewUrl = response.User.ProfilePicturePreview
+            });
+        }
+
         /// <summary>
         /// Выполняет авторизацию пользователя с использованием электронной почты или имени пользователя, пароля и кода двухфакторной аутентификации (OTP).
         /// </summary>
@@ -449,6 +470,36 @@ namespace BarkFluff.WebApi.Core.Managers
                 return (new ErrorReturner(false, "Защита входа временно недоступна. Повторите попытку позже", errorResourceKey: "Error_LoginProtectionUnavailable"), null, null, false);
             }
         }
+
+        public async Task<Proto.Identity.ResolveSignInResponse> ResolveSignIn(string login, CancellationToken cancellationToken) =>
+            await IdentityAC!.ResolveSignInAsync(
+                new Proto.Identity.ResolveSignInRequest { Login = login },
+                cancellationToken: cancellationToken).ResponseAsync;
+
+        public async Task<Proto.Identity.AuthChallengeResponse> BeginSignIn(
+            Proto.Identity.BeginSignInRequest request,
+            CancellationToken cancellationToken) =>
+            await IdentityAC!.BeginSignInAsync(request, cancellationToken: cancellationToken).ResponseAsync;
+
+        public async Task<Proto.Identity.AuthChallengeResponse> GetAuthChallenge(
+            Proto.Identity.AuthChallengeReference reference,
+            CancellationToken cancellationToken) =>
+            await IdentityAC!.GetAuthChallengeAsync(reference, cancellationToken: cancellationToken).ResponseAsync;
+
+        public async Task<Proto.Identity.CompleteAuthChallengeResponse> CompleteAuthChallenge(
+            Proto.Identity.CompleteAuthChallengeRequest request,
+            CancellationToken cancellationToken) =>
+            await IdentityAC!.CompleteAuthChallengeAsync(request, cancellationToken: cancellationToken).ResponseAsync;
+
+        public async Task<Proto.Identity.AuthChallengeResponse> ResendAuthChallenge(
+            Proto.Identity.AuthChallengeReference reference,
+            CancellationToken cancellationToken) =>
+            await IdentityAC!.ResendAuthChallengeAsync(reference, cancellationToken: cancellationToken).ResponseAsync;
+
+        public async Task<Proto.Identity.AuthChallengeResponse> CancelAuthChallenge(
+            Proto.Identity.AuthChallengeReference reference,
+            CancellationToken cancellationToken) =>
+            await IdentityAC!.CancelAuthChallengeAsync(reference, cancellationToken: cancellationToken).ResponseAsync;
 
         /// <summary>
         /// Получает баджи пользователя с сервера

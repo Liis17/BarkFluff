@@ -31,6 +31,7 @@ public sealed class OnboardingNavigationService : IOnboardingNavigationService
     public void ShowLogin()
     {
         var viewModel = _serviceProvider.GetRequiredService<LoginViewModel>();
+        viewModel.Reset();
         _ = viewModel.LoadFastAuthAsync();
         Navigate(viewModel);
     }
