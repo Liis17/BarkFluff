@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <Compile Include="../../Tools/BarkFluff.Builder/BuilderModel.cs" Link="Builder/BuilderModel.cs" />
+    <Compile Include="../../Tools/BarkFluff.Builder/BuilderConfigLoader.cs" Link="Builder/BuilderConfigLoader.cs" />
     <Compile Include="../../Tools/BarkFluff.Builder/BuilderModelValidator.cs" Link="Builder/BuilderModelValidator.cs" />
     <Compile Include="../../Tools/BarkFluff.Builder/BuilderOutputWriter.cs" Link="Builder/BuilderOutputWriter.cs" />
     <Compile Include="../../Tools/BarkFluff.Builder/BuilderNextStepsGenerator.cs" Link="Builder/BuilderNextStepsGenerator.cs" />
