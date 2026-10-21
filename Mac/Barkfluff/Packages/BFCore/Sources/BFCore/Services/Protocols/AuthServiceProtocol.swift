@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Synchronization
 import BFNetworking
 
 /// Протокол сервиса аутентификации
@@ -55,11 +56,28 @@ public protocol AuthServiceProtocol: Sendable {
 /// New challenge-based sign-in API, kept separate from the legacy registration/iOS contract.
 public protocol SignInServiceProtocol: SignInRepositoryProtocol {}
 
-public struct SignInSessionAdmissionAttempt: Sendable, Equatable, Hashable {
+public final class SignInSessionAdmissionAttempt: @unchecked Sendable, Equatable, Hashable {
     public let id: UUID
+    private let cancellation = Mutex(false)
 
     public init(id: UUID = UUID()) {
         self.id = id
+    }
+
+    public var isCancelled: Bool {
+        cancellation.withLock { $0 }
+    }
+
+    public func cancel() {
+        cancellation.withLock { $0 = true }
+    }
+
+    public static func == (lhs: SignInSessionAdmissionAttempt, rhs: SignInSessionAdmissionAttempt) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 
