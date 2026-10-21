@@ -1,0 +1,219 @@
+name: BarkFluff Builder CI
+
+on:
+  pull_request:
+    branches: [nightly, dev, master]
+    paths:
+      - 'Tools/BarkFluff.Builder/**'
+      - 'Tests/BarkFluff.Builder.Tests/**'
+      - '.github/workflows/build-builder.yml'
+      - 'Backend/BarkFluff.Settings/Catalog/NodeSubdomains.cs'
+      - 'Docker/nightly/barkfluff/**'
+      - 'Docker/nightly/nginx/**'
+      - 'Docker/Lognara/agent/**'
+      - 'global.json'
+      - '**/*.props'
+      - '**/*.targets'
+  push:
+    branches: [nightly, dev, master]
+    paths:
+      - 'Tools/BarkFluff.Builder/**'
+      - 'Tests/BarkFluff.Builder.Tests/**'
+      - '.github/workflows/build-builder.yml'
+      - 'Backend/BarkFluff.Settings/Catalog/NodeSubdomains.cs'
+      - 'Docker/nightly/barkfluff/**'
+      - 'Docker/nightly/nginx/**'
+      - 'Docker/Lognara/agent/**'
+      - 'global.json'
+      - '**/*.props'
+      - '**/*.targets'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Test Builder
+        run: dotnet test Tests/BarkFluff.Builder.Tests/BarkFluff.Builder.Tests.csproj --configuration Release
+
+      - name: Publish self-contained Windows x64
+        run: >-
+          dotnet publish Tools/BarkFluff.Builder/BarkFluff.Builder.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --output "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-self-contained"
+
+      - name: Verify self-contained executable and create ZIP
+        run: |
+          $output = "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-self-contained"
+          if (-not (Test-Path -LiteralPath "$output/BarkFluff.Builder.exe")) {
+            throw "Self-contained BarkFluff.Builder.exe was not published."
+          }
+          Compress-Archive -Path "$output/*" -DestinationPath "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-self-contained.zip" -CompressionLevel Optimal
+
+      - name: Publish framework-dependent Windows x64
+        run: >-
+          dotnet publish Tools/BarkFluff.Builder/BarkFluff.Builder.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained false
+          -p:UseAppHost=true
+          --output "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-framework-dependent"
+
+      - name: Verify framework-dependent executable and create ZIP
+        run: |
+          $output = "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-framework-dependent"
+          if (-not (Test-Path -LiteralPath "$output/BarkFluff.Builder.exe")) {
+            throw "Framework-dependent BarkFluff.Builder.exe was not published."
+          }
+          Compress-Archive -Path "$output/*" -DestinationPath "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-framework-dependent.zip" -CompressionLevel Optimal
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: barkfluff-builder-win-x64-self-contained
+          path: ${{ runner.temp }}/BarkFluff.Builder-win-x64-self-contained.zip
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: barkfluff-builder-win-x64-framework-dependent
+          path: ${{ runner.temp }}/BarkFluff.Builder-win-x64-framework-dependent.zip
+          if-no-files-found: error
+
+  verify-generated-configurations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Generate a self-signed certificate for nginx validation
+        run: |
+          mkdir -p "$RUNNER_TEMP/builder-certs"
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+            -keyout "$RUNNER_TEMP/builder-certs/barkfluff-key.pem" \
+            -out "$RUNNER_TEMP/builder-certs/barkfluff-crt.pem" \
+            -subj "/CN=node.example.com"
+
+      - name: Generate sample configurations
+        env:
+          BUILDER_SAMPLE_OUTPUT: ${{ runner.temp }}/builder-samples
+          BUILDER_CERTIFICATE_SOURCE: ${{ runner.temp }}/builder-certs/barkfluff-crt.pem
+          BUILDER_KEY_SOURCE: ${{ runner.temp }}/builder-certs/barkfluff-key.pem
+          BUILDER_DOCKER_NETWORK: builder-sample-${{ github.run_id }}-${{ github.run_attempt }}
+        run: >-
+          dotnet test Tests/BarkFluff.Builder.Tests/BarkFluff.Builder.Tests.csproj
+          --configuration Release
+          --filter FullyQualifiedName~BuilderSampleOutputTests.GenerateSamplesWhenOutputDirectoryIsConfigured
+
+      - name: Validate generated Compose files
+        env:
+          BUILDER_SAMPLE_OUTPUT: ${{ runner.temp }}/builder-samples
+        run: |
+          set -euo pipefail
+          for mode in compose compose-lognara external-container host none; do
+            test -d "$BUILDER_SAMPLE_OUTPUT/$mode"
+          done
+          for sample in "$BUILDER_SAMPLE_OUTPUT"/*; do
+            for compose_file in docker-compose.yml docker-compose.setup.yml; do
+              echo "Validating $sample/$compose_file"
+              docker compose --env-file "$sample/.env" -f "$sample/$compose_file" config -q
+            done
+          done
+
+      - name: Validate generated nginx sites
+        env:
+          BUILDER_SAMPLE_OUTPUT: ${{ runner.temp }}/builder-samples
+        run: |
+          set -euo pipefail
+          services=(identity users messages files updates onliner fast-auth federation beacon bots calls livekit web developers admin-panel setup)
+          host_args=()
+          for service in "${services[@]}"; do
+            host_args+=(--add-host "$service:127.0.0.1")
+          done
+
+          for mode in compose external-container host; do
+            sample="$BUILDER_SAMPLE_OUTPUT/$mode"
+            nginx_args=(docker run --rm "${host_args[@]}"
+              --mount "type=bind,src=$sample/nginx/sites,dst=/etc/nginx/conf.d,readonly"
+              --mount "type=bind,src=$sample/certs,dst=/etc/nginx/certs,readonly")
+            if [[ "$mode" == compose ]]; then
+              nginx_args+=(--mount "type=bind,src=$sample/nginx/nginx.conf,dst=/etc/nginx/nginx.conf,readonly"
+                nginx:alpine nginx -t -c /etc/nginx/nginx.conf)
+            else
+              nginx_args+=(nginx:alpine nginx -t)
+            fi
+            echo "Validating nginx sites for $mode"
+            "${nginx_args[@]}"
+          done
+
+      - name: Verify PostgreSQL bootstrap from a cold database and on repeat
+        env:
+          BUILDER_SAMPLE_OUTPUT: ${{ runner.temp }}/builder-samples
+          BUILDER_DOCKER_NETWORK: builder-sample-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          sample="$BUILDER_SAMPLE_OUTPUT/compose"
+          project="builder-bootstrap-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          network="$BUILDER_DOCKER_NETWORK"
+          compose=(docker compose --project-name "$project" --env-file "$sample/.env" -f "$sample/docker-compose.setup.yml")
+
+          cleanup() {
+            "${compose[@]}" down --volumes --remove-orphans || true
+            docker network rm "$network" >/dev/null 2>&1 || true
+          }
+          # The run-scoped Compose project, Docker network, and runner-temp bind mounts are disposable CI resources.
+          trap cleanup EXIT
+
+          docker network create "$network"
+          "${compose[@]}" up --abort-on-container-exit --exit-code-from postgres-bootstrap postgres postgres-bootstrap
+          echo "Repeating PostgreSQL bootstrap against the same database"
+          "${compose[@]}" up --abort-on-container-exit --exit-code-from postgres-bootstrap postgres postgres-bootstrap
+
+  release:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    needs: [build, verify-generated-configurations]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: barkfluff-builder-win-x64-self-contained
+          path: release-assets/self-contained
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: barkfluff-builder-win-x64-framework-dependent
+          path: release-assets/framework-dependent
+
+      - name: Create non-latest Builder release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="builder-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" \
+            --target "$GITHUB_SHA" \
+            --title "$tag" \
+            --notes "Windows x64 self-contained and framework-dependent BarkFluff Builder archives." \
+            --latest=false \
+            --repo "$GITHUB_REPOSITORY" \
+            release-assets/self-contained/*.zip \
+            release-assets/framework-dependent/*.zip
