@@ -73,7 +73,8 @@ public sealed class AuthenticationViewModelTests
         await viewModel.LoadFastAuthAsync();
 
         Assert.Null(viewModel.FastAuthQrCode);
-        Assert.Equal("Error_FastAuthFailed", viewModel.ErrorMessage);
+        Assert.Equal("Error_FastAuthFailed", viewModel.FastAuthStatusMessage);
+        Assert.Null(viewModel.ErrorMessage);
     }
 
     [Fact]

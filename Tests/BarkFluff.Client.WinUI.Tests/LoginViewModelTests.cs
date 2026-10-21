@@ -15,6 +15,307 @@ public sealed class LoginViewModelTests
     private const string ValidQrPngBase64 =
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9JfWQAAAAASUVORK5CYII=";
 
+    [Fact]
+    public async Task TelegramResendFailure_ResumesPollingAndCompletesAfterApproval()
+    {
+        var authentication = new FakeAuthenticationService { LoginMode = AuthLoginMode.TelegramLogin };
+        var clock = new TestClock();
+        var navigation = new TestNavigationService();
+        var viewModel = await StartChallengeAsync(authentication, AuthLoginMode.TelegramLogin, navigation, clock);
+        clock.Advance(TimeSpan.FromSeconds(60));
+        await viewModel.ResendCodeCommand.ExecuteAsync(null);
+        Assert.True(viewModel.CanRetry);
+        var waiting = Challenge(AuthChallengeState.Waiting, OtpTypeId.Telegram, false);
+        authentication.PollResults.Enqueue(waiting);
+        authentication.PollResults.Enqueue(Challenge(AuthChallengeState.Approved, OtpTypeId.Telegram, false));
+        var firstPoll = authentication.WaitForPollCallsAsync(1);
+        clock.Advance(TimeSpan.FromSeconds(2));
+        await firstPoll.WaitAsync(TimeSpan.FromSeconds(2));
+        // Wait for the next polling delay to be registered, not a wall-clock delay.
+        await clock.WaitForTimerAsync(TimeSpan.FromSeconds(2));
+        clock.Advance(TimeSpan.FromSeconds(2));
+        await navigation.WaitForMessengerAsync().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Single(authentication.CompleteCalls);
+        Assert.Single(authentication.BeginCalls);
+        Assert.Equal(1, navigation.ShowMessengerCalls);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task TelegramRecoveryToggle_NotifiesSubmitVisibilityAndKeepsInstructionsConsistent()
+    {
+        var authentication = new FakeAuthenticationService { LoginMode = AuthLoginMode.TelegramLogin };
+        authentication.BeginResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Telegram, false));
+        authentication.BeginResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Telegram, true));
+        authentication.BeginResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Telegram, false));
+        var viewModel = await StartChallengeAsync(authentication, AuthLoginMode.TelegramLogin);
+        var changes = new List<string?>();
+        viewModel.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
+        Assert.False(viewModel.CanSubmitChallenge);
+        var recoveryStarted = WhenAuthenticationStops(viewModel);
+        viewModel.IsRecoveryCode = true;
+        await recoveryStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.True(viewModel.RequiresTwoFactor);
+        Assert.True(viewModel.CanSubmitChallenge);
+        Assert.Contains(nameof(LoginViewModel.CanSubmitChallenge), changes);
+        Assert.Equal("Login_RecoveryCodeHint", viewModel.StatusMessage);
+        Assert.False(viewModel.LoginCommand.CanExecute(null));
+        viewModel.Code = "recovery";
+        Assert.True(viewModel.LoginCommand.CanExecute(null));
+        changes.Clear();
+        var recoveryStopped = WhenAuthenticationStops(viewModel);
+        viewModel.IsRecoveryCode = false;
+        await recoveryStopped.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.False(viewModel.RequiresTwoFactor);
+        Assert.False(viewModel.CanSubmitChallenge);
+        Assert.Contains(nameof(LoginViewModel.CanSubmitChallenge), changes);
+        Assert.False(viewModel.LoginCommand.CanExecute(null));
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task LostCompleteThenLocalExpiry_RetriesSameReferenceInsteadOfBeginningAgain()
+    {
+        var authentication = new FakeAuthenticationService { LoginMode = AuthLoginMode.PasswordSecondFactor };
+        var clock = new TestClock();
+        var challenge = Challenge(AuthChallengeState.Waiting, OtpTypeId.Authenticator, true).Challenge!;
+        authentication.BeginResults.Enqueue(SignInChallengeResult.Success(challenge with { ExpiresAt = clock.GetUtcNow().AddSeconds(5) }));
+        var viewModel = await StartChallengeAsync(authentication, AuthLoginMode.PasswordSecondFactor, clock: clock);
+        authentication.CompleteResults.Enqueue(AuthenticationOperationResult.Failure("Error_LoginUnavailable"));
+        viewModel.Code = "123456";
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        clock.Advance(TimeSpan.FromSeconds(6));
+        await viewModel.RetryCommand.ExecuteAsync(null);
+        Assert.Single(authentication.BeginCalls);
+        Assert.Equal(2, authentication.CompleteCalls.Count);
+        Assert.Equal(authentication.CompleteCalls[0].Reference, authentication.CompleteCalls[1].Reference);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task TelegramPoll_TransientErrorShowsReconnectAndDoesNotRebuildUnchangedFactors()
+    {
+        var authentication = new FakeAuthenticationService { LoginMode = AuthLoginMode.TelegramLogin };
+        var clock = new TestClock();
+        var viewModel = await StartChallengeAsync(authentication, AuthLoginMode.TelegramLogin, clock: clock);
+        var changes = 0;
+        viewModel.AvailableFactors.CollectionChanged += (_, _) => changes++;
+        var reconnecting = WhenProperty(viewModel, nameof(LoginViewModel.StatusMessage),
+            () => viewModel.StatusMessage == "Login_ChallengeReconnecting");
+        clock.Advance(TimeSpan.FromSeconds(2));
+        await reconnecting.WaitAsync(TimeSpan.FromSeconds(2));
+        authentication.PollResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Telegram, false));
+        await clock.WaitForTimerAsync(TimeSpan.FromSeconds(2));
+        var waiting = WhenProperty(viewModel, nameof(LoginViewModel.StatusMessage),
+            () => viewModel.StatusMessage == "Login_ChallengeWaiting");
+        clock.Advance(TimeSpan.FromSeconds(2));
+        await waiting.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(0, changes);
+        Assert.Equal(OtpTypeId.Telegram, viewModel.SelectedFactor);
+        Assert.Single(authentication.BeginCalls);
+        await viewModel.CleanupAsync();
+    }
+
+    private static Task WhenProperty(LoginViewModel viewModel, string property, Func<bool> condition)
+    {
+        var source = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        PropertyChangedEventHandler? handler = null;
+        handler = (_, e) =>
+        {
+            if (e.PropertyName != property || !condition()) return;
+            viewModel.PropertyChanged -= handler;
+            source.TrySetResult();
+        };
+        viewModel.PropertyChanged += handler;
+        return source.Task;
+    }
+
+    [Fact]
+    public async Task RecoveryPaste_PreservesFullHexCodeSentToComplete()
+    {
+        var authentication = new FakeAuthenticationService();
+        var viewModel = await StartChallengeAsync(authentication, AuthLoginMode.PasswordSecondFactor);
+        authentication.BeginResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Authenticator, true));
+        viewModel.IsRecoveryCode = true;
+        const string recovery = "0123456789abcdef0123456789abcdef";
+        viewModel.PasteOtpCodeCommand.Execute(recovery);
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.Equal(recovery, Assert.Single(authentication.CompleteCalls).Code);
+        Assert.True(authentication.CompleteCalls[0].UseRecoveryCode);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task CompleteInFlight_PreventsFactorAndRecoveryChanges()
+    {
+        var authentication = new FakeAuthenticationService();
+        var viewModel = await StartChallengeAsync(authentication, AuthLoginMode.PasswordSecondFactor);
+        var gate = new TaskCompletionSource<AuthenticationOperationResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        authentication.CompleteHandler = _ => gate.Task;
+        viewModel.Code = "123456";
+        var complete = viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.False(viewModel.CanSelectFactor);
+        Assert.False(viewModel.CanChangeRecoveryCode);
+        viewModel.SelectedFactor = OtpTypeId.Email;
+        viewModel.IsRecoveryCode = true;
+        gate.SetResult(AuthenticationOperationResult.Failure("Error_LoginInvalidCode"));
+        await complete;
+        Assert.Equal(OtpTypeId.Authenticator, viewModel.SelectedFactor);
+        Assert.False(viewModel.IsRecoveryCode);
+        Assert.Single(authentication.BeginCalls);
+        Assert.Equal("Error_LoginInvalidCode", viewModel.ErrorMessage);
+        await viewModel.CleanupAsync();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LateCompleteAfterCleanup_DoesNotNavigateOrPaintNewFlow(bool cancelled)
+    {
+        var authentication = new FakeAuthenticationService();
+        var navigation = new TestNavigationService();
+        var viewModel = await StartChallengeAsync(authentication, AuthLoginMode.PasswordSecondFactor, navigation);
+        var gate = new TaskCompletionSource<AuthenticationOperationResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        authentication.CompleteHandler = _ => gate.Task;
+        viewModel.Code = "123456";
+        var complete = viewModel.LoginCommand.ExecuteAsync(null);
+        await viewModel.CleanupAsync();
+        viewModel.Reset();
+        viewModel.ErrorMessage = "new-page";
+        if (cancelled) gate.SetException(new OperationCanceledException());
+        else gate.SetResult(AuthenticationOperationResult.Success());
+        await complete;
+        Assert.Equal("new-page", viewModel.ErrorMessage);
+        Assert.Equal(0, navigation.ShowMessengerCalls);
+        Assert.False(viewModel.CanRetry);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task LateBeginCancellation_DoesNotResetBusyStateOfNewFlow()
+    {
+        var authentication = new FakeAuthenticationService();
+        var viewModel = CreateViewModel(authentication);
+        viewModel.LoginOrEmail = "alice";
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        viewModel.Password = "password";
+        var oldGate = new TaskCompletionSource<SignInChallengeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        authentication.BeginHandler = _ => oldGate.Task;
+        var oldLogin = viewModel.LoginCommand.ExecuteAsync(null);
+        await viewModel.ChangeLoginCommand.ExecuteAsync(null);
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        viewModel.Password = "new-password";
+        var newGate = new TaskCompletionSource<SignInChallengeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        authentication.BeginHandler = _ => newGate.Task;
+        var newLogin = viewModel.LoginCommand.ExecuteAsync(null);
+        oldGate.SetException(new OperationCanceledException());
+        await oldLogin;
+        Assert.True(viewModel.IsAuthenticating);
+        Assert.Null(viewModel.ErrorMessage);
+        newGate.SetResult(Challenge(AuthChallengeState.Waiting, OtpTypeId.Authenticator, true));
+        await newLogin;
+        await viewModel.CleanupAsync();
+    }
+
+    [Theory]
+    [InlineData("Error_LoginRateLimited")]
+    [InlineData("Error_LoginLocked")]
+    public async Task FailedFactorBegin_CanRetrySelectedFactorWithoutOldChallenge(string error)
+    {
+        var authentication = new FakeAuthenticationService();
+        var viewModel = await StartChallengeAsync(authentication, AuthLoginMode.PasswordSecondFactor);
+        authentication.BeginResults.Enqueue(SignInChallengeResult.Failure("locked", error));
+        viewModel.SelectedFactor = OtpTypeId.Email;
+        Assert.True(viewModel.CanRetry);
+        Assert.False(viewModel.LoginCommand.CanExecute(null));
+        authentication.BeginResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Email, true));
+        await viewModel.RetryCommand.ExecuteAsync(null);
+        Assert.Equal(OtpTypeId.Email, authentication.BeginCalls.Last().Factor);
+        Assert.Equal(OtpTypeId.Email, viewModel.SelectedFactor);
+        Assert.Null(viewModel.ErrorMessage);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task DirectExecuteAsync_WithEmptyPasswordOrCodeDoesNotCallBackend()
+    {
+        var authentication = new FakeAuthenticationService();
+        var viewModel = CreateViewModel(authentication);
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.Empty(authentication.ResolvedLogins);
+        viewModel.LoginOrEmail = "alice";
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.Empty(authentication.BeginCalls);
+        viewModel.Password = "password";
+        authentication.BeginResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Authenticator, true));
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.Empty(authentication.CompleteCalls);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task ResendCooldown_StartsOnlyAfterSuccessfulDeliveryIncludingInitialBegin()
+    {
+        var authentication = new FakeAuthenticationService { LoginMode = AuthLoginMode.PasswordSecondFactor };
+        var clock = new TestClock();
+        var viewModel = new LoginViewModel(authentication, new TestNavigationService(), new TestLocalizationService(), clock)
+        {
+            LoginOrEmail = "alice"
+        };
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        viewModel.Password = "password";
+        authentication.BeginResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Email, true));
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.False(viewModel.CanResend);
+        await viewModel.ResendCodeCommand.ExecuteAsync(null);
+        Assert.Empty(authentication.ResentChallenges);
+        clock.Advance(TimeSpan.FromSeconds(60));
+        Assert.True(viewModel.CanResend);
+        await viewModel.ResendCodeCommand.ExecuteAsync(null); // failure
+        Assert.True(viewModel.CanRetry);
+        Assert.True(viewModel.CanResend);
+        var gate = new TaskCompletionSource<SignInChallengeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        authentication.ResendHandler = () => gate.Task;
+        var resend = viewModel.RetryCommand.ExecuteAsync(null);
+        clock.Advance(TimeSpan.FromSeconds(45));
+        gate.SetResult(Challenge(AuthChallengeState.Waiting, OtpTypeId.Email, true));
+        await resend;
+        clock.Advance(TimeSpan.FromSeconds(59));
+        Assert.False(viewModel.CanResend);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(viewModel.CanResend);
+        await viewModel.CleanupAsync();
+    }
+
+    [Theory]
+    [InlineData("Error_LoginAccountNotFound")]
+    [InlineData("Error_LoginUnavailable")]
+    [InlineData("Error_LoginUpdateRequired")]
+    public async Task ResolveFailure_StopsDeadQrAndRestartsWithoutReplacingPrimaryError(string error)
+    {
+        var authentication = new FakeAuthenticationService
+        {
+            FastAuthSession = new FastAuthSession("qr", new FastAuthQrCode(ValidQrPngBase64, DateTimeOffset.UtcNow.AddMinutes(5)))
+        };
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        authentication.FastAuthStreamGate = gate.Task;
+        var viewModel = CreateViewModel(authentication);
+        var load = viewModel.LoadFastAuthAsync();
+        await authentication.FastAuthSubscribed.Task;
+        authentication.ResolveResults.Enqueue(SignInResolutionResult.Failure(null, error));
+        viewModel.LoginOrEmail = "alice";
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.Equal(error, viewModel.ErrorMessage);
+        Assert.True(viewModel.FastAuthQrCode is null
+            ? viewModel.FastAuthStatusMessage == "Error_FastAuthUnavailable"
+            : authentication.FastAuthSessionCalls == 2);
+        gate.SetResult();
+        await load;
+        await viewModel.CleanupAsync();
+    }
+
     [Theory]
     [InlineData(" alice ", "alice")]
     [InlineData(" alice@example.com ", "alice@example.com")]
@@ -251,7 +552,10 @@ public sealed class LoginViewModelTests
             [OtpTypeId.Email]));
         authentication.ResendResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Email, true,
             [OtpTypeId.Email]));
-        var viewModel = await StartChallengeAsync(authentication, AuthLoginMode.PasswordSecondFactor);
+        var clock = new TestClock();
+        var viewModel = await StartChallengeAsync(authentication, AuthLoginMode.PasswordSecondFactor, clock: clock);
+        Assert.False(viewModel.CanResend);
+        clock.Advance(TimeSpan.FromSeconds(60));
 
         await viewModel.ResendCodeCommand.ExecuteAsync(null);
 
@@ -424,7 +728,8 @@ public sealed class LoginViewModelTests
         {
             FastAuthSession = new FastAuthSession(
                 "qr-session",
-                new FastAuthQrCode(ValidQrPngBase64, DateTimeOffset.UtcNow.AddMinutes(5)))
+                new FastAuthQrCode(ValidQrPngBase64, DateTimeOffset.UtcNow.AddMinutes(5))),
+            IgnoreFastAuthCancellation = true
         };
         var qrGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         authentication.FastAuthStreamGate = qrGate.Task;
@@ -463,7 +768,8 @@ public sealed class LoginViewModelTests
     private static async Task<LoginViewModel> StartChallengeAsync(
         FakeAuthenticationService authentication,
         AuthLoginMode mode,
-        TestNavigationService? navigation = null)
+        TestNavigationService? navigation = null,
+        TimeProvider? clock = null)
     {
         authentication.LoginMode = mode;
         var challenge = Challenge(
@@ -472,7 +778,7 @@ public sealed class LoginViewModelTests
             needsCode: true,
             factors: [OtpTypeId.Authenticator, OtpTypeId.Email]);
         authentication.BeginResults.Enqueue(challenge);
-        var viewModel = CreateViewModel(authentication, navigation);
+        var viewModel = new LoginViewModel(authentication, navigation ?? new TestNavigationService(), new TestLocalizationService(), clock);
         viewModel.LoginOrEmail = "alice";
         await viewModel.LoginCommand.ExecuteAsync(null);
         if (mode != AuthLoginMode.TelegramLogin)
@@ -534,6 +840,9 @@ public sealed class LoginViewModelTests
         public Queue<SignInChallengeResult> ResendResults { get; } = [];
         public Queue<AuthenticationOperationResult> CompleteResults { get; } = [];
         public Func<BeginCall, Task<SignInChallengeResult>>? BeginHandler { get; set; }
+        public Func<CompleteCall, Task<AuthenticationOperationResult>>? CompleteHandler { get; set; }
+        public Func<Task<SignInChallengeResult>>? ResendHandler { get; set; }
+        public int FastAuthSessionCalls { get; private set; }
         public List<string> ResolvedLogins { get; } = [];
         public List<BeginCall> BeginCalls { get; } = [];
         public List<CompleteCall> CompleteCalls { get; } = [];
@@ -544,6 +853,7 @@ public sealed class LoginViewModelTests
         public FastAuthSession? FastAuthSession { get; init; }
         public IReadOnlyList<FastAuthUpdate> FastAuthUpdates { get; set; } = [];
         public Task? FastAuthStreamGate { get; set; }
+        public bool IgnoreFastAuthCancellation { get; init; }
         public TaskCompletionSource FastAuthSubscribed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public AuthenticationAttempt? CreateAuthenticationAttempt() => _currentAttempt = AuthenticationAttempt.Create();
@@ -617,7 +927,9 @@ public sealed class LoginViewModelTests
             bool useRecoveryCode,
             CancellationToken cancellationToken = default)
         {
-            CompleteCalls.Add(new CompleteCall(attempt, reference, code, useRecoveryCode));
+            var call = new CompleteCall(attempt, reference, code, useRecoveryCode);
+            CompleteCalls.Add(call);
+            if (CompleteHandler is not null) return CompleteHandler(call);
             return Task.FromResult(CompleteResults.Count > 0
                 ? CompleteResults.Dequeue()
                 : AuthenticationOperationResult.Success());
@@ -626,6 +938,7 @@ public sealed class LoginViewModelTests
         public Task<SignInChallengeResult> ResendAuthChallengeAsync(AuthenticationAttempt attempt, AuthChallengeReference reference, CancellationToken cancellationToken = default)
         {
             ResentChallenges.Add(reference);
+            if (ResendHandler is not null) return ResendHandler();
             return Task.FromResult(ResendResults.Count > 0
                 ? ResendResults.Dequeue()
                 : SignInChallengeResult.Failure(null, "Error_LoginUnavailable"));
@@ -637,8 +950,11 @@ public sealed class LoginViewModelTests
             return Task.FromResult(AuthenticationOperationResult.Success());
         }
 
-        public Task<FastAuthSession?> CreateFastAuthSessionAsync(AuthenticationAttempt attempt, CancellationToken cancellationToken = default) =>
-            Task.FromResult(FastAuthSession);
+        public Task<FastAuthSession?> CreateFastAuthSessionAsync(AuthenticationAttempt attempt, CancellationToken cancellationToken = default)
+        {
+            FastAuthSessionCalls++;
+            return Task.FromResult(FastAuthSession);
+        }
 
         public async IAsyncEnumerable<FastAuthUpdate> SubscribeFastAuthAsync(
             AuthenticationAttempt attempt,
@@ -648,7 +964,7 @@ public sealed class LoginViewModelTests
             FastAuthSubscribed.TrySetResult();
             if (FastAuthStreamGate is not null)
             {
-                await FastAuthStreamGate;
+                await FastAuthStreamGate.WaitAsync(IgnoreFastAuthCancellation ? CancellationToken.None : cancellationToken);
             }
 
             foreach (var update in FastAuthUpdates)
@@ -769,5 +1085,77 @@ public sealed class LoginViewModelTests
         public string ResolveSupportedLanguage(string? requestedLanguage) => "en";
         public void Apply(string language) { }
         public string GetString(string resourceKey) => resourceKey;
+    }
+
+    private sealed class TestClock : TimeProvider
+    {
+        private DateTimeOffset _now = DateTimeOffset.UtcNow;
+        private readonly object _timerSync = new();
+        private readonly List<TestTimer> _timers = [];
+        private TaskCompletionSource _timerCreated = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override DateTimeOffset GetUtcNow() { lock (_timerSync) return _now; }
+        public void Advance(TimeSpan elapsed)
+        {
+            TestTimer[] timers;
+            DateTimeOffset now;
+            lock (_timerSync)
+            {
+                now = _now += elapsed;
+                timers = _timers.ToArray();
+            }
+            foreach (var timer in timers) timer.FireIfDue(now);
+        }
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = new TestTimer(this, callback, state);
+            lock (_timerSync)
+            {
+                _timers.Add(timer);
+                timer.Change(dueTime, period);
+                _timerCreated.TrySetResult();
+                _timerCreated = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+            return timer;
+        }
+        public async Task WaitForTimerAsync(TimeSpan dueTime)
+        {
+            while (true)
+            {
+                Task created;
+                lock (_timerSync)
+                {
+                    if (_timers.Any(timer => timer.IsDueAt(_now + dueTime))) return;
+                    created = _timerCreated.Task;
+                }
+                await created.WaitAsync(TimeSpan.FromSeconds(2));
+            }
+        }
+        private sealed class TestTimer(TestClock clock, TimerCallback callback, object? state) : ITimer
+        {
+            private DateTimeOffset? _due;
+            private TimeSpan _period;
+            private bool _disposed;
+            public bool IsDueAt(DateTimeOffset time) => !_disposed && _due == time;
+            public bool Change(TimeSpan dueTime, TimeSpan period)
+            {
+                lock (clock._timerSync)
+                {
+                    _due = dueTime == Timeout.InfiniteTimeSpan ? null : clock.GetUtcNow() + dueTime;
+                    _period = period;
+                    return !_disposed;
+                }
+            }
+            public void FireIfDue(DateTimeOffset now)
+            {
+                lock (clock._timerSync)
+                {
+                    if (_disposed || _due is null || _due > now) return;
+                    _due = _period == Timeout.InfiniteTimeSpan ? null : now + _period;
+                }
+                callback(state);
+            }
+            public void Dispose() { lock (clock._timerSync) _disposed = true; }
+            public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
+        }
     }
 }

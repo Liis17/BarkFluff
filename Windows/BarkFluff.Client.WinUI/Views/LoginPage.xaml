@@ -45,7 +45,7 @@
                                      KeyDown="OnLoginKeyDown" />
                         <CheckBox Content="{StaticResource Login_UseRecoveryCode}"
                                   IsChecked="{x:Bind ViewModel.IsRecoveryCode, Mode=TwoWay}"
-                                  IsEnabled="{x:Bind ViewModel.CanUseRecoveryCode, Mode=OneWay}"
+                                  IsEnabled="{x:Bind ViewModel.CanChangeRecoveryCode, Mode=OneWay}"
                                   Visibility="{x:Bind ViewModel.CanUseRecoveryCode, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     </StackPanel>
 
@@ -70,7 +70,7 @@
 
                         <CheckBox Content="{StaticResource Login_UseRecoveryCode}"
                                   IsChecked="{x:Bind ViewModel.IsRecoveryCode, Mode=TwoWay}"
-                                  IsEnabled="{x:Bind ViewModel.CanUseRecoveryCode, Mode=OneWay}"
+                                  IsEnabled="{x:Bind ViewModel.CanChangeRecoveryCode, Mode=OneWay}"
                                   Visibility="{x:Bind ViewModel.CanUseRecoveryCode, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                         <HyperlinkButton Margin="-12,0,0,10"
@@ -137,6 +137,7 @@
                 </StackPanel>
 
                 <Border Grid.Column="1"
+                        Width="1"
                         Background="{ThemeResource ControlStrokeColorSecondaryBrush}"
                         Visibility="{x:Bind ViewModel.IsIdentifierStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <StackPanel Grid.Column="2"

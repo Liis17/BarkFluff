@@ -8,6 +8,7 @@ using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Proto.Identity;
+using BarkFluff.Proto.FastAuth;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.WebApi.Core.MessengerData;
@@ -22,10 +23,66 @@ namespace BarkFluff.Client.WinUI.Tests;
 
 public sealed class AuthenticationServiceSignInTests
 {
-    [Fact]
-    public async Task WrongPassword_FromGrpcTrailersKeepsPasswordStepAndAllowsRetry()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CleanupDuringPollingOrQrSave_InvalidatesBeforeWaitingAndNeverNavigates(bool qr)
     {
-        await using var node = await TestIdentityNode.StartAsync("wrong-password", invalidPassword: true);
+        await using var node = await TestIdentityNode.StartAsync("cleanup",
+            resolveLoginMode: AuthLoginMode.TelegramLogin);
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var connection = CreateConnection(node.Address, "device");
+        var previous = new StoredSession("previous-access", "previous-refresh");
+        var store = new TestSessionStore { Value = previous, BlockFirstSave = true };
+        var authentication = new AuthenticationService(mainWebApi, new TestClientSession(connection), store);
+        var navigation = new TestLoginNavigation();
+        var viewModel = new LoginViewModel(authentication, navigation, new TestLoginLocalization()) { LoginOrEmail = "alice" };
+
+        var login = qr ? viewModel.LoadFastAuthAsync() : viewModel.LoginCommand.ExecuteAsync(null);
+        await store.FirstSaveStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var cleanup = viewModel.CleanupAsync();
+        if (!qr)
+        {
+            // If invalidation waits for the polling task, this event can never arrive.
+            await node.CancelledChallengeSeen.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        store.ReleaseFirstSave();
+        await Task.WhenAll(login, cleanup).WaitAsync(TimeSpan.FromSeconds(3));
+
+        Assert.Equal(previous, store.Value);
+        Assert.Null(connection.ConnectionParameters.AccessToken);
+        Assert.Equal(0, navigation.ShowMessengerCalls);
+        Assert.Null(viewModel.FastAuthQrCode);
+    }
+
+    [Fact]
+    public async Task CleanupAfterCommit_PreservesCommittedSessionAndNeverNavigatesAgain()
+    {
+        await using var node = await TestIdentityNode.StartAsync("committed", approveBegin: true);
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var connection = CreateConnection(node.Address, "device");
+        var store = new TestSessionStore();
+        var authentication = new AuthenticationService(mainWebApi, new TestClientSession(connection), store);
+        var navigation = new TestLoginNavigation();
+        var viewModel = new LoginViewModel(authentication, navigation, new TestLoginLocalization()) { LoginOrEmail = "alice" };
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        viewModel.Password = "password";
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        await viewModel.CleanupAsync();
+
+        Assert.Equal(new StoredSession("committed-access", "committed-refresh"), store.Value);
+        Assert.Equal("committed-access", connection.ConnectionParameters.AccessToken.Value);
+        Assert.Equal(1, navigation.ShowMessengerCalls);
+        Assert.Equal(0, store.ClearCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BeginGrpcError_DistinguishesWrongPasswordFromUnavailableNode(bool unavailable)
+    {
+        await using var node = await TestIdentityNode.StartAsync("begin-error",
+            invalidPassword: !unavailable, beginUnavailable: unavailable);
         using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
         var authentication = new AuthenticationService(mainWebApi,
             new TestClientSession(CreateConnection(node.Address, "device")), new TestSessionStore());
@@ -37,8 +94,9 @@ public sealed class AuthenticationServiceSignInTests
         viewModel.Password = "wrong";
         await viewModel.LoginCommand.ExecuteAsync(null);
 
-        Assert.Equal("Error_LoginFailed", viewModel.ErrorMessage);
+        Assert.Equal(unavailable ? "Error_LoginUnavailable" : "Error_LoginFailed", viewModel.ErrorMessage);
         Assert.Equal(LoginStep.Password, viewModel.Step);
+        Assert.Equal(unavailable, viewModel.CanRetry);
         Assert.True(viewModel.LoginCommand.CanExecute(null));
         Assert.Single(node.BeginRequests);
         await viewModel.CleanupAsync();
@@ -262,6 +320,7 @@ public sealed class AuthenticationServiceSignInTests
     {
         await using var node = await TestIdentityNode.StartAsync(
             "missing-token",
+            approveBegin: true,
             omitAccessToken: omitAccessToken,
             omitRefreshToken: omitRefreshToken);
         using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
@@ -581,6 +640,7 @@ public sealed class AuthenticationServiceSignInTests
         public bool OmitRefreshToken { get; init; }
         public bool FailFirstProfile { get; init; }
         public bool InvalidPassword { get; init; }
+        public bool BeginUnavailable { get; init; }
         public ConcurrentQueue<string> ResolvedLogins { get; } = new();
         public ConcurrentQueue<AuthRequest> AuthRequests { get; } = new();
         public ConcurrentQueue<BeginSignInRequest> BeginRequests { get; } = new();
@@ -607,7 +667,8 @@ public sealed class AuthenticationServiceSignInTests
             bool omitAccessToken = false,
             bool omitRefreshToken = false,
             bool failFirstProfile = false,
-            bool invalidPassword = false)
+            bool invalidPassword = false,
+            bool beginUnavailable = false)
         {
             var builder = WebApplication.CreateBuilder();
             builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0, listenOptions =>
@@ -654,6 +715,11 @@ public sealed class AuthenticationServiceSignInTests
                 node!.BeginRequests.Enqueue(request);
                 node.RequestMetadata.Enqueue(CaptureHeaders(context));
                 node.BeginRequestSeen.TrySetResult();
+                if (node.BeginUnavailable)
+                {
+                    await WriteGrpcResponseAsync(context, new AuthChallengeResponse(), "14");
+                    return;
+                }
                 if (node.InvalidPassword)
                 {
                     await WriteGrpcResponseAsync(context, new AuthChallengeResponse(), "16",
@@ -722,6 +788,41 @@ public sealed class AuthenticationServiceSignInTests
                 });
             });
 
+            application.MapPost("/barkfluff.identity.IdentityApi/GetAuthChallenge", async context =>
+            {
+                var payload = await ReadGrpcPayloadAsync(context);
+                await WriteGrpcResponseAsync(context, new AuthChallengeResponse
+                {
+                    Challenge = AuthChallengeReference.Parser.ParseFrom(payload),
+                    State = AuthChallengeState.Approved,
+                    Factor = OtpTypeId.Telegram
+                });
+            });
+
+            application.MapPost("/barkfluff.fast.auth.FastAuthApi/GenerateFastAuthToken", async context =>
+            {
+                _ = await ReadGrpcPayloadAsync(context);
+                await WriteGrpcResponseAsync(context, new GenerateFastAuthTokenResponse
+                {
+                    FastAuthId = "qr",
+                    Token = new FastAuthToken { Value = "aGVsbG8=" },
+                    ExpiresAt = Timestamp.FromDateTime(DateTime.UtcNow.AddMinutes(5))
+                });
+            });
+
+            application.MapPost("/barkfluff.fast.auth.FastAuthApi/SubscribeFastAuthResult", async context =>
+            {
+                _ = await ReadGrpcPayloadAsync(context);
+                await WriteGrpcResponseAsync(context, new FastAuthResult
+                {
+                    Status = FastAuthStatus.Accepted,
+                    AccessToken = $"{node!.Name}-qr-access",
+                    RefreshToken = $"{node.Name}-qr-refresh",
+                    AccessTokenExpiresAt = Timestamp.FromDateTime(DateTime.UtcNow.AddMinutes(10)),
+                    RefreshTokenExpiresAt = Timestamp.FromDateTime(DateTime.UtcNow.AddDays(1))
+                });
+            });
+
             application.MapPost("/barkfluff.users.UsersApi/GetUser", async context =>
             {
                 _ = await ReadGrpcPayloadAsync(context);
@@ -771,7 +872,8 @@ public sealed class AuthenticationServiceSignInTests
                 OmitAccessToken = omitAccessToken,
                 OmitRefreshToken = omitRefreshToken,
                 FailFirstProfile = failFirstProfile,
-                InvalidPassword = invalidPassword
+                InvalidPassword = invalidPassword,
+                BeginUnavailable = beginUnavailable
             };
             return node;
         }
