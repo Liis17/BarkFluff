@@ -25,5 +25,13 @@ let package = Package(
                 "KeychainAccess",
             ]
         ),
+        .testTarget(
+            name: "BFNetworkingTests",
+            dependencies: [
+                "BFNetworking",
+                .product(name: "GRPCCore", package: "grpc-swift-2"),
+                .product(name: "BFProto", package: "BFProto"),
+            ]
+        ),
     ]
 )
