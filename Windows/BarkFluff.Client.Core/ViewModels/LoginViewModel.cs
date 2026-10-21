@@ -307,8 +307,7 @@ public sealed partial class LoginViewModel : ObservableObject
             switch (operation)
             {
                 case RetryOperation.Resolve:
-                    StopFastAuthUi();
-                    await ResolveCurrentIdentifierAsync();
+                    await ResolveIdentifierAsync();
                     break;
                 case RetryOperation.Begin:
                     await BeginSignInAsync();
@@ -1405,6 +1404,39 @@ public sealed partial class LoginViewModel : ObservableObject
     partial void OnLoginOrEmailChanged(string value)
     {
         LoginCommand.NotifyCanExecuteChanged();
+        if (_resolvedLogin.Length == 0
+            || string.Equals(value.Trim(), _resolvedLogin, StringComparison.Ordinal)
+            || (_attempt is null && !IsAuthenticating && _retryOperation == RetryOperation.None))
+        {
+            return;
+        }
+
+        InvalidateResolvedSignIn();
+    }
+
+    private void InvalidateResolvedSignIn()
+    {
+        StopFastAuthUi();
+        _ = CancelCurrentAttemptAsync();
+        _resolvedLogin = string.Empty;
+        _loginMode = AuthLoginMode.LoginModeUnspecified;
+        _challenge = null;
+        _isApplyingChallenge = true;
+        Step = LoginStep.Identifier;
+        ClearSensitiveState();
+        IsRecoveryCode = false;
+        SelectedFactor = OtpTypeId.Unknown;
+        _isApplyingChallenge = false;
+        IsChallengeTerminal = false;
+        TelegramUrl = null;
+        AvailableFactors.Clear();
+        ErrorMessage = null;
+        StatusMessage = null;
+        ResetResendCooldown();
+        OnPropertyChanged(nameof(CanUseRecoveryCode));
+        OnPropertyChanged(nameof(CanChangeRecoveryCode));
+        OnPropertyChanged(nameof(CanSelectFactor));
+        OnPropertyChanged(nameof(ChallengeExpiryText));
     }
 
     partial void OnPasswordChanged(string value) => LoginCommand.NotifyCanExecuteChanged();
