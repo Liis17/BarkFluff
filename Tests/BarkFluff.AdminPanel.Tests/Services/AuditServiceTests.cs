@@ -8,6 +8,7 @@ using Xunit;
 
 namespace Barkfluff.AdminPanel.Tests.Services;
 
+[Collection("LiteDb")]
 public sealed class AuditServiceTests : IDisposable
 {
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"adminpanel-audit-{Guid.NewGuid():N}.db");

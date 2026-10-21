@@ -18,6 +18,7 @@ using Xunit;
 
 namespace BarkFluff.AdminPanel.Tests.Services;
 
+[Collection("LiteDb")]
 public class MetricsCollectorServiceTests
 {
     [Theory]
@@ -73,6 +74,19 @@ public class MetricsCollectorServiceTests
     }
 
     [Fact]
+    public async Task CollectSystemTrafficAsync_SkipsSeqRequestsWhenSeqIsDisabled()
+    {
+        var handler = new SeqTrafficHandler();
+        await using var fixture = await TrafficFixture.CreateAsync(handler, seqEnabled: false);
+
+        await fixture.Collector.CollectSystemTrafficAsync(fixture.SeqService, CancellationToken.None);
+
+        Assert.Equal(0, handler.RequestCount);
+        Assert.Equal(0, fixture.Cache.HourlyTraffic.Count());
+        Assert.Equal(0, fixture.Cache.HourlyStats.Count());
+    }
+
+    [Fact]
     public async Task TrafficEndpoint_EmptyCacheReadsMoreThanFiftyThousandEvents()
     {
         await using var fixture = await TrafficFixture.CreateAsync(new SeqTrafficHandler(fallbackEventCount: 50_001));
@@ -121,7 +135,8 @@ public class MetricsCollectorServiceTests
 
         public static async Task<TrafficFixture> CreateAsync(
             SeqTrafficHandler seqHandler,
-            Action<MetricsCacheDbContext>? seedCache = null)
+            Action<MetricsCacheDbContext>? seedCache = null,
+            bool seqEnabled = true)
         {
             var directory = Path.Combine(Path.GetTempPath(), $"adminpanel-traffic-{Guid.NewGuid():N}");
             Directory.CreateDirectory(directory);
@@ -136,7 +151,7 @@ public class MetricsCollectorServiceTests
                 seqClient = new HttpClient(seqHandler, disposeHandler: false);
                 var seqService = new SeqService(
                     seqClient,
-                    Options.Create(new SeqSettings { ServerUrl = "http://seq" }),
+                    Options.Create(new SeqSettings { ServerUrl = "http://seq", Enabled = seqEnabled }),
                     NullLogger<SeqService>.Instance);
 
                 var builder = WebApplication.CreateBuilder();
@@ -197,11 +212,15 @@ public class MetricsCollectorServiceTests
     {
         private int _targetReadCount;
         private bool _failedTargetPage;
+        private int _requestCount;
+
+        public int RequestCount => _requestCount;
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            _requestCount++;
             var query = ParseQuery(request.RequestUri!.Query);
             var fromDateUtc = ParseDate(query, "fromDateUtc");
             var toDateUtc = ParseDate(query, "toDateUtc");

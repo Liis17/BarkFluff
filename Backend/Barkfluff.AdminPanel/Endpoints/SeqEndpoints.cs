@@ -12,7 +12,8 @@ public static class SeqEndpoints
     public static void MapSeqEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/seq")
-            .WithTags("Seq");
+            .WithTags("Seq")
+            .RequireSeqEnabled();
 
         group.MapGet("/events", async (
             SeqService seqService,
@@ -399,18 +400,21 @@ public static class SeqEndpoints
             SeqService seqService,
             DockerService dockerService,
             DockerRegistryService dockerRegistryService,
-            int hours = 24) =>
+            int hours = 24,
+            CancellationToken ct = default) =>
         {
             var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
 
-            var events = await seqService.GetAllEventsListAsync(null, fromDateUtc, 5000);
-            if (events == null)
+            var events = seqService.IsEnabled
+                ? await seqService.GetAllEventsListAsync(null, fromDateUtc, 5000)
+                : [];
+            if (seqService.IsEnabled && events == null)
                 return Results.StatusCode(502);
 
             // Aggregate per-service stats from Seq
             var serviceData = new Dictionary<string, (long eventCount, long errorCount, DateTime? lastSeen)>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var evt in events)
+            foreach (var evt in events ?? [])
             {
                 var app = GetEventApplication(evt);
                 if (string.IsNullOrEmpty(app)) continue;
@@ -433,13 +437,14 @@ public static class SeqEndpoints
             Dictionary<string, ContainerStatusDto>? containersByName = null;
             try
             {
-                var containers = await dockerService.GetContainersAsync();
-                containersByName = containers
-                    .Where(c => !string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.State))
-                    .ToDictionary(
-                        c => c.Name.TrimStart('/'),
-                        c => c,
-                        StringComparer.OrdinalIgnoreCase);
+                var containers = await dockerService.GetContainersAsync(ct);
+                containersByName = new Dictionary<string, ContainerStatusDto>(StringComparer.OrdinalIgnoreCase);
+                foreach (var container in containers.Where(c => !string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.State)))
+                {
+                    var serviceName = await dockerService.TryResolveComposeServiceNameAsync(container.Name, ct);
+                    if (serviceName is not null)
+                        containersByName[serviceName] = container;
+                }
             }
             catch
             {
@@ -459,10 +464,13 @@ public static class SeqEndpoints
                 var versionStatus = container is null
                     ? new ImageVersionStatusDto()
                     : await dockerRegistryService.GetVersionStatusAsync(container.Image, container.ImageDigest);
+                var composeService = PlatformServiceRegistry.All
+                    .FirstOrDefault(service => service.Name.Equals(name, StringComparison.OrdinalIgnoreCase))?.Container;
 
                 return new
                 {
                     name,
+                    container = composeService,
                     isActive,
                     dockerState,
                     lastSeen = data.lastSeen?.ToString("o"),

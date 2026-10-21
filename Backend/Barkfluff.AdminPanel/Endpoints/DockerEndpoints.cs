@@ -17,9 +17,10 @@ public static class DockerEndpoints
 
         // Получить список всех контейнеров
         group.MapGet("/containers", async (
-            DockerService dockerService) =>
+            DockerService dockerService,
+            CancellationToken ct) =>
         {
-            var containers = await dockerService.GetContainersAsync();
+            var containers = await dockerService.GetContainersAsync(ct);
             return Results.Ok(containers);
         })
         .WithName("GetContainers")
@@ -28,9 +29,10 @@ public static class DockerEndpoints
         // Получить статус конкретного контейнера
         group.MapGet("/containers/{name}/status", async (
             DockerService dockerService,
-            string name) =>
+            string name,
+            CancellationToken ct) =>
         {
-            var status = await dockerService.GetContainerStatusAsync(name);
+            var status = await dockerService.GetContainerStatusAsync(name, ct);
             return status != null ? Results.Ok(status) : Results.NotFound($"Контейнер {name} не найден");
         })
         .WithName("GetContainerStatus")
@@ -38,9 +40,10 @@ public static class DockerEndpoints
 
         group.MapGet("/containers/admin-panel/update-status", async (
             DockerService dockerService,
-            DockerRegistryService dockerRegistryService) =>
+            DockerRegistryService dockerRegistryService,
+            CancellationToken ct) =>
         {
-            var status = await dockerService.GetContainerStatusAsync("admin-panel");
+            var status = await dockerService.GetContainerStatusAsync("admin-panel", ct);
             if (status is null)
                 return Results.NotFound("Контейнер admin-panel не найден");
 
@@ -87,11 +90,13 @@ public static class DockerEndpoints
         .RequirePermission(AdminPermissions.DockerControl);
 
         // Обновить образ и пересоздать контейнер (задача в очереди деплоя)
-        group.MapPost("/containers/{name}/pull", (
+        group.MapPost("/containers/{name}/pull", async (
             DeployJobService deployJobs,
-            string name) =>
+            DockerService dockerService,
+            string name,
+            CancellationToken ct) =>
         {
-            var service = DockerService.ConvertContainerNameToServiceName(name);
+            var service = await dockerService.ResolveServiceNameAsync(name, ct);
             var job = deployJobs.EnqueueUpdate([service]);
             return Results.Ok(new DeployJobStartDto
             {
@@ -130,7 +135,8 @@ public static class DockerEndpoints
         // Ветки обновлений сервисов из docker-compose.yml
         group.MapGet("/branches", async (
             DockerService dockerService,
-            ComposeImageService composeImageService) =>
+            ComposeImageService composeImageService,
+            CancellationToken ct) =>
         {
             IReadOnlyDictionary<string, ComposeImageInfo> images;
             try
@@ -146,8 +152,12 @@ public static class DockerEndpoints
             var runningImages = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             try
             {
-                foreach (var container in await dockerService.GetContainersAsync())
-                    runningImages[container.Name.TrimStart('/')] = container.Image;
+                foreach (var container in await dockerService.GetContainersAsync(ct))
+                {
+                    var serviceName = await dockerService.TryResolveComposeServiceNameAsync(container.Name, ct);
+                    if (serviceName is not null)
+                        runningImages[serviceName] = container.Image;
+                }
             }
             catch
             {
@@ -179,6 +189,7 @@ public static class DockerEndpoints
             DockerRegistryService dockerRegistryService,
             DeployJobService deployJobs,
             string name,
+            CancellationToken ct,
             ContainerBranchRequestDto request) =>
         {
             var branch = request.Branch?.Trim() ?? string.Empty;
@@ -189,7 +200,7 @@ public static class DockerEndpoints
                     Message = $"Неизвестная ветка {branch}"
                 });
 
-            var serviceName = DockerService.ConvertContainerNameToServiceName(name);
+            var serviceName = await dockerService.ResolveServiceNameAsync(name, ct);
 
             IReadOnlyDictionary<string, ComposeImageInfo> images;
             try
@@ -213,7 +224,7 @@ public static class DockerEndpoints
                     Message = $"Сервис {serviceName} не найден в docker-compose.yml или его образ не из реестра BarkFluff"
                 });
 
-            var status = await dockerService.GetContainerStatusAsync(name);
+            var status = await dockerService.GetContainerStatusAsync(name, ct);
             var runningBranch = ComposeImageService.BranchFromImage(status?.Image);
             if (image.Branch == branch && runningBranch == branch)
                 return Results.Ok(new ContainerActionResponseDto
@@ -230,7 +241,7 @@ public static class DockerEndpoints
                     Message = $"Образ {repository} не найден в реестре (или реестр недоступен)"
                 });
 
-            var isAdminPanel = string.Equals(name, "admin-panel", StringComparison.OrdinalIgnoreCase);
+            var isAdminPanel = string.Equals(serviceName, "admin-panel", StringComparison.OrdinalIgnoreCase);
             var job = deployJobs.EnqueueBranchSwitch(serviceName, branch);
 
             return Results.Ok(new DeployJobStartDto
@@ -279,15 +290,20 @@ public static class DockerEndpoints
         .RequireStepUp(StepUpActions.DockerUpdateAll);
 
         // Обновить перечисленные контейнеры (задача в очереди деплоя; заменяет браузерный цикл)
-        group.MapPost("/containers/update-many", (
+        group.MapPost("/containers/update-many", async (
             DeployJobService deployJobs,
-            UpdateContainersRequestDto request) =>
+            DockerService dockerService,
+            UpdateContainersRequestDto request,
+            CancellationToken ct) =>
         {
-            var services = (request.Containers ?? [])
-                .Where(c => !string.IsNullOrWhiteSpace(c))
-                .Select(c => DockerService.ConvertContainerNameToServiceName(c.Trim()))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            var services = new List<string>();
+            foreach (var container in request.Containers ?? [])
+            {
+                if (string.IsNullOrWhiteSpace(container))
+                    continue;
+                services.Add(await dockerService.ResolveServiceNameAsync(container.Trim(), ct));
+            }
+            services = services.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
             if (services.Count == 0)
                 return Results.BadRequest(new ContainerActionResponseDto

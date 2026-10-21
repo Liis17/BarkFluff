@@ -18,6 +18,7 @@ using Xunit;
 
 namespace Barkfluff.AdminPanel.Tests.Middleware;
 
+[Collection("LiteDb")]
 public sealed class RequireStepUpFilterTests : IDisposable
 {
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"adminpanel-stepup-{Guid.NewGuid():N}.db");
