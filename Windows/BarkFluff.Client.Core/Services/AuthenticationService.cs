@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace BarkFluff.Client.Core.Services;
 
-public sealed class AuthenticationService : IAuthenticationService
+public sealed partial class AuthenticationService : IAuthenticationService
 {
     private readonly WebApiClient _webApi;
     private readonly IClientSession _session;
@@ -89,93 +89,6 @@ public sealed class AuthenticationService : IAuthenticationService
 
         await InitializeProfileAndPersistAsync(cancellationToken);
         return LoginResult.Success();
-    }
-
-    public async Task<FastAuthSession?> CreateFastAuthSessionAsync(CancellationToken cancellationToken = default)
-    {
-        var connection = _session.CurrentConnection;
-        if (connection is null)
-        {
-            return null;
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        var initialized = _webApi.CreateFastAuthClient(
-            connection.ConnectionParameters,
-            Environment.MachineName,
-            ClientMetadata.OperatingSystem,
-            ClientMetadata.AppName,
-            ClientMetadata.AppVersion,
-            string.Empty);
-        if (!initialized.IsSuccess)
-        {
-            return null;
-        }
-
-        var result = await _webApi.GenerateFastAuthToken(TokenFormat.Qr);
-        if (!result.Item1.IsSuccess || result.Item2 is not { Token.Value: { Length: > 0 } base64Png, FastAuthId: { Length: > 0 } fastAuthId })
-        {
-            return null;
-        }
-
-        return new FastAuthSession(fastAuthId, new FastAuthQrCode(base64Png, result.Item2.ExpiresAt.ToDateTimeOffset()));
-    }
-
-    public async IAsyncEnumerable<FastAuthUpdate> SubscribeFastAuthAsync(
-        FastAuthSession session,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var subscription = await _webApi.SubscribeFastAuthResult(session.Id, cancellationToken);
-        if (!subscription.Item1.IsSuccess || subscription.Item2 is null)
-        {
-            yield return new FastAuthUpdate(FastAuthUpdateKind.Failed, "Error_FastAuthUnavailable");
-            yield break;
-        }
-
-        await foreach (var result in subscription.Item2.WithCancellation(cancellationToken))
-        {
-            switch (result.Status)
-            {
-                case FastAuthStatus.Scanned:
-                    yield return new FastAuthUpdate(FastAuthUpdateKind.Scanned);
-                    break;
-                case FastAuthStatus.Accepted:
-                    if (string.IsNullOrWhiteSpace(result.AccessToken) || string.IsNullOrWhiteSpace(result.RefreshToken))
-                    {
-                        yield return new FastAuthUpdate(FastAuthUpdateKind.Failed, "Error_FastAuthFailed");
-                        yield break;
-                    }
-
-                    if (ApplyTokens(
-                        new BarkFluff.Proto.Identity.Token
-                        {
-                            Value = result.AccessToken,
-                            ExpirationDate = result.AccessTokenExpiresAt
-                        },
-                        new BarkFluff.Proto.Identity.Token
-                        {
-                            Value = result.RefreshToken,
-                            ExpirationDate = result.RefreshTokenExpiresAt
-                        }))
-                    {
-                        await InitializeProfileAndPersistAsync(cancellationToken);
-                        yield return new FastAuthUpdate(FastAuthUpdateKind.Accepted);
-                    }
-                    else
-                    {
-                        yield return new FastAuthUpdate(FastAuthUpdateKind.Failed, "Error_LoginUnavailable");
-                    }
-                    yield break;
-                case FastAuthStatus.Rejected:
-                    yield return new FastAuthUpdate(FastAuthUpdateKind.Rejected);
-                    yield break;
-                case FastAuthStatus.Expired:
-                    yield return new FastAuthUpdate(FastAuthUpdateKind.Expired);
-                    yield break;
-            }
-        }
-
-        yield return new FastAuthUpdate(FastAuthUpdateKind.Failed, "Error_FastAuthUnavailable");
     }
 
     public async Task<RegistrationStartResult> StartRegistrationAsync(

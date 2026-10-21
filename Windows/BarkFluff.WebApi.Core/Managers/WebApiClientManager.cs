@@ -101,6 +101,42 @@ namespace BarkFluff.WebApi.Core.Managers
         }
 
         /// <summary>
+        /// Creates only the Identity client used before sign-in. The caller owns this WebApi
+        /// instance, so starting another authentication attempt cannot replace its channel.
+        /// </summary>
+        public ErrorReturner CreatePreLoginAuthenticationClient(GlobalParam gParam, string deviceName, string os, string appName, string appVersion, string ip)
+        {
+            if (gParam == null || string.IsNullOrWhiteSpace(gParam.SocketIdentity))
+                return new ErrorReturner(false, "Адрес Identity сервера не указан");
+
+            try
+            {
+                var token = gParam.AccessToken?.Value ?? string.Empty;
+                var interceptors = new Interceptor[]
+                {
+                    new Shared.Auth.XDeviceClientInterceptor(deviceName: deviceName),
+                    new Shared.Auth.XDeviceIdInterceptor(gParam.DeviceId),
+                    new Shared.Auth.JwtClientInterceptor(token),
+                    new Shared.Auth.XOsClientInterceptor(os),
+                    new Shared.Auth.XAppClientInterceptor(appName, appVersion),
+                    new Shared.Exceptions.Interceptors.ExceptionClientInterceptor(),
+                    new Shared.Auth.XIpClientInterceptor(ip)
+                };
+
+                gParam.SocketIdentity = WebApi.EnsureHttpPrefix(gParam.SocketIdentity);
+                _webApi.IdentityChannel?.Dispose();
+                _webApi.IdentityChannel = GrpcChannel.ForAddress(gParam.SocketIdentity);
+                var invoker = BuildInvoker(_webApi.IdentityChannel, interceptors);
+                _webApi.IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(invoker);
+                return new ErrorReturner(true);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка подключения к серверу");
+            }
+        }
+
+        /// <summary>
         ///  Добавляет перехватчики для аутентификации и авторизации в gRPC каналы.
         /// </summary>
         internal ErrorReturner AddInterceptor(GlobalParam _gParam, string _deviceName, string os, string appName, string appVersion, string ip)
