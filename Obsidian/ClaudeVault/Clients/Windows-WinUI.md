@@ -19,6 +19,16 @@ AppDataPaths использует ApplicationData.Current.LocalFolder в MSIX и
 
 SqliteApplicationDataStore хранит настройки, выбранную ноду/endpoints и защищённые blob-значения. DpapiSecureSessionStore сериализует access/refresh token пару и защищает её DPAPI CurrentUser; blob записывается в SQLite и загружается при следующем запуске. DpapiPrivateChatKeyStore сохраняет ключи тем же способом с областью node/user/chat и держит рабочий memory cache. DPAPI entropy сохранена от WPF V2, чтобы импортированные session/key blobs оставались читаемы. При неуспешном восстановлении сессии blob удаляется.
 
+## Вход в аккаунт
+
+`LoginViewModel` проводит WinUI через inline-шаги Identifier → Password → Challenge. Identifier нормализуется через `Trim()` и всегда отправляется в `ResolveSignIn`; выбор логина/email по символу `@` и отправка кода на этом шаге не используются. Ответ сервера определяет `Password`, `PasswordSecondFactor` или `TelegramLogin`. Для парольных режимов первый `BeginSignIn` передаёт `OtpTypeId.Unknown`; Telegram-вход сразу начинает challenge без пароля.
+
+Challenge-flow и FastAuth используют отдельный `AuthenticationAttempt`: он фиксирует `NodeConnection`, копию параметров и собственный `WebApi` с независимыми gRPC-каналами. Pre-login вызовы не используют `TokenManager` и его refresh/retry. При смене попытки старый challenge best-effort отменяется на своей ноде, затем его каналы освобождаются; текущую попытку защищают generation и ссылка на захваченное соединение.
+
+`Password` challenge со статусом Approved завершается сразу с пустым кодом. `TelegramLogin` последовательно опрашивает Waiting challenge раз в две секунды; Approved/Completed завершает ту же ссылку. OTP и recovery code вводятся в одном поле. Переключение фактора или recovery отменяет старый challenge и начинает новый с тем же идентификатором/паролем; список факторов выбирается только для `PasswordSecondFactor`, а Telegram-login показывает только Telegram. Для Email/Telegram действует 60-секундный cooldown повторной отправки.
+
+Обычный вход и QR FastAuth передают токены через один session-commit в `AuthenticationService.SignIn.cs`: обе токен-пары и профиль обязательны; сохранение сессии сериализовано между попытками, а неуспешный/устаревший commit восстанавливает предыдущий снимок. Только победившая попытка применяет параметры соединения и главный WebApi facade. Переход в Messenger выполняется после commit и не более одного раза. При навигации, смене входа/ноды, сбросе singleton LoginViewModel и реальном выходе отменяются запросы и очистляются временные секреты; сворачивание в трей приложению не завершает.
+
 ## Клиентские API
 
 - INodeConnectionService и IAuthenticationService обслуживают подключение к ноде и вход; IAccountSettingsService — чтение/изменение профиля и logout.
