@@ -50,7 +50,10 @@ BarkfluffApp создаёт DependencyContainer и AppCoordinator. Coordinator �
 ## UI и функции macOS
 
 - RootView показывает MainSplitView с боковым списком чатов и detail-панелью. Settings categories встроены в основной sidebar.
-- FastAuthViewModel создаёт QR и слушает результат на macOS; после одобрения он сохраняет полученные токены. Авторизованный iOS-сканер отправляет Accept/Reject с confirmationCode.
+- LoginView начинает вход с username/email. LoginViewModel использует BFCore SignInFlowController: ResolveSignIn выбирает password, Telegram login или password + second factor; BeginSignIn и challenge RPC обрабатывают подтверждение и recovery codes. Telegram challenge проверяется каждые две секунды, пока приложение на переднем плане; возврат возобновляет тот же challenge из памяти.
+- SignInRepository вызывает Identity challenge RPC через публичный ConnectionManager client с device metadata и привязывает challenge к endpoint, который его создал. Ошибки gRPC status и `x-error-code` преобразуются в локализованные категории, серверный текст не показывается как UI-строка.
+- FastAuthViewModel и SignInFlowController передают полученные сессии через общий AuthService admission boundary. Только победившая актуальная попытка сохраняет токены и может перейти в main после загрузки текущего пользователя и повторной проверки admission receipt.
+- Авторизованный iOS-сканер отправляет Accept/Reject с confirmationCode. Старые AuthService login/registration API остаются для iOS и существующих сценариев.
 - AppearanceSettings применяет выбранную тему через NSApplication.appearance, чтобы AppKit-заголовки окна, sidebar и SwiftUI-контент переключались вместе.
 - ImageCropperView принимает NSImage: аватар — 1:1/1024×1024, постер — 3:1/1500×500. Кроп ограничивает pan так, чтобы изображение всегда покрывало выделенную область.
 - NotificationService публикует локальные уведомления из Updates stream только в состоянии main и скрывает активный открытый чат. При logout снимает уже доставленные уведомления; remote push для macOS-клиента не реализован.
