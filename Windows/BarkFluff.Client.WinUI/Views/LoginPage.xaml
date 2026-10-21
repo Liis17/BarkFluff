@@ -2,19 +2,8 @@
     x:Class="BarkFluff.Client.WinUI.Views.LoginPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:behaviors="using:BarkFluff.Client.WinUI.Infrastructure.Behaviors">
-    <Page.Resources>
-        <Style x:Key="OtpDigitBox" TargetType="TextBox">
-            <Setter Property="Width" Value="42" />
-            <Setter Property="Height" Value="44" />
-            <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="FontSize" Value="18" />
-            <Setter Property="MaxLength" Value="1" />
-            <Setter Property="behaviors:OtpInputBehavior.EnableAutoAdvance" Value="True" />
-        </Style>
-    </Page.Resources>
-
+    xmlns:behaviors="using:BarkFluff.Client.WinUI.Infrastructure.Behaviors"
+    xmlns:vm="using:BarkFluff.Client.Core.ViewModels">
     <Grid Margin="40,24,40,40">
         <Border Width="820"
                 HorizontalAlignment="Center"
@@ -23,8 +12,8 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="1" />
-                    <ColumnDefinition Width="260" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Margin="0,0,32,0">
@@ -34,33 +23,81 @@
                                Text="{StaticResource Login_Subtitle}" />
 
                     <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Login_Identifier}" />
-                    <TextBox Margin="0,8,0,16"
+                    <TextBox x:Name="IdentifierInput"
+                             Margin="0,8,0,8"
                              PlaceholderText="{StaticResource Login_IdentifierPlaceholder}"
-                             Text="{x:Bind ViewModel.LoginOrEmail, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                             IsReadOnly="{x:Bind ViewModel.IsResolvedIdentifier, Mode=OneWay}"
+                             Text="{x:Bind ViewModel.LoginOrEmail, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             KeyDown="OnLoginKeyDown" />
+                    <HyperlinkButton Margin="-12,0,0,12"
+                                     HorizontalAlignment="Left"
+                                     Command="{x:Bind ViewModel.ChangeLoginCommand}"
+                                     Content="{StaticResource Login_ChangeIdentifier}"
+                                     Visibility="{x:Bind ViewModel.IsResolvedIdentifier, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Login_Password}" />
-                    <PasswordBox Margin="0,8,0,18"
-                                 Password="{x:Bind ViewModel.Password, Mode=TwoWay}"
-                                 PasswordRevealMode="Peek"
-                                 PlaceholderText="{StaticResource Login_PasswordPlaceholder}" />
+                    <StackPanel Visibility="{x:Bind ViewModel.IsPasswordStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Login_Password}" />
+                        <PasswordBox x:Name="PasswordInput"
+                                     Margin="0,8,0,12"
+                                     Password="{x:Bind ViewModel.Password, Mode=TwoWay}"
+                                     PasswordRevealMode="Peek"
+                                     PlaceholderText="{StaticResource Login_PasswordPlaceholder}"
+                                     KeyDown="OnLoginKeyDown" />
+                        <CheckBox Content="{StaticResource Login_UseRecoveryCode}"
+                                  IsChecked="{x:Bind ViewModel.IsRecoveryCode, Mode=TwoWay}"
+                                  IsEnabled="{x:Bind ViewModel.CanUseRecoveryCode, Mode=OneWay}"
+                                  Visibility="{x:Bind ViewModel.CanUseRecoveryCode, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    </StackPanel>
 
-                    <StackPanel Visibility="{x:Bind ViewModel.RequiresTwoFactor, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Login_TwoFactor}" />
+                    <StackPanel Visibility="{x:Bind ViewModel.IsChallengeStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Login_ChallengeTitle}" />
                         <TextBlock Margin="0,6,0,12"
                                    Style="{StaticResource MutedText}"
-                                   Text="{StaticResource Login_TwoFactorHint}" />
-                        <StackPanel Orientation="Horizontal">
-                            <TextBox behaviors:OtpInputBehavior.PasteCommand="{x:Bind ViewModel.PasteOtpCodeCommand}"
-                                     Style="{StaticResource OtpDigitBox}"
-                                     Text="{x:Bind ViewModel.OtpDigit1, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBox Style="{StaticResource OtpDigitBox}" Text="{x:Bind ViewModel.OtpDigit2, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBox Style="{StaticResource OtpDigitBox}" Text="{x:Bind ViewModel.OtpDigit3, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBox Style="{StaticResource OtpDigitBox}" Text="{x:Bind ViewModel.OtpDigit4, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBox Style="{StaticResource OtpDigitBox}" Text="{x:Bind ViewModel.OtpDigit5, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBox Margin="0"
-                                     Style="{StaticResource OtpDigitBox}"
-                                     Text="{x:Bind ViewModel.OtpDigit6, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
+                                   Text="{x:Bind ViewModel.CodeHint, Mode=OneWay}" />
+
+                        <ComboBox Margin="0,0,0,10"
+                                  ItemsSource="{x:Bind ViewModel.AvailableFactors}"
+                                  SelectedValue="{x:Bind ViewModel.SelectedFactor, Mode=TwoWay}"
+                                  SelectedValuePath="Factor"
+                                  IsEnabled="{x:Bind ViewModel.CanSelectFactor, Mode=OneWay}"
+                                  Visibility="{x:Bind ViewModel.CanSelectFactor, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:LoginFactorOption">
+                                    <TextBlock Text="{x:Bind DisplayName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <CheckBox Content="{StaticResource Login_UseRecoveryCode}"
+                                  IsChecked="{x:Bind ViewModel.IsRecoveryCode, Mode=TwoWay}"
+                                  IsEnabled="{x:Bind ViewModel.CanUseRecoveryCode, Mode=OneWay}"
+                                  Visibility="{x:Bind ViewModel.CanUseRecoveryCode, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                        <HyperlinkButton Margin="-12,0,0,10"
+                                         HorizontalAlignment="Left"
+                                         Click="OnOpenTelegramClick"
+                                         Content="{StaticResource Login_OpenTelegram}"
+                                         Visibility="{x:Bind ViewModel.HasTelegramUrl, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                        <TextBox x:Name="CodeInput"
+                                 Margin="0,8,0,8"
+                                 MaxLength="128"
+                                 PlaceholderText="{x:Bind ViewModel.CodePlaceholder, Mode=OneWay}"
+                                 Text="{x:Bind ViewModel.Code, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 behaviors:OtpInputBehavior.PasteCommand="{x:Bind ViewModel.PasteOtpCodeCommand}"
+                                 IsEnabled="{x:Bind ViewModel.RequiresTwoFactor, Mode=OneWay}"
+                                 Visibility="{x:Bind ViewModel.RequiresTwoFactor, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                 KeyDown="OnLoginKeyDown" />
+                        <TextBlock Margin="0,0,0,8"
+                                   Style="{StaticResource MutedText}"
+                                   Text="{x:Bind ViewModel.ChallengeExpiryText, Mode=OneWay}"
+                                   Visibility="{x:Bind ViewModel.ChallengeExpiryText, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                        <Button Margin="0,0,0,8"
+                                HorizontalAlignment="Left"
+                                Command="{x:Bind ViewModel.ResendCodeCommand}"
+                                Content="{x:Bind ViewModel.ResendCooldownText, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.CanResend, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.CanShowResend, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     </StackPanel>
 
                     <TextBlock Margin="0,14,0,0"
@@ -74,8 +111,13 @@
 
                     <StackPanel Margin="0,24,0,0" Orientation="Horizontal">
                         <Button Command="{x:Bind ViewModel.LoginCommand}"
-                                Content="{StaticResource Login_Submit}"
-                                Style="{StaticResource AccentButtonStyle}" />
+                                Content="{x:Bind ViewModel.SubmitButtonText, Mode=OneWay}"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Visibility="{x:Bind ViewModel.CanSubmitChallenge, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <Button Margin="8,0,0,0"
+                                Command="{x:Bind ViewModel.RetryCommand}"
+                                Content="{StaticResource Login_Retry}"
+                                Visibility="{x:Bind ViewModel.CanRetry, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         <ProgressRing Width="22"
                                       Height="22"
                                       Margin="14,0,0,0"
@@ -94,8 +136,14 @@
                     </StackPanel>
                 </StackPanel>
 
-                <Border Grid.Column="1" Background="{ThemeResource ControlStrokeColorSecondaryBrush}" />
-                <StackPanel Grid.Column="2" Margin="32,0,0,0" HorizontalAlignment="Center">
+                <Border Grid.Column="1"
+                        Background="{ThemeResource ControlStrokeColorSecondaryBrush}"
+                        Visibility="{x:Bind ViewModel.IsIdentifierStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <StackPanel Grid.Column="2"
+                            Width="260"
+                            Margin="32,0,0,0"
+                            HorizontalAlignment="Center"
+                            Visibility="{x:Bind ViewModel.IsIdentifierStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <TextBlock HorizontalAlignment="Center"
                                Style="{StaticResource SectionTitle}"
                                Text="{StaticResource Login_FastAuthTitle}" />

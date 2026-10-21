@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using H.NotifyIcon;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -238,6 +239,14 @@ public sealed partial class MainWindow : Window
             if (_viewModel.Settings.RememberWindowSize)
             {
                 await PersistWindowBoundsAsync(AppWindow);
+            }
+
+            try
+            {
+                await App.Services.GetRequiredService<LoginViewModel>().CleanupAsync();
+            }
+            catch (Exception)
+            {
             }
         }
         finally
