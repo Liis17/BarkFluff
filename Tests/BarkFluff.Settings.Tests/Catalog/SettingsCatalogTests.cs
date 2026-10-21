@@ -30,7 +30,7 @@ public sealed class SettingsCatalogTests
 
         var expectedCounts = new Dictionary<ServiceId, int>
         {
-            [ServiceId.Unknown] = 21, [ServiceId.Identity] = 20, [ServiceId.Users] = 10,
+            [ServiceId.Unknown] = 23, [ServiceId.Identity] = 20, [ServiceId.Users] = 10,
             [ServiceId.Beacon] = 13, [ServiceId.Notifications] = 8, [ServiceId.Files] = 55,
             [ServiceId.Messages] = 9, [ServiceId.FastAuth] = 8, [ServiceId.Updates] = 5,
             [ServiceId.Onliner] = 15, [ServiceId.CloudMessaging] = 8, [ServiceId.Web] = 5,
@@ -55,7 +55,7 @@ public sealed class SettingsCatalogTests
             .ThenBy(entry => entry.Key, StringComparer.Ordinal)
             .Select(entry => $"{(int)entry.ServiceId}|{entry.Section}|{entry.Key}|{entry.StorageKey}|{entry.IsSensitive}|{entry.RequiresManualValue}"));
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot)));
-        Assert.True(hash == "F385771158CAC0A162D0CF9F527EC6D8212A1F600F85BFCCFBD5DA57D0C9ACFE", $"Catalog fingerprint: {hash}");
+        Assert.True(hash == "2FEBA90B9FCC3319A60E5E106FCFF7B7B14A200221265FBE0AFA42A7C87E8875", $"Catalog fingerprint: {hash}");
     }
 
     [Theory]

@@ -1,3 +1,6 @@
+using BarkFluff.Node;
+using BarkFluff.Shared.Identity;
+
 using System.Security.Cryptography;
 using System.Text;
 
@@ -162,18 +165,31 @@ public static class SettingsSetupMetadata
     }
 
     public static string ComputeFingerprint(IEnumerable<SettingsCatalogEntry> entries)
+        => ComputeFingerprint(entries, null);
+
+    public static string ComputeFingerprint(IEnumerable<SettingsCatalogEntry> entries, string? nodePublicDomain)
     {
         var snapshot = string.Join('\n', entries
             .Where(entry => entry.Setup is not null)
             .OrderBy(entry => GetFieldId(entry), StringComparer.Ordinal)
             .Select(entry =>
             {
-                var metadata = entry.Setup!;
+                var metadata = GetFieldMetadata(entry, nodePublicDomain);
                 return string.Join('|',
                     GetFieldId(entry), metadata.GroupId, metadata.Order, metadata.InputType,
                     metadata.Requirement, metadata.ValidatorId, metadata.Label, metadata.Description,
                     metadata.Placeholder, entry.IsSensitive, entry.RequiresManualValue);
             }));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot)));
+    }
+
+    internal static SetupFieldMetadata GetFieldMetadata(SettingsCatalogEntry entry, string? nodePublicDomain)
+    {
+        var metadata = entry.Setup!;
+        return entry.ServiceId == ServiceId.Files
+            && entry.StorageKey == "ExternalEndpoint:MediaHost"
+            && !string.IsNullOrWhiteSpace(nodePublicDomain)
+                ? metadata with { Placeholder = NodeSubdomains.BuildUrl("files-media", nodePublicDomain!, "https") }
+                : metadata;
     }
 }
