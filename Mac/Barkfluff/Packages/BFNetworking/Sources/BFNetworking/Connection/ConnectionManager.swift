@@ -224,10 +224,14 @@ public actor ConnectionManager {
     /// Клиент автоматически запускается и останавливается.
     public func withPublicClient<T: Sendable>(
         for kind: ServiceKind,
+        expectedEndpoint: ServiceEndpoint? = nil,
         operation: @Sendable (GRPCClient<HTTP2ClientTransport.Posix>) async throws -> T
     ) async throws -> T {
         guard let endpoint = serviceEndpoints[kind] else {
             throw ConnectionError.serviceNotConfigured(kind)
+        }
+        guard expectedEndpoint == nil || endpoint == expectedEndpoint else {
+            throw ConnectionError.endpointChanged
         }
 
         let transport = try HTTP2ClientTransport.Posix(
