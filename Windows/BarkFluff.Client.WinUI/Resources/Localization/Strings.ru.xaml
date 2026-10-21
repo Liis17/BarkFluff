@@ -66,6 +66,7 @@
     <x:String x:Key="Login_FactorTelegram">Telegram</x:String>
     <x:String x:Key="Login_FactorUnknown">Способ входа</x:String>
     <x:String x:Key="Login_ChallengeWaiting">Ожидаем подтверждения в Telegram.</x:String>
+    <x:String x:Key="Login_ChallengeReconnecting">Соединение прервано. Повторяем проверку подтверждения в Telegram…</x:String>
     <x:String x:Key="Login_ChallengeCodeSent">Код подтверждения отправлен.</x:String>
     <x:String x:Key="Login_ChallengeExpired">Срок подтверждения истёк. Начните новую попытку.</x:String>
     <x:String x:Key="Login_ChallengeRejected">Вход отклонён. Можно попробовать ещё раз.</x:String>
@@ -75,7 +76,7 @@
     <x:String x:Key="Error_NodeAddressInvalid">Укажите корректный HTTP- или HTTPS-адрес ноды.</x:String>
     <x:String x:Key="Error_NodeIpPortRequired">Для IP-адреса укажите порт.</x:String>
     <x:String x:Key="Error_NodeConnectionFailed">Не удалось получить информацию о ноде. Проверьте адрес и повторите попытку.</x:String>
-    <x:String x:Key="Error_LoginUnavailable">Сначала выберите ноду.</x:String>
+    <x:String x:Key="Error_LoginUnavailable">Не удалось связаться с нодой. Проверьте соединение и повторите попытку.</x:String>
     <x:String x:Key="Error_LoginFailed">Не удалось войти. Проверьте логин и пароль.</x:String>
     <x:String x:Key="Error_LoginTwoFactorRequired">Введите код двухфакторной аутентификации.</x:String>
     <x:String x:Key="Error_LoginTwoFactorInvalid">Код двухфакторной аутентификации неверный.</x:String>

@@ -240,20 +240,34 @@ public sealed partial class MainWindow : Window
             {
                 await PersistWindowBoundsAsync(AppWindow);
             }
-
-            try
-            {
-                await App.Services.GetRequiredService<LoginViewModel>().CleanupAsync();
-            }
-            catch (Exception)
-            {
-            }
+        }
+        catch (Exception)
+        {
+            // Window bounds persistence must not prevent authentication cleanup or exit.
         }
         finally
         {
+            try
+            {
+                await CleanupLoginForExitAsync().WaitAsync(TimeSpan.FromSeconds(3));
+            }
+            catch (TimeoutException)
+            {
+            }
             _windowCloseReady = true;
             _windowCloseInProgress = false;
             Close();
+        }
+    }
+
+    private static async Task CleanupLoginForExitAsync()
+    {
+        try
+        {
+            await App.Services.GetRequiredService<LoginViewModel>().CleanupAsync();
+        }
+        catch (Exception)
+        {
         }
     }
 

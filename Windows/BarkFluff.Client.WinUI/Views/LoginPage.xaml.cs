@@ -54,6 +54,7 @@ public sealed partial class LoginPage : Page
         }
 
         e.Handled = true;
+        if (!ViewModel.LoginCommand.CanExecute(null)) return;
         await ViewModel.LoginCommand.ExecuteAsync(null);
         FocusCurrentStep();
     }

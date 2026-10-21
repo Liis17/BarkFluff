@@ -66,6 +66,7 @@
     <x:String x:Key="Login_FactorTelegram">Telegram</x:String>
     <x:String x:Key="Login_FactorUnknown">Sign-in method</x:String>
     <x:String x:Key="Login_ChallengeWaiting">Waiting for Telegram confirmation.</x:String>
+    <x:String x:Key="Login_ChallengeReconnecting">Connection interrupted. Checking Telegram confirmation again…</x:String>
     <x:String x:Key="Login_ChallengeCodeSent">A confirmation code was sent.</x:String>
     <x:String x:Key="Login_ChallengeExpired">The confirmation expired. Start a new attempt.</x:String>
     <x:String x:Key="Login_ChallengeRejected">The sign-in was declined. You can try again.</x:String>
@@ -75,7 +76,7 @@
     <x:String x:Key="Error_NodeAddressInvalid">Enter a valid HTTP or HTTPS node address.</x:String>
     <x:String x:Key="Error_NodeIpPortRequired">Specify a port for an IP address.</x:String>
     <x:String x:Key="Error_NodeConnectionFailed">Unable to get node information. Check the address and try again.</x:String>
-    <x:String x:Key="Error_LoginUnavailable">Choose a node first.</x:String>
+    <x:String x:Key="Error_LoginUnavailable">Unable to connect to the node. Check your connection and try again.</x:String>
     <x:String x:Key="Error_LoginFailed">Unable to sign in. Check your username and password.</x:String>
     <x:String x:Key="Error_LoginTwoFactorRequired">Enter your two-factor authentication code.</x:String>
     <x:String x:Key="Error_LoginTwoFactorInvalid">The two-factor authentication code is invalid.</x:String>

@@ -41,6 +41,7 @@ public sealed partial class LoginViewModel : ObservableObject
     private DateTimeOffset _resendAvailableAt;
     private RetryOperation _retryOperation;
     private int _fastAuthGeneration;
+    private int _flowGeneration;
     private bool _isApplyingChallenge;
     private bool _hasNavigated;
 
@@ -78,8 +79,17 @@ public sealed partial class LoginViewModel : ObservableObject
     [ObservableProperty]
     private bool _requiresTwoFactor;
 
-    [ObservableProperty]
     private bool _isRecoveryCode;
+
+    public bool IsRecoveryCode
+    {
+        get => _isRecoveryCode;
+        set
+        {
+            if (IsAuthenticating && !_isApplyingChallenge) return;
+            if (SetProperty(ref _isRecoveryCode, value)) OnIsRecoveryCodeChanged(value);
+        }
+    }
 
     [ObservableProperty]
     private bool _isChallengeTerminal;
@@ -105,8 +115,17 @@ public sealed partial class LoginViewModel : ObservableObject
     [ObservableProperty]
     private string? _statusMessage;
 
-    [ObservableProperty]
     private OtpTypeId _selectedFactor = OtpTypeId.Unknown;
+
+    public OtpTypeId SelectedFactor
+    {
+        get => _selectedFactor;
+        set
+        {
+            if (IsAuthenticating && !_isApplyingChallenge) return;
+            if (SetProperty(ref _selectedFactor, value)) OnSelectedFactorChanged(value);
+        }
+    }
 
     public ObservableCollection<LoginFactorOption> AvailableFactors { get; } = [];
 
@@ -117,9 +136,11 @@ public sealed partial class LoginViewModel : ObservableObject
     public bool IsResolvedIdentifier => Step != LoginStep.Identifier;
     public bool HasTelegramUrl => !string.IsNullOrWhiteSpace(TelegramUrl);
     public bool CanUseRecoveryCode => _loginMode is AuthLoginMode.TelegramLogin or AuthLoginMode.PasswordSecondFactor;
+    public bool CanChangeRecoveryCode => CanUseRecoveryCode && !IsAuthenticating && !IsChallengeTerminal;
     public bool CanSelectFactor => IsChallengeStep
         && _loginMode == AuthLoginMode.PasswordSecondFactor
         && !IsRecoveryCode
+        && !IsAuthenticating
         && !IsChallengeTerminal
         && AvailableFactors.Count >= 2;
     public bool CanRetry => _retryOperation != RetryOperation.None
@@ -177,10 +198,7 @@ public sealed partial class LoginViewModel : ObservableObject
 
     public void StopFastAuth()
     {
-        Interlocked.Increment(ref _fastAuthGeneration);
-        _fastAuthCancellation?.Cancel();
-        _fastAuthCancellation = null;
-        IsFastAuthLoading = false;
+        StopFastAuthUi();
         _ = CancelCurrentAttemptAsync();
     }
 
@@ -200,10 +218,15 @@ public sealed partial class LoginViewModel : ObservableObject
 
     public async Task LoadFastAuthAsync()
     {
+        var flowGeneration = _flowGeneration;
         StopFastAuthUi();
         await _resetCleanupTask;
+        if (flowGeneration != _flowGeneration) return;
         _resetCleanupTask = Task.CompletedTask;
-        await CancelCurrentAttemptAsync();
+        var cleanup = CancelCurrentAttemptAsync();
+        flowGeneration = _flowGeneration;
+        await cleanup;
+        if (flowGeneration != _flowGeneration) return;
 
         var attempt = _authenticationService.CreateAuthenticationAttempt();
         if (attempt is null)
@@ -223,11 +246,13 @@ public sealed partial class LoginViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanLogin))]
     private async Task LoginAsync()
     {
-        if (IsAuthenticating)
+        if (!CanLogin())
         {
             return;
         }
 
+        var generation = _flowGeneration;
+        var cancellationToken = _flowCancellation?.Token ?? CancellationToken.None;
         ErrorMessage = null;
         StatusMessage = null;
         IsAuthenticating = true;
@@ -247,23 +272,27 @@ public sealed partial class LoginViewModel : ObservableObject
                     break;
             }
         }
-        catch (OperationCanceledException) when (_flowCancellation?.IsCancellationRequested == true)
+        catch (OperationCanceledException) when (generation != _flowGeneration || cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception)
         {
+            if (generation != _flowGeneration) return;
             ErrorMessage = _localization.GetString("Error_LoginUnavailable");
             SetRetryOperation(RetryOperationForCurrentStep());
         }
         finally
         {
-            IsAuthenticating = false;
+            if (generation == _flowGeneration) IsAuthenticating = false;
         }
     }
 
     [RelayCommand(CanExecute = nameof(CanRetry))]
     private async Task RetryAsync()
     {
+        if (!CanRetry) return;
+        var generation = _flowGeneration;
+        var cancellationToken = _flowCancellation?.Token ?? CancellationToken.None;
         var operation = _retryOperation;
         if (operation == RetryOperation.None)
         {
@@ -278,7 +307,8 @@ public sealed partial class LoginViewModel : ObservableObject
             switch (operation)
             {
                 case RetryOperation.Resolve:
-                    await ResolveCurrentIdentifierAsync(isModeRefresh: false);
+                    StopFastAuthUi();
+                    await ResolveCurrentIdentifierAsync();
                     break;
                 case RetryOperation.Begin:
                     await BeginSignInAsync();
@@ -294,24 +324,28 @@ public sealed partial class LoginViewModel : ObservableObject
                     break;
             }
         }
-        catch (OperationCanceledException) when (_flowCancellation?.IsCancellationRequested == true)
+        catch (OperationCanceledException) when (generation != _flowGeneration || cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception)
         {
+            if (generation != _flowGeneration) return;
             ErrorMessage = _localization.GetString("Error_LoginUnavailable");
             SetRetryOperation(operation);
         }
         finally
         {
-            IsAuthenticating = false;
+            if (generation == _flowGeneration) IsAuthenticating = false;
         }
     }
 
     [RelayCommand]
     private async Task ChangeLoginAsync()
     {
-        await CancelCurrentAttemptAsync();
+        var cleanup = CancelCurrentAttemptAsync();
+        var generation = _flowGeneration;
+        await cleanup;
+        if (generation != _flowGeneration) return;
         StopFastAuthUi();
         ClearSensitiveState();
         _challenge = null;
@@ -331,6 +365,11 @@ public sealed partial class LoginViewModel : ObservableObject
     [RelayCommand]
     private void PasteOtpCode(string? value)
     {
+        if (IsRecoveryCode)
+        {
+            Code = (value ?? string.Empty).Trim();
+            return;
+        }
         var digits = new string((value ?? string.Empty).Where(char.IsDigit).Take(6).ToArray());
         if (digits.Length == 6)
         {
@@ -357,18 +396,22 @@ public sealed partial class LoginViewModel : ObservableObject
             return;
         }
 
+        var attempt = _attempt;
+        var challenge = _challenge;
+        var generation = _flowGeneration;
+        var cancellationToken = _flowCancellation?.Token ?? CancellationToken.None;
         ErrorMessage = null;
         IsAuthenticating = true;
         SetRetryOperation(RetryOperation.None);
-        SetResendCooldown(_timeProvider.GetUtcNow() + ResendCooldown);
 
         try
         {
             await StopChallengePollingAsync();
             var result = await _authenticationService.ResendAuthChallengeAsync(
-                _attempt,
-                _challenge.Reference,
-                _flowCancellation?.Token ?? CancellationToken.None);
+                attempt,
+                challenge.Reference,
+                cancellationToken);
+            if (generation != _flowGeneration || !IsCurrentAttempt(attempt)) return;
             if (!result.IsSuccess || result.Challenge is null)
             {
                 ErrorMessage = _localization.GetString(result.ErrorResourceKey ?? "Error_LoginUnavailable");
@@ -376,25 +419,32 @@ public sealed partial class LoginViewModel : ObservableObject
                 return;
             }
 
+            SetResendCooldown(_timeProvider.GetUtcNow() + ResendCooldown);
             ApplyChallenge(result.Challenge, restartClock: true);
             StartTelegramPollingIfNeeded();
         }
-        catch (OperationCanceledException) when (_flowCancellation?.IsCancellationRequested == true)
+        catch (OperationCanceledException) when (generation != _flowGeneration || cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception)
         {
+            if (generation != _flowGeneration) return;
             ErrorMessage = _localization.GetString("Error_LoginUnavailable");
             SetRetryOperation(RetryOperation.Resend);
         }
         finally
         {
-            IsAuthenticating = false;
+            if (generation == _flowGeneration)
+            {
+                IsAuthenticating = false;
+                if (IsCurrentAttempt(attempt)) StartTelegramPollingIfNeeded();
+            }
         }
     }
 
     private async Task ResolveIdentifierAsync()
     {
+        var generation = _flowGeneration;
         _resolvedLogin = LoginOrEmail.Trim();
         if (_resolvedLogin.Length == 0)
         {
@@ -403,7 +453,8 @@ public sealed partial class LoginViewModel : ObservableObject
         }
 
         StopFastAuthUi();
-        await CancelCurrentAttemptAsync();
+        await CancelCurrentAttemptAsync(invalidateUi: false);
+        if (generation != _flowGeneration) return;
         _attempt = _authenticationService.CreateAuthenticationAttempt();
         if (_attempt is null)
         {
@@ -412,15 +463,17 @@ public sealed partial class LoginViewModel : ObservableObject
         }
 
         _flowCancellation = new CancellationTokenSource();
+        _isApplyingChallenge = true;
         Password = string.Empty;
         Code = string.Empty;
         IsRecoveryCode = false;
         SelectedFactor = OtpTypeId.Unknown;
+        _isApplyingChallenge = false;
         SetRetryOperation(RetryOperation.Resolve);
-        await ResolveCurrentIdentifierAsync(isModeRefresh: false);
+        await ResolveCurrentIdentifierAsync();
     }
 
-    private async Task ResolveCurrentIdentifierAsync(bool isModeRefresh)
+    private async Task ResolveCurrentIdentifierAsync()
     {
         if (_attempt is null)
         {
@@ -444,15 +497,8 @@ public sealed partial class LoginViewModel : ObservableObject
             ClearSensitiveState();
             Step = LoginStep.Identifier;
             ErrorMessage = _localization.GetString(result.ErrorResourceKey ?? "Error_LoginFailed");
-            if (result.ErrorResourceKey == "Error_LoginUnavailable")
-            {
-                SetRetryOperation(RetryOperation.Resolve);
-            }
-            else
-            {
-                SetRetryOperation(RetryOperation.None);
-                await CancelCurrentAttemptAsync();
-            }
+            SetRetryOperation(result.ErrorResourceKey == "Error_LoginUnavailable" ? RetryOperation.Resolve : RetryOperation.None);
+            RestartFastAuthForCurrentAttempt();
 
             return;
         }
@@ -462,13 +508,6 @@ public sealed partial class LoginViewModel : ObservableObject
         Password = string.Empty;
         Code = string.Empty;
         SetRetryOperation(RetryOperation.None);
-        if (isModeRefresh)
-        {
-            StatusMessage = _localization.GetString("Login_ModeChanged");
-            Step = LoginStep.Identifier;
-            return;
-        }
-
         if (result.LoginMode == AuthLoginMode.TelegramLogin)
         {
             await BeginSignInAsync();
@@ -489,7 +528,10 @@ public sealed partial class LoginViewModel : ObservableObject
         }
 
         var attempt = _attempt;
+        var generation = _flowGeneration;
+        var cancellationToken = _flowCancellation?.Token ?? CancellationToken.None;
         await StopChallengePollingAsync();
+        if (generation != _flowGeneration || !IsCurrentAttempt(attempt)) return;
         var requestedFactor = _loginMode == AuthLoginMode.TelegramLogin
             ? OtpTypeId.Telegram
             : SelectedFactor;
@@ -501,7 +543,7 @@ public sealed partial class LoginViewModel : ObservableObject
             _loginMode,
             requestedFactor,
             IsRecoveryCode,
-            _flowCancellation?.Token ?? CancellationToken.None);
+            cancellationToken);
         if (!IsCurrentAttempt(attempt))
         {
             return;
@@ -516,7 +558,8 @@ public sealed partial class LoginViewModel : ObservableObject
             }
 
             ErrorMessage = _localization.GetString(result.ErrorResourceKey ?? "Error_LoginFailed");
-            SetRetryOperation(result.ErrorResourceKey == "Error_LoginUnavailable"
+            SetRetryOperation(_challenge is null && IsChallengeStep
+                || result.ErrorResourceKey == "Error_LoginUnavailable"
                 || result.ErrorResourceKey == "Error_LoginUpdateRequired"
                 ? RetryOperation.Begin
                 : RetryOperation.None);
@@ -527,6 +570,10 @@ public sealed partial class LoginViewModel : ObservableObject
         SetRetryOperation(RetryOperation.None);
         ResetResendCooldown();
         ApplyChallenge(result.Challenge, restartClock: true);
+        if (CanShowResend && !IsChallengeTerminal)
+        {
+            SetResendCooldown(_timeProvider.GetUtcNow() + ResendCooldown);
+        }
 
         if (result.Challenge.State is AuthChallengeState.Expired or AuthChallengeState.Rejected or AuthChallengeState.Cancelled)
         {
@@ -547,7 +594,9 @@ public sealed partial class LoginViewModel : ObservableObject
 
     private async Task RefreshModeAfterMismatchAsync(AuthenticationAttempt attempt)
     {
+        var generation = _flowGeneration;
         await StopChallengePollingAsync();
+        if (generation != _flowGeneration || !IsCurrentAttempt(attempt)) return;
         StopChallengeClock();
         StopResendClock();
         ResetResendCooldown();
@@ -575,6 +624,7 @@ public sealed partial class LoginViewModel : ObservableObject
         {
             StatusMessage = _localization.GetString(resolution.ErrorResourceKey);
         }
+        if (IsCurrentAttempt(attempt)) RestartFastAuthForCurrentAttempt();
     }
 
     private async Task RestartChallengeAsync(bool retry = false)
@@ -585,6 +635,8 @@ public sealed partial class LoginViewModel : ObservableObject
         }
 
         var attempt = _attempt;
+        var generation = _flowGeneration;
+        var cancellationToken = _flowCancellation?.Token ?? CancellationToken.None;
         var oldChallenge = _challenge;
         var oldFactor = oldChallenge.Factor;
         var oldRecovery = _challengeUsesRecoveryCode;
@@ -598,7 +650,8 @@ public sealed partial class LoginViewModel : ObservableObject
             var cancelled = await _authenticationService.CancelAuthChallengeAsync(
                 attempt,
                 oldChallenge.Reference,
-                _flowCancellation?.Token ?? CancellationToken.None);
+                cancellationToken);
+            if (generation != _flowGeneration || !IsCurrentAttempt(attempt)) return;
             if (!cancelled.IsSuccess)
             {
                 _isApplyingChallenge = true;
@@ -612,21 +665,24 @@ public sealed partial class LoginViewModel : ObservableObject
             }
 
             _challenge = null;
+            StopChallengeClock();
+            StopResendClock();
             Code = string.Empty;
             IsChallengeTerminal = false;
             await BeginSignInAsync();
         }
-        catch (OperationCanceledException) when (_flowCancellation?.IsCancellationRequested == true)
+        catch (OperationCanceledException) when (generation != _flowGeneration || cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception)
         {
+            if (generation != _flowGeneration) return;
             ErrorMessage = _localization.GetString("Error_LoginUnavailable");
-            SetRetryOperation(RetryOperation.RestartChallenge);
+            SetRetryOperation(_challenge is null ? RetryOperation.Begin : RetryOperation.RestartChallenge);
         }
         finally
         {
-            IsAuthenticating = false;
+            if (generation == _flowGeneration) IsAuthenticating = false;
         }
     }
 
@@ -638,6 +694,8 @@ public sealed partial class LoginViewModel : ObservableObject
         }
 
         var attempt = _attempt;
+        var generation = _flowGeneration;
+        var cancellationToken = _flowCancellation?.Token ?? CancellationToken.None;
         var challenge = _challenge;
         if (!fromPolling)
         {
@@ -653,8 +711,9 @@ public sealed partial class LoginViewModel : ObservableObject
                 challenge.Reference,
                 code,
                 IsRecoveryCode,
-                _flowCancellation?.Token ?? CancellationToken.None);
-            if (!IsCurrentAttempt(attempt) && !result.IsSuccess)
+                cancellationToken);
+            if (generation != _flowGeneration || !ReferenceEquals(_attempt, attempt)
+                || cancellationToken.IsCancellationRequested || (!IsCurrentAttempt(attempt) && !result.IsSuccess))
             {
                 return;
             }
@@ -685,26 +744,27 @@ public sealed partial class LoginViewModel : ObservableObject
             }
 
             SetRetryOperation(RetryOperation.None);
-            await CompleteLoginUiAsync(fromPolling);
+            await CompleteLoginUiAsync(fromPolling, generation);
         }
-        catch (OperationCanceledException) when (_flowCancellation?.IsCancellationRequested == true)
+        catch (OperationCanceledException) when (generation != _flowGeneration || cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception)
         {
+            if (generation != _flowGeneration) return;
             ErrorMessage = _localization.GetString("Error_LoginUnavailable");
             SetRetryOperation(RetryOperation.Complete);
         }
         finally
         {
-            if (!fromPolling)
+            if (!fromPolling && generation == _flowGeneration)
             {
                 IsAuthenticating = false;
             }
         }
     }
 
-    private async Task CompleteLoginUiAsync(bool fromPolling)
+    private async Task CompleteLoginUiAsync(bool fromPolling, int generation)
     {
         if (fromPolling)
         {
@@ -714,6 +774,7 @@ public sealed partial class LoginViewModel : ObservableObject
         {
             await StopChallengePollingAsync();
         }
+        if (generation != _flowGeneration) return;
         StopChallengeClock();
         StopResendClock();
         StopFastAuthUi();
@@ -741,7 +802,6 @@ public sealed partial class LoginViewModel : ObservableObject
     private async Task RunFastAuthAsync(AuthenticationAttempt attempt, CancellationTokenSource cancellation, int generation)
     {
         var cancellationToken = cancellation.Token;
-        ErrorMessage = null;
         try
         {
             while (!cancellationToken.IsCancellationRequested && IsCurrentFastAuthGeneration(generation))
@@ -758,7 +818,6 @@ public sealed partial class LoginViewModel : ObservableObject
 
                 if (session is null)
                 {
-                    ErrorMessage = _localization.GetString("Error_FastAuthUnavailable");
                     FastAuthStatusMessage = _localization.GetString("Error_FastAuthUnavailable");
                     return;
                 }
@@ -766,7 +825,7 @@ public sealed partial class LoginViewModel : ObservableObject
                 FastAuthQrCode = ValidateBase64Png(session.QrCode.Base64Png);
                 if (FastAuthQrCode is null)
                 {
-                    ErrorMessage = _localization.GetString("Error_FastAuthFailed");
+                    FastAuthStatusMessage = _localization.GetString("Error_FastAuthFailed");
                     return;
                 }
 
@@ -774,9 +833,16 @@ public sealed partial class LoginViewModel : ObservableObject
                 FastAuthStatusMessage = _localization.GetString("FastAuth_WaitingConfirmation");
                 using var sessionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 var countdownTask = UpdateFastAuthCountdownAsync(session, generation, sessionCancellation.Token);
-                var terminalStatus = await ObserveFastAuthAsync(attempt, session, generation, sessionCancellation.Token);
-                sessionCancellation.Cancel();
-                await IgnoreCancellationAsync(countdownTask);
+                FastAuthUpdateKind terminalStatus;
+                try
+                {
+                    terminalStatus = await ObserveFastAuthAsync(attempt, session, generation, sessionCancellation.Token);
+                }
+                finally
+                {
+                    sessionCancellation.Cancel();
+                    await IgnoreCancellationAsync(countdownTask);
+                }
                 if (terminalStatus == FastAuthUpdateKind.Accepted || terminalStatus == FastAuthUpdateKind.Failed)
                 {
                     return;
@@ -795,7 +861,8 @@ public sealed partial class LoginViewModel : ObservableObject
         {
             if (IsCurrentFastAuthGeneration(generation))
             {
-                ErrorMessage = _localization.GetString("Error_FastAuthUnavailable");
+                FastAuthQrCode = null;
+                FastAuthCountdown = string.Empty;
                 FastAuthStatusMessage = _localization.GetString("Error_FastAuthUnavailable");
             }
         }
@@ -808,13 +875,9 @@ public sealed partial class LoginViewModel : ObservableObject
                 IsFastAuthLoading = false;
             }
 
-            if (!IsCurrentFastAuthGeneration(generation) || !IsCurrentAttempt(attempt))
+            if (!ReferenceEquals(_attempt, attempt))
             {
                 await _authenticationService.CancelAuthenticationAttemptAsync(attempt);
-                if (ReferenceEquals(_attempt, attempt))
-                {
-                    _attempt = null;
-                }
             }
         }
     }
@@ -828,6 +891,7 @@ public sealed partial class LoginViewModel : ObservableObject
         await foreach (var update in _authenticationService.SubscribeFastAuthAsync(attempt, session, cancellationToken))
         {
             if (!IsCurrentFastAuthGeneration(generation)
+                || cancellationToken.IsCancellationRequested || !ReferenceEquals(_attempt, attempt)
                 || (!IsCurrentAttempt(attempt) && update.Kind != FastAuthUpdateKind.Accepted))
             {
                 return FastAuthUpdateKind.Failed;
@@ -856,8 +920,9 @@ public sealed partial class LoginViewModel : ObservableObject
                     FastAuthStatusMessage = _localization.GetString("FastAuth_Expired");
                     return update.Kind;
                 case FastAuthUpdateKind.Failed:
-                    ErrorMessage = _localization.GetString(update.ErrorResourceKey ?? "Error_FastAuthFailed");
-                    FastAuthStatusMessage = ErrorMessage;
+                    FastAuthQrCode = null;
+                    FastAuthCountdown = string.Empty;
+                    FastAuthStatusMessage = _localization.GetString(update.ErrorResourceKey ?? "Error_FastAuthFailed");
                     return update.Kind;
             }
         }
@@ -867,13 +932,14 @@ public sealed partial class LoginViewModel : ObservableObject
 
     private async Task PollTelegramChallengeAsync(AuthenticationAttempt attempt, SignInChallenge challenge, CancellationToken cancellationToken)
     {
+        var generation = _flowGeneration;
         try
         {
             while (!cancellationToken.IsCancellationRequested && IsCurrentAttempt(attempt) && ReferenceEquals(_challenge, challenge))
             {
                 if (challenge.ExpiresAt is { } expiresAt && _timeProvider.GetUtcNow() >= expiresAt)
                 {
-                    MarkChallengeTerminal(AuthChallengeState.Expired);
+                    if (_retryOperation != RetryOperation.Complete) MarkChallengeTerminal(AuthChallengeState.Expired);
                     return;
                 }
 
@@ -894,11 +960,15 @@ public sealed partial class LoginViewModel : ObservableObject
                 }
                 catch (Exception)
                 {
+                    if (generation == _flowGeneration && IsCurrentAttempt(attempt) && !cancellationToken.IsCancellationRequested)
+                        StatusMessage = _localization.GetString("Login_ChallengeReconnecting");
                     continue;
                 }
 
+                if (generation != _flowGeneration || cancellationToken.IsCancellationRequested || !IsCurrentAttempt(attempt)) return;
                 if (!result.IsSuccess || result.Challenge is null)
                 {
+                    StatusMessage = _localization.GetString("Login_ChallengeReconnecting");
                     continue;
                 }
 
@@ -915,7 +985,7 @@ public sealed partial class LoginViewModel : ObservableObject
                 {
                     IsAuthenticating = true;
                     await CompleteChallengeAsync(string.Empty, fromPolling: true);
-                    IsAuthenticating = false;
+                    if (generation == _flowGeneration) IsAuthenticating = false;
                     return;
                 }
             }
@@ -938,7 +1008,7 @@ public sealed partial class LoginViewModel : ObservableObject
     private void StartTelegramPollingIfNeeded()
     {
         if (_attempt is null || _challenge is null || _loginMode != AuthLoginMode.TelegramLogin
-            || _challenge.State != AuthChallengeState.Waiting)
+            || IsRecoveryCode || IsChallengeTerminal || _challenge.State != AuthChallengeState.Waiting)
         {
             return;
         }
@@ -1004,7 +1074,9 @@ public sealed partial class LoginViewModel : ObservableObject
                 OnPropertyChanged(nameof(ChallengeExpiryText));
                 if (_timeProvider.GetUtcNow() >= expiresAt)
                 {
-                    MarkChallengeTerminal(AuthChallengeState.Expired);
+                    // A lost Complete response may already have consumed the challenge.
+                    // Keep its reference until the server resolves that completion.
+                    if (_retryOperation != RetryOperation.Complete) MarkChallengeTerminal(AuthChallengeState.Expired);
                     return;
                 }
 
@@ -1075,13 +1147,13 @@ public sealed partial class LoginViewModel : ObservableObject
         _challenge = challenge;
         _challengeUsesRecoveryCode = IsRecoveryCode;
         _isApplyingChallenge = true;
-        SelectedFactor = challenge.Factor;
-        _isApplyingChallenge = false;
         IsChallengeTerminal = challenge.State is AuthChallengeState.Expired or AuthChallengeState.Rejected or AuthChallengeState.Cancelled;
         RequiresTwoFactor = challenge.NeedsCode;
         TelegramUrl = string.IsNullOrWhiteSpace(challenge.TelegramUrl) ? null : challenge.TelegramUrl;
         StatusMessage = challenge.State == AuthChallengeState.Waiting
-            ? challenge.Factor == OtpTypeId.Telegram
+            ? IsRecoveryCode
+                ? _localization.GetString("Login_RecoveryCodeHint")
+                : challenge.Factor == OtpTypeId.Telegram
                 ? _localization.GetString("Login_ChallengeWaiting")
                 : challenge.NeedsCode
                     ? _localization.GetString("Login_ChallengeCodeSent")
@@ -1092,6 +1164,8 @@ public sealed partial class LoginViewModel : ObservableObject
             Code = string.Empty;
         }
         UpdateFactorOptions(challenge);
+        SelectedFactor = challenge.Factor;
+        _isApplyingChallenge = false;
         Step = LoginStep.Challenge;
         OnPropertyChanged(nameof(HasTelegramUrl));
         OnPropertyChanged(nameof(CanUseRecoveryCode));
@@ -1109,11 +1183,13 @@ public sealed partial class LoginViewModel : ObservableObject
 
     private void UpdateFactorOptions(SignInChallenge challenge)
     {
-        AvailableFactors.Clear();
         IEnumerable<OtpTypeId> factors = _loginMode == AuthLoginMode.TelegramLogin
             ? [OtpTypeId.Telegram]
             : challenge.AvailableFactors;
-        foreach (var factor in factors.Distinct())
+        var distinctFactors = factors.Distinct().ToArray();
+        if (AvailableFactors.Select(option => option.Factor).SequenceEqual(distinctFactors)) return;
+        AvailableFactors.Clear();
+        foreach (var factor in distinctFactors)
         {
             AvailableFactors.Add(new LoginFactorOption(factor, _localization.GetString(factor switch
             {
@@ -1181,7 +1257,7 @@ public sealed partial class LoginViewModel : ObservableObject
     {
         LoginStep.Identifier => !string.IsNullOrWhiteSpace(LoginOrEmail),
         LoginStep.Password => !string.IsNullOrWhiteSpace(Password),
-        LoginStep.Challenge => _challenge is not null && !IsChallengeTerminal && (!RequiresTwoFactor || !string.IsNullOrWhiteSpace(Code)),
+        LoginStep.Challenge => _challenge is not null && !IsChallengeTerminal && RequiresTwoFactor && !string.IsNullOrWhiteSpace(Code),
         _ => false
     };
 
@@ -1189,12 +1265,18 @@ public sealed partial class LoginViewModel : ObservableObject
     {
         LoginStep.Identifier => RetryOperation.Resolve,
         LoginStep.Password => RetryOperation.Begin,
-        LoginStep.Challenge => RetryOperation.Complete,
+        LoginStep.Challenge => _challenge is null ? RetryOperation.Begin : RetryOperation.Complete,
         _ => RetryOperation.None
     };
 
-    private async Task CancelCurrentAttemptAsync()
+    private async Task CancelCurrentAttemptAsync(bool invalidateUi = true)
     {
+        if (invalidateUi)
+        {
+            _flowGeneration++;
+            IsAuthenticating = false;
+            SetRetryOperation(RetryOperation.None);
+        }
         var attempt = _attempt;
         _attempt = null;
         _flowCancellation?.Cancel();
@@ -1202,11 +1284,11 @@ public sealed partial class LoginViewModel : ObservableObject
         _flowCancellation = null;
         StopChallengeClock();
         StopResendClock();
+        // Invalidate the service attempt before waiting for a polling Complete/Save.
+        var retirement = attempt is null ? Task.CompletedTask
+            : _authenticationService.CancelAuthenticationAttemptAsync(attempt);
         await StopChallengePollingAsync();
-        if (attempt is not null)
-        {
-            await _authenticationService.CancelAuthenticationAttemptAsync(attempt);
-        }
+        await retirement;
     }
 
     private void StopFastAuthUi()
@@ -1215,6 +1297,20 @@ public sealed partial class LoginViewModel : ObservableObject
         _fastAuthCancellation?.Cancel();
         _fastAuthCancellation = null;
         IsFastAuthLoading = false;
+        FastAuthQrCode = null;
+        FastAuthStatusMessage = null;
+        FastAuthCountdown = string.Empty;
+    }
+
+    private void RestartFastAuthForCurrentAttempt()
+    {
+        StopFastAuthUi();
+        if (_attempt is null || !IsIdentifierStep) return;
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            _flowCancellation?.Token ?? CancellationToken.None);
+        _fastAuthCancellation = cancellation;
+        var generation = Interlocked.Increment(ref _fastAuthGeneration);
+        _ = RunFastAuthAsync(_attempt, cancellation, generation);
     }
 
     private void NotifyStepPropertiesChanged()
@@ -1270,6 +1366,9 @@ public sealed partial class LoginViewModel : ObservableObject
 
     partial void OnIsAuthenticatingChanged(bool value)
     {
+        OnPropertyChanged(nameof(CanSelectFactor));
+        OnPropertyChanged(nameof(CanChangeRecoveryCode));
+        LoginCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanShowResend));
         OnPropertyChanged(nameof(CanResend));
         OnPropertyChanged(nameof(CanRetry));
@@ -1277,7 +1376,7 @@ public sealed partial class LoginViewModel : ObservableObject
         RetryCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnIsRecoveryCodeChanged(bool value)
+    private void OnIsRecoveryCodeChanged(bool value)
     {
         OnPropertyChanged(nameof(CanSelectFactor));
         OnPropertyChanged(nameof(CanShowResend));
@@ -1290,7 +1389,7 @@ public sealed partial class LoginViewModel : ObservableObject
         }
     }
 
-    partial void OnSelectedFactorChanged(OtpTypeId value)
+    private void OnSelectedFactorChanged(OtpTypeId value)
     {
         OnPropertyChanged(nameof(CanSelectFactor));
         OnPropertyChanged(nameof(CanShowResend));
@@ -1318,10 +1417,17 @@ public sealed partial class LoginViewModel : ObservableObject
 
     partial void OnIsChallengeTerminalChanged(bool value)
     {
+        OnPropertyChanged(nameof(CanChangeRecoveryCode));
         OnPropertyChanged(nameof(CanSelectFactor));
         OnPropertyChanged(nameof(CanShowResend));
         OnPropertyChanged(nameof(CanResend));
         ResendCodeCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnRequiresTwoFactorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanSubmitChallenge));
+        LoginCommand.NotifyCanExecuteChanged();
     }
 
     private bool _challengeUsesRecoveryCode;
