@@ -21,7 +21,7 @@ SqliteApplicationDataStore хранит настройки, выбранную �
 
 ## Вход в аккаунт
 
-`LoginViewModel` проводит WinUI через inline-шаги Identifier → Password → Challenge. Identifier нормализуется через `Trim()` и всегда отправляется в `ResolveSignIn`; выбор логина/email по символу `@` и отправка кода на этом шаге не используются. Ответ сервера определяет `Password`, `PasswordSecondFactor` или `TelegramLogin`. Для парольных режимов первый `BeginSignIn` передаёт `OtpTypeId.Unknown`; Telegram-вход сразу начинает challenge без пароля.
+`LoginViewModel` проводит WinUI через inline-шаги Identifier → Password → Challenge. Identifier нормализуется через `Trim()` и всегда отправляется в `ResolveSignIn`; изменение нормализованного идентификатора инвалидирует предыдущий resolve/retry и отменяет незавершённый запрос, а retry разрешает текущее поле. Выбор логина/email по символу `@` и отправка кода на этом шаге не используются. Ответ сервера определяет `Password`, `PasswordSecondFactor` или `TelegramLogin`. Для парольных режимов первый `BeginSignIn` передаёт `OtpTypeId.Unknown`; Telegram-вход сразу начинает challenge без пароля.
 
 Challenge-flow и FastAuth используют отдельный `AuthenticationAttempt`: он фиксирует `NodeConnection`, копию параметров и собственный `WebApi` с независимыми gRPC-каналами. Pre-login вызовы не используют `TokenManager` и его refresh/retry. При смене попытки старый challenge best-effort отменяется на своей ноде, затем его каналы освобождаются; текущую попытку защищают generation и ссылка на захваченное соединение.
 

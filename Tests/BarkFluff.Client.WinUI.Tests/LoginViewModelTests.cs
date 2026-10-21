@@ -336,6 +336,76 @@ public sealed class LoginViewModelTests
         await viewModel.CleanupAsync();
     }
 
+    [Fact]
+    public async Task ResolveRetryAfterIdentifierEdit_UsesCurrentLoginAndClearsOldRetry()
+    {
+        var authentication = new FakeAuthenticationService();
+        authentication.ResolveResults.Enqueue(SignInResolutionResult.Failure(null, "Error_LoginUnavailable"));
+        var viewModel = CreateViewModel(authentication);
+        viewModel.LoginOrEmail = " alice ";
+
+        await viewModel.LoginCommand.ExecuteAsync(null);
+
+        Assert.Equal(["alice"], authentication.ResolvedLogins);
+        Assert.True(viewModel.CanRetry);
+        viewModel.LoginOrEmail = " bob ";
+        Assert.False(viewModel.CanRetry);
+        Assert.Null(viewModel.ErrorMessage);
+
+        authentication.ResolveResults.Enqueue(SignInResolutionResult.Success(AuthLoginMode.Password));
+        Assert.False(viewModel.RetryCommand.CanExecute(null));
+        await viewModel.LoginCommand.ExecuteAsync(null);
+
+        Assert.Equal(["alice", "bob"], authentication.ResolvedLogins);
+        Assert.Equal(LoginStep.Password, viewModel.Step);
+        viewModel.Password = "password";
+        authentication.BeginResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Authenticator, true));
+        await viewModel.LoginCommand.ExecuteAsync(null);
+
+        Assert.Equal("bob", authentication.BeginCalls.Single().Login);
+        viewModel.Code = "123456";
+        viewModel.LoginOrEmail = "carol";
+        Assert.Equal(LoginStep.Identifier, viewModel.Step);
+        Assert.Empty(viewModel.Password);
+        Assert.Empty(viewModel.Code);
+        Assert.False(viewModel.CanRetry);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task IdentifierEditWhileResolveIsPending_DiscardsOldTelegramResultAndResolvesCurrentLogin()
+    {
+        var authentication = new FakeAuthenticationService();
+        var aliceResolution = new TaskCompletionSource<SignInResolutionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        authentication.ResolveHandler = login => login == "alice"
+            ? aliceResolution.Task
+            : Task.FromResult(SignInResolutionResult.Success(AuthLoginMode.Password));
+        var viewModel = CreateViewModel(authentication);
+        viewModel.LoginOrEmail = "alice";
+
+        var aliceLogin = viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.Equal(["alice"], authentication.ResolvedLogins);
+        viewModel.LoginOrEmail = "bob";
+        aliceResolution.SetResult(SignInResolutionResult.Success(AuthLoginMode.TelegramLogin));
+        await aliceLogin;
+
+        Assert.Equal(LoginStep.Identifier, viewModel.Step);
+        Assert.Empty(authentication.BeginCalls);
+        Assert.Null(viewModel.TelegramUrl);
+        Assert.False(viewModel.CanRetry);
+
+        authentication.ResolveHandler = null;
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.Equal(["alice", "bob"], authentication.ResolvedLogins);
+        Assert.Equal(LoginStep.Password, viewModel.Step);
+        viewModel.Password = "password";
+        authentication.BeginResults.Enqueue(Challenge(AuthChallengeState.Waiting, OtpTypeId.Authenticator, true));
+        await viewModel.LoginCommand.ExecuteAsync(null);
+
+        Assert.Equal("bob", authentication.BeginCalls.Single().Login);
+        await viewModel.CleanupAsync();
+    }
+
     [Theory]
     [InlineData(AuthLoginMode.Password)]
     [InlineData(AuthLoginMode.PasswordSecondFactor)]
@@ -840,6 +910,7 @@ public sealed class LoginViewModelTests
         public Queue<SignInChallengeResult> ResendResults { get; } = [];
         public Queue<AuthenticationOperationResult> CompleteResults { get; } = [];
         public Func<BeginCall, Task<SignInChallengeResult>>? BeginHandler { get; set; }
+        public Func<string, Task<SignInResolutionResult>>? ResolveHandler { get; set; }
         public Func<CompleteCall, Task<AuthenticationOperationResult>>? CompleteHandler { get; set; }
         public Func<Task<SignInChallengeResult>>? ResendHandler { get; set; }
         public int FastAuthSessionCalls { get; private set; }
@@ -874,6 +945,7 @@ public sealed class LoginViewModelTests
         public Task<SignInResolutionResult> ResolveSignInAsync(AuthenticationAttempt attempt, string login, CancellationToken cancellationToken = default)
         {
             ResolvedLogins.Add(login);
+            if (ResolveHandler is not null) return ResolveHandler(login);
             var result = ResolveResults.Count > 0
                 ? ResolveResults.Dequeue()
                 : SignInResolutionResult.Success(LoginMode);
