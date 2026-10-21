@@ -102,6 +102,9 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
     }
 
     public func tryRestoreSession() async -> Bool {
+        if let winner = winningSignInAttempt { return winner.isAccepted }
+        if !activeSignInAttempts.isEmpty { return false }
+
         // 1. Проверяем наличие refresh token
         guard await tokenProvider.hasRefreshToken else { return false }
 
@@ -113,16 +116,38 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
 
         // 3. Пробуем обновить access token
         guard let refreshToken = await tokenProvider.currentRefreshToken else { return false }
+        let startingWinner = winningSignInAttempt
+        let startingAttempts = activeSignInAttempts
 
         do {
             let tokenInfo = try await identityRepository.createToken(refreshToken: refreshToken)
+            await acquireStorage()
+            defer { releaseStorage() }
+            let currentRefreshToken = await tokenProvider.currentRefreshToken
+            guard currentRefreshToken == refreshToken else { return currentRefreshToken != nil }
+            guard winningSignInAttempt == startingWinner,
+                  activeSignInAttempts == startingAttempts,
+                  winningSignInAttempt?.isAccepted != true else {
+                return winningSignInAttempt?.isAccepted == true
+            }
             await tokenProvider.saveAccessToken(
                 value: tokenInfo.value,
                 expiresAt: tokenInfo.expirationDate
             )
             return true
         } catch {
-            // Refresh не удался — сессия мертва
+            await acquireStorage()
+            defer { releaseStorage() }
+            let currentRefreshToken = await tokenProvider.currentRefreshToken
+            guard currentRefreshToken == refreshToken else { return currentRefreshToken != nil }
+            guard winningSignInAttempt == startingWinner,
+                  activeSignInAttempts == startingAttempts,
+                  winningSignInAttempt?.isAccepted != true else {
+                return winningSignInAttempt?.isAccepted == true
+            }
+
+            // Refresh не удался — удаляем только ту сессию, которая его запустила.
+            resetSignInAdmission()
             await tokenProvider.clearAll()
             return false
         }
@@ -139,13 +164,17 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
 
         // 2. Только при успехе серверного шага — стираем токены и device_id локально.
         //    Очистка остальных кешей/БД делается на уровне DependencyContainer.reset().
-        await tokenProvider.purgeAll()
+        await acquireStorage()
+        defer { releaseStorage() }
         resetSignInAdmission()
+        await tokenProvider.purgeAll()
     }
 
     public func forceLocalLogout() async {
-        await tokenProvider.purgeAll()
+        await acquireStorage()
+        defer { releaseStorage() }
         resetSignInAdmission()
+        await tokenProvider.purgeAll()
     }
 
     public func setPassword(password: String) async throws {
@@ -216,9 +245,11 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
         try await signInRepository.resendAuthChallenge(reference)
     }
 
-    public func beginSignInAttempt() -> SignInSessionAdmissionAttempt {
+    public func beginSignInAttempt() async -> SignInSessionAdmissionAttempt {
         let attempt = SignInSessionAdmissionAttempt()
-        if winningSignInAttempt == nil || winningSignInAttempt?.isCancelled == true {
+        if winningSignInAttempt?.isAccepted == true {
+            attempt.cancel()
+        } else {
             activeSignInAttempts.insert(attempt)
         }
         return attempt
@@ -244,6 +275,11 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
         if let winner = winningSignInAttempt, winner.isCancelled {
             await tokenProvider.clearAll()
             winningSignInAttempt = nil
+        }
+        if winningSignInAttempt?.isAccepted == true {
+            attempt.cancel()
+            activeSignInAttempts.remove(attempt)
+            return nil
         }
         guard winningSignInAttempt == nil, activeSignInAttempts.contains(attempt), !attempt.isCancelled,
               !session.accessToken.isEmpty, !session.refreshToken.isEmpty,
@@ -276,6 +312,7 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
     private func resetSignInAdmission() {
         activeSignInAttempts.forEach { $0.cancel() }
         activeSignInAttempts.removeAll()
+        winningSignInAttempt?.cancel()
         winningSignInAttempt = nil
     }
 
