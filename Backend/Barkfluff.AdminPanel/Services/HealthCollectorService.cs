@@ -74,11 +74,14 @@ public class HealthCollectorService : BackgroundService
             Dictionary<string, string>? dockerStates = null;
             try
             {
-                var containers = await _dockerService.GetContainersAsync();
-                dockerStates = containers
-                    .Where(c => !string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.State))
-                    .GroupBy(c => c.Name.TrimStart('/'), StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.First().State, StringComparer.OrdinalIgnoreCase);
+                var containers = await _dockerService.GetContainersAsync(ct);
+                dockerStates = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var container in containers.Where(c => !string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.State)))
+                {
+                    var serviceName = await _dockerService.TryResolveComposeServiceNameAsync(container.Name, ct);
+                    if (serviceName is not null)
+                        dockerStates[serviceName] = container.State;
+                }
             }
             catch
             {
@@ -345,7 +348,7 @@ public class HealthCollectorService : BackgroundService
         }
         else
         {
-            result.Add(new InfrastructureHealth("PostgreSQL", DockerFallback(dockerStates, "postgres_barkfluff", "unknown"), "docker", null));
+            result.Add(new InfrastructureHealth("PostgreSQL", DockerFallback(dockerStates, "postgres", "unknown"), "docker", null));
         }
 
         // Redis: агрегат Redis-чеков из readiness; fallback — docker-state
