@@ -13,6 +13,7 @@ using Xunit;
 
 namespace Barkfluff.AdminPanel.Tests.Middleware;
 
+[Collection("LiteDb")]
 public sealed class RequirePermissionFilterTests : IDisposable
 {
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"adminpanel-perms-{Guid.NewGuid():N}.db");

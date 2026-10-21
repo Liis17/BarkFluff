@@ -10,6 +10,40 @@ SettingsCatalog разрешает только известные ServiceId/Sec
 
 Program.cs применяет EF migrations при старте. PostgreSQL database должен уже существовать (compose создаёт её отдельно). Настройки читаются клиентами из Settings при старте; автоматического push/live reload нет, поэтому изменение обычно требует перезапуска потребляющих процессов.
 
+## Публичные адреса self-hosted ноды
+
+`SettingsSeedOptions.FromConfiguration` читает `NODE_PUBLIC_DOMAIN`, `NODE_NAVIGATOR_URL` и `NODE_S3_ENDPOINT` через `IConfiguration`. Они задают defaults только для отсутствующих в БД строк; сидер не обновляет уже сохранённые значения.
+
+- `NODE_PUBLIC_DOMAIN` задаёт `ExternalEndpoint:Host` как `https://<subdomain>.<domain>` для сервисов, `Calls:LiveKit:PublicUrl` как `wss://livekit.<domain>` и подсказку `Files:ExternalEndpoint:MediaHost` как `https://files2.<domain>`. Сам `MediaHost` остаётся ручной настройкой с пустым значением по умолчанию.
+- `NODE_NAVIGATOR_URL` задаёт `Beacon:NavigatorUrl` и `Federation:NavigatorUrl`.
+- `NODE_S3_ENDPOINT` задаёт `Files:S3Buckets:<bucket>:ServiceUrl` для всех бакетов.
+
+Без этих переменных сохраняются прежние defaults: сервисные `ExternalEndpoint:Host` используют `https://<container>.example.com`, LiveKit — `wss://calls.example.com`, Navigator — `http://navigator:7010`, S3 — `http://minio:9000`, а подсказка media host — `https://files.example.com`.
+
+Общая таблица сайта и субдомена находится в `Backend/BarkFluff.Settings/Catalog/NodeSubdomains.cs` (namespace `BarkFluff.Node`). Файл использует только BCL и подключается в Builder как исходник. Публичный API: `IReadOnlyDictionary<string, string> All`, `string Get(string serviceOrSiteKey)`, `string BuildUrl(string serviceOrSiteKey, string domain, string scheme = "https")`.
+
+| Ключ сайта | Субдомен |
+|---|---|
+| `identity` | `identity` |
+| `users` | `users` |
+| `messages` | `messages` |
+| `files` | `files` |
+| `files-media` | `files2` |
+| `updates` | `updates` |
+| `onliner` | `onliner` |
+| `fast-auth` | `fast-auth` |
+| `federation` | `federation` |
+| `beacon` | `beacon` |
+| `bots` | `bots` |
+| `calls` | `calls` |
+| `livekit` | `livekit` |
+| `web` | `web` |
+| `developers` | `developers` |
+| `admin-panel` | `panel` |
+| `setup` | `setup` |
+
+Глобальный каталог также задаёт `MessagesService:Host` и `MessagesService:Token` для AdminPanel, который использует `MessagesServerApiClient`.
+
 ## Внутренняя готовность для загрузки конфигурации
 
 `Host/ConfigurationReadinessEndpoints.cs` публикует анонимный `GET /internal/configuration/ready`

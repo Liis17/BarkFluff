@@ -10,7 +10,8 @@ public static class LogsExportEndpoints
     public static void MapLogsExportEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/seq/export")
-            .WithTags("LogsExport");
+            .WithTags("LogsExport")
+            .RequireSeqEnabled();
 
         // POST /api/seq/export/start
         group.MapPost("/start", (

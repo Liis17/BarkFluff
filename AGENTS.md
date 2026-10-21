@@ -13,7 +13,7 @@ Vault: `Obsidian/ClaudeVault/` — выбранное хранилище про�
 | `Index.md` | Навигация |
 | `Architecture.md` | Стек, границы сервисов, потоки, конфигурация и ограничения |
 | `Testing.md` | Тестовые проекты и ограничения проверок |
-| `Backend/`, `Shared/`, `Clients/` | Обзоры компонентов, контракты и компактные карты исходников |
+| `Backend/`, `Shared/`, `Clients/`, `Tools/` | Обзоры компонентов, контракты и компактные карты исходников |
 | `Ideas/Index.md` | Предложения; не источник действующих API |
 
 ### Чтение и обновление памяти
@@ -152,6 +152,15 @@ dotnet build Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
 ```bash
 dotnet build Windows/BarkFluff.Client.WinUI/BarkFluff.Client.WinUI.csproj -p:Platform=x64
 ```
+
+### Builder
+
+```bash
+dotnet build Tools/BarkFluff.Builder/BarkFluff.Builder.csproj
+dotnet test Tests/BarkFluff.Builder.Tests/BarkFluff.Builder.Tests.csproj
+```
+
+На не-Windows для WPF-сборки добавьте к `dotnet build` параметр `-p:EnableWindowsTargeting=true`.
 
 ## Правила работы с Git репозиторием
 

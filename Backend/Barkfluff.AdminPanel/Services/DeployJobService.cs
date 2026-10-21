@@ -243,16 +243,18 @@ public class DeployJobService : BackgroundService
         }
     }
 
-    /// <summary>Имя контейнера для docker inspect/restart (compose-команды используют имя сервиса)</summary>
-    private static string ContainerOf(DeployStep step) => DockerService.ConvertServiceNameToContainerName(step.Service);
+    /// <summary>Имя контейнера для docker inspect/restart; compose-команды используют имя сервиса.</summary>
+    private Task<string> ContainerOfAsync(DeployStep step, CancellationToken ct) =>
+        _docker.ResolveContainerNameAsync(step.Service, ct);
 
     private async Task RestartStepAsync(DeployStep step, CancellationToken ct)
     {
-        var result = await _docker.RestartContainerAsync(ContainerOf(step));
+        var container = await ContainerOfAsync(step, ct);
+        var result = await _docker.RestartContainerAsync(container);
         if (!result.Success)
             throw new InvalidOperationException(result.Message);
 
-        var health = await WaitHealthyAsync(ContainerOf(step), ct);
+        var health = await WaitHealthyAsync(container, ct);
         if (!health.Ok)
             throw new InvalidOperationException(health.Reason);
 
@@ -261,7 +263,7 @@ public class DeployJobService : BackgroundService
 
     private async Task UpdateStepAsync(DeployStep step, CancellationToken ct)
     {
-        var container = ContainerOf(step);
+        var container = await ContainerOfAsync(step, ct);
 
         // Запоминаем старый образ — он понадобится для отката, если новый окажется битым
         var oldImageId = await _docker.GetContainerImageIdAsync(container);
@@ -293,7 +295,7 @@ public class DeployJobService : BackgroundService
 
     private async Task BranchStepAsync(DeployStep step, CancellationToken ct)
     {
-        var container = ContainerOf(step);
+        var container = await ContainerOfAsync(step, ct);
         var previousCompose = await _compose.SetBranchAsync(step.Service, step.Branch!);
 
         try
