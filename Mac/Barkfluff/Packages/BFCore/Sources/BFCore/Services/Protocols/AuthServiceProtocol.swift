@@ -51,3 +51,33 @@ public protocol AuthServiceProtocol: Sendable {
         refreshToken: String, refreshExpiresAt: Date
     ) async
 }
+
+/// New challenge-based sign-in API, kept separate from the legacy registration/iOS contract.
+public protocol SignInServiceProtocol: SignInRepositoryProtocol {}
+
+public struct SignInSessionAdmissionAttempt: Sendable, Equatable, Hashable {
+    public let id: UUID
+
+    public init(id: UUID = UUID()) {
+        self.id = id
+    }
+}
+
+public struct SignInSessionAdmissionReceipt: Sendable, Equatable, Hashable {
+    public let attempt: SignInSessionAdmissionAttempt
+
+    public init(attempt: SignInSessionAdmissionAttempt) {
+        self.attempt = attempt
+    }
+}
+
+/// Serializes local session commits shared by challenge login and FastAuth QR login.
+public protocol SignInSessionAdmissionService: Sendable {
+    func beginSignInAttempt() async -> SignInSessionAdmissionAttempt
+    func invalidateSignInAttempt(_ attempt: SignInSessionAdmissionAttempt) async
+    func commitSignInSession(
+        _ session: SignInSessionTokens,
+        for attempt: SignInSessionAdmissionAttempt
+    ) async -> SignInSessionAdmissionReceipt?
+    func isCurrentSignInSession(_ receipt: SignInSessionAdmissionReceipt) async -> Bool
+}
