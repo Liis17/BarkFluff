@@ -1,0 +1,8 @@
+<Window x:Class="BarkFluff.Builder.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="BarkFluff Builder"
+        Width="800"
+        Height="500">
+    <Grid />
+</Window>
