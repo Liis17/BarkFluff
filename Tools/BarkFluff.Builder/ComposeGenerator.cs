@@ -187,7 +187,7 @@ public static class ComposeGenerator
         if (model.IncludeLognara)
             services.Add(LognaraRelay(model));
 
-        return RenderCompose(services, BuildVolumeDefinitions(model, setup: false));
+        return RenderCompose(services);
     }
 
     public static string BuildSetupCompose(BuilderModel model)
@@ -264,7 +264,7 @@ public static class ComposeGenerator
         if (model.IncludeLognara)
             services.Add(LognaraRelay(model));
 
-        var b = new StringBuilder(RenderCompose(services, BuildVolumeDefinitions(model, setup: true)));
+        var b = new StringBuilder(RenderCompose(services));
         b.AppendLine("secrets:");
         b.AppendLine("  setup_token:");
         b.AppendLine("    file: ./secrets/setup_token");
@@ -573,31 +573,15 @@ COPY --from=lognara-agent --chmod=0755 /usr/local/bin/lognara-agent /usr/local/b
             ("LOGNARA_SPOOL_DIR", "/var/lib/lognara-relay/spool"))
         .WithVolumes($"{LognaraRelayVolume}:/var/lib/lognara-relay/spool");
 
-    private static string BuildVolumeDefinitions(BuilderModel model, bool setup)
+    private static string BuildVolumeDefinitions(IReadOnlyList<ComposeService> services)
     {
-        var names = new List<string>();
-        var targets = setup
-            ? new[] { model.Application("SETUP"), model.Application("SETUP_SETTINGS") }
-                .Concat(new[] { model.Infrastructure("SETUP_POSTGRES"), model.Infrastructure("SETUP_POSTGRES_BOOTSTRAP") })
-            : model.LognaraApplications.Skip(2).Concat(model.LognaraInfrastructure.Where(x => !x.Prefix.StartsWith("SETUP_", StringComparison.Ordinal)));
-
-        if (model.IncludeLognara)
-        {
-            foreach (var target in targets.Where(x => x.LognaraEnable))
-            {
-                var spoolVolume = LognaraSpoolVolume(target);
-                names.Add($"  {spoolVolume}:\n    name: barkfluff-{spoolVolume}\n");
-                if (model.LognaraApplications.Contains(target))
-                    names.Add($"  lognara-buffer-{VolumeKey(target)}:\n    name: barkfluff-lognara-buffer-{VolumeKey(target)}\n");
-            }
-
-            names.Add($"  {LognaraRelayVolume}:\n    name: barkfluff-lognara-relay-spool\n");
-        }
-
-        return string.Concat(names.Distinct(StringComparer.Ordinal));
+        return string.Concat(services
+            .SelectMany(service => service.NamedVolumes)
+            .Distinct(StringComparer.Ordinal)
+            .Select(name => $"  {name}:\n    name: barkfluff-{name}\n"));
     }
 
-    private static string RenderCompose(IReadOnlyList<ComposeService> services, string volumeDefinitions)
+    private static string RenderCompose(IReadOnlyList<ComposeService> services)
     {
         var b = new StringBuilder("name: barkfluff\n\n");
         b.AppendLine("x-common-variables: &common-variables");
@@ -612,6 +596,7 @@ COPY --from=lognara-agent --chmod=0755 /usr/local/bin/lognara-agent /usr/local/b
         b.AppendLine($"  {Network}:");
         b.AppendLine("    external: true");
         b.AppendLine("    name: ${DOCKER_NETWORK_NAME}");
+        var volumeDefinitions = BuildVolumeDefinitions(services);
         if (!string.IsNullOrEmpty(volumeDefinitions))
         {
             b.AppendLine("\nvolumes:");
@@ -718,6 +703,10 @@ done
         private bool _commonEnvironment;
 
         public static ComposeService New(string key, string image) => new(key, image);
+
+        public IEnumerable<string> NamedVolumes => _volumes
+            .Select(volume => volume.Split(':', 2)[0])
+            .Where(source => source.Length > 0 && source[0] is not ('/' or '.' or '$'));
 
         public ComposeService WithImage(string value) { _image = value; return this; }
         public ComposeService WithProperty(string key, string value) { _properties[key] = value; return this; }

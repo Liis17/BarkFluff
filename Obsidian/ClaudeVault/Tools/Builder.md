@@ -11,7 +11,7 @@
 
 ## Выходные файлы и владение
 
-`BuilderOutputWriter.Write` записывает файлы из своего списка `OwnedFiles` и при повторной генерации удаляет устаревшие файлы только из этого списка. Перед записью UI предупреждает о папке с `.env` без ключей `BUILDER_*` или compose-файлами без такой метки.
+`BuilderOutputWriter.Write` записывает файлы из своего списка `OwnedFiles` и при повторной генерации удаляет устаревшие файлы только из этого списка. Перед записью UI требует подтверждение для папки без обоих ключей-маркеров `BUILDER_IMAGE_CHANNEL` и `BUILDER_NGINX_MODE`, если найдены `.env`, Compose-файл или другой файл Builder (`nginx/sites/*.conf`, `lognara/*.Dockerfile`, `certs/barkfluff-*.pem`). Пустая папка и каталоги `data/`, `backups/`, `admindata/` сами по себе подтверждения не требуют. Маркеры читаются и из неквотированных `.env` с BOM или CRLF.
 
 - Всегда создаются `.env`, `docker-compose.yml`, `docker-compose.setup.yml`, `secrets/setup_token`, `livekit/livekit.yaml` и `NEXT_STEPS.md`. В `.env` находятся параметры сервисов и секция `BUILDER_*` для повторного открытия конфигурации; spool paths Lognara не задаются через `.env`.
 - `NginxGenerator.BuildFiles` добавляет `nginx/sites/*.conf`; `nginx/nginx.conf` создаётся для режима Compose, а `nginx/sites/00-real-ip.conf` — при включённом Cloudflare. В режиме Compose исходные TLS-файлы копируются как `certs/barkfluff-crt.pem` и `certs/barkfluff-key.pem`.

@@ -1,4 +1,5 @@
 using BarkFluff.Builder;
+using System.Text;
 using Xunit;
 
 namespace BarkFluff.Builder.Tests;
@@ -30,6 +31,74 @@ public sealed class BuilderOutputWriterTests
         finally
         {
             Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("nginx/nginx.conf")]
+    [InlineData("NEXT_STEPS.md")]
+    [InlineData("livekit/livekit.yaml")]
+    [InlineData("certs/barkfluff-custom.pem")]
+    [InlineData("lognara/custom.Dockerfile")]
+    [InlineData("nginx/sites/custom.conf")]
+    public void BuilderOwnedFilesWithoutEnvironmentOrComposeRequireConfirmation(string relativePath)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "barkfluff-builder-owned-file-" + Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(directory, relativePath.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        try
+        {
+            File.WriteAllText(path, "foreign file");
+
+            Assert.True(BuilderOutputWriter.ContainsForeignConfiguration(directory));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void BuilderMarkerAcceptsUnquotedUtf8BomAndCrLfEnvironmentFile()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "barkfluff-builder-marker-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(directory, "nginx"));
+            File.WriteAllText(Path.Combine(directory, "nginx", "nginx.conf"), "builder file");
+            File.WriteAllText(
+                Path.Combine(directory, ".env"),
+                "BUILDER_IMAGE_CHANNEL=Nightly\r\nBUILDER_NGINX_MODE=Compose\r\n",
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+
+            Assert.False(BuilderOutputWriter.ContainsForeignConfiguration(directory));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void DataDirectoriesAloneDoNotRequireConfirmation()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "barkfluff-builder-data-only-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            foreach (var name in new[] { "data", "backups", "admindata" })
+            {
+                var path = Path.Combine(directory, name);
+                Directory.CreateDirectory(path);
+                File.WriteAllText(Path.Combine(path, "keep.txt"), "persistent data");
+            }
+
+            Assert.False(BuilderOutputWriter.ContainsForeignConfiguration(directory));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
         }
     }
 
