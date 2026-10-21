@@ -3,10 +3,13 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 
+using BarkFluff.Client.Core.Infrastructure.Localization;
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
+using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.WebApi.Core.MessengerData;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
@@ -60,6 +63,219 @@ public sealed class AuthenticationServiceSignInTests
         Assert.Equal("bob", Assert.Single(newNode.ResolvedLogins));
 
         await authentication.CancelAuthenticationAttemptAsync(newAttempt);
+    }
+
+    [Fact]
+    public async Task ResolveSignIn_LeavesSavedAndAuthorizedSessionUntouched()
+    {
+        await using var node = await TestIdentityNode.StartAsync("active-session");
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var connection = CreateConnection(node.Address, "device-active");
+        connection.ConnectionParameters.AccessToken = new Token { Value = "active-access" };
+        connection.ConnectionParameters.RefreshToken = new Token { Value = "active-refresh" };
+        connection.ConnectionParameters.UserId = 42;
+        connection.ConnectionParameters.UserName = "existing-user";
+        Assert.True(mainWebApi.CreateAC(
+            connection.ConnectionParameters,
+            Environment.MachineName,
+            ClientMetadata.OperatingSystem,
+            ClientMetadata.AppName,
+            ClientMetadata.AppVersion,
+            string.Empty).IsSuccess);
+
+        var session = new TestClientSession(connection);
+        var store = new TestSessionStore { Value = new StoredSession("saved-access", "saved-refresh") };
+        var authentication = new AuthenticationService(mainWebApi, session, store);
+        var attempt = Assert.IsType<AuthenticationAttempt>(authentication.CreateAuthenticationAttempt());
+
+        var result = await authentication.ResolveSignInAsync(attempt, "alice");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("active-access", connection.ConnectionParameters.AccessToken.Value);
+        Assert.Equal("active-refresh", connection.ConnectionParameters.RefreshToken.Value);
+        Assert.Equal(42, connection.ConnectionParameters.UserId);
+        Assert.Equal("existing-user", connection.ConnectionParameters.UserName);
+        Assert.Equal(new StoredSession("saved-access", "saved-refresh"), store.Value);
+        Assert.Equal(0, store.SaveCount);
+        Assert.Equal(0, store.ClearCount);
+        Assert.Empty(node.AuthRequests);
+        Assert.Empty(node.BeginRequests);
+
+        var activeProfile = await mainWebApi.GetUserData(connection.ConnectionParameters);
+        Assert.True(activeProfile.Error.IsSuccess);
+        Assert.Equal("active-access", Assert.Single(node.UserRequestMetadata)["x-auth-token"]);
+        await authentication.CancelAuthenticationAttemptAsync(attempt);
+    }
+
+    [Fact]
+    public async Task ResolveSignIn_MapsIdentityGrpcExceptionsFromTransportTrailers()
+    {
+        var cases = new[]
+        {
+            (new IdentityRateLimitExceededException().ErrorCode, "8", "Error_LoginRateLimited"),
+            (new IdentityLockoutException().ErrorCode, "8", "Error_LoginLocked"),
+            (new IdentityProtectionUnavailableException().ErrorCode, "14", "Error_LoginProtectionUnavailable")
+        };
+
+        foreach (var (errorCode, grpcStatus, expectedResourceKey) in cases)
+        {
+            await using var node = await TestIdentityNode.StartAsync(
+                "resolve-error",
+                resolveGrpcErrorCode: errorCode,
+                resolveGrpcStatus: grpcStatus);
+            using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+            var authentication = new AuthenticationService(
+                mainWebApi,
+                new TestClientSession(CreateConnection(node.Address, "device")),
+                new TestSessionStore());
+            var attempt = Assert.IsType<AuthenticationAttempt>(authentication.CreateAuthenticationAttempt());
+
+            var result = await authentication.ResolveSignInAsync(attempt, "alice");
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(expectedResourceKey, result.ErrorResourceKey);
+            Assert.Single(node.ResolvedLogins);
+            Assert.Empty(node.BeginRequests);
+            await authentication.CancelAuthenticationAttemptAsync(attempt);
+        }
+    }
+
+    [Fact]
+    public async Task BeginSignIn_MapsLoginModeMismatchFromResponse()
+    {
+        await using var node = await TestIdentityNode.StartAsync("mode-mismatch", beginErrorCode: "login_mode_disabled");
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var authentication = new AuthenticationService(
+            mainWebApi,
+            new TestClientSession(CreateConnection(node.Address, "device")),
+            new TestSessionStore());
+        var attempt = Assert.IsType<AuthenticationAttempt>(authentication.CreateAuthenticationAttempt());
+        var resolution = await authentication.ResolveSignInAsync(attempt, "alice");
+
+        var result = await authentication.BeginSignInAsync(
+            attempt,
+            "alice",
+            "password",
+            resolution.LoginMode,
+            OtpTypeId.Unknown,
+            false);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("login_mode_disabled", result.ErrorCode);
+        Assert.Equal("Error_LoginModeChanged", result.ErrorResourceKey);
+        Assert.Single(node.BeginRequests);
+        await authentication.CancelAuthenticationAttemptAsync(attempt);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task CompleteMissingTokenResponse_DoesNotApplyPersistOrNavigate(
+        bool omitAccessToken,
+        bool omitRefreshToken)
+    {
+        await using var node = await TestIdentityNode.StartAsync(
+            "missing-token",
+            omitAccessToken: omitAccessToken,
+            omitRefreshToken: omitRefreshToken);
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var connection = CreateConnection(node.Address, "device");
+        connection.ConnectionParameters.AccessToken = new Token { Value = "previous-access" };
+        connection.ConnectionParameters.RefreshToken = new Token { Value = "previous-refresh" };
+        var store = new TestSessionStore { Value = new StoredSession("saved-access", "saved-refresh") };
+        var authentication = new AuthenticationService(mainWebApi, new TestClientSession(connection), store);
+        var navigation = new TestLoginNavigation();
+        var viewModel = new LoginViewModel(authentication, navigation, new TestLoginLocalization())
+        {
+            LoginOrEmail = "alice"
+        };
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        viewModel.Password = "password";
+        await viewModel.LoginCommand.ExecuteAsync(null);
+
+        Assert.Equal(LoginStep.Challenge, viewModel.Step);
+        await viewModel.LoginCommand.ExecuteAsync(null);
+
+        Assert.Equal("Error_LoginMissingTokens", viewModel.ErrorMessage);
+        Assert.Equal("previous-access", connection.ConnectionParameters.AccessToken.Value);
+        Assert.Equal("previous-refresh", connection.ConnectionParameters.RefreshToken.Value);
+        Assert.Equal(new StoredSession("saved-access", "saved-refresh"), store.Value);
+        Assert.Equal(0, store.SaveCount);
+        Assert.Equal(0, store.ClearCount);
+        Assert.Equal(0, navigation.ShowMessengerCalls);
+        Assert.Empty(node.UserRequestMetadata);
+        Assert.Single(node.CompletedReferences);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task LoginViewModel_UnknownNumericLoginModeDoesNotShowPasswordOrBeginSignIn()
+    {
+        await using var node = await TestIdentityNode.StartAsync(
+            "unknown-mode",
+            resolveLoginMode: (AuthLoginMode)999);
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var authentication = new AuthenticationService(
+            mainWebApi,
+            new TestClientSession(CreateConnection(node.Address, "device")),
+            new TestSessionStore());
+        var viewModel = new LoginViewModel(authentication, new TestLoginNavigation(), new TestLoginLocalization())
+        {
+            LoginOrEmail = "alice"
+        };
+
+        await viewModel.LoginCommand.ExecuteAsync(null);
+
+        Assert.Equal(LoginStep.Identifier, viewModel.Step);
+        Assert.Equal("Error_LoginAccountNotFound", viewModel.ErrorMessage);
+        Assert.Empty(viewModel.Password);
+        Assert.Empty(node.AuthRequests);
+        Assert.Empty(node.BeginRequests);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task ConcurrentLoginCommandAttempts_DoNotDuplicateBeginCompletePersistenceOrNavigation()
+    {
+        await using var node = await TestIdentityNode.StartAsync(
+            "concurrent-login",
+            blockBegin: true,
+            blockComplete: true,
+            approveBegin: true);
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var connection = CreateConnection(node.Address, "device");
+        var store = new TestSessionStore();
+        var navigation = new TestLoginNavigation();
+        var authentication = new AuthenticationService(mainWebApi, new TestClientSession(connection), store);
+        var viewModel = new LoginViewModel(authentication, navigation, new TestLoginLocalization())
+        {
+            LoginOrEmail = "alice"
+        };
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.Equal(LoginStep.Password, viewModel.Step);
+        viewModel.Password = "password";
+
+        var firstLogin = viewModel.LoginCommand.ExecuteAsync(null);
+        await node.BeginRequestSeen.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        var repeatedBegin = viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.Single(node.BeginRequests);
+
+        node.ReleaseBegin();
+        await node.CompleteRequestSeen.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        var repeatedComplete = viewModel.LoginCommand.ExecuteAsync(null);
+        Assert.Single(node.CompletedReferences);
+        node.ReleaseComplete();
+
+        await Task.WhenAll(firstLogin, repeatedBegin, repeatedComplete).WaitAsync(TimeSpan.FromSeconds(3));
+
+        Assert.Single(node.BeginRequests);
+        Assert.Single(node.CompletedReferences);
+        Assert.Empty(node.AuthRequests);
+        Assert.Equal(1, store.SaveCount);
+        Assert.Equal(new StoredSession("concurrent-login-access", "concurrent-login-refresh"), store.Value);
+        Assert.Equal(1, navigation.ShowMessengerCalls);
+        Assert.Equal("concurrent-login-access", connection.ConnectionParameters.AccessToken.Value);
+        await viewModel.CleanupAsync();
     }
 
     [Fact]
@@ -216,16 +432,21 @@ public sealed class AuthenticationServiceSignInTests
     private sealed class TestSessionStore : ISecureSessionStore
     {
         private int _firstSaveClaimed;
+        private int _saveCount;
+        private int _clearCount;
         private readonly TaskCompletionSource _releaseFirstSave = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public StoredSession? Value { get; set; }
         public bool BlockFirstSave { get; init; }
+        public int SaveCount => Volatile.Read(ref _saveCount);
+        public int ClearCount => Volatile.Read(ref _clearCount);
         public TaskCompletionSource FirstSaveStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task<StoredSession?> LoadAsync(CancellationToken cancellationToken = default) => Task.FromResult(Value);
 
         public async Task SaveAsync(StoredSession session, CancellationToken cancellationToken = default)
         {
+            Interlocked.Increment(ref _saveCount);
             if (BlockFirstSave && Interlocked.Exchange(ref _firstSaveClaimed, 1) == 0)
             {
                 FirstSaveStarted.TrySetResult();
@@ -237,6 +458,7 @@ public sealed class AuthenticationServiceSignInTests
 
         public Task ClearAsync(CancellationToken cancellationToken = default)
         {
+            Interlocked.Increment(ref _clearCount);
             Value = null;
             return Task.CompletedTask;
         }
@@ -248,6 +470,8 @@ public sealed class AuthenticationServiceSignInTests
     {
         private readonly WebApplication _application;
         private readonly TaskCompletionSource _releaseProfile = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _releaseBegin = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _releaseComplete = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private TestIdentityNode(WebApplication application, string address, string name)
         {
@@ -261,24 +485,52 @@ public sealed class AuthenticationServiceSignInTests
         public bool BlockProfile { get; init; }
         public bool UnimplementedResolve { get; init; }
         public AuthLoginMode ResolveLoginMode { get; init; } = AuthLoginMode.Password;
+        public string? ResolveGrpcErrorCode { get; init; }
+        public string ResolveGrpcStatus { get; init; } = "0";
+        public string? BeginErrorCode { get; init; }
+        public bool BlockBegin { get; init; }
+        public bool BlockComplete { get; init; }
+        public bool ApproveBegin { get; init; }
+        public bool OmitAccessToken { get; init; }
+        public bool OmitRefreshToken { get; init; }
         public ConcurrentQueue<string> ResolvedLogins { get; } = new();
+        public ConcurrentQueue<AuthRequest> AuthRequests { get; } = new();
         public ConcurrentQueue<BeginSignInRequest> BeginRequests { get; } = new();
+        public ConcurrentQueue<AuthChallengeReference> CompletedReferences { get; } = new();
         public ConcurrentQueue<AuthChallengeReference> CancelledReferences { get; } = new();
         public ConcurrentQueue<IReadOnlyDictionary<string, string>> RequestMetadata { get; } = new();
+        public ConcurrentQueue<IReadOnlyDictionary<string, string>> UserRequestMetadata { get; } = new();
         public TaskCompletionSource CancelledChallengeSeen { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource ProfileRequestSeen { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource BeginRequestSeen { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource CompleteRequestSeen { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public static async Task<TestIdentityNode> StartAsync(
             string name,
             bool blockProfile = false,
             bool unimplementedResolve = false,
-            AuthLoginMode resolveLoginMode = AuthLoginMode.Password)
+            AuthLoginMode resolveLoginMode = AuthLoginMode.Password,
+            string? resolveGrpcErrorCode = null,
+            string resolveGrpcStatus = "0",
+            string? beginErrorCode = null,
+            bool blockBegin = false,
+            bool blockComplete = false,
+            bool approveBegin = false,
+            bool omitAccessToken = false,
+            bool omitRefreshToken = false)
         {
             var builder = WebApplication.CreateBuilder();
             builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0, listenOptions =>
                 listenOptions.Protocols = HttpProtocols.Http2));
             var application = builder.Build();
             TestIdentityNode? node = null;
+
+            application.MapPost("/barkfluff.identity.IdentityApi/Auth", async context =>
+            {
+                var payload = await ReadGrpcPayloadAsync(context);
+                node!.AuthRequests.Enqueue(AuthRequest.Parser.ParseFrom(payload));
+                await WriteGrpcResponseAsync(context, new AuthResponse());
+            });
 
             application.MapPost("/barkfluff.identity.IdentityApi/ResolveSignIn", async context =>
             {
@@ -292,6 +544,16 @@ public sealed class AuthenticationServiceSignInTests
 
                 node.ResolvedLogins.Enqueue(request.Login);
                 node.RequestMetadata.Enqueue(CaptureHeaders(context));
+                if (node.ResolveGrpcErrorCode is not null)
+                {
+                    await WriteGrpcResponseAsync(
+                        context,
+                        new ResolveSignInResponse(),
+                        node.ResolveGrpcStatus,
+                        node.ResolveGrpcErrorCode);
+                    return;
+                }
+
                 await WriteGrpcResponseAsync(context, new ResolveSignInResponse { LoginMode = node.ResolveLoginMode });
             });
 
@@ -301,10 +563,22 @@ public sealed class AuthenticationServiceSignInTests
                 var request = BeginSignInRequest.Parser.ParseFrom(payload);
                 node!.BeginRequests.Enqueue(request);
                 node.RequestMetadata.Enqueue(CaptureHeaders(context));
+                node.BeginRequestSeen.TrySetResult();
+                if (node.BlockBegin)
+                {
+                    await node._releaseBegin.Task.WaitAsync(context.RequestAborted);
+                }
+
+                if (node.BeginErrorCode is not null)
+                {
+                    await WriteGrpcResponseAsync(context, new AuthChallengeResponse { ErrorCode = node.BeginErrorCode });
+                    return;
+                }
+
                 await WriteGrpcResponseAsync(context, new AuthChallengeResponse
                 {
                     Challenge = new AuthChallengeReference { Id = $"{node.Name}-challenge", Secret = "challenge-secret" },
-                    State = AuthChallengeState.Waiting,
+                    State = node.ApproveBegin ? AuthChallengeState.Approved : AuthChallengeState.Waiting,
                     Factor = request.Factor,
                     NeedsCode = false
                 });
@@ -325,15 +599,30 @@ public sealed class AuthenticationServiceSignInTests
 
             application.MapPost("/barkfluff.identity.IdentityApi/CompleteAuthChallenge", async context =>
             {
-                _ = await ReadGrpcPayloadAsync(context);
+                var payload = await ReadGrpcPayloadAsync(context);
+                var request = CompleteAuthChallengeRequest.Parser.ParseFrom(payload);
+                node!.CompletedReferences.Enqueue(request.Challenge);
+                node.CompleteRequestSeen.TrySetResult();
+                if (node.BlockComplete)
+                {
+                    await node._releaseComplete.Task.WaitAsync(context.RequestAborted);
+                }
+
+                var session = new AuthResponse();
+                if (!node.OmitAccessToken)
+                {
+                    session.AccessToken = new Token { Value = $"{node.Name}-access" };
+                }
+
+                if (!node.OmitRefreshToken)
+                {
+                    session.RefreshToken = new Token { Value = $"{node.Name}-refresh" };
+                }
+
                 await WriteGrpcResponseAsync(context, new CompleteAuthChallengeResponse
                 {
                     State = AuthChallengeState.Completed,
-                    Session = new AuthResponse
-                    {
-                        AccessToken = new Token { Value = $"{node!.Name}-access" },
-                        RefreshToken = new Token { Value = $"{node.Name}-refresh" }
-                    }
+                    Session = session
                 });
             });
 
@@ -341,6 +630,7 @@ public sealed class AuthenticationServiceSignInTests
             {
                 _ = await ReadGrpcPayloadAsync(context);
                 node!.ProfileRequestSeen.TrySetResult();
+                node.UserRequestMetadata.Enqueue(CaptureHeaders(context));
                 if (node.BlockProfile)
                 {
                     try
@@ -370,16 +660,28 @@ public sealed class AuthenticationServiceSignInTests
             {
                 BlockProfile = blockProfile,
                 UnimplementedResolve = unimplementedResolve,
-                ResolveLoginMode = resolveLoginMode
+                ResolveLoginMode = resolveLoginMode,
+                ResolveGrpcErrorCode = resolveGrpcErrorCode,
+                ResolveGrpcStatus = resolveGrpcStatus,
+                BeginErrorCode = beginErrorCode,
+                BlockBegin = blockBegin,
+                BlockComplete = blockComplete,
+                ApproveBegin = approveBegin,
+                OmitAccessToken = omitAccessToken,
+                OmitRefreshToken = omitRefreshToken
             };
             return node;
         }
 
         public void ReleaseProfile() => _releaseProfile.TrySetResult();
+        public void ReleaseBegin() => _releaseBegin.TrySetResult();
+        public void ReleaseComplete() => _releaseComplete.TrySetResult();
 
         public async ValueTask DisposeAsync()
         {
             _releaseProfile.TrySetResult();
+            _releaseBegin.TrySetResult();
+            _releaseComplete.TrySetResult();
             await _application.DisposeAsync();
         }
 
@@ -411,7 +713,11 @@ public sealed class AuthenticationServiceSignInTests
             }
         }
 
-        private static async Task WriteGrpcResponseAsync(HttpContext context, IMessage response, string grpcStatus = "0")
+        private static async Task WriteGrpcResponseAsync(
+            HttpContext context,
+            IMessage response,
+            string grpcStatus = "0",
+            string? errorCode = null)
         {
             var payload = response.ToByteArray();
             var frame = new byte[payload.Length + 5];
@@ -419,8 +725,43 @@ public sealed class AuthenticationServiceSignInTests
             payload.CopyTo(frame, 5);
             context.Response.ContentType = "application/grpc";
             context.Response.DeclareTrailer("grpc-status");
+            if (errorCode is not null)
+            {
+                context.Response.DeclareTrailer("x-error-code");
+            }
+
             await context.Response.Body.WriteAsync(frame, context.RequestAborted);
             context.Response.AppendTrailer("grpc-status", grpcStatus);
+            if (errorCode is not null)
+            {
+                context.Response.AppendTrailer("x-error-code", errorCode);
+            }
         }
+    }
+
+    private sealed class TestLoginNavigation : IOnboardingNavigationService
+    {
+        public int ShowMessengerCalls { get; private set; }
+        public object? CurrentViewModel => null;
+        public event EventHandler<OnboardingNavigationEventArgs>? CurrentViewModelChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public void ShowWelcome() { }
+        public void ShowSelectNode() { }
+        public void ShowConnectedNode() { }
+        public void ShowLogin() { }
+        public void ShowRegistration() { }
+        public void ShowPasswordRecovery() { }
+        public void ShowMessenger() => ShowMessengerCalls++;
+    }
+
+    private sealed class TestLoginLocalization : ILocalizationService
+    {
+        public string ResolveSupportedLanguage(string? requestedLanguage) => requestedLanguage ?? "en";
+        public void Apply(string language) { }
+        public string GetString(string resourceKey) => resourceKey;
     }
 }
