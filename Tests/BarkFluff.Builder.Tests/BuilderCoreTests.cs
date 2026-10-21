@@ -6,6 +6,24 @@ namespace BarkFluff.Builder.Tests;
 
 public sealed class BuilderCoreTests
 {
+    public static IEnumerable<object[]> ComposeDotenvEscapeCases() =>
+    [
+        ["$value", "TEST=\"\\$value\""],
+        ["${NOT_A_VAR}", "TEST=\"\\${NOT_A_VAR}\""],
+        ["$$", "TEST=\"\\$\\$\""],
+        ["a$", "TEST=\"a\\$\""],
+        ["\"", "TEST=\"\\\"\""],
+        ["'", "TEST=\"'\""],
+        ["\\", "TEST=\"\\\\\""],
+        ["\\n", "TEST=\"\\\\n\""],
+        ["#", "TEST=\"#\""],
+        [" # comment", "TEST=\" # comment\""],
+        [" leading and trailing ", "TEST=\" leading and trailing \""],
+        ["a=b", "TEST=\"a=b\""],
+        ["first line\nsecond line", "TEST=\"first line\\nsecond line\""],
+        ["Привет雪", "TEST=\"Привет雪\""]
+    ];
+
     [Fact]
     public void ModelNotifiesChangesAndHasExpectedDefaults()
     {
@@ -214,15 +232,12 @@ public sealed class BuilderCoreTests
         Assert.DoesNotContain("https://", config);
     }
 
-    [Fact]
-    public void EnvironmentEscapingPreservesComposeDotenvSpecialCharacters()
+    [Theory]
+    [MemberData(nameof(ComposeDotenvEscapeCases))]
+    public void EnvironmentEscapingUsesComposeDotenvDoubleQuotedSyntax(string value, string expectedLine)
     {
-        var escaped = ComposeGenerator.EscapeEnv("$value # \"quoted\" \\\nsecond line");
-        Assert.Contains("$$value #", escaped);
-        Assert.Contains("\\\"quoted\\\"", escaped);
-        Assert.Contains("\\\\", escaped);
-        Assert.Contains("\\n", escaped);
-        Assert.DoesNotContain("\n", escaped);
+        var actualLine = $"TEST=\"{ComposeGenerator.EscapeEnv(value)}\"";
+        Assert.Equal(expectedLine, actualLine);
 
         var model = BuilderTestSupport.ValidModel();
         model.FirebasePrivateKey = "private line one\nprivate line two";

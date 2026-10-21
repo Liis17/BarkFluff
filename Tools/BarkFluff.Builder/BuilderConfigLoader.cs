@@ -7,6 +7,9 @@ namespace BarkFluff.Builder;
 public static class BuilderConfigLoader
 {
     private static readonly UTF8Encoding Utf8WithoutBom = new(false, true);
+    private static readonly Regex EnvironmentVariableExpression = new(
+        @"\$\$|\$\{(?<name>[A-Za-z_][A-Za-z0-9_]*)(?:(?<operator>:-|-|:\+|\+|:\?|\?)(?<operand>[^{}]*))?\}|\$(?<bare>[A-Za-z_][A-Za-z0-9_]*)",
+        RegexOptions.CultureInvariant);
 
     public static BuilderModel Load(string directory)
     {
@@ -86,7 +89,7 @@ public static class BuilderConfigLoader
     private static Dictionary<string, string> ParseEnvironment(string text)
     {
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
-        var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
+        var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         for (var lineIndex = 0; lineIndex < lines.Length; lineIndex++)
         {
             var line = lines[lineIndex];
@@ -94,11 +97,11 @@ public static class BuilderConfigLoader
                 continue;
 
             var equals = line.IndexOf('=');
-            if (equals <= 0 || !Regex.IsMatch(line[..equals], @"^[A-Z][A-Z0-9_]*$"))
+            var key = equals > 0 ? line[..equals].Trim() : string.Empty;
+            if (equals <= 0 || !Regex.IsMatch(key, @"^[A-Z][A-Z0-9_]*$"))
                 throw EnvironmentFormatError(lineIndex, "ожидалась строка KEY=\"значение\".");
 
-            var key = line[..equals];
-            var value = ParseEnvironmentValue(line[(equals + 1)..], lineIndex);
+            var value = ParseEnvironmentValue(line[(equals + 1)..], lineIndex, result);
             if (!result.TryAdd(key, value))
                 throw EnvironmentFormatError(lineIndex, $"ключ '{key}' указан повторно.");
         }
@@ -106,25 +109,27 @@ public static class BuilderConfigLoader
         return result;
     }
 
-    private static string ParseEnvironmentValue(string source, int lineIndex)
+    private static string ParseEnvironmentValue(string source, int lineIndex, IReadOnlyDictionary<string, string> values)
     {
-        if (source.Length == 0 || source[0] != '"')
+        source = source.TrimStart();
+        if (source.Length == 0 || source[0] is not ('"' or '\''))
         {
-            var unquotedValue = source.TrimEnd();
-            var comment = Regex.Match(unquotedValue, @"\s+#");
-            if (comment.Success)
-                unquotedValue = unquotedValue[..comment.Index];
-            return unquotedValue.Trim().Replace("$$", "$", StringComparison.Ordinal);
+            var commentIndex = source.IndexOf(" #", StringComparison.Ordinal);
+            if (commentIndex >= 0)
+                source = source[..commentIndex];
+            return ExpandEnvironmentVariables(source.TrimEnd(), values, lineIndex);
         }
 
+        var quote = source[0];
         var value = new StringBuilder();
         var closed = false;
         for (var index = 1; index < source.Length; index++)
         {
             var current = source[index];
-            if (current == '"')
+            if (current == quote)
             {
-                if (!string.IsNullOrWhiteSpace(source[(index + 1)..]))
+                var suffix = source[(index + 1)..].TrimStart();
+                if (suffix.Length > 0 && !suffix.StartsWith('#'))
                     throw EnvironmentFormatError(lineIndex, "после закрывающей кавычки есть лишний текст.");
                 closed = true;
                 break;
@@ -134,22 +139,33 @@ public static class BuilderConfigLoader
             {
                 if (++index >= source.Length)
                     throw EnvironmentFormatError(lineIndex, "незавершённая escape-последовательность.");
-                value.Append(source[index] switch
+                var escaped = source[index];
+                if (escaped == quote)
                 {
-                    '\\' => '\\',
-                    '"' => '"',
-                    'n' => '\n',
-                    'r' => '\r',
-                    't' => '\t',
-                    _ => throw EnvironmentFormatError(lineIndex, "неизвестная escape-последовательность.")
-                });
-                continue;
-            }
+                    value.Append(escaped);
+                    continue;
+                }
 
-            if (current == '$' && index + 1 < source.Length && source[index + 1] == '$')
-            {
-                value.Append('$');
-                index++;
+                if (quote == '\'')
+                {
+                    value.Append('\\').Append(escaped);
+                    continue;
+                }
+
+                value.Append(escaped switch
+                {
+                    '\\' => "\\",
+                    '"' => "\"",
+                    '$' => "$$",
+                    'a' => "\a",
+                    'b' => "\b",
+                    'f' => "\f",
+                    'n' => "\n",
+                    'r' => "\r",
+                    't' => "\t",
+                    'v' => "\v",
+                    _ => "\\" + escaped
+                });
                 continue;
             }
 
@@ -158,7 +174,47 @@ public static class BuilderConfigLoader
 
         if (!closed)
             throw EnvironmentFormatError(lineIndex, "не найдена закрывающая кавычка.");
-        return value.ToString();
+        var parsedValue = value.ToString();
+        return quote == '\'' ? parsedValue : ExpandEnvironmentVariables(parsedValue, values, lineIndex);
+    }
+
+    private static string ExpandEnvironmentVariables(string source, IReadOnlyDictionary<string, string> values, int lineIndex)
+    {
+        return EnvironmentVariableExpression.Replace(source, match =>
+        {
+            if (match.Value == "$$")
+                return "$";
+
+            var name = match.Groups["name"].Success ? match.Groups["name"].Value : match.Groups["bare"].Value;
+            var isSet = LookupEnvironmentValue(name, values, out var value);
+            var operation = match.Groups["operator"].Value;
+            var operand = match.Groups["operand"].Value;
+            var isNotEmpty = isSet && value.Length > 0;
+
+            return operation switch
+            {
+                "" => isSet ? value : string.Empty,
+                ":-" when !isNotEmpty => ExpandEnvironmentVariables(operand, values, lineIndex),
+                "-" when !isSet => ExpandEnvironmentVariables(operand, values, lineIndex),
+                ":+" when isNotEmpty => ExpandEnvironmentVariables(operand, values, lineIndex),
+                "+" when isSet => ExpandEnvironmentVariables(operand, values, lineIndex),
+                ":+" or "+" => string.Empty,
+                ":?" when !isNotEmpty => throw EnvironmentFormatError(lineIndex, $"переменная {name} обязательна: {operand}"),
+                "?" when !isSet => throw EnvironmentFormatError(lineIndex, $"переменная {name} обязательна: {operand}"),
+                _ => value
+            };
+        });
+    }
+
+    private static bool LookupEnvironmentValue(string name, IReadOnlyDictionary<string, string> values, out string value)
+    {
+        var environmentValue = Environment.GetEnvironmentVariable(name);
+        if (environmentValue is not null)
+        {
+            value = environmentValue;
+            return true;
+        }
+        return values.TryGetValue(name, out value!);
     }
 
     private static FormatException EnvironmentFormatError(int zeroBasedLine, string detail) =>
