@@ -536,6 +536,29 @@
     <string name="storage_server_storage">Almacenamiento en el servidor</string>
     <string name="storage_app_cache">Caché de la app</string>
     <string name="storage_clear_cache">Vaciar caché</string>
+    <string name="storage_clear_failed">No se pudo borrar</string>
+    <string name="storage_clear_option_media">Caché multimedia (%1$s)</string>
+    <string name="storage_clear_option_history">Historial de chats (%1$s)</string>
+    <string name="storage_clear_option_secret">Chats secretos (%1$s)</string>
+    <string name="storage_clear_option_outgoing">Cola de salida (%1$s)</string>
+    <string name="storage_clear_option_drafts">Borradores (%1$s)</string>
+    <string name="storage_clear_confirm">Borrar selección</string>
+    <string name="storage_clear_warning_irreversible">Has seleccionado elementos con efectos irreversibles: es posible que algunos mensajes salientes ya hayan llegado al servidor; también se solicitará al servidor que elimine los borradores, pero podría fallar si no hay conexión; los chats secretos solo se guardan en este dispositivo y no se pueden recuperar.</string>
+    <plurals name="storage_clear_count_messages">
+        <item quantity="one">%d mensaje</item>
+        <item quantity="many">%d mensajes</item>
+        <item quantity="other">%d mensajes</item>
+    </plurals>
+    <plurals name="storage_clear_count_outgoing">
+        <item quantity="one">%d elemento en cola</item>
+        <item quantity="many">%d elementos en cola</item>
+        <item quantity="other">%d elementos en cola</item>
+    </plurals>
+    <plurals name="storage_clear_count_drafts">
+        <item quantity="one">%d borrador</item>
+        <item quantity="many">%d borradores</item>
+        <item quantity="other">%d borradores</item>
+    </plurals>
 
     <!-- Devices -->
     <string name="devices_title">Dispositivos</string>

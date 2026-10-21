@@ -139,6 +139,15 @@ data class OutgoingMessageRecord(
 
 @Dao
 interface OutgoingMessageDao {
+    @Query("SELECT COUNT(*) FROM outgoing_messages WHERE scopeId = :scopeId AND state NOT IN ('SENT','CANCEL_REQUESTED')")
+    suspend fun pendingOutgoingCount(scopeId: String): Int
+
+    @Query("DELETE FROM outgoing_attachments WHERE scopeId = :scopeId AND operationId NOT IN (SELECT operationId FROM outgoing_messages WHERE scopeId = :scopeId AND state = :sentState)")
+    suspend fun deleteNonSentAttachments(scopeId: String, sentState: String)
+
+    @Query("DELETE FROM outgoing_messages WHERE scopeId = :scopeId AND state != :sentState")
+    suspend fun deleteNonSentMessages(scopeId: String, sentState: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMessage(message: OutgoingMessageEntity)
 

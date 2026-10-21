@@ -1,11 +1,13 @@
 package com.barkfluff.client.drafts
 
 import android.content.Context
+import android.util.Log
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.CachedChatDraft
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.gateway.ChatDraftGateway
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -126,6 +128,37 @@ class ChatDraftRepository(
     }
 
     suspend fun loadLocal() = mutex.withLock { ensureLoaded() }
+
+    /** Локальный и серверный вайп черновиков; best-effort удаляет ревизии, включая DELETE_PENDING-тумбстоуны, чтобы restore не восстановил их с сервера. */
+    suspend fun wipeAll() {
+        val snapshot = mutex.withLock {
+            if (ensureLoaded() == null) return
+            entries.toMap()
+        }
+        snapshot.forEach { (chatId, draft) ->
+            if (draft.revision.isBlank()) return@forEach
+            try {
+                val result = networkMutex.withLock { remote.delete(chatId, draft.revision) }
+                val error = result.exceptionOrNull()
+                if (error is CancellationException) throw error
+                if (error != null) {
+                    Log.w("ChatDraftRepository", "Could not delete a remote draft during wipe", error)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Log.w("ChatDraftRepository", "Could not delete a remote draft during wipe", error)
+            }
+        }
+        mutex.withLock {
+            snapshot.forEach { (chatId, draft) ->
+                if (entries[chatId] == draft) entries.remove(chatId)
+            }
+            publish()
+        }
+        // An edit after the snapshot can stay in memory even if this table clear removes its row.
+        cache.clearAllDraftsRows()
+    }
 
     suspend fun clearAfterSent(chatId: String, sentGeneration: Long) {
         val pending = mutex.withLock {

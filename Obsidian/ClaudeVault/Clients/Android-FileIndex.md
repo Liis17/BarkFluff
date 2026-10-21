@@ -38,7 +38,7 @@ Parent: [[Clients/Android]]
 | ChatViewModel.kt, ChatStateModules.kt | State/effect/intent и reducers обычного чата |
 | chat | RegularChatSession, MessageNavigator и timeline coordination |
 | adapter | MessageRowProjector, MessageAdapter и UI lists |
-| cache | SQLCipher Room v5, outbox records и migration |
+| cache | SQLCipher Room v5, outbox records, migration и выборочная очистка (ClearCacheOptions, clearHistoryCache/clearSecretHistory/clearOutgoingKeepReads, compact) |
 | drafts | ChatDraftRepository и ComposerAttachmentStore |
 | send | OutgoingMessageQueue, OutgoingMessageWorker и retry policy |
 | auth | Activity-retained challenge state и диалог |
@@ -67,5 +67,6 @@ Representative test files:
 - Android/Barkfluff.Client.Android/app/src/test/java/com/barkfluff/client/ChatStateModulesTest.kt
 - Android/Barkfluff.Client.Android/app/src/test/java/com/barkfluff/client/drafts/ChatDraftJournalTest.kt
 - Android/Barkfluff.Client.Android/app/src/androidTest/java/com/barkfluff/client/cache/OutgoingMessageMigrationTest.kt
+- Android/Barkfluff.Client.Android/app/src/androidTest/java/com/barkfluff/client/cache/ChatCacheRepositoryClearTest.kt
 
 Локальный UI-resource checker: Android/tools/check_android_ui.py. Полный актуальный список файлов можно получить командой rg --files Android; каталог не должен превращаться в копию этого вывода.
