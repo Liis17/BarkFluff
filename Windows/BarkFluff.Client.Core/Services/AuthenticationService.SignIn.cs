@@ -171,6 +171,7 @@ public sealed partial class AuthenticationService
         {
             using var operation = state.EnterOperation();
             using var linked = LinkCancellation(state, cancellationToken);
+            state.ClearPendingTokens();
             var response = await state.WebApi.BeginSignIn(new BarkFluff.Proto.Identity.BeginSignInRequest
             {
                 Login = login,
@@ -251,7 +252,7 @@ public sealed partial class AuthenticationService
             return AuthenticationOperationResult.Failure("Error_LoginUnavailable");
         }
 
-        if (state.PendingAccessToken is null || state.PendingRefreshToken is null)
+        if (!state.HasPendingTokensFor(reference))
         {
             try
             {
@@ -286,7 +287,7 @@ public sealed partial class AuthenticationService
                     return AuthenticationOperationResult.Failure("Error_LoginMissingTokens");
                 }
 
-                state.SetPendingTokens(accessToken, refreshToken);
+                state.SetPendingTokens(accessToken, refreshToken, reference);
             }
             catch (OperationCanceledException) when (IsCancellationRequested(state, cancellationToken))
             {
@@ -606,7 +607,7 @@ public sealed partial class AuthenticationService
             bool applied;
             lock (_attemptSync)
             {
-                if (!IsCurrentStateLocked(state))
+                if (cancellationToken.IsCancellationRequested || !IsCurrentStateLocked(state))
                 {
                     applied = false;
                 }
@@ -810,6 +811,7 @@ public sealed partial class AuthenticationService
 
     private static string ErrorKeyForException(Exception exception) => exception switch
     {
+        BarkFluff.Shared.Exceptions.Identity.InvalidLoginOrPasswordException => "Error_LoginFailed",
         BarkFluff.Shared.Exceptions.Identity.IdentityRateLimitExceededException => "Error_LoginRateLimited",
         BarkFluff.Shared.Exceptions.Identity.IdentityLockoutException => "Error_LoginLocked",
         BarkFluff.Shared.Exceptions.Identity.IdentityProtectionUnavailableException => "Error_LoginProtectionUnavailable",
@@ -861,6 +863,7 @@ public sealed partial class AuthenticationService
         private BarkFluff.Proto.Identity.AuthChallengeReference? _challenge;
         private BarkFluff.Proto.Identity.Token? _pendingAccessToken;
         private BarkFluff.Proto.Identity.Token? _pendingRefreshToken;
+        private BarkFluff.Proto.Identity.AuthChallengeReference? _pendingTokenReference;
         private bool _disposed;
 
         public AuthenticationAttempt Handle { get; } = handle;
@@ -918,15 +921,31 @@ public sealed partial class AuthenticationService
             lock (_sync)
             {
                 _challenge = null;
+                ClearPendingTokens();
             }
         }
 
         public void SetPendingTokens(
             BarkFluff.Proto.Identity.Token accessToken,
-            BarkFluff.Proto.Identity.Token refreshToken)
+            BarkFluff.Proto.Identity.Token refreshToken,
+            BarkFluff.Proto.Identity.AuthChallengeReference? reference = null)
         {
             _pendingAccessToken = CopyToken(accessToken);
             _pendingRefreshToken = CopyToken(refreshToken);
+            _pendingTokenReference = reference is null ? null : CopyReference(reference);
+            AuthorizedClientInitialized = false;
+        }
+
+        public bool HasPendingTokensFor(BarkFluff.Proto.Identity.AuthChallengeReference reference) =>
+            _pendingAccessToken is not null && _pendingRefreshToken is not null &&
+            _pendingTokenReference?.Id == reference.Id && _pendingTokenReference.Secret == reference.Secret;
+
+        public void ClearPendingTokens()
+        {
+            _pendingAccessToken = null;
+            _pendingRefreshToken = null;
+            _pendingTokenReference = null;
+            AuthorizedClientInitialized = false;
         }
 
         public Task BeginRetirement(Func<Task> retire)
