@@ -10,7 +10,7 @@ Backend unit/integration проекты находятся в `Tests/BarkFluff.*
 
 Выбранный reusable `test-backend.yml` обнаруживает все backend-проекты и запускает каждый отдельной matrix job; Windows-проекты исключаются по Windows TargetFramework. PostgreSQL 16 в service container включает Messages search и Developers concurrent seed через соответствующие env; рабочие БД не используются.
 
-`test-clients.yml` запускает Windows test projects на Windows, Android JVM tests (`:core:testDebugUnitTest`, `:app-v1:testNightlyDebugUnitTest`) и UI checker на Ubuntu, BFCore Swift tests на macOS 26. Android instrumented tests с эмулятором, iOS UI и Linux Qt в этот набор не входят. `test-scripts.yml` запускает Python CI helper tests и JavaScript-тесты Web/AdminPanel. TRX и Android XML сохраняются как artifacts.
+`test-clients.yml` запускает Windows test projects на Windows, Android JVM tests (`:core:testDebugUnitTest`, `:app-v1:testNightlyDebugUnitTest`) и UI checker на Ubuntu, BFNetworking и BFCore Swift tests на macOS 26. Android instrumented tests с эмулятором, iOS UI и Linux Qt в этот набор не входят. `test-scripts.yml` запускает Python CI helper tests и JavaScript-тесты Web/AdminPanel. TRX и Android XML сохраняются как artifacts.
 
 Единый PR check `Tests passed` выполняется с `always()`: выбор должен завершиться успешно, каждый выбранный набор — иметь `success`, каждый невыбранный — `skipped`. Ошибка выбора, failure/cancellation или неожиданный skip блокируют merge. Для нескольких клиентских платформ используется matrix с `fail-fast: false`. Правило GitHub требует отдельной установки; порядок — [[Architecture#Развёртывание и CI]]. Push/manual workflows сборок сначала выполняют скриптовые проверки и тесты своего компонента; backend также проверяет GrpcServer. Для Beacon/WebServer без собственного test project используется GrpcServer. Это не означает наличие тестов бизнес-логики этих сервисов.
 
@@ -19,6 +19,12 @@ dotnet test Tests/BarkFluff.Messages.Tests/BarkFluff.Messages.Tests.csproj
 ```
 
 Для .NET нужен SDK из `global.json`. Клиентские проверки находятся в собственных деревьях; точки входа — [[Clients/Android-FileIndex]], [[Clients/macOS-ProjectMap]], [[Clients/iOS-ProjectMap]], Windows/Web-заметки.
+
+## Swift auth tests
+
+- `swift test --package-path Mac/Barkfluff/Packages/BFNetworking` — `SignInMappingTests`: Identity status/trailer, отмена Task/смена endpoint, wire enum, challenge reference и валидность токенов.
+- `swift test --package-path Mac/Barkfluff/Packages/BFCore` — `SignInFlowTests`: challenge/recovery, polling с управляемыми async boundaries, retry Complete, resend cooldown с часами, гонки QR/challenge и откат реального AuthService при отмене во время saveTokens/loadCurrentUser.
+- В BFCoreTests `MacLoginViewModel.swift` — относительный symlink на production LoginViewModel; `MacLoginViewModelTests` компилирует и проверяет реальные login actions и переход в main с тестовым AppCoordinator, включая Telegram polling и потерянный Complete. Это не сборка всего приложения и не UI/snapshot тест SwiftUI LoginView. Полная macOS сборка остаётся отдельной проверкой.
 
 ## Базы данных и ограничения провайдеров
 

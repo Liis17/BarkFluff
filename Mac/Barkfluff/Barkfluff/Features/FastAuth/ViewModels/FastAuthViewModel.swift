@@ -28,25 +28,31 @@ final class FastAuthViewModel {
     // MARK: - Dependencies
 
     private let fastAuthService: FastAuthServiceProtocol
-    private let authService: AuthServiceProtocol
+    private let admissionService: SignInSessionAdmissionService
 
     // MARK: - Callbacks
 
     /// Вызывается после успешного применения токенов FastAuth — повторяет роль
     /// `App.OpenMessengerPage()` из WPF-клиента.
-    var onAuthenticated: (() -> Void)?
+    var onAuthenticated: ((SignInSessionAdmissionReceipt) -> Void)?
 
     // MARK: - Internal
 
     private var sessionTask: Task<Void, Never>?
     private var timerTask: Task<Void, Never>?
     private var hasFinished: Bool = false
+    private var admissionAttempt: SignInSessionAdmissionAttempt?
+
+    var canRetrySession: Bool { hasFinished && errorMessage != nil }
 
     // MARK: - Init
 
-    init(fastAuthService: FastAuthServiceProtocol, authService: AuthServiceProtocol) {
+    init(
+        fastAuthService: FastAuthServiceProtocol,
+        admissionService: SignInSessionAdmissionService
+    ) {
         self.fastAuthService = fastAuthService
-        self.authService = authService
+        self.admissionService = admissionService
     }
 
     // MARK: - Lifecycle
@@ -67,12 +73,27 @@ final class FastAuthViewModel {
         sessionTask = nil
         timerTask?.cancel()
         timerTask = nil
+        if let admissionAttempt {
+            admissionAttempt.cancel()
+            Task { await admissionService.invalidateSignInAttempt(admissionAttempt) }
+        }
+        admissionAttempt = nil
     }
 
     // MARK: - Session
 
     private func runSession() async {
         guard !hasFinished else { return }
+        if admissionAttempt == nil {
+            let attempt = await admissionService.beginSignInAttempt()
+            guard !Task.isCancelled else {
+                attempt.cancel()
+                await admissionService.invalidateSignInAttempt(attempt)
+                return
+            }
+            admissionAttempt = attempt
+            guard !attempt.isCancelled else { return }
+        }
 
         // 1. Сгенерировать новый токен.
         await generateQRToken()
@@ -93,18 +114,21 @@ final class FastAuthViewModel {
     }
 
     private func generateQRToken() async {
+        let attempt = admissionAttempt
         isLoading = true
         errorMessage = nil
         currentTokenImage = nil
-        defer { isLoading = false }
+        defer { if admissionAttempt == attempt { isLoading = false } }
 
         do {
             let token = try await fastAuthService.generateToken(type: .qr)
+            guard !Task.isCancelled, admissionAttempt == attempt else { return }
             currentToken = token
             currentStatus = .pending
             currentTokenImage = decodeQRImage(from: token.token)
             startTimer(until: token.expiresAt)
         } catch {
+            guard !Task.isCancelled, admissionAttempt == attempt else { return }
             errorMessage = String(localized: "fast_auth.qr.error.token \(error.localizedDescription)")
         }
     }
@@ -123,20 +147,46 @@ final class FastAuthViewModel {
                     continue
 
                 case .accepted:
-                    if let access = result.accessToken,
+                    if let access = result.accessToken, !access.isEmpty,
                        let accessExpires = result.accessTokenExpiresAt,
-                       let refresh = result.refreshToken,
-                       let refreshExpires = result.refreshTokenExpiresAt {
-                        await authService.applyFastAuthTokens(
-                            accessToken: access, accessExpiresAt: accessExpires,
-                            refreshToken: refresh, refreshExpiresAt: refreshExpires
+                       let refresh = result.refreshToken, !refresh.isEmpty,
+                       let refreshExpires = result.refreshTokenExpiresAt,
+                       accessExpires.timeIntervalSince1970.isFinite, refreshExpires.timeIntervalSince1970.isFinite,
+                       accessExpires > Date(), refreshExpires > Date() {
+                        guard let admissionAttempt else { return }
+                        let session = SignInSessionTokens(
+                            accessToken: access,
+                            accessExpiresAt: accessExpires,
+                            refreshToken: refresh,
+                            refreshExpiresAt: refreshExpires
                         )
+                        let receipt = await commitWhenAvailable(session, for: admissionAttempt)
+                        guard !Task.isCancelled, self.admissionAttempt == admissionAttempt else {
+                            await admissionService.invalidateSignInAttempt(admissionAttempt)
+                            return
+                        }
+                        guard let receipt else {
+                            if !admissionAttempt.isCancelled, accessExpires <= Date() || refreshExpires <= Date() {
+                                errorMessage = String(localized: "fast_auth.qr.error.invalid_session")
+                                await admissionService.invalidateSignInAttempt(admissionAttempt)
+                            }
+                            hasFinished = true
+                            timerTask?.cancel()
+                            return
+                        }
+                        let current = await admissionService.isCurrentSignInSession(receipt)
+                        guard current, !Task.isCancelled, self.admissionAttempt == admissionAttempt else {
+                            await admissionService.invalidateSignInAttempt(receipt.attempt)
+                            return
+                        }
                         hasFinished = true
                         timerTask?.cancel()
-                        onAuthenticated?()
+                        onAuthenticated?(receipt)
                         return
                     } else {
-                        errorMessage = String(localized: "fast_auth.qr.error.empty_tokens")
+                        hasFinished = true
+                        timerTask?.cancel()
+                        errorMessage = String(localized: "fast_auth.qr.error.invalid_session")
                         return
                     }
 
@@ -154,6 +204,22 @@ final class FastAuthViewModel {
                 errorMessage = String(localized: "fast_auth.qr.error.subscribe \(error.localizedDescription)")
             }
         }
+    }
+
+    private func commitWhenAvailable(
+        _ session: SignInSessionTokens,
+        for attempt: SignInSessionAdmissionAttempt
+    ) async -> SignInSessionAdmissionReceipt? {
+        while !Task.isCancelled, !attempt.isCancelled,
+              session.accessExpiresAt > Date(), session.refreshExpiresAt > Date() {
+            if let receipt = await admissionService.commitSignInSession(session, for: attempt) {
+                return receipt
+            }
+            guard !Task.isCancelled, !attempt.isCancelled,
+                  session.accessExpiresAt > Date(), session.refreshExpiresAt > Date() else { return nil }
+            do { try await Task.sleep(for: .seconds(1)) } catch { return nil }
+        }
+        return nil
     }
 
     // MARK: - QR PNG decoding

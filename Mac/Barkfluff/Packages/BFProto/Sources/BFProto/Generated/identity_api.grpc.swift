@@ -215,6 +215,253 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
                 type: .unary
             )
         }
+        /// Namespace for "GetAuthCapabilities" metadata.
+        public enum GetAuthCapabilities: Sendable {
+            /// Request type for "GetAuthCapabilities".
+            public typealias Input = Barkfluff_Identity_GetAuthCapabilitiesRequest
+            /// Response type for "GetAuthCapabilities".
+            public typealias Output = Barkfluff_Identity_GetAuthCapabilitiesResponse
+            /// Descriptor for "GetAuthCapabilities".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "GetAuthCapabilities",
+                type: .unary
+            )
+        }
+        /// Namespace for "ResolveSignIn" metadata.
+        public enum ResolveSignIn: Sendable {
+            /// Request type for "ResolveSignIn".
+            public typealias Input = Barkfluff_Identity_ResolveSignInRequest
+            /// Response type for "ResolveSignIn".
+            public typealias Output = Barkfluff_Identity_ResolveSignInResponse
+            /// Descriptor for "ResolveSignIn".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "ResolveSignIn",
+                type: .unary
+            )
+        }
+        /// Namespace for "BeginRegistration" metadata.
+        public enum BeginRegistration: Sendable {
+            /// Request type for "BeginRegistration".
+            public typealias Input = Barkfluff_Identity_BeginRegistrationRequest
+            /// Response type for "BeginRegistration".
+            public typealias Output = Barkfluff_Identity_AuthChallengeResponse
+            /// Descriptor for "BeginRegistration".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "BeginRegistration",
+                type: .unary
+            )
+        }
+        /// Namespace for "BeginSignIn" metadata.
+        public enum BeginSignIn: Sendable {
+            /// Request type for "BeginSignIn".
+            public typealias Input = Barkfluff_Identity_BeginSignInRequest
+            /// Response type for "BeginSignIn".
+            public typealias Output = Barkfluff_Identity_AuthChallengeResponse
+            /// Descriptor for "BeginSignIn".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "BeginSignIn",
+                type: .unary
+            )
+        }
+        /// Namespace for "GetAuthChallenge" metadata.
+        public enum GetAuthChallenge: Sendable {
+            /// Request type for "GetAuthChallenge".
+            public typealias Input = Barkfluff_Identity_AuthChallengeReference
+            /// Response type for "GetAuthChallenge".
+            public typealias Output = Barkfluff_Identity_AuthChallengeResponse
+            /// Descriptor for "GetAuthChallenge".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "GetAuthChallenge",
+                type: .unary
+            )
+        }
+        /// Namespace for "CompleteAuthChallenge" metadata.
+        public enum CompleteAuthChallenge: Sendable {
+            /// Request type for "CompleteAuthChallenge".
+            public typealias Input = Barkfluff_Identity_CompleteAuthChallengeRequest
+            /// Response type for "CompleteAuthChallenge".
+            public typealias Output = Barkfluff_Identity_CompleteAuthChallengeResponse
+            /// Descriptor for "CompleteAuthChallenge".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "CompleteAuthChallenge",
+                type: .unary
+            )
+        }
+        /// Namespace for "CancelAuthChallenge" metadata.
+        public enum CancelAuthChallenge: Sendable {
+            /// Request type for "CancelAuthChallenge".
+            public typealias Input = Barkfluff_Identity_AuthChallengeReference
+            /// Response type for "CancelAuthChallenge".
+            public typealias Output = Barkfluff_Identity_AuthChallengeResponse
+            /// Descriptor for "CancelAuthChallenge".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "CancelAuthChallenge",
+                type: .unary
+            )
+        }
+        /// Namespace for "ResendAuthChallenge" metadata.
+        public enum ResendAuthChallenge: Sendable {
+            /// Request type for "ResendAuthChallenge".
+            public typealias Input = Barkfluff_Identity_AuthChallengeReference
+            /// Response type for "ResendAuthChallenge".
+            public typealias Output = Barkfluff_Identity_AuthChallengeResponse
+            /// Descriptor for "ResendAuthChallenge".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "ResendAuthChallenge",
+                type: .unary
+            )
+        }
+        /// Namespace for "GetSecuritySettings" metadata.
+        public enum GetSecuritySettings: Sendable {
+            /// Request type for "GetSecuritySettings".
+            public typealias Input = Barkfluff_Identity_GetSecuritySettingsRequest
+            /// Response type for "GetSecuritySettings".
+            public typealias Output = Barkfluff_Identity_SecuritySettingsResponse
+            /// Descriptor for "GetSecuritySettings".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "GetSecuritySettings",
+                type: .unary
+            )
+        }
+        /// Namespace for "GetLoginNotificationSettings" metadata.
+        public enum GetLoginNotificationSettings: Sendable {
+            /// Request type for "GetLoginNotificationSettings".
+            public typealias Input = Barkfluff_Identity_GetLoginNotificationSettingsRequest
+            /// Response type for "GetLoginNotificationSettings".
+            public typealias Output = Barkfluff_Identity_LoginNotificationSettingsResponse
+            /// Descriptor for "GetLoginNotificationSettings".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "GetLoginNotificationSettings",
+                type: .unary
+            )
+        }
+        /// Namespace for "SetLoginNotificationChannel" metadata.
+        public enum SetLoginNotificationChannel: Sendable {
+            /// Request type for "SetLoginNotificationChannel".
+            public typealias Input = Barkfluff_Identity_SetLoginNotificationChannelRequest
+            /// Response type for "SetLoginNotificationChannel".
+            public typealias Output = Barkfluff_Identity_LoginNotificationSettingsResponse
+            /// Descriptor for "SetLoginNotificationChannel".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "SetLoginNotificationChannel",
+                type: .unary
+            )
+        }
+        /// Namespace for "BeginReauthentication" metadata.
+        public enum BeginReauthentication: Sendable {
+            /// Request type for "BeginReauthentication".
+            public typealias Input = Barkfluff_Identity_BeginReauthenticationRequest
+            /// Response type for "BeginReauthentication".
+            public typealias Output = Barkfluff_Identity_AuthChallengeResponse
+            /// Descriptor for "BeginReauthentication".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "BeginReauthentication",
+                type: .unary
+            )
+        }
+        /// Namespace for "UpdateSecuritySettings" metadata.
+        public enum UpdateSecuritySettings: Sendable {
+            /// Request type for "UpdateSecuritySettings".
+            public typealias Input = Barkfluff_Identity_UpdateSecuritySettingsRequest
+            /// Response type for "UpdateSecuritySettings".
+            public typealias Output = Barkfluff_Identity_SecuritySettingsResponse
+            /// Descriptor for "UpdateSecuritySettings".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "UpdateSecuritySettings",
+                type: .unary
+            )
+        }
+        /// Namespace for "BeginTelegramBinding" metadata.
+        public enum BeginTelegramBinding: Sendable {
+            /// Request type for "BeginTelegramBinding".
+            public typealias Input = Barkfluff_Identity_SecurityProofRequest
+            /// Response type for "BeginTelegramBinding".
+            public typealias Output = Barkfluff_Identity_AuthChallengeResponse
+            /// Descriptor for "BeginTelegramBinding".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "BeginTelegramBinding",
+                type: .unary
+            )
+        }
+        /// Namespace for "UnlinkTelegram" metadata.
+        public enum UnlinkTelegram: Sendable {
+            /// Request type for "UnlinkTelegram".
+            public typealias Input = Barkfluff_Identity_UpdateSecuritySettingsRequest
+            /// Response type for "UnlinkTelegram".
+            public typealias Output = Barkfluff_Identity_SecuritySettingsResponse
+            /// Descriptor for "UnlinkTelegram".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "UnlinkTelegram",
+                type: .unary
+            )
+        }
+        /// Namespace for "BeginEmailBinding" metadata.
+        public enum BeginEmailBinding: Sendable {
+            /// Request type for "BeginEmailBinding".
+            public typealias Input = Barkfluff_Identity_BeginEmailBindingRequest
+            /// Response type for "BeginEmailBinding".
+            public typealias Output = Barkfluff_Identity_AuthChallengeResponse
+            /// Descriptor for "BeginEmailBinding".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "BeginEmailBinding",
+                type: .unary
+            )
+        }
+        /// Namespace for "GenerateRecoveryCodes" metadata.
+        public enum GenerateRecoveryCodes: Sendable {
+            /// Request type for "GenerateRecoveryCodes".
+            public typealias Input = Barkfluff_Identity_SecurityProofRequest
+            /// Response type for "GenerateRecoveryCodes".
+            public typealias Output = Barkfluff_Identity_RecoveryCodesResponse
+            /// Descriptor for "GenerateRecoveryCodes".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "GenerateRecoveryCodes",
+                type: .unary
+            )
+        }
+        /// Namespace for "BeginPasswordRecovery" metadata.
+        public enum BeginPasswordRecovery: Sendable {
+            /// Request type for "BeginPasswordRecovery".
+            public typealias Input = Barkfluff_Identity_BeginPasswordRecoveryRequest
+            /// Response type for "BeginPasswordRecovery".
+            public typealias Output = Barkfluff_Identity_AuthChallengeResponse
+            /// Descriptor for "BeginPasswordRecovery".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "BeginPasswordRecovery",
+                type: .unary
+            )
+        }
+        /// Namespace for "SetRecoveredPassword" metadata.
+        public enum SetRecoveredPassword: Sendable {
+            /// Request type for "SetRecoveredPassword".
+            public typealias Input = Barkfluff_Identity_SetRecoveredPasswordRequest
+            /// Response type for "SetRecoveredPassword".
+            public typealias Output = Barkfluff_Identity_SetPasswordResponse
+            /// Descriptor for "SetRecoveredPassword".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "SetRecoveredPassword",
+                type: .unary
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.identity.IdentityApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             Auth.descriptor,
@@ -231,7 +478,26 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             ResetPassword.descriptor,
             ConfirmResetPassword.descriptor,
             SetPassword.descriptor,
-            Logout.descriptor
+            Logout.descriptor,
+            GetAuthCapabilities.descriptor,
+            ResolveSignIn.descriptor,
+            BeginRegistration.descriptor,
+            BeginSignIn.descriptor,
+            GetAuthChallenge.descriptor,
+            CompleteAuthChallenge.descriptor,
+            CancelAuthChallenge.descriptor,
+            ResendAuthChallenge.descriptor,
+            GetSecuritySettings.descriptor,
+            GetLoginNotificationSettings.descriptor,
+            SetLoginNotificationChannel.descriptor,
+            BeginReauthentication.descriptor,
+            UpdateSecuritySettings.descriptor,
+            BeginTelegramBinding.descriptor,
+            UnlinkTelegram.descriptor,
+            BeginEmailBinding.descriptor,
+            GenerateRecoveryCodes.descriptor,
+            BeginPasswordRecovery.descriptor,
+            SetRecoveredPassword.descriptor
         ]
     }
 }
@@ -594,6 +860,367 @@ extension Barkfluff_Identity_IdentityApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_LogoutResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LogoutResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetAuthCapabilities" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_GetAuthCapabilitiesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_GetAuthCapabilitiesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_GetAuthCapabilitiesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getAuthCapabilities<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_GetAuthCapabilitiesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GetAuthCapabilitiesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_GetAuthCapabilitiesResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetAuthCapabilitiesResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ResolveSignIn" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_ResolveSignInRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_ResolveSignInRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_ResolveSignInResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func resolveSignIn<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_ResolveSignInRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_ResolveSignInRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_ResolveSignInResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ResolveSignInResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "BeginRegistration" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_BeginRegistrationRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_BeginRegistrationRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func beginRegistration<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginRegistrationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_BeginRegistrationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "BeginSignIn" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_BeginSignInRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_BeginSignInRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func beginSignIn<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginSignInRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_BeginSignInRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetAuthChallenge" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_AuthChallengeReference` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_AuthChallengeReference` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getAuthChallenge<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_AuthChallengeReference>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "CompleteAuthChallenge" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_CompleteAuthChallengeRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_CompleteAuthChallengeRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_CompleteAuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func completeAuthChallenge<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_CompleteAuthChallengeRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_CompleteAuthChallengeRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_CompleteAuthChallengeResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CompleteAuthChallengeResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "CancelAuthChallenge" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_AuthChallengeReference` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_AuthChallengeReference` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func cancelAuthChallenge<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_AuthChallengeReference>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ResendAuthChallenge" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_AuthChallengeReference` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_AuthChallengeReference` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func resendAuthChallenge<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_AuthChallengeReference>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetSecuritySettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_GetSecuritySettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_GetSecuritySettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_SecuritySettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getSecuritySettings<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_GetSecuritySettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GetSecuritySettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_SecuritySettingsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetLoginNotificationSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_GetLoginNotificationSettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_GetLoginNotificationSettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_LoginNotificationSettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getLoginNotificationSettings<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_GetLoginNotificationSettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GetLoginNotificationSettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_LoginNotificationSettingsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LoginNotificationSettingsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SetLoginNotificationChannel" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_SetLoginNotificationChannelRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_SetLoginNotificationChannelRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_LoginNotificationSettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func setLoginNotificationChannel<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_SetLoginNotificationChannelRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_SetLoginNotificationChannelRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_LoginNotificationSettingsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LoginNotificationSettingsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "BeginReauthentication" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_BeginReauthenticationRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_BeginReauthenticationRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func beginReauthentication<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginReauthenticationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_BeginReauthenticationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpdateSecuritySettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_UpdateSecuritySettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_UpdateSecuritySettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_SecuritySettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func updateSecuritySettings<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_UpdateSecuritySettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_UpdateSecuritySettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_SecuritySettingsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "BeginTelegramBinding" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_SecurityProofRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_SecurityProofRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func beginTelegramBinding<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_SecurityProofRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_SecurityProofRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UnlinkTelegram" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_UpdateSecuritySettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_UpdateSecuritySettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_SecuritySettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func unlinkTelegram<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_UpdateSecuritySettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_UpdateSecuritySettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_SecuritySettingsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "BeginEmailBinding" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_BeginEmailBindingRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_BeginEmailBindingRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func beginEmailBinding<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginEmailBindingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_BeginEmailBindingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GenerateRecoveryCodes" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_SecurityProofRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_SecurityProofRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_RecoveryCodesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func generateRecoveryCodes<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_SecurityProofRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_SecurityProofRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_RecoveryCodesResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_RecoveryCodesResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "BeginPasswordRecovery" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_BeginPasswordRecoveryRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_BeginPasswordRecoveryRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func beginPasswordRecovery<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginPasswordRecoveryRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_BeginPasswordRecoveryRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SetRecoveredPassword" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_SetRecoveredPasswordRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_SetRecoveredPasswordRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_SetPasswordResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func setRecoveredPassword<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_SetRecoveredPasswordRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_SetRecoveredPasswordRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_SetPasswordResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SetPasswordResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -1122,6 +1749,576 @@ extension Barkfluff_Identity_IdentityApi {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "GetAuthCapabilities" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_GetAuthCapabilitiesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_GetAuthCapabilitiesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_GetAuthCapabilitiesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getAuthCapabilities<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_GetAuthCapabilitiesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GetAuthCapabilitiesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_GetAuthCapabilitiesResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetAuthCapabilitiesResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.GetAuthCapabilities.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ResolveSignIn" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_ResolveSignInRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_ResolveSignInRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_ResolveSignInResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func resolveSignIn<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_ResolveSignInRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_ResolveSignInRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_ResolveSignInResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ResolveSignInResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.ResolveSignIn.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "BeginRegistration" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_BeginRegistrationRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_BeginRegistrationRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func beginRegistration<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginRegistrationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_BeginRegistrationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.BeginRegistration.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "BeginSignIn" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_BeginSignInRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_BeginSignInRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func beginSignIn<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginSignInRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_BeginSignInRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.BeginSignIn.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetAuthChallenge" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_AuthChallengeReference` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_AuthChallengeReference` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getAuthChallenge<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_AuthChallengeReference>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.GetAuthChallenge.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "CompleteAuthChallenge" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_CompleteAuthChallengeRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_CompleteAuthChallengeRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_CompleteAuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func completeAuthChallenge<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_CompleteAuthChallengeRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_CompleteAuthChallengeRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_CompleteAuthChallengeResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CompleteAuthChallengeResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.CompleteAuthChallenge.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "CancelAuthChallenge" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_AuthChallengeReference` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_AuthChallengeReference` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func cancelAuthChallenge<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_AuthChallengeReference>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.CancelAuthChallenge.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ResendAuthChallenge" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_AuthChallengeReference` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_AuthChallengeReference` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func resendAuthChallenge<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_AuthChallengeReference>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.ResendAuthChallenge.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetSecuritySettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_GetSecuritySettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_GetSecuritySettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_SecuritySettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getSecuritySettings<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_GetSecuritySettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GetSecuritySettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_SecuritySettingsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.GetSecuritySettings.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetLoginNotificationSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_GetLoginNotificationSettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_GetLoginNotificationSettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_LoginNotificationSettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getLoginNotificationSettings<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_GetLoginNotificationSettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GetLoginNotificationSettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_LoginNotificationSettingsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LoginNotificationSettingsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.GetLoginNotificationSettings.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SetLoginNotificationChannel" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_SetLoginNotificationChannelRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_SetLoginNotificationChannelRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_LoginNotificationSettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func setLoginNotificationChannel<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_SetLoginNotificationChannelRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_SetLoginNotificationChannelRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_LoginNotificationSettingsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LoginNotificationSettingsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.SetLoginNotificationChannel.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "BeginReauthentication" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_BeginReauthenticationRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_BeginReauthenticationRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func beginReauthentication<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginReauthenticationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_BeginReauthenticationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.BeginReauthentication.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UpdateSecuritySettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_UpdateSecuritySettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_UpdateSecuritySettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_SecuritySettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func updateSecuritySettings<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_UpdateSecuritySettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_UpdateSecuritySettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_SecuritySettingsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.UpdateSecuritySettings.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "BeginTelegramBinding" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_SecurityProofRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_SecurityProofRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func beginTelegramBinding<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_SecurityProofRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_SecurityProofRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.BeginTelegramBinding.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UnlinkTelegram" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_UpdateSecuritySettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_UpdateSecuritySettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_SecuritySettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func unlinkTelegram<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_UpdateSecuritySettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_UpdateSecuritySettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_SecuritySettingsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.UnlinkTelegram.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "BeginEmailBinding" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_BeginEmailBindingRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_BeginEmailBindingRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func beginEmailBinding<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginEmailBindingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_BeginEmailBindingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.BeginEmailBinding.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GenerateRecoveryCodes" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_SecurityProofRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_SecurityProofRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_RecoveryCodesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func generateRecoveryCodes<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_SecurityProofRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_SecurityProofRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_RecoveryCodesResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_RecoveryCodesResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.GenerateRecoveryCodes.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "BeginPasswordRecovery" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_BeginPasswordRecoveryRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_BeginPasswordRecoveryRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_AuthChallengeResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func beginPasswordRecovery<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginPasswordRecoveryRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_BeginPasswordRecoveryRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_AuthChallengeResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.BeginPasswordRecovery.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SetRecoveredPassword" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_SetRecoveredPasswordRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_SetRecoveredPasswordRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_SetPasswordResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func setRecoveredPassword<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_SetRecoveredPasswordRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_SetRecoveredPasswordRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_SetPasswordResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SetPasswordResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.SetRecoveredPassword.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -1558,6 +2755,481 @@ extension Barkfluff_Identity_IdentityApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_LogoutRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_LogoutResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetAuthCapabilities" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_GetAuthCapabilitiesRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getAuthCapabilities<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_GetAuthCapabilitiesRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetAuthCapabilitiesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getAuthCapabilities(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_GetAuthCapabilitiesRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_GetAuthCapabilitiesResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ResolveSignIn" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_ResolveSignInRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func resolveSignIn<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_ResolveSignInRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ResolveSignInResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.resolveSignIn(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_ResolveSignInRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_ResolveSignInResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginRegistration" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_BeginRegistrationRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginRegistration<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginRegistrationRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.beginRegistration(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_BeginRegistrationRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_AuthChallengeResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginSignIn" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_BeginSignInRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginSignIn<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginSignInRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.beginSignIn(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_BeginSignInRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_AuthChallengeResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetAuthChallenge" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_AuthChallengeReference` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getAuthChallenge<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getAuthChallenge(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_AuthChallengeReference>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_AuthChallengeResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CompleteAuthChallenge" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_CompleteAuthChallengeRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func completeAuthChallenge<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_CompleteAuthChallengeRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CompleteAuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.completeAuthChallenge(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_CompleteAuthChallengeRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_CompleteAuthChallengeResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CancelAuthChallenge" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_AuthChallengeReference` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func cancelAuthChallenge<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.cancelAuthChallenge(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_AuthChallengeReference>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_AuthChallengeResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ResendAuthChallenge" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_AuthChallengeReference` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func resendAuthChallenge<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.resendAuthChallenge(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_AuthChallengeReference>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_AuthChallengeResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetSecuritySettings" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_GetSecuritySettingsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getSecuritySettings<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_GetSecuritySettingsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getSecuritySettings(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_GetSecuritySettingsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_SecuritySettingsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetLoginNotificationSettings" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_GetLoginNotificationSettingsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getLoginNotificationSettings<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_GetLoginNotificationSettingsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LoginNotificationSettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getLoginNotificationSettings(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_GetLoginNotificationSettingsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_LoginNotificationSettingsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetLoginNotificationChannel" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_SetLoginNotificationChannelRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setLoginNotificationChannel<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_SetLoginNotificationChannelRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LoginNotificationSettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.setLoginNotificationChannel(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_SetLoginNotificationChannelRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_LoginNotificationSettingsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginReauthentication" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_BeginReauthenticationRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginReauthentication<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginReauthenticationRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.beginReauthentication(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_BeginReauthenticationRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_AuthChallengeResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateSecuritySettings" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_UpdateSecuritySettingsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func updateSecuritySettings<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_UpdateSecuritySettingsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateSecuritySettings(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_UpdateSecuritySettingsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_SecuritySettingsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginTelegramBinding" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_SecurityProofRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginTelegramBinding<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_SecurityProofRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.beginTelegramBinding(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_SecurityProofRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_AuthChallengeResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UnlinkTelegram" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_UpdateSecuritySettingsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func unlinkTelegram<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_UpdateSecuritySettingsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.unlinkTelegram(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_UpdateSecuritySettingsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_SecuritySettingsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginEmailBinding" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_BeginEmailBindingRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginEmailBinding<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginEmailBindingRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.beginEmailBinding(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_BeginEmailBindingRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_AuthChallengeResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GenerateRecoveryCodes" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_SecurityProofRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func generateRecoveryCodes<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_SecurityProofRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_RecoveryCodesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.generateRecoveryCodes(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_SecurityProofRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_RecoveryCodesResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginPasswordRecovery" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_BeginPasswordRecoveryRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginPasswordRecovery<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_BeginPasswordRecoveryRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.beginPasswordRecovery(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_BeginPasswordRecoveryRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_AuthChallengeResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetRecoveredPassword" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_SetRecoveredPasswordRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setRecoveredPassword<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_SetRecoveredPasswordRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SetPasswordResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.setRecoveredPassword(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_SetRecoveredPasswordRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_SetPasswordResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -2061,6 +3733,557 @@ extension Barkfluff_Identity_IdentityApi.ClientProtocol {
             onResponse: handleResponse
         )
     }
+
+    /// Call the "GetAuthCapabilities" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getAuthCapabilities<Result>(
+        _ message: Barkfluff_Identity_GetAuthCapabilitiesRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetAuthCapabilitiesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_GetAuthCapabilitiesRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getAuthCapabilities(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ResolveSignIn" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func resolveSignIn<Result>(
+        _ message: Barkfluff_Identity_ResolveSignInRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ResolveSignInResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_ResolveSignInRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.resolveSignIn(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginRegistration" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginRegistration<Result>(
+        _ message: Barkfluff_Identity_BeginRegistrationRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_BeginRegistrationRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.beginRegistration(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginSignIn" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginSignIn<Result>(
+        _ message: Barkfluff_Identity_BeginSignInRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_BeginSignInRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.beginSignIn(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetAuthChallenge" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getAuthChallenge<Result>(
+        _ message: Barkfluff_Identity_AuthChallengeReference,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getAuthChallenge(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CompleteAuthChallenge" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func completeAuthChallenge<Result>(
+        _ message: Barkfluff_Identity_CompleteAuthChallengeRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CompleteAuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_CompleteAuthChallengeRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.completeAuthChallenge(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CancelAuthChallenge" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func cancelAuthChallenge<Result>(
+        _ message: Barkfluff_Identity_AuthChallengeReference,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.cancelAuthChallenge(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ResendAuthChallenge" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func resendAuthChallenge<Result>(
+        _ message: Barkfluff_Identity_AuthChallengeReference,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_AuthChallengeReference>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.resendAuthChallenge(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetSecuritySettings" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getSecuritySettings<Result>(
+        _ message: Barkfluff_Identity_GetSecuritySettingsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_GetSecuritySettingsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getSecuritySettings(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetLoginNotificationSettings" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getLoginNotificationSettings<Result>(
+        _ message: Barkfluff_Identity_GetLoginNotificationSettingsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LoginNotificationSettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_GetLoginNotificationSettingsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getLoginNotificationSettings(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetLoginNotificationChannel" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setLoginNotificationChannel<Result>(
+        _ message: Barkfluff_Identity_SetLoginNotificationChannelRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LoginNotificationSettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_SetLoginNotificationChannelRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.setLoginNotificationChannel(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginReauthentication" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginReauthentication<Result>(
+        _ message: Barkfluff_Identity_BeginReauthenticationRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_BeginReauthenticationRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.beginReauthentication(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateSecuritySettings" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func updateSecuritySettings<Result>(
+        _ message: Barkfluff_Identity_UpdateSecuritySettingsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_UpdateSecuritySettingsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateSecuritySettings(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginTelegramBinding" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginTelegramBinding<Result>(
+        _ message: Barkfluff_Identity_SecurityProofRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_SecurityProofRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.beginTelegramBinding(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UnlinkTelegram" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func unlinkTelegram<Result>(
+        _ message: Barkfluff_Identity_UpdateSecuritySettingsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SecuritySettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_UpdateSecuritySettingsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.unlinkTelegram(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginEmailBinding" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginEmailBinding<Result>(
+        _ message: Barkfluff_Identity_BeginEmailBindingRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_BeginEmailBindingRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.beginEmailBinding(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GenerateRecoveryCodes" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func generateRecoveryCodes<Result>(
+        _ message: Barkfluff_Identity_SecurityProofRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_RecoveryCodesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_SecurityProofRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.generateRecoveryCodes(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "BeginPasswordRecovery" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func beginPasswordRecovery<Result>(
+        _ message: Barkfluff_Identity_BeginPasswordRecoveryRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_AuthChallengeResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_BeginPasswordRecoveryRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.beginPasswordRecovery(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetRecoveredPassword" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setRecoveredPassword<Result>(
+        _ message: Barkfluff_Identity_SetRecoveredPasswordRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SetPasswordResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_SetRecoveredPasswordRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.setRecoveredPassword(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
 }
 
 // MARK: - barkfluff.identity.IdentityServerApi
@@ -2150,6 +4373,32 @@ public enum Barkfluff_Identity_IdentityServerApi: Sendable {
                 type: .unary
             )
         }
+        /// Namespace for "CreateBotTokenServer" metadata.
+        public enum CreateBotTokenServer: Sendable {
+            /// Request type for "CreateBotTokenServer".
+            public typealias Input = Barkfluff_Identity_CreateBotTokenServerRequest
+            /// Response type for "CreateBotTokenServer".
+            public typealias Output = Barkfluff_Identity_CreateBotTokenServerResponse
+            /// Descriptor for "CreateBotTokenServer".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityServerApi"),
+                method: "CreateBotTokenServer",
+                type: .unary
+            )
+        }
+        /// Namespace for "GetBotTokenServer" metadata.
+        public enum GetBotTokenServer: Sendable {
+            /// Request type for "GetBotTokenServer".
+            public typealias Input = Barkfluff_Identity_GetBotTokenServerRequest
+            /// Response type for "GetBotTokenServer".
+            public typealias Output = Barkfluff_Identity_GetBotTokenServerResponse
+            /// Descriptor for "GetBotTokenServer".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityServerApi"),
+                method: "GetBotTokenServer",
+                type: .unary
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.identity.IdentityServerApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             ListOtpVerificationServer.descriptor,
@@ -2157,7 +4406,9 @@ public enum Barkfluff_Identity_IdentityServerApi: Sendable {
             GetActiveSessionsServer.descriptor,
             RemoveActiveSessionServer.descriptor,
             CreateSessionForUserServer.descriptor,
-            ForceSetPasswordServer.descriptor
+            ForceSetPasswordServer.descriptor,
+            CreateBotTokenServer.descriptor,
+            GetBotTokenServer.descriptor
         ]
     }
 }
@@ -2319,6 +4570,52 @@ extension Barkfluff_Identity_IdentityServerApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_ForceSetPasswordServerResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ForceSetPasswordServerResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "CreateBotTokenServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Выпустить долгоживущий JWT для бота (вызывается сервисом Bots)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_CreateBotTokenServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_CreateBotTokenServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_CreateBotTokenServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func createBotTokenServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_CreateBotTokenServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_CreateBotTokenServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_CreateBotTokenServerResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CreateBotTokenServerResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetBotTokenServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Выпустить JWT для бота с уже существующим token_id, не отзывая действующий токен.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_GetBotTokenServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_GetBotTokenServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_GetBotTokenServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getBotTokenServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_GetBotTokenServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GetBotTokenServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_GetBotTokenServerResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetBotTokenServerResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -2547,6 +4844,74 @@ extension Barkfluff_Identity_IdentityServerApi {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "CreateBotTokenServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Выпустить долгоживущий JWT для бота (вызывается сервисом Bots)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_CreateBotTokenServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_CreateBotTokenServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_CreateBotTokenServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func createBotTokenServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_CreateBotTokenServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_CreateBotTokenServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_CreateBotTokenServerResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CreateBotTokenServerResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityServerApi.Method.CreateBotTokenServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetBotTokenServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Выпустить JWT для бота с уже существующим token_id, не отзывая действующий токен.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_GetBotTokenServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_GetBotTokenServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_GetBotTokenServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getBotTokenServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_GetBotTokenServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GetBotTokenServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_GetBotTokenServerResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetBotTokenServerResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityServerApi.Method.GetBotTokenServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -2724,6 +5089,64 @@ extension Barkfluff_Identity_IdentityServerApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_ForceSetPasswordServerRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_ForceSetPasswordServerResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CreateBotTokenServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Выпустить долгоживущий JWT для бота (вызывается сервисом Bots)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_CreateBotTokenServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func createBotTokenServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_CreateBotTokenServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CreateBotTokenServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.createBotTokenServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_CreateBotTokenServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_CreateBotTokenServerResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetBotTokenServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Выпустить JWT для бота с уже существующим token_id, не отзывая действующий токен.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_GetBotTokenServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getBotTokenServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_GetBotTokenServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetBotTokenServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getBotTokenServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_GetBotTokenServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_GetBotTokenServerResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -2927,6 +5350,72 @@ extension Barkfluff_Identity_IdentityServerApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.forceSetPasswordServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CreateBotTokenServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Выпустить долгоживущий JWT для бота (вызывается сервисом Bots)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func createBotTokenServer<Result>(
+        _ message: Barkfluff_Identity_CreateBotTokenServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CreateBotTokenServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_CreateBotTokenServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.createBotTokenServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetBotTokenServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Выпустить JWT для бота с уже существующим token_id, не отзывая действующий токен.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getBotTokenServer<Result>(
+        _ message: Barkfluff_Identity_GetBotTokenServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetBotTokenServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_GetBotTokenServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getBotTokenServer(
             request: request,
             options: options,
             onResponse: handleResponse
