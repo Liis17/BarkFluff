@@ -532,6 +532,23 @@
     <string name="storage_server_storage">服务器存储</string>
     <string name="storage_app_cache">应用缓存</string>
     <string name="storage_clear_cache">清除缓存</string>
+    <string name="storage_clear_failed">清除失败</string>
+    <string name="storage_clear_option_media">媒体缓存（%1$s）</string>
+    <string name="storage_clear_option_history">聊天记录（%1$s）</string>
+    <string name="storage_clear_option_secret">秘密聊天（%1$s）</string>
+    <string name="storage_clear_option_outgoing">待发送队列（%1$s）</string>
+    <string name="storage_clear_option_drafts">草稿（%1$s）</string>
+    <string name="storage_clear_confirm">清除所选项目</string>
+    <string name="storage_clear_warning_irreversible">你选择了会产生不可逆影响的项目：待发送消息可能已经送达服务器；也会向服务器请求删除草稿，但网络不可用时可能无法删除；秘密聊天仅存储在此设备上，无法恢复。</string>
+    <plurals name="storage_clear_count_messages">
+        <item quantity="other">%d 条消息</item>
+    </plurals>
+    <plurals name="storage_clear_count_outgoing">
+        <item quantity="other">%d 个待发送项目</item>
+    </plurals>
+    <plurals name="storage_clear_count_drafts">
+        <item quantity="other">%d 个草稿</item>
+    </plurals>
 
     <!-- Devices -->
     <string name="devices_title">设备</string>

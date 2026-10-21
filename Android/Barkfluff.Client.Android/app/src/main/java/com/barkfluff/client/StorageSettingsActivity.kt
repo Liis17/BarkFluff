@@ -12,6 +12,8 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.cache.ChatCacheStats
+import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.data.GlobalParam
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -24,12 +26,16 @@ import com.barkfluff.client.databinding.ItemAutoDownloadSettingBinding
 import com.barkfluff.client.databinding.DialogAutoDownloadLimitBinding
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.model.StorageInfo
+import com.barkfluff.client.drafts.ChatDraftRepository
+import com.barkfluff.client.drafts.ComposerAttachmentStore
+import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.appcompat.app.AlertDialog
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -40,6 +46,9 @@ class StorageSettingsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityStorageSettingsBinding
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     @javax.inject.Inject lateinit var autoDownloadSettings: AutoDownloadSettingsStore
+    @javax.inject.Inject lateinit var outgoingMessageQueue: OutgoingMessageQueue
+    @javax.inject.Inject lateinit var chatDraftRepository: ChatDraftRepository
+    @javax.inject.Inject lateinit var composerAttachmentStore: ComposerAttachmentStore
     private lateinit var chatCacheRepository: ChatCacheRepository
     private val autoDownloadRows = linkedMapOf<Shared.MessageAttachmentType, ItemAutoDownloadSettingBinding>()
     private lateinit var autoDownloadLimitRow: ItemAutoDownloadSettingBinding
@@ -86,7 +95,7 @@ class StorageSettingsActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.buttonClearCache.setOnClickListener {
-            clearCache()
+            showClearCacheDialog()
         }
     }
 
@@ -344,20 +353,87 @@ class StorageSettingsActivity : AppCompatActivity() {
         return size
     }
 
-    private fun clearCache() {
+    private fun showClearCacheDialog() {
         lifecycleScope.launch {
-            val (imageCacheSize, chatCacheStats) = withContext(Dispatchers.IO) {
-                // Очищаем все кеши через AvatarLoader
-                AvatarLoader.clearAllCaches(this@StorageSettingsActivity)
-
-                // Удаляем дополнительные папки кеша (если есть)
-                val bitmapCacheDir = File(cacheDir, "bitmap_cache")
-                bitmapCacheDir.deleteRecursively()
-                chatCacheRepository.clearAll()
-                calculateCacheSize() to ChatCacheStats(0, 0, 0)
+            val scope = CacheScope.from(GlobalParam(this@StorageSettingsActivity)) ?: return@launch
+            val (options, mediaCacheSize) = withContext(Dispatchers.IO) {
+                val imageCacheSize = getDirSize(File(cacheDir, "image_cache"))
+                val bitmapCacheSize = getDirSize(File(cacheDir, "bitmap_cache"))
+                chatCacheRepository.clearOptions() to (imageCacheSize + bitmapCacheSize)
             }
 
-            renderCacheSize(imageCacheSize, chatCacheStats)
+            val labels = arrayOf<CharSequence>(
+                getString(R.string.storage_clear_option_media, formatBytes(mediaCacheSize)),
+                getString(R.string.storage_clear_option_history, pluralCount(R.plurals.storage_clear_count_messages, options.historyMessages)),
+                getString(R.string.storage_clear_option_secret, pluralCount(R.plurals.storage_clear_count_messages, options.secretMessages)),
+                getString(R.string.storage_clear_option_outgoing, pluralCount(R.plurals.storage_clear_count_outgoing, options.pendingOutgoing)),
+                getString(R.string.storage_clear_option_drafts, pluralCount(R.plurals.storage_clear_count_drafts, options.drafts)),
+            )
+            val checked = BooleanArray(labels.size)
+            lateinit var dialog: AlertDialog
+            dialog = MaterialAlertDialogBuilder(this@StorageSettingsActivity)
+                .setTitle(R.string.storage_clear_cache)
+                .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
+                    checked[which] = isChecked
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = checked.any { it }
+                }
+                .setPositiveButton(R.string.storage_clear_confirm) { _, _ ->
+                    val selected = checked.copyOf()
+                    if (selected.indices.any { it >= 2 && selected[it] }) {
+                        MaterialAlertDialogBuilder(this@StorageSettingsActivity)
+                            .setTitle(R.string.storage_clear_confirm)
+                            .setMessage(R.string.storage_clear_warning_irreversible)
+                            .setPositiveButton(R.string.storage_clear_confirm) { _, _ ->
+                                clearSelectedCache(selected, scope)
+                            }
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .show()
+                    } else {
+                        clearSelectedCache(selected, scope)
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+            dialog.setOnShowListener {
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = checked.any { it }
+            }
+            dialog.show()
+        }
+    }
+
+    private fun pluralCount(pluralRes: Int, count: Int): String =
+        resources.getQuantityString(pluralRes, count, count)
+
+    private fun clearSelectedCache(checked: BooleanArray, scope: CacheScope) {
+        lifecycleScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    withContext(NonCancellable) {
+                        check(CacheScope.from(GlobalParam(this@StorageSettingsActivity)) == scope) { "Cache scope changed before cleanup" }
+                        if (checked[0]) {
+                            AvatarLoader.clearAllCaches(this@StorageSettingsActivity)
+                            File(cacheDir, "bitmap_cache").deleteRecursively()
+                        }
+                        if (checked[1]) chatCacheRepository.clearHistoryCache()
+                        if (checked[2]) chatCacheRepository.clearSecretHistory()
+                        if (checked[3]) outgoingMessageQueue.cancelPendingOutgoing()
+                        if (checked[4]) {
+                            chatDraftRepository.wipeAll(scope)
+                            composerAttachmentStore.clearScope(scope)
+                        }
+                        if (checked.indices.any { it in 1..4 && checked[it] }) {
+                            chatCacheRepository.compact()
+                        }
+                    }
+                }
+            }
+            if (result.isFailure) {
+                Log.e(TAG, "Could not clear cache", result.exceptionOrNull())
+                Snackbar.make(binding.root, R.string.storage_clear_failed, Snackbar.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            updateCacheSize()
             Snackbar.make(binding.root, R.string.storage_cache_cleared, Snackbar.LENGTH_SHORT).show()
         }
     }

@@ -541,6 +541,26 @@
     <string name="storage_server_storage">Server storage</string>
     <string name="storage_app_cache">App cache</string>
     <string name="storage_clear_cache">Clear cache</string>
+    <string name="storage_clear_failed">Could not clear</string>
+    <string name="storage_clear_option_media">Media cache (%1$s)</string>
+    <string name="storage_clear_option_history">Chat history (%1$s)</string>
+    <string name="storage_clear_option_secret">Secret chats (%1$s)</string>
+    <string name="storage_clear_option_outgoing">Outgoing queue (%1$s)</string>
+    <string name="storage_clear_option_drafts">Drafts (%1$s)</string>
+    <string name="storage_clear_confirm">Clear selected</string>
+    <string name="storage_clear_warning_irreversible">You selected items with irreversible effects: outgoing messages may already have reached the server; draft deletion is also requested from the server, but may fail if the network is unavailable; secret chats are stored only on this device and cannot be restored.</string>
+    <plurals name="storage_clear_count_messages">
+        <item quantity="one">%d message</item>
+        <item quantity="other">%d messages</item>
+    </plurals>
+    <plurals name="storage_clear_count_outgoing">
+        <item quantity="one">%d queued item</item>
+        <item quantity="other">%d queued items</item>
+    </plurals>
+    <plurals name="storage_clear_count_drafts">
+        <item quantity="one">%d draft</item>
+        <item quantity="other">%d drafts</item>
+    </plurals>
 
     <!-- Devices -->
     <string name="devices_title">Devices</string>
