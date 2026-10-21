@@ -17,6 +17,7 @@ using Xunit;
 
 namespace Barkfluff.AdminPanel.Tests.Services;
 
+[Collection("LiteDb")]
 public sealed class TelegramInvitationFlowTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"adminpanel-telegram-invitations-{Guid.NewGuid():N}");

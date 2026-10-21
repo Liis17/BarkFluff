@@ -17,6 +17,7 @@ using Xunit;
 
 namespace BarkFluff.AdminPanel.Tests.Endpoints;
 
+[Collection("LiteDb")]
 public class SeqEndpointsLastUploadTests
 {
     [Fact]
