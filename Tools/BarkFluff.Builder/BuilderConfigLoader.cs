@@ -114,7 +114,7 @@ public static class BuilderConfigLoader
             var comment = Regex.Match(unquotedValue, @"\s+#");
             if (comment.Success)
                 unquotedValue = unquotedValue[..comment.Index];
-            return unquotedValue.Trim();
+            return unquotedValue.Trim().Replace("$$", "$", StringComparison.Ordinal);
         }
 
         var value = new StringBuilder();

@@ -65,18 +65,19 @@ public static class BuilderOutputWriter
         var environmentPath = Path.Combine(root, ".env");
         HashSet<string> builderKeys = File.Exists(environmentPath)
             ? File.ReadLines(environmentPath)
-                .Select(line => line.TrimStart())
+                .Select(line => line.TrimStart('\uFEFF').TrimStart())
                 .Where(line => !line.StartsWith('#') && line.Contains('='))
-                .Select(line => line[..line.IndexOf('=')])
+                .Select(line => line[..line.IndexOf('=')].Trim())
                 .ToHashSet(StringComparer.Ordinal)
             : new HashSet<string>(StringComparer.Ordinal);
         var hasBuilderMarker = builderKeys.Contains("BUILDER_IMAGE_CHANNEL")
             && builderKeys.Contains("BUILDER_NGINX_MODE");
 
         return !hasBuilderMarker
-            && (File.Exists(environmentPath)
-                || File.Exists(Path.Combine(root, "docker-compose.yml"))
-                || File.Exists(Path.Combine(root, "docker-compose.setup.yml")));
+            && (OwnedFiles.Any(path => File.Exists(FullPath(root, path)))
+                || HasFiles(root, "nginx/sites", "*.conf")
+                || HasFiles(root, "lognara", "*.Dockerfile")
+                || HasFiles(root, "certs", "barkfluff-*.pem"));
     }
 
     public static IReadOnlyList<string> Write(BuilderModel model)
@@ -140,4 +141,10 @@ public static class BuilderOutputWriter
 
     private static string FullPath(string root, string relativePath) =>
         Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+    private static bool HasFiles(string root, string relativeDirectory, string pattern)
+    {
+        var directory = FullPath(root, relativeDirectory);
+        return Directory.Exists(directory) && Directory.EnumerateFiles(directory, pattern).Any();
+    }
 }

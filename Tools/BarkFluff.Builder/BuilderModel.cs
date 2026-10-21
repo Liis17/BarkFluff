@@ -43,7 +43,11 @@ public sealed class BuilderModel : INotifyPropertyChanged
 
     public string FirebaseProjectId { get => Get(""); set => Set(value); }
     public string FirebasePrivateKeyId { get => Get(""); set => Set(value); }
-    public string FirebasePrivateKey { get => Get(""); set => Set(value); }
+    public string FirebasePrivateKey
+    {
+        get => Get("");
+        set => Set((value ?? "").Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n'));
+    }
     public string FirebaseClientEmail { get => Get(""); set => Set(value); }
     public string FirebaseClientId { get => Get(""); set => Set(value); }
 

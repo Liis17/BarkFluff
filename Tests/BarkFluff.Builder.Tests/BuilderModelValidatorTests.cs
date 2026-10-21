@@ -152,9 +152,7 @@ public sealed class BuilderModelValidatorTests
 
     [Theory]
     [InlineData("\t")]
-    [InlineData("\r")]
-    [InlineData("\n")]
-    public void RejectsTabsAndControlCharactersExceptFirebaseNewlines(string control)
+    public void RejectsTabsInEnvironmentFields(string control)
     {
         var model = BuilderTestSupport.ValidModel();
         model.TelegramBotToken = $"synthetic{control}token";
@@ -162,10 +160,20 @@ public sealed class BuilderModelValidatorTests
 
         model.TelegramBotToken = "synthetic-token";
         model.FirebasePrivateKey = $"line-one{control}line-two";
-        var errors = BuilderModelValidator.Validate(model);
-        if (control == "\n")
-            Assert.DoesNotContain(errors, error => error.Contains("FirebasePrivateKey", StringComparison.Ordinal));
-        else
-            Assert.Contains(errors, error => error.Contains("FirebasePrivateKey", StringComparison.Ordinal));
+        Assert.Contains(BuilderModelValidator.Validate(model), error => error.Contains("FirebasePrivateKey", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("\r\n")]
+    [InlineData("\r")]
+    [InlineData("\n")]
+    public void NormalizesFirebasePrivateKeyLineEndingsBeforeValidationAndGeneration(string lineEnding)
+    {
+        var model = BuilderTestSupport.ValidModel();
+        model.FirebasePrivateKey = $"line-one{lineEnding}line-two";
+
+        Assert.Equal("line-one\nline-two", model.FirebasePrivateKey);
+        Assert.DoesNotContain(BuilderModelValidator.Validate(model), error => error.Contains("FirebasePrivateKey", StringComparison.Ordinal));
+        Assert.Contains("FIREBASE_PRIVATE_KEY=\"line-one\\nline-two\"", ComposeGenerator.BuildEnv(model));
     }
 }

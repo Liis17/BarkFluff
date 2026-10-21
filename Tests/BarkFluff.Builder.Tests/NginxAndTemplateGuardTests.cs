@@ -75,6 +75,8 @@ public sealed class NginxAndTemplateGuardTests
         Assert.DoesNotContain("resolver 127.0.0.11", host["nginx/sites/setup.conf"]);
         Assert.Contains("http://127.0.0.1:7345", host["nginx/sites/setup.conf"]);
         Assert.DoesNotContain("http://127.0.0.1:7032", host["nginx/sites/setup.conf"]);
+        Assert.Contains("\n        proxy_send_timeout 300s;", host["nginx/sites/setup.conf"]);
+        Assert.DoesNotContain("\n            proxy_send_timeout 300s;", host["nginx/sites/setup.conf"]);
 
         model.BehindCloudflare = true;
         var cloudflare = NginxGenerator.BuildFiles(model)["nginx/sites/00-real-ip.conf"];
