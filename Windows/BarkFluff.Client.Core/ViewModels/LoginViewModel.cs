@@ -223,6 +223,11 @@ public sealed partial class LoginViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanLogin))]
     private async Task LoginAsync()
     {
+        if (IsAuthenticating)
+        {
+            return;
+        }
+
         ErrorMessage = null;
         StatusMessage = null;
         IsAuthenticating = true;
