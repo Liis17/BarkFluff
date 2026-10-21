@@ -173,32 +173,28 @@ public sealed class BuilderModel : INotifyPropertyChanged
     }
 
     private static BuilderLognaraTarget Target(string prefix, string displayName, string service) =>
-        new(prefix, displayName, service, $"./data/lognara/spool/{service}");
+        new(prefix, displayName, service);
 }
 
 public sealed class BuilderLognaraTarget(
     string prefix,
     string displayName,
-    string serviceName,
-    string spoolPath) : INotifyPropertyChanged
+    string serviceName) : INotifyPropertyChanged
 {
     private bool _consoleOutput = true;
     private bool _seqEnable;
     private bool _lognaraEnable;
     private string _relayToken = "";
-    private string _spoolPath = spoolPath;
 
     public string Prefix { get; } = prefix;
     public string DisplayName { get; } = displayName;
     public string ServiceName { get; } = serviceName;
     public string RelayTokenVariable => $"{Prefix}_LOGNARA_RELAY_TOKEN";
-    public string SpoolPathVariable => $"{Prefix}_LOGNARA_SPOOL_PATH";
 
     public bool ConsoleOutput { get => _consoleOutput; set => Set(ref _consoleOutput, value); }
     public bool SeqEnable { get => _seqEnable; set => Set(ref _seqEnable, value); }
     public bool LognaraEnable { get => _lognaraEnable; set => Set(ref _lognaraEnable, value); }
     public string RelayToken { get => _relayToken; set => Set(ref _relayToken, value); }
-    public string SpoolPath { get => _spoolPath; set => Set(ref _spoolPath, value); }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

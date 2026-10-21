@@ -71,6 +71,8 @@ public class MetricsLogCompressorService : BackgroundService
         using var scope = _sp.CreateScope();
         var cache = scope.ServiceProvider.GetRequiredService<MetricsCacheDbContext>();
         var seq = scope.ServiceProvider.GetRequiredService<SeqService>();
+        if (!seq.IsEnabled)
+            return null;
 
         var existing = cache.CompressionRuns.FindById(dayStart);
         if (existing != null && !existing.DryRun)

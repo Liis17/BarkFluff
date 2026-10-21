@@ -98,7 +98,7 @@ public static class BuilderConfigLoader
                 throw EnvironmentFormatError(lineIndex, "ожидалась строка KEY=\"значение\".");
 
             var key = line[..equals];
-            var value = ParseQuotedEnvironmentValue(line[(equals + 1)..], lineIndex);
+            var value = ParseEnvironmentValue(line[(equals + 1)..], lineIndex);
             if (!result.TryAdd(key, value))
                 throw EnvironmentFormatError(lineIndex, $"ключ '{key}' указан повторно.");
         }
@@ -106,10 +106,16 @@ public static class BuilderConfigLoader
         return result;
     }
 
-    private static string ParseQuotedEnvironmentValue(string source, int lineIndex)
+    private static string ParseEnvironmentValue(string source, int lineIndex)
     {
-        if (source.Length < 2 || source[0] != '"')
-            throw EnvironmentFormatError(lineIndex, "значение должно быть заключено в двойные кавычки.");
+        if (source.Length == 0 || source[0] != '"')
+        {
+            var unquotedValue = source.TrimEnd();
+            var comment = Regex.Match(unquotedValue, @"\s+#");
+            if (comment.Success)
+                unquotedValue = unquotedValue[..comment.Index];
+            return unquotedValue.Trim();
+        }
 
         var value = new StringBuilder();
         var closed = false;
@@ -281,7 +287,6 @@ public static class BuilderConfigLoader
             Set(prefix + "CONSOLE_OUTPUT", value => target.ConsoleOutput = ParseBoolean(value, prefix + "CONSOLE_OUTPUT"));
             Set(prefix + "SEQ_ENABLE", value => target.SeqEnable = ParseBoolean(value, prefix + "SEQ_ENABLE"));
             Set(prefix + "LOGNARA_ENABLE", value => target.LognaraEnable = ParseBoolean(value, prefix + "LOGNARA_ENABLE"));
-            Set(prefix + "SPOOL_PATH", value => target.SpoolPath = value);
             Set(target.RelayTokenVariable, value => target.RelayToken = value);
         }
     }

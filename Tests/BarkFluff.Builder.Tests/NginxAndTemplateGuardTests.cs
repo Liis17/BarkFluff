@@ -70,9 +70,11 @@ public sealed class NginxAndTemplateGuardTests
         Assert.Contains("/container/certs/node.pem", external["nginx/sites/01-ssl-params.conf"]);
 
         model.NginxMode = NginxMode.Host;
+        model.SetupHostPort = "7345";
         var host = NginxGenerator.BuildFiles(model);
         Assert.DoesNotContain("resolver 127.0.0.11", host["nginx/sites/setup.conf"]);
-        Assert.Contains("http://127.0.0.1:7032", host["nginx/sites/setup.conf"]);
+        Assert.Contains("http://127.0.0.1:7345", host["nginx/sites/setup.conf"]);
+        Assert.DoesNotContain("http://127.0.0.1:7032", host["nginx/sites/setup.conf"]);
 
         model.BehindCloudflare = true;
         var cloudflare = NginxGenerator.BuildFiles(model)["nginx/sites/00-real-ip.conf"];
@@ -94,6 +96,10 @@ public sealed class NginxAndTemplateGuardTests
         var model = BuilderTestSupport.ValidModel();
         model.IncludeSeq = true;
         model.IncludeMinio = true;
+        model.PostgresHostPort = "5544";
+        model.SeqHostPort = "8181";
+        model.MinioApiHostPort = "9100";
+        model.MinioConsoleHostPort = "9101";
         var generated = ComposeGenerator.BuildCompose(model);
         var names = BuilderTestSupport.ServiceNames(baseline).Intersect(BuilderTestSupport.ServiceNames(generated), StringComparer.Ordinal);
 
@@ -120,6 +126,16 @@ public sealed class NginxAndTemplateGuardTests
 
         Assert.Contains("Seq__Enabled: \"true\"", BuilderTestSupport.Block(generated, "admin-panel"));
         Assert.DoesNotContain("UsersService__Token", BuilderTestSupport.Block(generated, "admin-panel"));
+
+        // Unlike nightly's wildcard bindings, Builder exposes these optional host ports on loopback only.
+        Assert.Contains("127.0.0.1:${POSTGRES_HOST_PORT}:5432", BuilderTestSupport.Block(generated, "postgres"));
+        Assert.Contains("127.0.0.1:${SEQ_HOST_PORT}:80", BuilderTestSupport.Block(generated, "seq"));
+        Assert.Contains("127.0.0.1:${MINIO_API_HOST_PORT}:9000", BuilderTestSupport.Block(generated, "minio"));
+        Assert.Contains("127.0.0.1:${MINIO_CONSOLE_HOST_PORT}:9001", BuilderTestSupport.Block(generated, "minio"));
+
+        var setup = ComposeGenerator.BuildSetupCompose(model);
+        Assert.Contains("127.0.0.1:${POSTGRES_HOST_PORT}:5432", BuilderTestSupport.Block(setup, "postgres"));
+        Assert.Contains("127.0.0.1:${SEQ_HOST_PORT}:80", BuilderTestSupport.Block(setup, "seq"));
     }
 
     [Fact]

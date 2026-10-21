@@ -66,7 +66,7 @@ public sealed class BuilderModelValidatorTests
     }
 
     [Fact]
-    public void ActiveLognaraAgentsNeedUniqueNormalizedTokensAndSpoolPaths()
+    public void ActiveLognaraAgentsNeedUniqueTokensAndUseNamedSpoolVolumes()
     {
         var model = BuilderTestSupport.ValidModel();
         model.IncludeLognara = true;
@@ -84,14 +84,10 @@ public sealed class BuilderModelValidatorTests
         Assert.Contains(duplicateTokenErrors, error => error.Contains("уникальными", StringComparison.Ordinal));
 
         postgres.RelayToken = "another-synthetic-relay-token";
-        postgres.SpoolPath = application.SpoolPath;
-        var duplicatePathErrors = BuilderModelValidator.Validate(model);
-        Assert.Contains(duplicatePathErrors, error => error.Contains("Пути spool", StringComparison.Ordinal));
-
-        postgres.SpoolPath = "./data/lognara/spool/postgres";
         Assert.Empty(BuilderModelValidator.Validate(model));
         Assert.Contains("SETTINGS_LOGNARA_RELAY_TOKEN=\"synthetic-relay-token\"", ComposeGenerator.BuildEnv(model));
-        Assert.Contains("BUILDER_LOGNARA_APPLICATION_SETTINGS_SPOOL_PATH=\"./data/lognara/spool/settings\"", ComposeGenerator.BuildEnv(model));
+        Assert.DoesNotContain("SPOOL_PATH", ComposeGenerator.BuildEnv(model));
+        Assert.Contains("lognara-agent-spool-settings:/var/lib/lognara-agent/spool", BuilderTestSupport.Block(ComposeGenerator.BuildCompose(model), "settings"));
 
         model.LognaraCoreToken = "LOGNARA_AGENT_TOKEN=";
         Assert.Contains(BuilderModelValidator.Validate(model), error => error.Contains("Core", StringComparison.Ordinal));
@@ -104,5 +100,72 @@ public sealed class BuilderModelValidatorTests
         model.TelegramBotToken = "synthetic\0token";
 
         Assert.Contains(BuilderModelValidator.Validate(model), error => error.Contains(".env", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("bad;user")]
+    [InlineData("bad=user")]
+    [InlineData("bad user")]
+    [InlineData("bad\"user")]
+    [InlineData("bad'user")]
+    public void RejectsPostgresConnectionStringDelimiters(string value)
+    {
+        var userModel = BuilderTestSupport.ValidModel();
+        userModel.PostgresUser = value;
+        Assert.Contains(BuilderModelValidator.Validate(userModel), error => error.Contains("Пользователь PostgreSQL", StringComparison.Ordinal));
+
+        var passwordModel = BuilderTestSupport.ValidModel();
+        passwordModel.PostgresPassword = value;
+        Assert.Contains(BuilderModelValidator.Validate(passwordModel), error => error.Contains("Пароль PostgreSQL", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RabbitCredentialsRemainSeparateFromPostgresConnectionStringRules()
+    {
+        var model = BuilderTestSupport.ValidModel();
+        model.RabbitUser = "rabbit user";
+        model.RabbitPassword = "rabbit;=password";
+
+        Assert.DoesNotContain(BuilderModelValidator.Validate(model), error => error.Contains("RabbitMQ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IDNHostsMustBeEnteredAsPunycode()
+    {
+        var model = BuilderTestSupport.ValidModel();
+        model.PublicDomain = "пример.рф";
+        Assert.Contains(BuilderModelValidator.Validate(model), error => error.Contains("punycode", StringComparison.OrdinalIgnoreCase));
+
+        model.PublicDomain = "xn--e1afmkfd.xn--p1ai";
+        model.NavigatorUrl = "https://пример.рф";
+        Assert.Contains(BuilderModelValidator.Validate(model), error => error.Contains("punycode", StringComparison.OrdinalIgnoreCase));
+
+        model.NavigatorUrl = "https://nav.example.com";
+        model.IncludeMinio = false;
+        model.S3Endpoint = "https://пример.рф";
+        Assert.Contains(BuilderModelValidator.Validate(model), error => error.Contains("punycode", StringComparison.OrdinalIgnoreCase));
+
+        model.S3Endpoint = "https://storage.example.com";
+        model.SetupPublicOrigin = "https://пример.рф";
+        Assert.Contains(BuilderModelValidator.Validate(model), error => error.Contains("punycode", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("\t")]
+    [InlineData("\r")]
+    [InlineData("\n")]
+    public void RejectsTabsAndControlCharactersExceptFirebaseNewlines(string control)
+    {
+        var model = BuilderTestSupport.ValidModel();
+        model.TelegramBotToken = $"synthetic{control}token";
+        Assert.Contains(BuilderModelValidator.Validate(model), error => error.Contains(".env", StringComparison.Ordinal));
+
+        model.TelegramBotToken = "synthetic-token";
+        model.FirebasePrivateKey = $"line-one{control}line-two";
+        var errors = BuilderModelValidator.Validate(model);
+        if (control == "\n")
+            Assert.DoesNotContain(errors, error => error.Contains("FirebasePrivateKey", StringComparison.Ordinal));
+        else
+            Assert.Contains(errors, error => error.Contains("FirebasePrivateKey", StringComparison.Ordinal));
     }
 }

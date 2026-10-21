@@ -157,6 +157,16 @@ public partial class MainWindow : FluentWindow
 
         try
         {
+            if (BuilderOutputWriter.ContainsForeignConfiguration(_model.OutputPath)
+                && System.Windows.MessageBox.Show(
+                    this,
+                    "Папка содержит конфигурацию, созданную не Builder. Перезаписать?",
+                    "Подтверждение перезаписи",
+                    System.Windows.MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning,
+                    System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes)
+                return;
+
             var files = BuilderOutputWriter.Write(_model);
             var outputPath = Path.GetFullPath(_model.OutputPath);
             SetStatus(

@@ -60,7 +60,8 @@ public static class NginxGenerator
         files["nginx/sites/web.conf"] = WebSite(model, upstreamHost);
         files["nginx/sites/developers.conf"] = DevelopersSite(model, upstreamHost);
         files["nginx/sites/admin-panel.conf"] = AdminPanelSite(model, upstreamHost);
-        files["nginx/sites/setup.conf"] = HttpSite(model, "setup", upstreamHost, "setup", "7032", "location /", "proxy_read_timeout 300s;\n        proxy_send_timeout 300s;");
+        var setupPort = model.NginxMode == NginxMode.Host ? model.SetupHostPort : "7032";
+        files["nginx/sites/setup.conf"] = HttpSite(model, "setup", upstreamHost, "setup", setupPort, "location /", "proxy_read_timeout 300s;\n        proxy_send_timeout 300s;");
     }
 
     private static string GrpcSite(
