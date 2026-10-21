@@ -34,6 +34,9 @@ class PrTestSelectionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assert_suites([path], [suite])
 
+    def test_builder_tool_changes_select_backend_suite(self):
+        self.assert_suites(['Tools/BarkFluff.Builder/BuilderModel.cs'], ['backend'])
+
     def test_mixed_changes_combine_platforms(self):
         self.assert_suites(['Android/core/Example.kt', 'Mac/Barkfluff/Example.swift'], ['android', 'macos'])
 

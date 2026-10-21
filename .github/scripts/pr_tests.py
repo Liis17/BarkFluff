@@ -15,7 +15,7 @@ def select_suites(paths):
             return dict.fromkeys(SUITES, True)
         if path.startswith('Shared/'):
             selected.update(dict.fromkeys(SUITES, True))
-        if path.startswith(('Backend/', 'Frontend/Developers/', 'Docker/', 'Icons/')):
+        if path.startswith(('Backend/', 'Frontend/Developers/', 'Docker/', 'Icons/', 'Tools/')):
             selected['backend'] = True
         if path.startswith('Tests/'):
             selected['windows' if path.startswith(('Tests/BarkFluff.Client.WinUI.Tests/',
