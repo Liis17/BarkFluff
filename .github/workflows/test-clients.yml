@@ -74,5 +74,7 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest
+      - name: Run BFNetworking tests
+        run: swift test --package-path Mac/Barkfluff/Packages/BFNetworking
       - name: Run BFCore tests
         run: swift test --package-path Mac/Barkfluff/Packages/BFCore
