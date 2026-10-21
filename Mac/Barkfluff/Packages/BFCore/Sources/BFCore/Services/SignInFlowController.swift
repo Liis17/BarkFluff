@@ -53,8 +53,11 @@ public final class SignInFlowController {
     @ObservationIgnored private var selectedFactor: SignInFactor?
     @ObservationIgnored private var attempt: SignInSessionAdmissionAttempt?
     @ObservationIgnored private var pollingTask: Task<Void, Never>?
+    @ObservationIgnored private var foregroundIsActive = false
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private let sleepBetweenPolls: @Sendable () async throws -> Void
+
+    var hasForegroundPollingTask: Bool { pollingTask != nil }
 
     public init(
         signInService: SignInServiceProtocol,
@@ -82,8 +85,8 @@ public final class SignInFlowController {
     }
 
     public var canResend: Bool {
-        guard let challenge, challenge.state == .waiting, !isUsingRecoveryCode,
-              challenge.needsCode,
+        guard !isBusy, let challenge, challenge.state == .waiting, !isUsingRecoveryCode,
+              !isExpired(challenge),
               challenge.factor == .email || challenge.factor == .telegram else { return false }
         return resendAvailableAt.map { $0 <= now() } ?? true
     }
@@ -174,12 +177,15 @@ public final class SignInFlowController {
         await beginChallenge(factor: nil, recovery: false)
     }
 
-    public func useRecoveryCode() async {
-        guard !isBusy, canUseRecoveryCode, let loginMode,
-              loginMode == .telegramLogin || !password.isEmpty else { return }
+    public func useRecoveryCode(password enteredPassword: String? = nil) async {
+        guard !isBusy, canUseRecoveryCode, let loginMode else { return }
+        if loginMode == .passwordSecondFactor, let enteredPassword {
+            password = enteredPassword
+        }
+        guard loginMode == .telegramLogin || !password.isEmpty else { return }
         generation &+= 1
         let requestGeneration = generation
-        pauseForeground()
+        stopPolling()
         isBusy = true
         step = .beginning
         verificationCode = ""
@@ -207,11 +213,11 @@ public final class SignInFlowController {
     public func selectFactor(_ factor: SignInFactor) async {
         guard !isBusy, loginMode == .passwordSecondFactor,
               challenge?.availableFactors.contains(factor) == true,
-              factor != .unknown(0) else { return }
+              factor != .unknown(0), factor != selectedFactor else { return }
         let reference = challenge?.reference
         generation &+= 1
         let requestGeneration = generation
-        pauseForeground()
+        stopPolling()
         isBusy = true
         step = .beginning
         challenge = nil
@@ -262,6 +268,10 @@ public final class SignInFlowController {
     }
 
     public func refreshChallenge() async {
+        await refreshChallenge(fromForegroundPolling: false)
+    }
+
+    private func refreshChallenge(fromForegroundPolling: Bool) async {
         guard !Task.isCancelled, !isBusy, refreshID == nil, let reference = challenge?.reference else { return }
         guard !isExpired(challenge) else {
             finishTerminal(.expired)
@@ -305,7 +315,8 @@ public final class SignInFlowController {
                 await completeCurrentChallenge(
                     code: "",
                     useRecoveryCode: isUsingRecoveryCode,
-                    expectedGeneration: requestGeneration
+                    expectedGeneration: requestGeneration,
+                    fromForegroundPolling: fromForegroundPolling
                 )
             case .rejected:
                 finishTerminal(.rejected)
@@ -335,20 +346,17 @@ public final class SignInFlowController {
 
     /// Rejoin the same in-memory challenge after returning to the foreground.
     public func resumeForeground() {
-        pauseForeground()
-        guard shouldPollTelegram else { return }
-        pollingTask = Task { [weak self] in
-            guard let self else { return }
-            await self.refreshChallenge()
-            while !Task.isCancelled, self.shouldPollTelegram {
-                do { try await self.sleepBetweenPolls() } catch { return }
-                guard !Task.isCancelled, self.shouldPollTelegram else { return }
-                await self.refreshChallenge()
-            }
-        }
+        stopPolling()
+        foregroundIsActive = true
+        startForegroundPollingIfNeeded()
     }
 
     public func pauseForeground() {
+        foregroundIsActive = false
+        stopPolling()
+    }
+
+    private func stopPolling() {
         pollingTask?.cancel()
         pollingTask = nil
         refreshID = nil
@@ -360,6 +368,7 @@ public final class SignInFlowController {
     }
 
     public func cancel() {
+        foregroundIsActive = false
         invalidateCurrentFlow(clearIdentifier: true)
         step = .identifier
     }
@@ -373,6 +382,25 @@ public final class SignInFlowController {
         loginMode == .telegramLogin && challenge?.needsCode == false
             && challenge?.state == .waiting && challenge?.factor == .telegram && !isUsingRecoveryCode
             && (step == .challenge)
+    }
+
+    private var shouldRefreshTelegramChallenge: Bool {
+        guard loginMode == .telegramLogin, challenge?.needsCode == false,
+              challenge?.factor == .telegram, !isUsingRecoveryCode, step == .challenge else { return false }
+        return shouldPollTelegram || challenge?.state == .approved || challenge?.state == .completed
+    }
+
+    private func startForegroundPollingIfNeeded() {
+        guard foregroundIsActive, shouldRefreshTelegramChallenge, pollingTask == nil else { return }
+        pollingTask = Task { [weak self] in
+            guard let self else { return }
+            await self.refreshChallenge(fromForegroundPolling: true)
+            while !Task.isCancelled, self.shouldPollTelegram {
+                do { try await self.sleepBetweenPolls() } catch { return }
+                guard !Task.isCancelled, self.shouldPollTelegram else { return }
+                await self.refreshChallenge(fromForegroundPolling: true)
+            }
+        }
     }
 
     private func beginChallenge(
@@ -440,7 +468,7 @@ public final class SignInFlowController {
             selectedFactor = response.factor
             isUsingRecoveryCode = recovery
             verificationCode = ""
-            resendAvailableAt = response.state == .waiting && response.needsCode && !recovery
+            resendAvailableAt = response.state == .waiting && !recovery
                 && (response.factor == .email || response.factor == .telegram)
                 ? now().addingTimeInterval(60) : nil
             switch response.state {
@@ -450,7 +478,7 @@ public final class SignInFlowController {
                 if response.needsCode {
                     error = nil
                 }
-                if shouldPollTelegram { resumeForeground() }
+                if shouldPollTelegram { startForegroundPollingIfNeeded() }
             case .approved, .completed:
                 isBusy = false
                 await completeCurrentChallenge(
@@ -480,7 +508,8 @@ public final class SignInFlowController {
     private func completeCurrentChallenge(
         code: String,
         useRecoveryCode: Bool? = nil,
-        expectedGeneration: UInt64? = nil
+        expectedGeneration: UInt64? = nil,
+        fromForegroundPolling: Bool = false
     ) async {
         guard let reference = challenge?.reference else {
             fail(.malformedResponse, step: retryStep(for: loginMode))
@@ -531,15 +560,16 @@ public final class SignInFlowController {
                     fail(.cancelled, step: .identifier)
                     return
                 }
-                guard let receipt = await admissionService.commitSignInSession(session, for: attempt) else {
+                let receipt = await admissionService.commitSignInSession(session, for: attempt)
+                guard isCurrent(requestGeneration) else {
+                    await admissionService.invalidateSignInAttempt(receipt?.attempt ?? attempt)
+                    return
+                }
+                guard let receipt else {
                     challenge = nil
                     isBusy = false
                     step = .identifier
                     error = .cancelled
-                    return
-                }
-                guard isCurrent(requestGeneration) else {
-                    await admissionService.invalidateSignInAttempt(receipt.attempt)
                     return
                 }
                 admissionReceipt = receipt
@@ -549,7 +579,7 @@ public final class SignInFlowController {
                 isBusy = false
                 error = nil
                 step = .authenticated
-                pauseForeground()
+                stopPolling()
                 await onAuthenticated?(receipt)
             case .waiting:
                 setChallengeState(.waiting)
@@ -570,6 +600,13 @@ public final class SignInFlowController {
             }
         } catch {
             guard isCurrent(requestGeneration) else { return }
+            if fromForegroundPolling && Task.isCancelled {
+                step = .challenge
+                isBusy = false
+                self.error = nil
+                startForegroundPollingIfNeeded()
+                return
+            }
             // Keep the challenge and submitted recovery code in memory so a lost completion
             // response can be retried after the server has already consumed the code.
             fail(map(error), step: .challenge)
@@ -666,7 +703,7 @@ public final class SignInFlowController {
         isBusy = false
         error = terminal
         step = retryStep(for: loginMode)
-        pauseForeground()
+        stopPolling()
         if let reference { Task { await signInService.cancelAuthChallenge(reference) } }
     }
 
@@ -684,7 +721,7 @@ public final class SignInFlowController {
 
     private func invalidateCurrentFlow(clearIdentifier: Bool) {
         generation &+= 1
-        pauseForeground()
+        stopPolling()
         let reference = challenge?.reference
         let oldAttempt = attempt
         oldAttempt?.cancel()

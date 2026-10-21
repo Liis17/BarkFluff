@@ -31,9 +31,10 @@ final class SignInMappingTests: XCTestCase {
     func testEndpointChangesAndTaskCancellationMapToCancellation() async {
         XCTAssertEqual(SignInRepository.mapError(ConnectionError.endpointChanged), .cancelled)
         XCTAssertEqual(SignInRepository.mapError(CancellationError()), .cancelled)
+        XCTAssertEqual(SignInRepository.mapError(SignInRepositoryError.malformedResponse), .malformedResponse)
         let task = Task {
             withUnsafeCurrentTask { $0?.cancel() }
-            return SignInRepository.mapError(RPCError(code: .unavailable, message: "private detail"))
+            return SignInRepository.mapError(SignInRepositoryError.malformedResponse)
         }
         let result = await task.value
         XCTAssertEqual(result, .cancelled)
@@ -93,7 +94,9 @@ final class SignInMappingTests: XCTestCase {
         malformedReference.challenge.id = "id-without-secret"
         malformedReference.state = .waiting
         malformedReference.expiresAt = timestamp(Date(timeIntervalSince1970: 2_000_000_000))
-        XCTAssertThrowsError(try SignInProtoMapper.challenge(malformedReference, endpoint: endpoint))
+        XCTAssertThrowsError(try SignInProtoMapper.challenge(malformedReference, endpoint: endpoint)) {
+            XCTAssertEqual(SignInRepository.mapError($0), .malformedResponse)
+        }
 
         var malformedTimestamp = Barkfluff_Identity_AuthChallengeResponse()
         malformedTimestamp.expiresAt.seconds = 2_000_000_000

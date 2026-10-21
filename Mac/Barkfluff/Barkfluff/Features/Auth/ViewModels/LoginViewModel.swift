@@ -74,7 +74,7 @@ final class LoginViewModel {
 
     func useRecoveryCode() async {
         otpCode = ""
-        await flow.useRecoveryCode()
+        await flow.useRecoveryCode(password: password)
         startCooldownTickerIfNeeded()
     }
 

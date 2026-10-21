@@ -571,6 +571,12 @@
         }
       }
     },
+    "auth.login.telegram_code_instructions" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter the code from Telegram." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Введите код из Telegram." } }
+      }
+    },
     "auth.login.open_telegram" : {
       "localizations" : {
         "en" : {

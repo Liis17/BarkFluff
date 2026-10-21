@@ -37,6 +37,8 @@
 | Mac/Barkfluff/Packages/BFNetworking/Sources/BFNetworking/Repositories/SignInRepository.swift | Identity Resolve/Begin/Get/Complete/Cancel/Resend challenge RPC; typed mapping ошибок, factors и сессии |
 | Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Services/SignInFlowController.swift | Identifier-first state machine, challenge/recovery/resend/polling и stale-result защита |
 | Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Services/Implementations/AuthService.swift | Legacy AuthService API и общий admission/commit сессий для challenge и FastAuth |
+| Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Services/SignInNavigationCompletion.swift | Загрузка текущего пользователя и принятие provisional sign-in receipt перед переходом в main |
+| Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Services/Implementations/OnlineStatusService.swift | Общий per-user статус, ref-counted tracking и multicast подписчикам |
 | Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Database/Migrations.swift | GRDB schema v1–v6 |
 | Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Repositories/Local/ | Репозитории SQLite-кеша |
 | Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Markdown/ | Markdown AST, parser и sanitizer |

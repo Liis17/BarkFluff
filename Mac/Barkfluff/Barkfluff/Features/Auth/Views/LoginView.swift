@@ -377,7 +377,12 @@ struct LoginView: View {
             Text("auth.login.recovery_instructions")
                 .font(.callout)
                 .foregroundStyle(.secondary)
-        } else if viewModel.flow.loginMode == .telegramLogin || challenge.factor == .telegram {
+        } else if challenge.factor == .telegram && challenge.needsCode {
+            Text("auth.login.telegram_code_instructions")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        } else if !challenge.needsCode
+                    && (viewModel.flow.loginMode == .telegramLogin || challenge.factor == .telegram) {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 Label("auth.login.telegram_waiting", systemImage: "paperplane.fill")
                     .font(.callout.weight(.medium))
