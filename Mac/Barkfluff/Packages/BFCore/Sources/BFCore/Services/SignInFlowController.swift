@@ -53,11 +53,14 @@ public final class SignInFlowController {
     @ObservationIgnored private var selectedFactor: SignInFactor?
     @ObservationIgnored private var attempt: SignInSessionAdmissionAttempt?
     @ObservationIgnored private var pollingTask: Task<Void, Never>?
+    @ObservationIgnored private var pollingTaskID: UUID?
+    @ObservationIgnored private var pendingTelegramCompletionRetry = false
     @ObservationIgnored private var foregroundIsActive = false
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private let sleepBetweenPolls: @Sendable () async throws -> Void
 
     var hasForegroundPollingTask: Bool { pollingTask != nil }
+    var foregroundPollingTaskForTesting: Task<Void, Never>? { pollingTask }
 
     public init(
         signInService: SignInServiceProtocol,
@@ -85,10 +88,16 @@ public final class SignInFlowController {
     }
 
     public var canResend: Bool {
-        guard !isBusy, let challenge, challenge.state == .waiting, !isUsingRecoveryCode,
-              !isExpired(challenge),
-              challenge.factor == .email || challenge.factor == .telegram else { return false }
+        guard !isBusy, showsResendControl else { return false }
         return resendAvailableAt.map { $0 <= now() } ?? true
+    }
+
+    /// Whether the current challenge should offer the resend action and its cooldown.
+    /// Code delivery and Telegram approval both use this control.
+    public var showsResendControl: Bool {
+        guard let challenge, challenge.state == .waiting, !isUsingRecoveryCode,
+              !isExpired(challenge) else { return false }
+        return challenge.factor == .email || challenge.factor == .telegram
     }
 
     public var resendSecondsRemaining: Int {
@@ -186,6 +195,7 @@ public final class SignInFlowController {
         generation &+= 1
         let requestGeneration = generation
         stopPolling()
+        pendingTelegramCompletionRetry = false
         isBusy = true
         step = .beginning
         verificationCode = ""
@@ -218,6 +228,7 @@ public final class SignInFlowController {
         generation &+= 1
         let requestGeneration = generation
         stopPolling()
+        pendingTelegramCompletionRetry = false
         isBusy = true
         step = .beginning
         challenge = nil
@@ -359,6 +370,7 @@ public final class SignInFlowController {
     private func stopPolling() {
         pollingTask?.cancel()
         pollingTask = nil
+        pollingTaskID = nil
         refreshID = nil
     }
 
@@ -386,14 +398,40 @@ public final class SignInFlowController {
 
     private var shouldRefreshTelegramChallenge: Bool {
         guard loginMode == .telegramLogin, challenge?.needsCode == false,
-              challenge?.factor == .telegram, !isUsingRecoveryCode, step == .challenge else { return false }
-        return shouldPollTelegram || challenge?.state == .approved || challenge?.state == .completed
+              challenge?.factor == .telegram, !isUsingRecoveryCode else { return false }
+        let completionPending = challenge?.state == .approved || challenge?.state == .completed
+        if step == .challenge { return shouldPollTelegram || completionPending }
+        // Keep a foreground task available when the app resumes during Complete. Its refresh
+        // exits while the completion is busy; task cleanup below retries if that completion
+        // was cancelled after a newer foreground task took its place.
+        return step == .completing && isBusy && completionPending
+    }
+
+    private var hasPendingTelegramCompletionRetry: Bool {
+        guard pendingTelegramCompletionRetry, foregroundIsActive, !isBusy, error == nil,
+              loginMode == .telegramLogin, challenge?.needsCode == false,
+              challenge?.factor == .telegram, !isUsingRecoveryCode,
+              step == .challenge else { return false }
+        return challenge?.state == .approved || challenge?.state == .completed
+    }
+
+    private func pollingTaskDidFinish(_ taskID: UUID) {
+        guard pollingTaskID == taskID else { return }
+        pollingTask = nil
+        pollingTaskID = nil
+        if hasPendingTelegramCompletionRetry {
+            startForegroundPollingIfNeeded()
+        }
     }
 
     private func startForegroundPollingIfNeeded() {
         guard foregroundIsActive, shouldRefreshTelegramChallenge, pollingTask == nil else { return }
+        pendingTelegramCompletionRetry = false
+        let taskID = UUID()
+        pollingTaskID = taskID
         pollingTask = Task { [weak self] in
             guard let self else { return }
+            defer { self.pollingTaskDidFinish(taskID) }
             await self.refreshChallenge(fromForegroundPolling: true)
             while !Task.isCancelled, self.shouldPollTelegram {
                 do { try await self.sleepBetweenPolls() } catch { return }
@@ -576,6 +614,7 @@ public final class SignInFlowController {
                 challenge = nil
                 password = ""
                 verificationCode = ""
+                pendingTelegramCompletionRetry = false
                 isBusy = false
                 error = nil
                 step = .authenticated
@@ -604,6 +643,7 @@ public final class SignInFlowController {
                 step = .challenge
                 isBusy = false
                 self.error = nil
+                pendingTelegramCompletionRetry = true
                 startForegroundPollingIfNeeded()
                 return
             }
@@ -700,6 +740,7 @@ public final class SignInFlowController {
         verificationCode = ""
         isUsingRecoveryCode = false
         resendAvailableAt = nil
+        pendingTelegramCompletionRetry = false
         isBusy = false
         error = terminal
         step = retryStep(for: loginMode)
@@ -732,6 +773,7 @@ public final class SignInFlowController {
         isBusy = false
         isUsingRecoveryCode = false
         resendAvailableAt = nil
+        pendingTelegramCompletionRetry = false
         admissionReceipt = nil
         attempt = nil
         password = ""

@@ -278,7 +278,7 @@ struct LoginView: View {
                         factorChoices(viewModel)
                     }
 
-                    resendControl(viewModel, challenge: challenge)
+                    resendControl(viewModel)
                 }
             }
 
@@ -432,9 +432,8 @@ struct LoginView: View {
     }
 
     @ViewBuilder
-    private func resendControl(_ viewModel: LoginViewModel, challenge: SignInChallenge) -> some View {
-        if challenge.state == .waiting, challenge.needsCode, !viewModel.flow.isUsingRecoveryCode,
-           (challenge.factor == .email || challenge.factor == .telegram) {
+    private func resendControl(_ viewModel: LoginViewModel) -> some View {
+        if viewModel.flow.showsResendControl {
             if viewModel.flow.canResend {
                 Button("auth.login.resend_code") {
                     Task { await viewModel.resendCode() }
