@@ -1417,7 +1417,9 @@ public sealed partial class LoginViewModel : ObservableObject
     private void InvalidateResolvedSignIn()
     {
         StopFastAuthUi();
-        _ = CancelCurrentAttemptAsync();
+        var cleanup = CancelCurrentAttemptAsync();
+        var flowGeneration = _flowGeneration;
+        var fastAuthGeneration = Volatile.Read(ref _fastAuthGeneration);
         _resolvedLogin = string.Empty;
         _loginMode = AuthLoginMode.LoginModeUnspecified;
         _challenge = null;
@@ -1437,6 +1439,35 @@ public sealed partial class LoginViewModel : ObservableObject
         OnPropertyChanged(nameof(CanChangeRecoveryCode));
         OnPropertyChanged(nameof(CanSelectFactor));
         OnPropertyChanged(nameof(ChallengeExpiryText));
+
+        if (IsIdentifierStep)
+        {
+            _ = RestoreFastAuthAfterIdentifierEditAsync(cleanup, flowGeneration, fastAuthGeneration);
+        }
+    }
+
+    private async Task RestoreFastAuthAfterIdentifierEditAsync(Task cleanup, int flowGeneration, int fastAuthGeneration)
+    {
+        await cleanup;
+        if (flowGeneration != _flowGeneration
+            || !IsCurrentFastAuthGeneration(fastAuthGeneration)
+            || !IsIdentifierStep
+            || IsAuthenticating
+            || _attempt is not null)
+        {
+            return;
+        }
+
+        var attempt = _authenticationService.CreateAuthenticationAttempt();
+        if (attempt is null)
+        {
+            FastAuthStatusMessage = _localization.GetString("Error_FastAuthUnavailable");
+            return;
+        }
+
+        _attempt = attempt;
+        _flowCancellation = new CancellationTokenSource();
+        RestartFastAuthForCurrentAttempt();
     }
 
     partial void OnPasswordChanged(string value) => LoginCommand.NotifyCanExecuteChanged();
