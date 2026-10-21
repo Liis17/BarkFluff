@@ -23,6 +23,92 @@ namespace BarkFluff.Client.WinUI.Tests;
 public sealed class AuthenticationServiceSignInTests
 {
     [Fact]
+    public async Task WrongPassword_FromGrpcTrailersKeepsPasswordStepAndAllowsRetry()
+    {
+        await using var node = await TestIdentityNode.StartAsync("wrong-password", invalidPassword: true);
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var authentication = new AuthenticationService(mainWebApi,
+            new TestClientSession(CreateConnection(node.Address, "device")), new TestSessionStore());
+        var viewModel = new LoginViewModel(authentication, new TestLoginNavigation(), new TestLoginLocalization())
+        {
+            LoginOrEmail = "alice"
+        };
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        viewModel.Password = "wrong";
+        await viewModel.LoginCommand.ExecuteAsync(null);
+
+        Assert.Equal("Error_LoginFailed", viewModel.ErrorMessage);
+        Assert.Equal(LoginStep.Password, viewModel.Step);
+        Assert.True(viewModel.LoginCommand.CanExecute(null));
+        Assert.Single(node.BeginRequests);
+        await viewModel.CleanupAsync();
+    }
+
+    [Fact]
+    public async Task FlowCancelledDuringSaveThatIgnoresCancellation_RollsBackWithoutApplying()
+    {
+        await using var node = await TestIdentityNode.StartAsync("cancel-save");
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var connection = CreateConnection(node.Address, "device");
+        var previous = new StoredSession("previous-access", "previous-refresh");
+        var store = new TestSessionStore { Value = previous, BlockFirstSave = true };
+        var authentication = new AuthenticationService(mainWebApi, new TestClientSession(connection), store);
+        var attempt = Assert.IsType<AuthenticationAttempt>(authentication.CreateAuthenticationAttempt());
+        var reference = await BeginChallengeAsync(authentication, attempt);
+        using var cancellation = new CancellationTokenSource();
+
+        var completion = authentication.CompleteAuthChallengeAsync(attempt, reference, "", false, cancellation.Token);
+        await store.FirstSaveStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        cancellation.Cancel();
+        store.ReleaseFirstSave();
+        var result = await completion.WaitAsync(TimeSpan.FromSeconds(3));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(previous, store.Value);
+        Assert.Null(connection.ConnectionParameters.AccessToken);
+        await authentication.CancelAuthenticationAttemptAsync(attempt);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProfileRetry_ReusesTokensOnlyForExactChallengeReference(bool changeSecret)
+    {
+        await using var node = await TestIdentityNode.StartAsync("pending", failFirstProfile: true);
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var store = new TestSessionStore();
+        var authentication = new AuthenticationService(mainWebApi,
+            new TestClientSession(CreateConnection(node.Address, "device")), store);
+        var attempt = Assert.IsType<AuthenticationAttempt>(authentication.CreateAuthenticationAttempt());
+        var first = await BeginChallengeAsync(authentication, attempt);
+        Assert.False((await authentication.CompleteAuthChallengeAsync(attempt, first, "111111", false)).IsSuccess);
+
+        var second = await BeginChallengeAsync(authentication, attempt);
+        second = new AuthChallengeReference
+        {
+            Id = changeSecret ? first.Id : "second-challenge",
+            Secret = changeSecret ? "different-secret" : first.Secret
+        };
+        Assert.True((await authentication.CompleteAuthChallengeAsync(attempt, second, "222222", false)).IsSuccess);
+        Assert.Equal(new[] { first, second }, node.CompletedReferences.ToArray());
+        Assert.Equal(new StoredSession("pending-access", "pending-refresh"), store.Value);
+    }
+
+    [Fact]
+    public async Task ProfileRetry_SameReferenceDoesNotVerifyConsumedCodeAgain()
+    {
+        await using var node = await TestIdentityNode.StartAsync("retry", failFirstProfile: true);
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var authentication = new AuthenticationService(mainWebApi,
+            new TestClientSession(CreateConnection(node.Address, "device")), new TestSessionStore());
+        var attempt = Assert.IsType<AuthenticationAttempt>(authentication.CreateAuthenticationAttempt());
+        var reference = await BeginChallengeAsync(authentication, attempt);
+        Assert.False((await authentication.CompleteAuthChallengeAsync(attempt, reference, "111111", false)).IsSuccess);
+        Assert.True((await authentication.CompleteAuthChallengeAsync(attempt, reference.Clone(), "111111", false)).IsSuccess);
+        Assert.Single(node.CompletedReferences);
+    }
+
+    [Fact]
     public async Task AttemptSwitch_CancelsLateChallengeOnOldNodeAndKeepsMetadata()
     {
         await using var oldNode = await TestIdentityNode.StartAsync("old");
@@ -493,6 +579,8 @@ public sealed class AuthenticationServiceSignInTests
         public bool ApproveBegin { get; init; }
         public bool OmitAccessToken { get; init; }
         public bool OmitRefreshToken { get; init; }
+        public bool FailFirstProfile { get; init; }
+        public bool InvalidPassword { get; init; }
         public ConcurrentQueue<string> ResolvedLogins { get; } = new();
         public ConcurrentQueue<AuthRequest> AuthRequests { get; } = new();
         public ConcurrentQueue<BeginSignInRequest> BeginRequests { get; } = new();
@@ -517,7 +605,9 @@ public sealed class AuthenticationServiceSignInTests
             bool blockComplete = false,
             bool approveBegin = false,
             bool omitAccessToken = false,
-            bool omitRefreshToken = false)
+            bool omitRefreshToken = false,
+            bool failFirstProfile = false,
+            bool invalidPassword = false)
         {
             var builder = WebApplication.CreateBuilder();
             builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0, listenOptions =>
@@ -564,6 +654,12 @@ public sealed class AuthenticationServiceSignInTests
                 node!.BeginRequests.Enqueue(request);
                 node.RequestMetadata.Enqueue(CaptureHeaders(context));
                 node.BeginRequestSeen.TrySetResult();
+                if (node.InvalidPassword)
+                {
+                    await WriteGrpcResponseAsync(context, new AuthChallengeResponse(), "16",
+                        new InvalidLoginOrPasswordException().ErrorCode);
+                    return;
+                }
                 if (node.BlockBegin)
                 {
                     await node._releaseBegin.Task.WaitAsync(context.RequestAborted);
@@ -631,6 +727,11 @@ public sealed class AuthenticationServiceSignInTests
                 _ = await ReadGrpcPayloadAsync(context);
                 node!.ProfileRequestSeen.TrySetResult();
                 node.UserRequestMetadata.Enqueue(CaptureHeaders(context));
+                if (node.FailFirstProfile && node.UserRequestMetadata.Count == 1)
+                {
+                    await WriteGrpcResponseAsync(context, new GetUserResponse(), "14");
+                    return;
+                }
                 if (node.BlockProfile)
                 {
                     try
@@ -668,7 +769,9 @@ public sealed class AuthenticationServiceSignInTests
                 BlockComplete = blockComplete,
                 ApproveBegin = approveBegin,
                 OmitAccessToken = omitAccessToken,
-                OmitRefreshToken = omitRefreshToken
+                OmitRefreshToken = omitRefreshToken,
+                FailFirstProfile = failFirstProfile,
+                InvalidPassword = invalidPassword
             };
             return node;
         }
