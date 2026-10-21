@@ -34,6 +34,7 @@ final class DependencyContainer {
 
     let beaconRepository: BeaconRepository
     let identityRepository: IdentityRepository
+    let signInRepository: SignInRepository
     let usersRepository: UsersRepository
     let chatFoldersRepository: ChatFoldersRepository
     let messagesRepository: MessagesRepository
@@ -177,6 +178,7 @@ final class DependencyContainer {
         // Repositories
         self.beaconRepository = BeaconRepository(connectionManager: connectionManager)
         self.identityRepository = IdentityRepository(connectionManager: connectionManager)
+        self.signInRepository = SignInRepository(connectionManager: connectionManager)
         self.usersRepository = UsersRepository(connectionManager: connectionManager)
         self.chatFoldersRepository = ChatFoldersRepository(connectionManager: connectionManager)
         self.messagesRepository = MessagesRepository(connectionManager: connectionManager)
@@ -245,7 +247,8 @@ final class DependencyContainer {
         self.authService = AuthService(
             identityRepository: identityRepository,
             tokenProvider: tokenProvider,
-            connectionManager: connectionManager
+            connectionManager: connectionManager,
+            signInRepository: signInRepository
         )
 
         self.chatService = ChatService(messagesRepository: messagesRepository)

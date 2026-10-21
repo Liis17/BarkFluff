@@ -13,8 +13,8 @@
 | Mac/Barkfluff/Barkfluff/Navigation/AppCoordinator.swift | loading/authentication/main state, connection gate, logout |
 | Mac/Barkfluff/Barkfluff/Navigation/RootView.swift | Роутинг состояния приложения, lifecycle Calls |
 | Mac/Barkfluff/Barkfluff/Navigation/MainSplitView.swift | Sidebar и detail навигация |
-| Mac/Barkfluff/Barkfluff/Features/Auth/ | Login/Register/ServerSelection; LoginView показывает QRPanelView |
-| Mac/Barkfluff/Barkfluff/Features/FastAuth/ | FastAuthViewModel и FastAuthQRView — генератор QR для входа на macOS |
+| Mac/Barkfluff/Barkfluff/Features/Auth/ | LoginView/LoginViewModel используют BFCore SignInFlowController для identifier-first login, factors, recovery и challenge polling; также Register/ServerSelection; LoginView показывает QRPanelView |
+| Mac/Barkfluff/Barkfluff/Features/FastAuth/ | FastAuthViewModel/FastAuthQRView создают QR; успешный QR и challenge login используют AuthService session admission перед сохранением токенов |
 | Mac/Barkfluff/Barkfluff/Features/ChatList/ViewModels/ChatListViewModel.swift | Cached chats, folders, reconnect, Updates/OnlineStatus subscriptions |
 | Mac/Barkfluff/Barkfluff/Features/Conversation/ViewModels/ConversationViewModel.swift | Messages, pagination, attachments, reply/edit/delete, optimistic updates |
 | Mac/Barkfluff/Barkfluff/Features/Conversation/Views/ConversationView.swift | Composer, message list, profile/forward sheets, background |
@@ -34,7 +34,9 @@
 | Mac/Barkfluff/Packages/BFNetworking/Sources/BFNetworking/Connection/ConnectionManager.swift | Bootstrap Beacon, service endpoints, TLS policy, gRPC clients |
 | Mac/Barkfluff/Packages/BFNetworking/Sources/BFNetworking/Auth/AuthInterceptor.swift | x-auth-token и proactive token refresh |
 | Mac/Barkfluff/Packages/BFNetworking/Sources/BFNetworking/Repositories/ | RPC маппинг: auth, messages, files, users, updates, fast auth, calls |
-| Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Services/Implementations/ | Сервисы приложения и online tracking |
+| Mac/Barkfluff/Packages/BFNetworking/Sources/BFNetworking/Repositories/SignInRepository.swift | Identity Resolve/Begin/Get/Complete/Cancel/Resend challenge RPC; typed mapping ошибок, factors и сессии |
+| Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Services/SignInFlowController.swift | Identifier-first state machine, challenge/recovery/resend/polling и stale-result защита |
+| Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Services/Implementations/AuthService.swift | Legacy AuthService API и общий admission/commit сессий для challenge и FastAuth |
 | Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Database/Migrations.swift | GRDB schema v1–v6 |
 | Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Repositories/Local/ | Репозитории SQLite-кеша |
 | Mac/Barkfluff/Packages/BFCore/Sources/BFCore/Markdown/ | Markdown AST, parser и sanitizer |
