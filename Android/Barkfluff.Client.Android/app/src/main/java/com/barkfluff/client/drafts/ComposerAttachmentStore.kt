@@ -134,6 +134,13 @@ class ComposerAttachmentStore(
         scopeDirectory(scope).deleteRecursively()
     }
 
+    suspend fun clearAll() = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            cache.deleteAllComposerRowsUnscoped()
+            File(appContext.noBackupFilesDir, "composer").deleteRecursively()
+        }
+    }
+
     /** Removes records/files left by an interrupted copy or a deleted chat. */
     suspend fun cleanupOrphans(scope: CacheScope, knownChatIds: Set<String> = emptySet()) = mutex.withLock {
         val chatIds = cache.composerChatIds(scope).toSet()

@@ -212,6 +212,21 @@ class OutgoingMessageQueue(
         scopeDirectory(scope).deleteRecursively()
     }
 
+    suspend fun cancelPendingOutgoing() {
+        val scope = currentScopeOrNull() ?: return
+        val operationIds = cache.outgoingOperationIds(scope)
+        val records = operationIds.mapNotNull { cache.outgoing(scope, it) }
+        val now = System.currentTimeMillis()
+        operationIds.forEach { operationId ->
+            cancellationRequests[operationId] = now
+        }
+        workManager.cancelAllWorkByTag(workTag(scope))
+        cache.clearOutgoingKeepReads(scope)
+        records.filter { it.state != OutgoingMessageState.SENT }.forEach { record ->
+            operationDirectory(scope, record.operationId).deleteRecursively()
+        }
+    }
+
     /** Worker seam. It drains at most two different chat heads at one time. */
     suspend fun processReady(onForeground: suspend (OutgoingMessageSnapshot) -> Unit = {}) {
         drainMutex.withLock {

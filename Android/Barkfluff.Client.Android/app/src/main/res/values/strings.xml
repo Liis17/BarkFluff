@@ -650,6 +650,32 @@
     <string name="storage_server_storage">Хранилище на сервере</string>
     <string name="storage_app_cache">Кеш приложения</string>
     <string name="storage_clear_cache">Очистить кеш</string>
+    <string name="storage_clear_failed">Не удалось очистить</string>
+    <string name="storage_clear_option_media">Медиа-кеш (%1$s)</string>
+    <string name="storage_clear_option_history">История чатов (%1$s)</string>
+    <string name="storage_clear_option_secret">Секретные чаты (%1$s)</string>
+    <string name="storage_clear_option_outgoing">Исходящие в очереди (%1$s)</string>
+    <string name="storage_clear_option_drafts">Черновики (%1$s)</string>
+    <string name="storage_clear_confirm">Очистить выбранное</string>
+    <string name="storage_clear_warning_irreversible">Вы выбрали пункты с необратимыми последствиями: исходящие сообщения могут уже быть доставлены серверу; для черновиков запрашивается удаление с сервера, но оно может не выполниться без сети; секретные чаты хранятся только на этом устройстве и не восстанавливаются.</string>
+    <plurals name="storage_clear_count_messages">
+        <item quantity="one">%d сообщение</item>
+        <item quantity="few">%d сообщения</item>
+        <item quantity="many">%d сообщений</item>
+        <item quantity="other">%d сообщений</item>
+    </plurals>
+    <plurals name="storage_clear_count_outgoing">
+        <item quantity="one">%d исходящее</item>
+        <item quantity="few">%d исходящих</item>
+        <item quantity="many">%d исходящих</item>
+        <item quantity="other">%d исходящих</item>
+    </plurals>
+    <plurals name="storage_clear_count_drafts">
+        <item quantity="one">%d черновик</item>
+        <item quantity="few">%d черновика</item>
+        <item quantity="many">%d черновиков</item>
+        <item quantity="other">%d черновиков</item>
+    </plurals>
     <string name="storage_used">Занято</string>
     <string name="storage_of_limit">из %1$s</string>
     <string name="storage_load_error">Не удалось загрузить</string>

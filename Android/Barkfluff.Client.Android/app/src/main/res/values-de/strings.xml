@@ -536,6 +536,26 @@
     <string name="storage_server_storage">Server-Speicher</string>
     <string name="storage_app_cache">App-Cache</string>
     <string name="storage_clear_cache">Cache leeren</string>
+    <string name="storage_clear_failed">Löschen fehlgeschlagen</string>
+    <string name="storage_clear_option_media">Mediencache (%1$s)</string>
+    <string name="storage_clear_option_history">Chatverlauf (%1$s)</string>
+    <string name="storage_clear_option_secret">Geheime Chats (%1$s)</string>
+    <string name="storage_clear_option_outgoing">Ausgehende Warteschlange (%1$s)</string>
+    <string name="storage_clear_option_drafts">Entwürfe (%1$s)</string>
+    <string name="storage_clear_confirm">Auswahl leeren</string>
+    <string name="storage_clear_warning_irreversible">Du hast Punkte mit nicht rückgängig zu machenden Folgen ausgewählt: Ausgehende Nachrichten wurden möglicherweise bereits an den Server zugestellt; für Entwürfe wird auch die Löschung auf dem Server angefordert, die ohne Netzwerkverbindung möglicherweise fehlschlägt; geheime Chats werden nur auf diesem Gerät gespeichert und können nicht wiederhergestellt werden.</string>
+    <plurals name="storage_clear_count_messages">
+        <item quantity="one">%d Nachricht</item>
+        <item quantity="other">%d Nachrichten</item>
+    </plurals>
+    <plurals name="storage_clear_count_outgoing">
+        <item quantity="one">%d ausstehender Eintrag</item>
+        <item quantity="other">%d ausstehende Einträge</item>
+    </plurals>
+    <plurals name="storage_clear_count_drafts">
+        <item quantity="one">%d Entwurf</item>
+        <item quantity="other">%d Entwürfe</item>
+    </plurals>
 
     <!-- Devices -->
     <string name="devices_title">Geräte</string>
