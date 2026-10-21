@@ -12,6 +12,8 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.cache.ChatCacheStats
+import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.data.GlobalParam
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -353,6 +355,7 @@ class StorageSettingsActivity : AppCompatActivity() {
 
     private fun showClearCacheDialog() {
         lifecycleScope.launch {
+            val scope = CacheScope.from(GlobalParam(this@StorageSettingsActivity)) ?: return@launch
             val (options, mediaCacheSize) = withContext(Dispatchers.IO) {
                 val imageCacheSize = getDirSize(File(cacheDir, "image_cache"))
                 val bitmapCacheSize = getDirSize(File(cacheDir, "bitmap_cache"))
@@ -381,12 +384,12 @@ class StorageSettingsActivity : AppCompatActivity() {
                             .setTitle(R.string.storage_clear_confirm)
                             .setMessage(R.string.storage_clear_warning_irreversible)
                             .setPositiveButton(R.string.storage_clear_confirm) { _, _ ->
-                                clearSelectedCache(selected)
+                                clearSelectedCache(selected, scope)
                             }
                             .setNegativeButton(android.R.string.cancel, null)
                             .show()
                     } else {
-                        clearSelectedCache(selected)
+                        clearSelectedCache(selected, scope)
                     }
                 }
                 .setNegativeButton(android.R.string.cancel, null)
@@ -401,11 +404,12 @@ class StorageSettingsActivity : AppCompatActivity() {
     private fun pluralCount(pluralRes: Int, count: Int): String =
         resources.getQuantityString(pluralRes, count, count)
 
-    private fun clearSelectedCache(checked: BooleanArray) {
+    private fun clearSelectedCache(checked: BooleanArray, scope: CacheScope) {
         lifecycleScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) {
                     withContext(NonCancellable) {
+                        check(CacheScope.from(GlobalParam(this@StorageSettingsActivity)) == scope) { "Cache scope changed before cleanup" }
                         if (checked[0]) {
                             AvatarLoader.clearAllCaches(this@StorageSettingsActivity)
                             File(cacheDir, "bitmap_cache").deleteRecursively()
@@ -414,8 +418,8 @@ class StorageSettingsActivity : AppCompatActivity() {
                         if (checked[2]) chatCacheRepository.clearSecretHistory()
                         if (checked[3]) outgoingMessageQueue.cancelPendingOutgoing()
                         if (checked[4]) {
-                            chatDraftRepository.wipeAll()
-                            composerAttachmentStore.clearAll()
+                            chatDraftRepository.wipeAll(scope)
+                            composerAttachmentStore.clearScope(scope)
                         }
                         if (checked.indices.any { it in 1..4 && checked[it] }) {
                             chatCacheRepository.compact()

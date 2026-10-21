@@ -2,6 +2,7 @@ package com.barkfluff.client.send
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.work.WorkManager
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.OutgoingFailureCategory
@@ -15,6 +16,7 @@ import com.barkfluff.client.repository.ChatRepository
 import java.io.File
 import java.io.IOException
 import java.util.UUID
+import java.security.MessageDigest
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -129,6 +131,25 @@ class OutgoingMessageQueueTest {
             Result.success(Unit)
         }
         assertTrue(application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).isEmpty())
+    }
+
+    @Test
+    fun cancellingPendingSendsSchedulesRetainedReadWithoutAnotherWake() = runBlocking {
+        val cache = application.chatCacheRepository
+        // A future attempt cannot be consumed by a worker racing this assertion.
+        val operationId = saveQueuedText("cancel with read")
+        cache.saveOutgoing(scope(), cache.outgoing(scope(), operationId)!!, notificationReadMessageId = 42L)
+        cache.retryPendingRead(scope(), 42L, 1, System.currentTimeMillis() + 3_600_000)
+
+        application.outgoingMessageQueue.cancelPendingOutgoing()
+
+        assertEquals(null, cache.outgoing(scope(), operationId))
+        assertEquals(42L, cache.readyPendingReads(scope(), Long.MAX_VALUE).single().messageId)
+        val scopeHash = MessageDigest.getInstance("SHA-256").digest(scope().id.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        val work = WorkManager.getInstance(application)
+            .getWorkInfosForUniqueWork("outgoing-retry-$scopeHash").get()
+        assertTrue("Retained reads must have scheduled work", work.any { !it.state.isFinished })
     }
 
     private suspend fun enqueueReply() = application.outgoingMessageQueue.enqueue(

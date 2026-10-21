@@ -12,6 +12,10 @@ import com.barkfluff.client.drafts.ChatDraftSyncState
 import com.barkfluff.client.drafts.ComposerAttachmentStore
 import java.io.File
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -113,7 +117,7 @@ class ChatCacheRepositoryClearTest {
         val drafts = ChatDraftRepository(context, cache, remote)
         drafts.loadLocal()
 
-        drafts.wipeAll()
+        drafts.wipeAll(scope)
 
         assertTrue(cache.readChatDrafts(scope).isEmpty())
         assertTrue(drafts.drafts.value.isEmpty())
@@ -122,15 +126,120 @@ class ChatCacheRepositoryClearTest {
     }
 
     @Test
-    fun composerClearRemovesComposerFilesAndKeepsOutbox() = runBlocking {
-        saveComposerAttachment()
-        cache.saveOutgoing(scope, outgoing("queued"))
-        val composerDirectory = File(context.noBackupFilesDir, "composer")
+    fun wipeKeepsDraftsAndAttachmentsOfOtherAccountsAndServers() = runBlocking {
+        val otherScopes = listOf(CacheScope("https://clear-cache-test.local|123"), CacheScope("https://other.local|987654321"))
         val store = ComposerAttachmentStore(context, cache)
+        val selected = store.stageBytes(scope, "chat", byteArrayOf(1), 1, "DOCUMENT")
+        val retained = otherScopes.map { other ->
+            cache.saveChatDraft(other, draft("chat"))
+            store.stageBytes(other, "chat", byteArrayOf(2), 1, "DOCUMENT")
+        }
+        cache.saveChatDraft(scope, draft("chat"))
 
-        store.clearAll()
+        ChatDraftRepository(context, cache, RecordingChatDraftGateway()).wipeAll(scope)
+        store.clearScope(scope)
 
-        assertFalse(composerDirectory.exists())
+        assertTrue(cache.readChatDrafts(scope).isEmpty())
+        assertFalse(File(selected.path).exists())
+        otherScopes.zip(retained).forEach { (other, attachment) ->
+            assertEquals(listOf(draft("chat")), cache.readChatDrafts(other))
+            assertEquals(listOf(attachment), store.restore(other, "chat"))
+            assertTrue(File(attachment.path).isFile)
+        }
+    }
+
+    @Test
+    fun wipeWaitsForFirstUpsertAndDeletesItsRevisionBeforeRestore() = runBlocking {
+        assertWipeWaitsForUpsert()
+    }
+
+    @Test
+    fun wipeWaitsForUpsertEvenIfDraftWasEditedDuringSync() = runBlocking {
+        assertWipeWaitsForUpsert(editWhileSync = true)
+    }
+
+    @Test
+    fun wipeWaitsForClearAfterSentUpsert() = runBlocking {
+        assertWipeWaitsForUpsert(afterSent = true)
+    }
+
+    private suspend fun assertWipeWaitsForUpsert(afterSent: Boolean = false, editWhileSync: Boolean = false) {
+        withTimeout(10_000) {
+            val started = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            var serverDraft: ChatDraftData? = null
+            val remote = object : ChatDraftGateway {
+                override suspend fun get(chatId: String) = Result.success(serverDraft)
+                override suspend fun upsert(chatId: String, text: String, replyToMessageId: Long): Result<ChatDraftData> {
+                    started.complete(Unit)
+                    release.await()
+                    return Result.success(ChatDraftData(text, replyToMessageId, "first-revision", 1).also { serverDraft = it })
+                }
+                override suspend fun delete(chatId: String, expectedRevision: String): Result<Boolean> {
+                    assertEquals("first-revision", expectedRevision)
+                    serverDraft = null
+                    return Result.success(true)
+                }
+            }
+            val drafts = ChatDraftRepository(context, cache, remote)
+            val draft = drafts.edit("chat", "unsynced", 0)!!
+            val flush = async {
+                if (afterSent) drafts.clearAfterSent("chat", draft.generation) else drafts.flushAll()
+            }
+            started.await()
+            if (editWhileSync) drafts.edit("chat", "newer unsynced", 0)
+            val wipe = async(start = CoroutineStart.UNDISPATCHED) { drafts.wipeAll(scope) }
+            // Before the fix wipe completes immediately, although upsert has not returned.
+            assertFalse("Wipe must wait for the in-flight upsert", wipe.isCompleted)
+            release.complete(Unit)
+            flush.await()
+            wipe.await()
+
+            assertEquals(null, serverDraft)
+            assertTrue(cache.readChatDrafts(scope).isEmpty())
+            assertEquals(null, drafts.restore("chat"))
+        }
+    }
+
+    @Test
+    fun wipePreservesAnEditMadeWhileRemoteDeleteIsInFlight() = runBlocking {
+        withTimeout(10_000) {
+            val started = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val remote = object : ChatDraftGateway {
+                override suspend fun get(chatId: String): Result<ChatDraftData?> = Result.success(null)
+                override suspend fun upsert(chatId: String, text: String, replyToMessageId: Long): Result<ChatDraftData> =
+                    error("Unexpected upsert")
+                override suspend fun delete(chatId: String, expectedRevision: String): Result<Boolean> {
+                    started.complete(Unit)
+                    release.await()
+                    return Result.success(true)
+                }
+            }
+            cache.saveChatDraft(scope, draft("chat", revision = "r1", state = ChatDraftSyncState.SYNCED))
+            val drafts = ChatDraftRepository(context, cache, remote)
+            val wipe = async { drafts.wipeAll(scope) }
+            started.await()
+            val newer = drafts.edit("chat", "new edit", 0)!!
+            release.complete(Unit)
+            wipe.await()
+
+            assertEquals(newer, drafts.drafts.value["chat"])
+            assertEquals("new edit", cache.readChatDrafts(scope).single().text)
+            assertEquals(newer.generation, cache.readChatDrafts(scope).single().generation)
+        }
+    }
+
+    @Test
+    fun composerClearRemovesComposerFilesAndKeepsOutbox() = runBlocking {
+        val store = ComposerAttachmentStore(context, cache)
+        val selected = store.stageBytes(scope, "chat", byteArrayOf(1), 1, "DOCUMENT")
+        cache.saveOutgoing(scope, outgoing("queued"))
+
+        store.clearScope(scope)
+
+        assertFalse(File(selected.path).exists())
+        assertTrue(cache.readComposerAttachments(scope, "chat").isEmpty())
         assertEquals(setOf("queued"), cache.outgoingOperationIds(scope))
     }
 
