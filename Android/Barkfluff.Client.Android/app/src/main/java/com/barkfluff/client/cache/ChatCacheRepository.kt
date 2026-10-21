@@ -2,6 +2,7 @@ package com.barkfluff.client.cache
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import androidx.room.Dao
 import androidx.room.ColumnInfo
 import androidx.room.Database
@@ -62,6 +63,13 @@ data class ChatCacheStats(
     val chatCount: Int,
     val messageCount: Int,
     val sizeBytes: Long
+)
+
+data class ClearCacheOptions(
+    val historyMessages: Int,
+    val secretMessages: Int,
+    val pendingOutgoing: Int,
+    val drafts: Int,
 )
 
 data class CachedChatDraft(
@@ -210,6 +218,9 @@ interface ChatCacheDao {
     @Query("SELECT * FROM chat_cache_meta WHERE scopeId = :scopeId")
     suspend fun meta(scopeId: String): CachedChatMetaEntity?
 
+    @Query("DELETE FROM chat_cache_meta")
+    suspend fun deleteAllMeta()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMeta(meta: CachedChatMetaEntity)
 
@@ -221,6 +232,9 @@ interface ChatCacheDao {
 
     @Query("DELETE FROM cached_chats WHERE scopeId = :scopeId")
     suspend fun deleteChats(scopeId: String)
+
+    @Query("DELETE FROM cached_chats")
+    suspend fun deleteAllChats()
 
     @Query("DELETE FROM cached_chats WHERE scopeId = :scopeId AND chatId = :chatId")
     suspend fun deleteChat(scopeId: String, chatId: String)
@@ -240,8 +254,14 @@ interface ChatCacheDao {
     @Query("DELETE FROM cached_chat_folders WHERE scopeId = :scopeId")
     suspend fun deleteFolders(scopeId: String)
 
+    @Query("DELETE FROM cached_chat_folders")
+    suspend fun deleteAllFolders()
+
     @Query("SELECT * FROM cached_chat_displays WHERE scopeId = :scopeId")
     suspend fun displays(scopeId: String): List<CachedChatDisplayEntity>
+
+    @Query("DELETE FROM cached_chat_displays")
+    suspend fun deleteAllDisplays()
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertDisplay(display: CachedChatDisplayEntity)
@@ -287,6 +307,9 @@ interface ChatCacheDao {
 
     @Query("DELETE FROM cached_messages WHERE scopeId = :scopeId AND chatId = :chatId AND messageId = :messageId")
     suspend fun deleteMessage(scopeId: String, chatId: String, messageId: Long)
+
+    @Query("DELETE FROM cached_messages")
+    suspend fun deleteAllMessages()
     @Query("SELECT * FROM cached_private_messages WHERE scopeId = :scopeId AND chatId = :chatId ORDER BY sentAtMillis DESC LIMIT :limit")
     suspend fun latestPrivateMessages(scopeId: String, chatId: String, limit: Int): List<CachedPrivateMessageEntity>
 
@@ -295,6 +318,9 @@ interface ChatCacheDao {
 
     @Query("DELETE FROM cached_private_messages WHERE scopeId = :scopeId AND chatId = :chatId AND messageId = :messageId")
     suspend fun deletePrivateMessage(scopeId: String, chatId: String, messageId: Long)
+
+    @Query("DELETE FROM cached_private_messages")
+    suspend fun deleteAllPrivateMessages()
 
     @Query("SELECT * FROM cached_secret_messages WHERE scopeId = :scopeId AND chatId = :chatId ORDER BY sentAtMillis DESC LIMIT :limit")
     suspend fun latestSecretMessages(scopeId: String, chatId: String, limit: Int): List<CachedSecretMessageEntity>
@@ -307,6 +333,9 @@ interface ChatCacheDao {
 
     @Query("SELECT COUNT(*) FROM cached_secret_messages")
     suspend fun secretMessageCount(): Int
+
+    @Query("DELETE FROM cached_secret_messages")
+    suspend fun deleteAllSecretMessages()
 
     @Query("SELECT COUNT(*) FROM cached_chats")
     suspend fun chatCount(): Int
@@ -744,6 +773,15 @@ class ChatCacheRepository(context: Context) {
         }
     }
 
+    suspend fun clearOutgoingKeepReads(scope: CacheScope) = withContext(Dispatchers.IO) {
+        val db = database()
+        db.withTransaction {
+            val dao = db.outgoingDao()
+            dao.deleteNonSentAttachments(scope.id, OutgoingMessageState.SENT.name)
+            dao.deleteNonSentMessages(scope.id, OutgoingMessageState.SENT.name)
+        }
+    }
+
     suspend fun stats(): ChatCacheStats = withContext(Dispatchers.IO) {
         val dao = database().cacheDao()
         ChatCacheStats(
@@ -752,6 +790,42 @@ class ChatCacheRepository(context: Context) {
             sizeBytes = databaseSize()
         )
     }
+
+    suspend fun clearOptions(): ClearCacheOptions = withContext(Dispatchers.IO) {
+        val scope = CacheScope.from(GlobalParam(appContext))
+            ?: return@withContext ClearCacheOptions(0, 0, 0, 0)
+        val db = database()
+        val dao = db.cacheDao()
+        ClearCacheOptions(
+            historyMessages = dao.messageCount() + dao.privateMessageCount(),
+            secretMessages = dao.secretMessageCount(),
+            pendingOutgoing = db.outgoingDao().pendingOutgoingCount(scope.id),
+            drafts = dao.drafts(scope.id).size,
+        )
+    }
+
+    suspend fun clearHistoryCache() {
+        withContext(Dispatchers.IO) {
+            val db = database()
+            db.withTransaction {
+                val dao = db.cacheDao()
+                dao.deleteAllMeta()
+                dao.deleteAllChats()
+                dao.deleteAllFolders()
+                dao.deleteAllDisplays()
+                dao.deleteAllMessages()
+                dao.deleteAllPrivateMessages()
+            }
+        }
+    }
+
+    suspend fun clearSecretHistory() {
+        withContext(Dispatchers.IO) {
+            database().cacheDao().deleteAllSecretMessages()
+        }
+    }
+
+    suspend fun compact() = vacuumBestEffort()
 
     suspend fun clearAll() {
         databaseMutex.withLock {
@@ -768,6 +842,20 @@ class ChatCacheRepository(context: Context) {
             }
         }
         _clearedEvents.tryEmit(Unit)
+    }
+
+    private suspend fun vacuumBestEffort() {
+        runCatching {
+            val sqlite = database().openHelper.writableDatabase
+            sqlite.query("PRAGMA wal_checkpoint(TRUNCATE)").use { cursor ->
+                if (cursor.moveToFirst() && cursor.getInt(0) != 0) {
+                    Log.w("ChatCacheRepository", "wal_checkpoint busy")
+                }
+            }
+            sqlite.execSQL("VACUUM")
+        }.onFailure { error ->
+            Log.w("ChatCacheRepository", "Could not compact chat cache", error)
+        }
     }
 
     private suspend fun database(): ChatCacheDatabase = databaseMutex.withLock {

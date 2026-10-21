@@ -57,4 +57,4 @@ BarkFluffApplication задаёт process lifecycle. RealtimeService при во
 - MessageAdapter только отображает MessageRowUi и поднимает события через MessageRowEventSink. Projector определяет rows, отдельные контроллеры загружают вложения и воспроизводят audio.
 - UI/background adapters зависят от gateways, не от generated RPC stubs.
 - Room v5 владеет scoped cache, draft metadata, composer metadata, outbox и независимым журналом pending read actions. Файлы composer/outbox находятся в app-private noBackup staging.
-- Clear cache/logout обязаны удалять соответствующие scoped staging files вместе с базой и останавливать фоновые сетевые задачи по scope.
+- Clear cache (StorageSettingsActivity) — выборочный диалог с подтверждением необратимых категорий. Границы очистки, account/server scope, синхронизация черновиков и сохранение worker для pending reads описаны в [[Clients/Android#Состояние обычного чата и durable отправка|Android — durable отправка]]. Logout использует полную очистку clearAll() и остаётся источником clearedEvents.
