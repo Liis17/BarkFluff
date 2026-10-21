@@ -1,3 +1,4 @@
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -365,8 +366,8 @@ public static class ComposeGenerator
         Add("BUILDER_INCLUDE_LOGNARA", Bool(model.IncludeLognara));
         Add("BUILDER_NGINX_MODE", model.NginxMode.ToString());
         Add("BUILDER_NGINX_BEHIND_CLOUDFLARE", Bool(model.BehindCloudflare));
-        Add("BUILDER_NGINX_CERTIFICATE_SOURCE_PATH", model.NginxCertificateSourcePath);
-        Add("BUILDER_NGINX_KEY_SOURCE_PATH", model.NginxKeySourcePath);
+        Add("BUILDER_NGINX_CERTIFICATE_SOURCE_PATH", PersistedCertificatePath(model, model.NginxCertificateSourcePath, "barkfluff-crt.pem"));
+        Add("BUILDER_NGINX_KEY_SOURCE_PATH", PersistedCertificatePath(model, model.NginxKeySourcePath, "barkfluff-key.pem"));
         Add("BUILDER_NGINX_CERTIFICATE_PATH", model.NginxCertificatePath);
         Add("BUILDER_NGINX_KEY_PATH", model.NginxKeyPath);
         foreach (var target in model.AllLognaraTargets())
@@ -438,6 +439,11 @@ webhook:
         .Replace("\r", "\\r", StringComparison.Ordinal)
         .Replace("\n", "\\n", StringComparison.Ordinal)
         .Replace("\t", "\\t", StringComparison.Ordinal);
+
+    private static string PersistedCertificatePath(BuilderModel model, string sourcePath, string fileName) =>
+        model.NginxMode == NginxMode.Compose && !string.IsNullOrWhiteSpace(model.OutputPath)
+            ? Path.Combine(Path.GetFullPath(model.OutputPath), "certs", fileName)
+            : sourcePath;
 
     private static string BuildInfrastructureDockerfile(string baseImage) => $$"""
 FROM --platform=$BUILDPLATFORM alpine:3.22 AS lognara-agent
