@@ -117,14 +117,17 @@ final class SignInFlowTests: XCTestCase {
         await repository.enqueueResend(.success(waiting))
 
         await controller.resolveIdentifier("mira")
+        XCTAssertTrue(controller.showsResendControl)
         XCTAssertFalse(controller.canResend)
         XCTAssertEqual(controller.resendSecondsRemaining, 60)
         XCTAssertEqual(controller.challenge?.reference, waiting.reference)
 
         clock.withLock { $0 = $0.addingTimeInterval(60) }
         XCTAssertTrue(controller.canResend)
+        XCTAssertTrue(controller.showsResendControl)
         await controller.resendCode()
         XCTAssertEqual(controller.challenge?.reference, waiting.reference)
+        XCTAssertTrue(controller.showsResendControl)
         XCTAssertFalse(controller.canResend)
         XCTAssertEqual(controller.resendSecondsRemaining, 60)
         XCTAssertFalse(controller.isBusy)
@@ -144,6 +147,7 @@ final class SignInFlowTests: XCTestCase {
 
         await controller.resolveIdentifier("mira")
         await controller.submitPassword("secret")
+        XCTAssertTrue(controller.showsResendControl)
         XCTAssertFalse(controller.canResend)
         XCTAssertEqual(controller.resendSecondsRemaining, 60)
         await controller.selectFactor(.email)
@@ -169,6 +173,7 @@ final class SignInFlowTests: XCTestCase {
 
         await controller.selectFactor(.telegram)
         XCTAssertEqual(controller.challenge?.reference?.id, "second")
+        XCTAssertTrue(controller.showsResendControl)
         XCTAssertFalse(controller.canResend)
         XCTAssertEqual(controller.resendSecondsRemaining, 60)
         let beginCalls = await repository.beginCalls()
@@ -176,6 +181,53 @@ final class SignInFlowTests: XCTestCase {
         XCTAssertEqual(beginCalls[1].factor, .telegram)
         let cancelledReferences = await repository.cancelledReferences()
         XCTAssertEqual(cancelledReferences.map(\.id), ["first"])
+    }
+
+    @MainActor
+    func testResendControlVisibilityUsesWaitingDeliveryFactorAndExcludesRecovery() async {
+        let repository = ScriptedSignInRepository(mode: .passwordSecondFactor)
+        let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+        let flow = SignInFlowController(signInService: auth, admissionService: auth)
+        let deliveryFactors: [SignInFactor] = [.email, .authenticator]
+        await repository.enqueueBegin(.success(challenge(
+            id: "email",
+            factor: .email,
+            needsCode: true,
+            availableFactors: deliveryFactors
+        )))
+        await repository.enqueueBegin(.success(challenge(
+            id: "authenticator",
+            factor: .authenticator,
+            needsCode: true,
+            availableFactors: deliveryFactors
+        )))
+        await repository.enqueueBegin(.success(challenge(
+            id: "email-again",
+            factor: .email,
+            needsCode: true,
+            availableFactors: deliveryFactors
+        )))
+        await repository.enqueueBegin(.success(challenge(
+            id: "recovery-email",
+            factor: .email,
+            needsCode: true,
+            availableFactors: deliveryFactors
+        )))
+
+        await flow.resolveIdentifier("mira")
+        await flow.submitPassword("secret")
+        XCTAssertTrue(flow.showsResendControl)
+
+        await flow.selectFactor(.authenticator)
+        XCTAssertFalse(flow.showsResendControl)
+        await flow.selectFactor(.email)
+        XCTAssertTrue(flow.showsResendControl)
+
+        await flow.useRecoveryCode()
+        XCTAssertTrue(flow.isUsingRecoveryCode)
+        XCTAssertEqual(flow.challenge?.factor, .email)
+        XCTAssertFalse(flow.showsResendControl)
+        XCTAssertFalse(flow.canResend)
     }
 
     @MainActor
@@ -226,6 +278,7 @@ final class SignInFlowTests: XCTestCase {
         XCTAssertEqual(controller.step, .passwordRequired)
         XCTAssertEqual(controller.error, .expired)
         XCTAssertNil(controller.challenge)
+        XCTAssertFalse(controller.showsResendControl)
 
         await repository.enqueueBegin(.success(challenge(state: .unknown(77))))
         await controller.submitPassword("secret")
@@ -615,6 +668,84 @@ final class SignInFlowTests: XCTestCase {
         await repository.releaseCompletion(.success(completion("resumed-telegram")))
         await waitUntil { flow.step == .authenticated }
         XCTAssertNil(flow.error)
+    }
+
+    @MainActor
+    func testRapidForegroundResumeRetriesCancelledTelegramCompletionAfterReplacementPollFinishes() async throws {
+        let repository = ScriptedSignInRepository(mode: .telegramLogin)
+        let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+        let flow = SignInFlowController(signInService: auth, admissionService: auth)
+        let navigation = SignInNavigationCompletion(admissionService: auth)
+        let reference = challenge(factor: .telegram, needsCode: false).reference!
+        var active = true
+        var loads = 0
+        var transitions = 0
+        flow.onAuthenticated = { receipt in
+            await navigation.finish(
+                receipt,
+                loadCurrentUser: { loads += 1 },
+                isActive: { active },
+                navigate: { transitions += 1; active = false }
+            )
+        }
+        await repository.enqueueBegin(.success(challenge(factor: .telegram, needsCode: false)))
+        await repository.holdNextGet()
+        await repository.holdNextCompletion()
+        flow.resumeForeground()
+
+        let resolving = Task { await flow.resolveIdentifier("mira") }
+        await repository.waitForGetStart()
+        let firstPoll = try XCTUnwrap(flow.foregroundPollingTaskForTesting)
+        await resolving.value
+        await repository.releaseGet(.success(challenge(
+            state: .approved,
+            factor: .telegram,
+            needsCode: false
+        )))
+        await repository.waitForCompletionStart()
+        XCTAssertEqual(flow.step, .completing)
+        XCTAssertTrue(flow.isBusy)
+
+        flow.pauseForeground()
+        flow.resumeForeground()
+        let replacementPoll = try XCTUnwrap(flow.foregroundPollingTaskForTesting)
+        await replacementPoll.value
+        XCTAssertFalse(flow.hasForegroundPollingTask)
+        guard !flow.hasForegroundPollingTask else {
+            await repository.releaseCompletion(.failure(.cancelled))
+            await firstPoll.value
+            return
+        }
+
+        await repository.holdNextGet()
+        await repository.releaseCompletion(.failure(.cancelled))
+        await firstPoll.value
+        await repository.waitForGetStart()
+        let retryPoll = try XCTUnwrap(flow.foregroundPollingTaskForTesting)
+        XCTAssertEqual(flow.step, .challenge)
+        XCTAssertFalse(flow.isBusy)
+        XCTAssertNil(flow.error)
+        XCTAssertEqual(flow.challenge?.reference, reference)
+
+        await repository.holdNextCompletion()
+        await repository.releaseGet(.success(challenge(
+            state: .approved,
+            factor: .telegram,
+            needsCode: false
+        )))
+        await repository.waitForCompletionStart()
+        await repository.releaseCompletion(.success(completion("rapid-resume")))
+        await retryPoll.value
+
+        XCTAssertEqual(flow.step, .authenticated)
+        XCTAssertNil(flow.error)
+        XCTAssertEqual(loads, 1)
+        XCTAssertEqual(transitions, 1)
+        let reads = await repository.challengeReadReferences()
+        XCTAssertEqual(reads.map(\.id), [reference.id, reference.id])
+        let completions = await repository.completionCalls()
+        XCTAssertEqual(completions.count, 2)
+        XCTAssertTrue(completions.allSatisfy { $0.reference == reference })
     }
 
     @MainActor
