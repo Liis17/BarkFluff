@@ -1,6 +1,8 @@
 import XCTest
 import BFCore
 import BFNetworking
+import Synchronization
+import Observation
 
 final class SignInFlowTests: XCTestCase {
     @MainActor
@@ -104,7 +106,8 @@ final class SignInFlowTests: XCTestCase {
     func testResendCooldownPreservesChallengeOnRateLimitAndFactorSwitchUsesOnlyAdvertisedFactors() async throws {
         let repository = ScriptedSignInRepository(mode: .passwordSecondFactor)
         let authService = makeAuthService(repository: repository, tokens: TestTokenProvider())
-        let controller = SignInFlowController(signInService: authService, admissionService: authService)
+        let clock = Mutex(Date())
+        let controller = SignInFlowController(signInService: authService, admissionService: authService, now: { clock.withLock { $0 } })
         let firstChallenge = challenge(id: "first", factor: .email, needsCode: true, availableFactors: [.email, .telegram])
         await repository.enqueueBegin(.success(firstChallenge))
         await repository.enqueueResend(.failure(.rateLimited))
@@ -113,8 +116,10 @@ final class SignInFlowTests: XCTestCase {
 
         await controller.resolveIdentifier("mira")
         await controller.submitPassword("secret")
+        XCTAssertFalse(controller.canResend)
+        XCTAssertEqual(controller.resendSecondsRemaining, 60)
+        clock.withLock { $0 = $0.addingTimeInterval(60) }
         XCTAssertTrue(controller.canResend)
-
         await controller.resendCode()
         XCTAssertEqual(controller.error, .rateLimited)
         XCTAssertEqual(controller.challenge?.reference?.id, "first")
@@ -131,6 +136,8 @@ final class SignInFlowTests: XCTestCase {
 
         await controller.selectFactor(.telegram)
         XCTAssertEqual(controller.challenge?.reference?.id, "second")
+        XCTAssertFalse(controller.canResend)
+        XCTAssertEqual(controller.resendSecondsRemaining, 60)
         let beginCalls = await repository.beginCalls()
         XCTAssertEqual(beginCalls.count, 2)
         XCTAssertEqual(beginCalls[1].factor, .telegram)
@@ -342,6 +349,300 @@ final class SignInFlowTests: XCTestCase {
     }
 
     @MainActor
+    func testRecoveryWithoutEnabledDeliveryAcceptsUnknownZeroAndFailedBeginCanRetry() async {
+        let repository = ScriptedSignInRepository(mode: .passwordSecondFactor)
+        let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+        let flow = SignInFlowController(signInService: auth, admissionService: auth)
+        await repository.enqueueBegin(.failure(.transport(statusCode: 14, serverErrorCode: nil)))
+        await repository.enqueueBegin(.failure(.rateLimited))
+        await repository.enqueueBegin(.success(challenge(factor: .unknown(0), availableFactors: [])))
+        await flow.resolveIdentifier("mira")
+        await flow.submitPassword("secret")
+        await flow.useRecoveryCode()
+        XCTAssertFalse(flow.isUsingRecoveryCode)
+        XCTAssertTrue(flow.canUseRecoveryCode)
+        await flow.useRecoveryCode()
+        XCTAssertEqual(flow.step, .challenge)
+        XCTAssertTrue(flow.isUsingRecoveryCode)
+        XCTAssertEqual(flow.challenge?.factor, .unknown(0))
+        XCTAssertFalse(flow.canResend)
+        flow.cancel()
+    }
+
+    @MainActor
+    func testUnknownFactorIsRejectedOutsideRecoveryAndUnrecognizedFactorAlwaysRejected() async {
+        for recovery in [false, true] {
+            let repository = ScriptedSignInRepository(mode: .passwordSecondFactor)
+            let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+            let flow = SignInFlowController(signInService: auth, admissionService: auth)
+            if recovery { await repository.enqueueBegin(.failure(.rateLimited)) }
+            await repository.enqueueBegin(.success(challenge(factor: recovery ? .unknown(99) : .unknown(0), availableFactors: [])))
+            await flow.resolveIdentifier("mira")
+            await flow.submitPassword("secret")
+            if recovery { await flow.useRecoveryCode() }
+            XCTAssertEqual(flow.error, .malformedResponse)
+        }
+    }
+
+    @MainActor
+    func testTelegramDeliveryCodeDoesNotPollOrDisableControls() async {
+        let repository = ScriptedSignInRepository(mode: .passwordSecondFactor)
+        let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+        let flow = SignInFlowController(signInService: auth, admissionService: auth)
+        await repository.enqueueBegin(.success(challenge(factor: .telegram)))
+        await flow.resolveIdentifier("mira")
+        await flow.submitPassword("secret")
+        flow.resumeForeground()
+        // Barrier on the same main actor: an incorrectly scheduled polling task would enter Get.
+        await Task.yield()
+        let reads = await repository.getCount()
+        XCTAssertEqual(reads, 0)
+        XCTAssertFalse(flow.isBusy)
+        flow.cancel()
+    }
+
+    @MainActor
+    func testPollingApprovalNavigatesExactlyOnceThroughSharedCompletionBoundary() async {
+        let repository = ScriptedSignInRepository(mode: .telegramLogin)
+        let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+        let flow = SignInFlowController(signInService: auth, admissionService: auth)
+        let navigation = SignInNavigationCompletion(admissionService: auth)
+        let navigated = ResponseGate<Bool>()
+        var loads = 0
+        var transitions = 0
+        var active = true
+        flow.onAuthenticated = { receipt in
+            await navigation.finish(receipt, loadCurrentUser: { loads += 1 }, isActive: { active }, navigate: {
+                transitions += 1
+                active = false
+            })
+            await navigated.release(.success(true))
+        }
+        await repository.enqueueBegin(.success(challenge(factor: .telegram, needsCode: false)))
+        await repository.enqueueCompletion(.success(completion("poll-approved")))
+        await repository.holdNextGet()
+        await flow.resolveIdentifier("mira")
+        await repository.waitForGetStart()
+        XCTAssertFalse(flow.isBusy)
+        await repository.releaseGet(.success(challenge(state: .approved, factor: .telegram, needsCode: false)))
+        _ = try? await navigated.response()
+        XCTAssertEqual(transitions, 1)
+        XCTAssertEqual(loads, 1)
+        let receipt = flow.admissionReceipt!
+        await navigation.finish(receipt, loadCurrentUser: { loads += 1 }, isActive: { active }, navigate: { transitions += 1 })
+        XCTAssertEqual(transitions, 1)
+        XCTAssertEqual(loads, 1)
+        // Leaving login after navigation must preserve the accepted session.
+        flow.cancel()
+        await auth.invalidateSignInAttempt(receipt.attempt)
+        let current = await auth.isCurrentSignInSession(receipt)
+        XCTAssertTrue(current)
+    }
+
+    @MainActor
+    func testPasswordLostCompletionHasActionableRetryOnSameReferenceAndNavigates() async {
+        let repository = ScriptedSignInRepository(mode: .password)
+        let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+        let flow = SignInFlowController(signInService: auth, admissionService: auth)
+        let navigation = SignInNavigationCompletion(admissionService: auth)
+        var transitions = 0
+        flow.onAuthenticated = { receipt in
+            await navigation.finish(receipt, loadCurrentUser: {}, isActive: { transitions == 0 }, navigate: { transitions += 1 })
+        }
+        await repository.enqueueBegin(.success(challenge(state: .approved, factor: .unknown(0), needsCode: false)))
+        await repository.enqueueCompletion(.failure(.transport(statusCode: 14, serverErrorCode: nil)))
+        await repository.enqueueGet(.success(challenge(state: .completed, factor: .unknown(0), needsCode: false)))
+        await repository.enqueueCompletion(.success(completion("retry")))
+        await flow.resolveIdentifier("mira")
+        await flow.submitPassword("secret")
+        XCTAssertTrue(flow.canRetryChallenge)
+        XCTAssertEqual(flow.step, .challenge)
+        await flow.retryChallenge()
+        XCTAssertEqual(transitions, 1)
+        let calls = await repository.completionCalls()
+        XCTAssertEqual(calls.count, 2)
+        XCTAssertTrue(calls.allSatisfy { $0.reference.id == "challenge-1" })
+    }
+
+    @MainActor
+    func testCancelledInFlightPollIsSilentAndSuccessfulWaitingClearsTransientError() async {
+        let repository = ScriptedSignInRepository(mode: .telegramLogin)
+        let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+        let flow = SignInFlowController(signInService: auth, admissionService: auth)
+        await repository.enqueueBegin(.success(challenge(factor: .telegram, needsCode: false)))
+        await repository.holdNextGet()
+        await flow.resolveIdentifier("mira")
+        await repository.waitForGetStart()
+        flow.pauseForeground()
+        await repository.releaseGet(.failure(.cancelled))
+        // Await a second explicit request; it must remain usable after cancelled polling.
+        await repository.enqueueGet(.failure(.transport(statusCode: 14, serverErrorCode: nil)))
+        await flow.refreshChallenge()
+        XCTAssertEqual(flow.error, .transport)
+        await repository.enqueueGet(.success(challenge(factor: .telegram, needsCode: false)))
+        await flow.refreshChallenge()
+        XCTAssertNil(flow.error)
+        XCTAssertEqual(flow.step, .challenge)
+        XCTAssertEqual(flow.challenge?.reference?.id, "challenge-1")
+        flow.cancel()
+    }
+
+    @MainActor
+    func testMissingOrForbiddenPollStopsAndOffersFreshBegin() async {
+        for status in [5, 7, 16] {
+            let repository = ScriptedSignInRepository(mode: .telegramLogin)
+            let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+            let flow = SignInFlowController(signInService: auth, admissionService: auth)
+            await repository.enqueueBegin(.success(challenge(factor: .telegram, needsCode: false)))
+            await repository.holdNextGet()
+            await flow.resolveIdentifier("mira")
+            await repository.waitForGetStart()
+            flow.pauseForeground()
+            await repository.releaseGet(.failure(.cancelled))
+            await repository.enqueueGet(.failure(.transport(statusCode: status, serverErrorCode: nil)))
+            await flow.refreshChallenge()
+            XCTAssertEqual(flow.step, .telegramReady)
+            XCTAssertEqual(flow.error, .cancelled)
+            XCTAssertNil(flow.challenge)
+            flow.resumeForeground()
+            let reads = await repository.getCount()
+            XCTAssertEqual(reads, 2)
+            flow.cancel()
+        }
+    }
+
+    @MainActor
+    func testCancellationDuringRealTokenSaveRollsBackBeforeNewWinnerWrites() async {
+        let tokens = TestTokenProvider()
+        let auth = makeAuthService(repository: ScriptedSignInRepository(mode: .password), tokens: tokens)
+        let old = await auth.beginSignInAttempt()
+        await tokens.holdNextSave()
+        let oldCommit = Task { await auth.commitSignInSession(self.completion("old").session!, for: old) }
+        await tokens.waitForSaveStart()
+        old.cancel()
+        let cleanup = Task { await auth.invalidateSignInAttempt(old) }
+        let next = await auth.beginSignInAttempt()
+        let nextCommit = Task { await auth.commitSignInSession(self.completion("new").session!, for: next) }
+        await tokens.releaseSave()
+        let oldReceipt = await oldCommit.value
+        let newReceipt = await nextCommit.value
+        await cleanup.value
+        XCTAssertNil(oldReceipt)
+        XCTAssertNotNil(newReceipt)
+        let saved = await tokens.snapshot()
+        XCTAssertEqual(saved.accessToken, "new-access")
+        await auth.invalidateSignInAttempt(old)
+        let afterLateCleanup = await tokens.snapshot()
+        XCTAssertEqual(afterLateCleanup.accessToken, "new-access")
+    }
+
+    @MainActor
+    func testCancellationDuringUserLoadRollsBackAndAdmitsRetry() async {
+        let tokens = TestTokenProvider()
+        let auth = makeAuthService(repository: ScriptedSignInRepository(mode: .password), tokens: tokens)
+        let attempt = await auth.beginSignInAttempt()
+        let receipt = await auth.commitSignInSession(completion("abandoned").session!, for: attempt)!
+        let navigation = SignInNavigationCompletion(admissionService: auth)
+        let load = ResponseGate<Bool>()
+        var transitions = 0
+        let finishing = Task {
+            await navigation.finish(receipt, loadCurrentUser: { _ = try? await load.response() }, isActive: { true }, navigate: { transitions += 1 })
+        }
+        await load.waitForStart()
+        attempt.cancel()
+        await auth.invalidateSignInAttempt(attempt)
+        let next = await auth.beginSignInAttempt()
+        let nextReceipt = await auth.commitSignInSession(completion("retry").session!, for: next)
+        await load.release(.success(true))
+        await finishing.value
+        XCTAssertEqual(transitions, 0)
+        XCTAssertNotNil(nextReceipt)
+        let saved = await tokens.snapshot()
+        XCTAssertEqual(saved.accessToken, "retry-access")
+    }
+
+    @MainActor
+    func testRecoveryReplacementIsBusyBeforeCancelReturnsAndCannotDoubleBegin() async {
+        let repository = ScriptedSignInRepository(mode: .passwordSecondFactor)
+        let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+        let flow = SignInFlowController(signInService: auth, admissionService: auth)
+        await repository.enqueueBegin(.success(challenge()))
+        await repository.enqueueBegin(.success(challenge(id: "recovery", factor: .unknown(0), availableFactors: [])))
+        await flow.resolveIdentifier("mira")
+        await flow.submitPassword("secret")
+        await repository.holdNextCancel()
+        let replacing = Task { await flow.useRecoveryCode() }
+        await repository.waitForCancelStart()
+        XCTAssertTrue(flow.isBusy)
+        XCTAssertEqual(flow.step, .beginning)
+        await flow.useRecoveryCode()
+        let before = await repository.beginCalls()
+        XCTAssertEqual(before.count, 1)
+        await repository.releaseCancel()
+        await replacing.value
+        let after = await repository.beginCalls()
+        XCTAssertEqual(after.count, 2)
+        XCTAssertEqual(flow.challenge?.reference?.id, "recovery")
+        flow.cancel()
+    }
+
+    @MainActor
+    func testForegroundResumePollsSameReferenceAndWaitingClearsErrorWithoutBusy() async {
+        let repository = ScriptedSignInRepository(mode: .telegramLogin)
+        let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+        let pollClock = ResponseGate<Bool>()
+        let flow = SignInFlowController(signInService: auth, admissionService: auth, sleepBetweenPolls: {
+            _ = try await pollClock.response()
+            throw CancellationError()
+        })
+        await repository.enqueueBegin(.success(challenge(factor: .telegram, needsCode: false)))
+        await repository.holdNextGet()
+        await flow.resolveIdentifier("mira")
+        await repository.waitForGetStart()
+        flow.pauseForeground()
+        await repository.releaseGet(.failure(.cancelled))
+        await repository.enqueueGet(.failure(.transport(statusCode: 14, serverErrorCode: nil)))
+        await flow.refreshChallenge()
+        XCTAssertEqual(flow.error, .transport)
+        await repository.enqueueGet(.success(challenge(factor: .telegram, needsCode: false)))
+        flow.resumeForeground()
+        await pollClock.waitForStart()
+        XCTAssertNil(flow.error)
+        XCTAssertFalse(flow.isBusy)
+        XCTAssertEqual(flow.challenge?.reference?.id, "challenge-1")
+        let reads = await repository.getCount()
+        XCTAssertEqual(reads, 3)
+        flow.pauseForeground()
+        await pollClock.release(.success(true))
+        flow.cancel()
+    }
+
+    @MainActor
+    func testLateRefreshFailureCannotInterruptUserCompletion() async {
+        let repository = ScriptedSignInRepository(mode: .passwordSecondFactor)
+        let auth = makeAuthService(repository: repository, tokens: TestTokenProvider())
+        let flow = SignInFlowController(signInService: auth, admissionService: auth)
+        await repository.enqueueBegin(.success(challenge()))
+        await flow.resolveIdentifier("mira")
+        await flow.submitPassword("secret")
+        await repository.holdNextGet()
+        let refreshing = Task { await flow.refreshChallenge() }
+        await repository.waitForGetStart()
+        XCTAssertFalse(flow.isBusy)
+        await repository.holdNextCompletion()
+        let completing = Task { await flow.submitCode("123456") }
+        await repository.waitForCompletionStart()
+        await repository.releaseGet(.failure(.transport(statusCode: 14, serverErrorCode: nil)))
+        await refreshing.value
+        XCTAssertTrue(flow.isBusy)
+        XCTAssertEqual(flow.step, .completing)
+        XCTAssertNil(flow.error)
+        await repository.releaseCompletion(.success(completion("foreground-completion")))
+        await completing.value
+        XCTAssertEqual(flow.step, .authenticated)
+    }
+
+    @MainActor
     private func makeAuthService(repository: SignInRepositoryProtocol, tokens: TestTokenProvider) -> AuthService {
         AuthService(
             identityRepository: UnusedIdentityRepository(),
@@ -398,6 +699,7 @@ private struct BeginCall: Sendable, Equatable {
 }
 
 private struct CompletionCall: Sendable {
+    let reference: SignInChallengeReference
     let code: String
     let useRecoveryCode: Bool
 }
@@ -411,6 +713,12 @@ private actor ScriptedSignInRepository: SignInServiceProtocol {
     private var beginsCalled: [BeginCall] = []
     private var completionsCalled: [CompletionCall] = []
     private var cancellations: [SignInChallengeReference] = []
+    private var lastChallenge: SignInChallenge?
+    private var reads = 0
+    private var getGate = ResponseGate<SignInChallenge>()
+    private let cancelGate = ResponseGate<Bool>()
+    private var holdCancel = false
+    private var holdGet = false
     private var mode: SignInLoginMode
 
     private var holdResolution = false
@@ -434,6 +742,14 @@ private actor ScriptedSignInRepository: SignInServiceProtocol {
     func beginCalls() -> [BeginCall] { beginsCalled }
     func completionCalls() -> [CompletionCall] { completionsCalled }
     func cancelledReferences() -> [SignInChallengeReference] { cancellations }
+
+    func holdNextGet() { holdGet = true; getGate = ResponseGate<SignInChallenge>() }
+    func holdNextCancel() { holdCancel = true }
+    func waitForCancelStart() async { await cancelGate.waitForStart() }
+    func releaseCancel() async { await cancelGate.release(.success(true)) }
+    func waitForGetStart() async { await getGate.waitForStart() }
+    func releaseGet(_ result: Result<SignInChallenge, SignInRepositoryError>) async { await getGate.release(result) }
+    func getCount() -> Int { reads }
 
     func holdNextResolution() { holdResolution = true; resolutionStarted = false }
     func holdNextCompletion() { holdCompletion = true; completionStarted = false }
@@ -493,7 +809,11 @@ private actor ScriptedSignInRepository: SignInServiceProtocol {
             useRecoveryCode: useRecoveryCode,
             reportLoginModeMismatch: reportLoginModeMismatch
         ))
-        if !begins.isEmpty { return try begins.removeFirst().get() }
+        if !begins.isEmpty {
+            let response = try begins.removeFirst().get()
+            lastChallenge = response
+            return response
+        }
         return SignInChallenge(
             reference: SignInChallengeReference(id: "default", secret: "secret", endpoint: ServiceEndpoint(host: "identity.local", port: 5001)),
             state: .waiting,
@@ -505,7 +825,13 @@ private actor ScriptedSignInRepository: SignInServiceProtocol {
     }
 
     func getAuthChallenge(_ reference: SignInChallengeReference) async throws -> SignInChallenge {
+        reads += 1
+        if holdGet {
+            holdGet = false
+            return try await getGate.response()
+        }
         if !challengeReads.isEmpty { return try challengeReads.removeFirst().get() }
+        if let lastChallenge { return lastChallenge }
         return SignInChallenge(
             reference: reference,
             state: .waiting,
@@ -521,7 +847,7 @@ private actor ScriptedSignInRepository: SignInServiceProtocol {
         code: String,
         useRecoveryCode: Bool
     ) async throws -> SignInCompletion {
-        completionsCalled.append(CompletionCall(code: code, useRecoveryCode: useRecoveryCode))
+        completionsCalled.append(CompletionCall(reference: reference, code: code, useRecoveryCode: useRecoveryCode))
         if holdCompletion {
             return try await withCheckedThrowingContinuation { continuation in
                 blockedCompletion = continuation
@@ -534,7 +860,13 @@ private actor ScriptedSignInRepository: SignInServiceProtocol {
         return SignInCompletion(state: .waiting, session: nil, errorCode: "invalid_code")
     }
 
-    func cancelAuthChallenge(_ reference: SignInChallengeReference) async { cancellations.append(reference) }
+    func cancelAuthChallenge(_ reference: SignInChallengeReference) async {
+        cancellations.append(reference)
+        if holdCancel {
+            holdCancel = false
+            _ = try? await cancelGate.response()
+        }
+    }
 
     func resendAuthChallenge(_ reference: SignInChallengeReference) async throws -> SignInChallenge {
         if !resends.isEmpty { return try resends.removeFirst().get() }
@@ -610,6 +942,11 @@ private actor TestTokenProvider: TokenProvider {
     private var port: Int?
     private var saves = 0
     private let stableDeviceID = "test-device"
+    private let saveGate = ResponseGate<Bool>()
+    private var blockSave = false
+    func holdNextSave() { blockSave = true }
+    func waitForSaveStart() async { await saveGate.waitForStart() }
+    func releaseSave() async { await saveGate.release(.success(true)) }
 
     var currentAccessToken: String? { accessToken }
     var currentRefreshToken: String? { refreshToken }
@@ -629,6 +966,10 @@ private actor TestTokenProvider: TokenProvider {
         refreshToken: String,
         refreshExpiresAt: Date
     ) async {
+        if blockSave {
+            blockSave = false
+            _ = try? await saveGate.response()
+        }
         self.accessToken = accessToken
         self.accessExpiry = accessExpiresAt
         self.refreshToken = refreshToken
@@ -681,4 +1022,132 @@ private struct UnusedIdentityRepository: IdentityRepositoryProtocol {
     func setPassword(password: String) async throws { throw unused() }
     func logout() async throws { throw unused() }
     private func unused() -> BFNetworkingError { .unknown("Unused identity call in sign-in tests") }
+}
+
+/// Test-controlled async boundary; responses can be supplied before or after the waiter arrives.
+private actor ResponseGate<Value: Sendable> {
+    private var result: Result<Value, SignInRepositoryError>?
+    private var continuation: CheckedContinuation<Value, any Error>?
+    private var started = false
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+
+    func response() async throws -> Value {
+        started = true
+        startWaiters.forEach { $0.resume() }
+        startWaiters.removeAll()
+        if let result { self.result = nil; return try result.get() }
+        return try await withCheckedThrowingContinuation { continuation = $0 }
+    }
+
+    func waitForStart() async {
+        if started { return }
+        await withCheckedContinuation { startWaiters.append($0) }
+    }
+
+    func release(_ result: Result<Value, SignInRepositoryError>) {
+        if let continuation {
+            self.continuation = nil
+            continuation.resume(with: result.mapError { $0 as any Error })
+        } else { self.result = result }
+    }
+}
+
+// Test-only navigation state. The production LoginViewModel is compiled from its source symlink.
+@MainActor @Observable final class AppCoordinator {
+    enum State { case authentication, main, serverSelection }
+    enum AuthScreen { case login, register }
+    var currentState: State = .authentication { didSet { if currentState == .main { onMain?() } } }
+    var authScreen: AuthScreen = .login
+    var isConnectionReady = false
+    var onMain: (() -> Void)?
+}
+
+final class MacLoginViewModelTests: XCTestCase {
+    @MainActor
+    func testPollingActuallyNavigatesLoginViewModelToMain() async {
+        let repo = ScriptedSignInRepository(mode: .telegramLogin)
+        let auth = makeAuth(repo)
+        let coordinator = AppCoordinator()
+        let navigated = ResponseGate<Bool>()
+        var transitions = 0
+        var loads = 0
+        coordinator.onMain = { transitions += 1; Task { await navigated.release(.success(true)) } }
+        let vm = LoginViewModel(authService: auth, coordinator: coordinator, loadCurrentUser: { loads += 1 })
+        await repo.enqueueBegin(.success(challenge(.waiting, factor: .telegram)))
+        await repo.holdNextGet()
+        await repo.enqueueCompletion(.success(completion()))
+        vm.usernameOrEmail = "mira"
+        await vm.login()
+        await repo.waitForGetStart()
+        await repo.releaseGet(.success(challenge(.approved, factor: .telegram)))
+        _ = try? await navigated.response()
+        XCTAssertEqual(coordinator.currentState, .main)
+        XCTAssertTrue(coordinator.isConnectionReady)
+        XCTAssertEqual(transitions, 1)
+        XCTAssertEqual(loads, 1)
+        let receipt = vm.flow.admissionReceipt!
+        vm.leave()
+        let valid = await auth.isCurrentSignInSession(receipt)
+        XCTAssertTrue(valid)
+    }
+
+    @MainActor
+    func testPasswordLostCompleteRetriesThroughActualLoginAction() async {
+        let repo = ScriptedSignInRepository(mode: .password)
+        let auth = makeAuth(repo)
+        let coordinator = AppCoordinator()
+        let vm = LoginViewModel(authService: auth, coordinator: coordinator, loadCurrentUser: {})
+        await repo.enqueueBegin(.success(challenge(.approved, factor: .unknown(0))))
+        await repo.enqueueCompletion(.failure(.transport(statusCode: 14, serverErrorCode: nil)))
+        await repo.enqueueGet(.success(challenge(.completed, factor: .unknown(0))))
+        await repo.enqueueCompletion(.success(completion()))
+        vm.usernameOrEmail = "mira"
+        await vm.login()
+        vm.password = "secret"
+        await vm.login()
+        XCTAssertTrue(vm.flow.canRetryChallenge)
+        XCTAssertEqual(coordinator.currentState, .authentication)
+        await vm.login()
+        XCTAssertEqual(coordinator.currentState, .main)
+        XCTAssertTrue(coordinator.isConnectionReady)
+        let calls = await repo.completionCalls()
+        XCTAssertEqual(calls.count, 2)
+        XCTAssertEqual(calls[0].reference, calls[1].reference)
+    }
+
+    @MainActor
+    func testLeavingActualLoginDuringLoadRollsBackAndDoesNotNavigate() async {
+        let repo = ScriptedSignInRepository(mode: .password)
+        let tokens = TestTokenProvider()
+        let auth = makeAuth(repo, tokens: tokens)
+        let coordinator = AppCoordinator()
+        let gate = ResponseGate<Bool>()
+        let vm = LoginViewModel(authService: auth, coordinator: coordinator, loadCurrentUser: { _ = try? await gate.response() })
+        await repo.enqueueBegin(.success(challenge(.approved, factor: .unknown(0))))
+        await repo.enqueueCompletion(.success(completion()))
+        vm.usernameOrEmail = "mira"
+        await vm.login()
+        vm.password = "secret"
+        let login = Task { await vm.login() }
+        await gate.waitForStart()
+        vm.leave()
+        await gate.release(.success(true))
+        await login.value
+        XCTAssertEqual(coordinator.currentState, .authentication)
+        let saved = await tokens.snapshot()
+        XCTAssertNil(saved.accessToken)
+        let retry = await auth.beginSignInAttempt()
+        let receipt = await auth.commitSignInSession(completion().session!, for: retry)
+        XCTAssertNotNil(receipt)
+    }
+
+    @MainActor private func makeAuth(_ repo: ScriptedSignInRepository, tokens: TestTokenProvider = TestTokenProvider()) -> AuthService {
+        AuthService(identityRepository: UnusedIdentityRepository(), tokenProvider: tokens, connectionManager: ConnectionManager(), signInRepository: repo)
+    }
+    private func challenge(_ state: SignInChallengeState, factor: SignInFactor) -> SignInChallenge {
+        SignInChallenge(reference: SignInChallengeReference(id: "challenge", secret: "secret", endpoint: ServiceEndpoint(host: "identity.test", port: 5001)), state: state, factor: factor, expiresAt: Date().addingTimeInterval(3600), availableFactors: [], needsCode: false)
+    }
+    private func completion() -> SignInCompletion {
+        SignInCompletion(state: .completed, session: SignInSessionTokens(accessToken: "access", accessExpiresAt: Date().addingTimeInterval(3600), refreshToken: "refresh", refreshExpiresAt: Date().addingTimeInterval(7200)))
+    }
 }

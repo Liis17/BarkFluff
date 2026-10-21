@@ -50,6 +50,11 @@ struct QRPanelView: View {
                 .foregroundStyle(.red)
                 .frame(maxWidth: .infinity)
             }
+            if viewModel.canRetrySession {
+                Button("common.retry") { viewModel.startSession() }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.accentColor)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .top)
         .onAppear { viewModel.startSession() }

@@ -13,9 +13,10 @@ final class LoginViewModel {
 
     let flow: SignInFlowController
 
-    private let authService: AuthService
+    private let navigation: SignInNavigationCompletion
     private let coordinator: AppCoordinator
     private let loadCurrentUser: @MainActor () async -> Void
+    @ObservationIgnored private var cooldownTaskID: UUID?
     @ObservationIgnored private var cooldownTask: Task<Void, Never>?
 
     init(
@@ -23,10 +24,13 @@ final class LoginViewModel {
         coordinator: AppCoordinator,
         loadCurrentUser: @escaping @MainActor () async -> Void
     ) {
-        self.authService = authService
+        self.navigation = SignInNavigationCompletion(admissionService: authService)
         self.coordinator = coordinator
         self.loadCurrentUser = loadCurrentUser
         self.flow = SignInFlowController(signInService: authService, admissionService: authService)
+        self.flow.onAuthenticated = { [weak self] _ in
+            await Task { @MainActor in await self?.finishIfAuthenticated() }.value
+        }
     }
 
     var isLoading: Bool { flow.isBusy }
@@ -52,6 +56,8 @@ final class LoginViewModel {
             await flow.submitPassword(password)
         case .telegramReady:
             await flow.continueTelegramLogin()
+        case .challenge where flow.canRetryChallenge:
+            await flow.retryChallenge()
         case .challenge where flow.challenge?.needsCode == true:
             await flow.submitCode(otpCode)
             if flow.error == .invalidCode { otpCode = "" }
@@ -64,21 +70,18 @@ final class LoginViewModel {
             otpCode = ""
         }
         startCooldownTickerIfNeeded()
-        await finishIfAuthenticated()
     }
 
     func useRecoveryCode() async {
         otpCode = ""
         await flow.useRecoveryCode()
         startCooldownTickerIfNeeded()
-        await finishIfAuthenticated()
     }
 
     func chooseFactor(_ factor: SignInFactor) async {
         otpCode = ""
         await flow.selectFactor(factor)
         startCooldownTickerIfNeeded()
-        await finishIfAuthenticated()
     }
 
     func resendCode() async {
@@ -123,23 +126,34 @@ final class LoginViewModel {
 
     private func finishIfAuthenticated() async {
         guard flow.step == .authenticated, let receipt = flow.admissionReceipt else { return }
-        guard coordinator.currentState == .authentication, coordinator.authScreen == .login else { return }
-        await loadCurrentUser()
-        guard coordinator.currentState == .authentication, coordinator.authScreen == .login,
-              await flow.isCurrent(receipt) else { return }
-        coordinator.isConnectionReady = true
-        coordinator.currentState = .main
+        await navigation.finish(
+            receipt,
+            loadCurrentUser: loadCurrentUser,
+            isActive: { self.coordinator.currentState == .authentication && self.coordinator.authScreen == .login
+                && self.flow.admissionReceipt == receipt },
+            navigate: {
+                self.coordinator.isConnectionReady = true
+                self.coordinator.currentState = .main
+            }
+        )
     }
 
     private func startCooldownTickerIfNeeded() {
         guard flow.challenge != nil, flow.resendAvailableAt != nil, cooldownTask == nil else { return }
+        let taskID = UUID()
+        cooldownTaskID = taskID
         cooldownTask = Task { [weak self] in
+            defer {
+                if self?.cooldownTaskID == taskID {
+                    self?.cooldownTask = nil
+                    self?.cooldownTaskID = nil
+                }
+            }
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(1)) } catch { return }
                 guard let self, !Task.isCancelled, self.flow.challenge != nil else { return }
                 self.cooldownTick &+= 1
                 if self.flow.resendSecondsRemaining == 0 {
-                    self.cooldownTask = nil
                     return
                 }
             }
@@ -149,6 +163,7 @@ final class LoginViewModel {
     private func stopCooldownTicker() {
         cooldownTask?.cancel()
         cooldownTask = nil
+        cooldownTaskID = nil
     }
 
     private static func errorKey(_ error: SignInFlowError) -> String {

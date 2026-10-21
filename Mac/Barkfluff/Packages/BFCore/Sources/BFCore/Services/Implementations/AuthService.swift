@@ -18,6 +18,20 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
     private var activeSignInAttempts: Set<SignInSessionAdmissionAttempt> = []
     private var winningSignInAttempt: SignInSessionAdmissionAttempt?
 
+    // Held across token-provider awaits: actor isolation alone does not serialize storage.
+    private var storageLocked = false
+    private var storageWaiters: [CheckedContinuation<Void, Never>] = []
+
+    private func acquireStorage() async {
+        if !storageLocked { storageLocked = true; return }
+        await withCheckedContinuation { storageWaiters.append($0) }
+    }
+
+    private func releaseStorage() {
+        if storageWaiters.isEmpty { storageLocked = false }
+        else { storageWaiters.removeFirst().resume() }
+    }
+
     public init(
         identityRepository: IdentityRepositoryProtocol,
         tokenProvider: TokenProvider,
@@ -204,21 +218,33 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
 
     public func beginSignInAttempt() -> SignInSessionAdmissionAttempt {
         let attempt = SignInSessionAdmissionAttempt()
-        if winningSignInAttempt == nil {
+        if winningSignInAttempt == nil || winningSignInAttempt?.isCancelled == true {
             activeSignInAttempts.insert(attempt)
         }
         return attempt
     }
 
-    public func invalidateSignInAttempt(_ attempt: SignInSessionAdmissionAttempt) {
+    public func invalidateSignInAttempt(_ attempt: SignInSessionAdmissionAttempt) async {
         attempt.cancel()
         activeSignInAttempts.remove(attempt)
+        await acquireStorage()
+        defer { releaseStorage() }
+        if winningSignInAttempt == attempt, !attempt.isAccepted {
+            await tokenProvider.clearAll()
+            winningSignInAttempt = nil
+        }
     }
 
     public func commitSignInSession(
         _ session: SignInSessionTokens,
         for attempt: SignInSessionAdmissionAttempt
     ) async -> SignInSessionAdmissionReceipt? {
+        await acquireStorage()
+        defer { releaseStorage() }
+        if let winner = winningSignInAttempt, winner.isCancelled {
+            await tokenProvider.clearAll()
+            winningSignInAttempt = nil
+        }
         guard winningSignInAttempt == nil, activeSignInAttempts.contains(attempt), !attempt.isCancelled,
               !session.accessToken.isEmpty, !session.refreshToken.isEmpty,
               session.accessExpiresAt.timeIntervalSince1970.isFinite,
@@ -228,18 +254,23 @@ public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSess
         // This is the admission linearization point. Other QR/challenge completions can no longer
         // persist after this attempt wins, even while the token provider writes asynchronously.
         winningSignInAttempt = attempt
-        activeSignInAttempts.removeAll()
+        activeSignInAttempts.remove(attempt)
         await tokenProvider.saveTokens(
             accessToken: session.accessToken,
             accessExpiresAt: session.accessExpiresAt,
             refreshToken: session.refreshToken,
             refreshExpiresAt: session.refreshExpiresAt
         )
+        guard !attempt.isCancelled else {
+            await tokenProvider.clearAll()
+            winningSignInAttempt = nil
+            return nil
+        }
         return SignInSessionAdmissionReceipt(attempt: attempt)
     }
 
     public func isCurrentSignInSession(_ receipt: SignInSessionAdmissionReceipt) -> Bool {
-        winningSignInAttempt == receipt.attempt
+        winningSignInAttempt == receipt.attempt && !receipt.attempt.isCancelled
     }
 
     private func resetSignInAdmission() {

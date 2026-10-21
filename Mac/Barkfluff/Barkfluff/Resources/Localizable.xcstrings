@@ -517,6 +517,12 @@
         }
       }
     },
+    "auth.login.recovery_instructions" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter one of your saved recovery codes." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Введите один из сохранённых кодов восстановления." } }
+      }
+    },
     "auth.login.recovery_code" : {
       "localizations" : {
         "en" : {
@@ -10984,6 +10990,12 @@
             "value" : "有人正在尝试登录您的账户"
           }
         }
+      }
+    },
+    "fast_auth.qr.error.invalid_session" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The server returned an invalid sign-in session. Generate a new QR code to retry." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сервер вернул некорректную сессию входа. Повторите попытку с новым QR-кодом." } }
       }
     },
     "fast_auth.qr.error.empty_tokens" : {
