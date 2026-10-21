@@ -12,6 +12,7 @@ using Xunit;
 
 namespace BarkFluff.AdminPanel.Tests.Services;
 
+[Collection("LiteDb")]
 public class RemoteDockerServiceTests : IDisposable
 {
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"barkfluff-remote-{Guid.NewGuid():N}.db");

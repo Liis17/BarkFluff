@@ -18,6 +18,7 @@ using Xunit;
 
 namespace BarkFluff.AdminPanel.Tests.Services;
 
+[Collection("LiteDb")]
 public class MetricsCollectorServiceTests
 {
     [Theory]
