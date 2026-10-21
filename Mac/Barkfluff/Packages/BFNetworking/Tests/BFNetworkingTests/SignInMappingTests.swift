@@ -1,5 +1,5 @@
 import XCTest
-import BFNetworking
+@testable import BFNetworking
 import BFProto
 import GRPCCore
 import SwiftProtobuf
@@ -26,6 +26,23 @@ final class SignInMappingTests: XCTestCase {
             SignInRPCErrorMapper.map(rpcError(.permissionDenied, code: "identity-policy-code")),
             .transport(statusCode: 7, serverErrorCode: "identity-policy-code")
         )
+    }
+
+    func testEndpointChangesAndTaskCancellationMapToCancellation() async {
+        XCTAssertEqual(SignInRepository.mapError(ConnectionError.endpointChanged), .cancelled)
+        XCTAssertEqual(SignInRepository.mapError(CancellationError()), .cancelled)
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return SignInRepository.mapError(RPCError(code: .unavailable, message: "private detail"))
+        }
+        let result = await task.value
+        XCTAssertEqual(result, .cancelled)
+    }
+
+    func testMissingChallengeStatusRemainsAvailableForTerminalPollClassification() {
+        XCTAssertEqual(SignInRPCErrorMapper.map(rpcError(.notFound, code: "removed")),
+                       .transport(statusCode: 5, serverErrorCode: "removed"))
+        XCTAssertEqual(SignInRPCErrorMapper.map(rpcError(.cancelled)), .cancelled)
     }
 
     func testKnownAndUnknownEnumsMapWithoutGuessing() {

@@ -146,7 +146,7 @@ public actor SignInRepository: SignInRepositoryProtocol {
         return proto
     }
 
-    private nonisolated static func mapError(_ error: Error) -> SignInRepositoryError {
+    nonisolated static func mapError(_ error: Error) -> SignInRepositoryError {
         if error is CancellationError || Task.isCancelled { return .cancelled }
         if let connectionError = error as? ConnectionError,
            case .endpointChanged = connectionError {

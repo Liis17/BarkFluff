@@ -63,17 +63,18 @@ struct LoginView: View {
                 )
                 let coordinatorRef = coordinator
                 let containerRef = container
+                let navigation = SignInNavigationCompletion(admissionService: container.authService)
                 vm.onAuthenticated = { receipt in
                     Task { @MainActor in
-                        guard coordinatorRef.currentState == .authentication,
-                              coordinatorRef.authScreen == .login,
-                              await containerRef.authService.isCurrentSignInSession(receipt) else { return }
-                        await containerRef.loadCurrentUser()
-                        guard coordinatorRef.currentState == .authentication,
-                              coordinatorRef.authScreen == .login,
-                              await containerRef.authService.isCurrentSignInSession(receipt) else { return }
-                        coordinatorRef.isConnectionReady = true
-                        coordinatorRef.currentState = .main
+                        await navigation.finish(
+                            receipt,
+                            loadCurrentUser: { await containerRef.loadCurrentUser() },
+                            isActive: { coordinatorRef.currentState == .authentication && coordinatorRef.authScreen == .login },
+                            navigate: {
+                                coordinatorRef.isConnectionReady = true
+                                coordinatorRef.currentState = .main
+                            }
+                        )
                     }
                 }
                 fastAuthViewModel = vm
@@ -232,7 +233,7 @@ struct LoginView: View {
                     TextField("", text: Bindable(viewModel).usernameOrEmail)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
-                        .textInputAutocorrectionDisabled()
+                        .autocorrectionDisabled()
                         .disabled(viewModel.flow.step == .authenticated)
                         .accessibilityLabel(Text("auth.login.username_or_email"))
                 }
@@ -372,7 +373,11 @@ struct LoginView: View {
 
     @ViewBuilder
     private func challengeInstructions(_ viewModel: LoginViewModel, challenge: SignInChallenge) -> some View {
-        if viewModel.flow.loginMode == .telegramLogin || challenge.factor == .telegram {
+        if viewModel.flow.isUsingRecoveryCode {
+            Text("auth.login.recovery_instructions")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        } else if viewModel.flow.loginMode == .telegramLogin || challenge.factor == .telegram {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 Label("auth.login.telegram_waiting", systemImage: "paperplane.fill")
                     .font(.callout.weight(.medium))
@@ -423,7 +428,7 @@ struct LoginView: View {
 
     @ViewBuilder
     private func resendControl(_ viewModel: LoginViewModel, challenge: SignInChallenge) -> some View {
-        if challenge.state == .waiting, !viewModel.flow.isUsingRecoveryCode,
+        if challenge.state == .waiting, challenge.needsCode, !viewModel.flow.isUsingRecoveryCode,
            (challenge.factor == .email || challenge.factor == .telegram) {
             if viewModel.flow.canResend {
                 Button("auth.login.resend_code") {
@@ -449,7 +454,7 @@ struct LoginView: View {
         case .identifier, .passwordRequired, .telegramReady:
             true
         case .challenge:
-            viewModel.flow.challenge?.needsCode == true
+            viewModel.flow.challenge?.needsCode == true || viewModel.flow.canRetryChallenge
         default:
             false
         }
@@ -464,7 +469,7 @@ struct LoginView: View {
         case .telegramReady:
             true
         case .challenge:
-            !viewModel.otpCode.isEmpty
+            viewModel.flow.canRetryChallenge || !viewModel.otpCode.isEmpty
         default:
             false
         }
@@ -474,7 +479,7 @@ struct LoginView: View {
         switch viewModel.flow.step {
         case .identifier: "auth.login.continue"
         case .passwordRequired, .telegramReady: "auth.login.submit"
-        case .challenge: "auth.login.submit_otp"
+        case .challenge: viewModel.flow.canRetryChallenge ? "common.retry" : "auth.login.submit_otp"
         default: "auth.login.submit"
         }
     }

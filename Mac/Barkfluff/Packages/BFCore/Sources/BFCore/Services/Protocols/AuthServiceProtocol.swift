@@ -58,18 +58,31 @@ public protocol SignInServiceProtocol: SignInRepositoryProtocol {}
 
 public final class SignInSessionAdmissionAttempt: @unchecked Sendable, Equatable, Hashable {
     public let id: UUID
-    private let cancellation = Mutex(false)
+    private enum State { case pending, cancelled, accepted }
+    private let state = Mutex(State.pending)
 
     public init(id: UUID = UUID()) {
         self.id = id
     }
 
     public var isCancelled: Bool {
-        cancellation.withLock { $0 }
+        state.withLock { $0 == .cancelled }
     }
 
+    /// Cancels provisional admission. Leaving login after acceptance preserves the session.
     public func cancel() {
-        cancellation.withLock { $0 = true }
+        state.withLock { if $0 == .pending { $0 = .cancelled } }
+    }
+
+    public var isAccepted: Bool { state.withLock { $0 == .accepted } }
+
+    /// Called on the UI actor immediately before navigation, with no suspension in between.
+    public func accept() -> Bool {
+        state.withLock {
+            guard $0 == .pending else { return false }
+            $0 = .accepted
+            return true
+        }
     }
 
     public static func == (lhs: SignInSessionAdmissionAttempt, rhs: SignInSessionAdmissionAttempt) -> Bool {
@@ -89,7 +102,9 @@ public struct SignInSessionAdmissionReceipt: Sendable, Equatable, Hashable {
     }
 }
 
-/// Serializes local session commits shared by challenge login and FastAuth QR login.
+/// Serializes provisional session writes and rollback shared by challenge and QR login.
+/// Use SignInNavigationCompletion to accept the receipt immediately before navigation;
+/// invalidate the attempt on every abandoned path, including after commit returns.
 public protocol SignInSessionAdmissionService: Sendable {
     func beginSignInAttempt() async -> SignInSessionAdmissionAttempt
     func invalidateSignInAttempt(_ attempt: SignInSessionAdmissionAttempt) async

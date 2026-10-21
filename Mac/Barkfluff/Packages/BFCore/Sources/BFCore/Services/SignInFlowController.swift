@@ -42,6 +42,8 @@ public final class SignInFlowController {
     public private(set) var resendAvailableAt: Date?
     public private(set) var admissionReceipt: SignInSessionAdmissionReceipt?
 
+    @ObservationIgnored public var onAuthenticated: (@MainActor (SignInSessionAdmissionReceipt) async -> Void)?
+    @ObservationIgnored private var refreshID: UUID?
     @ObservationIgnored private let signInService: SignInServiceProtocol
     @ObservationIgnored private let admissionService: SignInSessionAdmissionService
     @ObservationIgnored private var generation: UInt64 = 0
@@ -52,15 +54,27 @@ public final class SignInFlowController {
     @ObservationIgnored private var attempt: SignInSessionAdmissionAttempt?
     @ObservationIgnored private var pollingTask: Task<Void, Never>?
     @ObservationIgnored private let now: @Sendable () -> Date
+    @ObservationIgnored private let sleepBetweenPolls: @Sendable () async throws -> Void
 
     public init(
         signInService: SignInServiceProtocol,
         admissionService: SignInSessionAdmissionService,
-        now: @escaping @Sendable () -> Date = Date.init
+        now: @escaping @Sendable () -> Date = Date.init,
+        sleepBetweenPolls: @escaping @Sendable () async throws -> Void = { try await Task.sleep(for: .seconds(2)) }
     ) {
         self.signInService = signInService
         self.admissionService = admissionService
         self.now = now
+        self.sleepBetweenPolls = sleepBetweenPolls
+    }
+
+    public var canRetryChallenge: Bool {
+        step == .challenge && challenge != nil && challenge?.needsCode == false && error != nil
+    }
+
+    public func retryChallenge() async {
+        guard canRetryChallenge, !isBusy else { return }
+        await refreshChallenge()
     }
 
     public var availableFactors: [SignInFactor] {
@@ -69,6 +83,7 @@ public final class SignInFlowController {
 
     public var canResend: Bool {
         guard let challenge, challenge.state == .waiting, !isUsingRecoveryCode,
+              challenge.needsCode,
               challenge.factor == .email || challenge.factor == .telegram else { return false }
         return resendAvailableAt.map { $0 <= now() } ?? true
     }
@@ -164,6 +179,9 @@ public final class SignInFlowController {
               loginMode == .telegramLogin || !password.isEmpty else { return }
         generation &+= 1
         let requestGeneration = generation
+        pauseForeground()
+        isBusy = true
+        step = .beginning
         verificationCode = ""
         error = nil
         isUsingRecoveryCode = true
@@ -193,6 +211,9 @@ public final class SignInFlowController {
         let reference = challenge?.reference
         generation &+= 1
         let requestGeneration = generation
+        pauseForeground()
+        isBusy = true
+        step = .beginning
         challenge = nil
         verificationCode = ""
         isUsingRecoveryCode = false
@@ -204,6 +225,7 @@ public final class SignInFlowController {
 
     public func resendCode() async {
         guard !isBusy, canResend, let reference = challenge?.reference else { return }
+        refreshID = nil
         let requestGeneration = generation
         isBusy = true
         error = nil
@@ -218,6 +240,7 @@ public final class SignInFlowController {
                 try validateActiveChallenge(response)
             } catch {
                 await cancelIfStale(response)
+                guard isCurrent(requestGeneration) else { return }
                 fail(.malformedResponse, step: .challenge)
                 return
             }
@@ -239,36 +262,43 @@ public final class SignInFlowController {
     }
 
     public func refreshChallenge() async {
-        guard !isBusy, let reference = challenge?.reference else { return }
+        guard !Task.isCancelled, !isBusy, refreshID == nil, let reference = challenge?.reference else { return }
         guard !isExpired(challenge) else {
             finishTerminal(.expired)
             return
         }
         let requestGeneration = generation
-        isBusy = true
+        let requestID = UUID()
+        refreshID = requestID
+        defer { if refreshID == requestID { refreshID = nil } }
         do {
             let response = try await signInService.getAuthChallenge(reference)
+            guard !Task.isCancelled, refreshID == requestID else { return }
             guard isCurrent(requestGeneration) else { await cancelIfStale(response); return }
+            guard !isBusy, step == .challenge, challenge?.reference == reference else { return }
             guard response.errorCode == nil else {
-                fail(.unsupportedServer, step: .challenge)
+                finishTerminal(.unsupportedServer)
                 return
             }
             do {
                 try validateChallenge(response)
             } catch {
                 await cancelIfStale(response)
-                fail(.malformedResponse, step: .identifier)
+                guard isCurrent(requestGeneration), refreshID == requestID, !isBusy, step == .challenge else { return }
+                finishTerminal(.malformedResponse)
                 return
             }
-            guard response.reference?.id == reference.id else {
-                fail(.malformedResponse, step: .identifier)
+            guard response.reference == reference else {
+                await cancelIfStale(response)
+                guard isCurrent(requestGeneration), refreshID == requestID, !isBusy, step == .challenge else { return }
+                finishTerminal(.malformedResponse)
                 return
             }
             switch response.state {
             case .waiting:
                 challenge = response
+                error = nil
                 step = .challenge
-                isBusy = false
             case .approved, .completed:
                 challenge = response
                 isBusy = false
@@ -284,23 +314,34 @@ public final class SignInFlowController {
             case .cancelled:
                 finishTerminal(.cancelled)
             case .unknown:
-                fail(.unsupportedServer, step: .identifier)
+                finishTerminal(.unsupportedServer)
             }
         } catch {
-            guard isCurrent(requestGeneration) else { return }
-            fail(map(error), step: .challenge)
+            guard !Task.isCancelled, refreshID == requestID, isCurrent(requestGeneration),
+                  !isBusy, step == .challenge, challenge?.reference == reference else { return }
+            if error is CancellationError { return }
+            switch error as? SignInRepositoryError {
+            case .transport(let status, _) where [5, 7, 16].contains(status):
+                finishTerminal(.cancelled)
+            case .transport(let status, _) where ![-1, 2, 4, 10, 13, 14].contains(status):
+                finishTerminal(.unsupportedServer)
+            case .rateLimited, .transport, .none:
+                fail(map(error), step: .challenge)
+            default:
+                finishTerminal(map(error))
+            }
         }
     }
 
     /// Rejoin the same in-memory challenge after returning to the foreground.
     public func resumeForeground() {
-        pollingTask?.cancel()
+        pauseForeground()
         guard shouldPollTelegram else { return }
         pollingTask = Task { [weak self] in
             guard let self else { return }
             await self.refreshChallenge()
-            while !Task.isCancelled {
-                do { try await Task.sleep(for: .seconds(2)) } catch { return }
+            while !Task.isCancelled, self.shouldPollTelegram {
+                do { try await self.sleepBetweenPolls() } catch { return }
                 guard !Task.isCancelled, self.shouldPollTelegram else { return }
                 await self.refreshChallenge()
             }
@@ -310,6 +351,7 @@ public final class SignInFlowController {
     public func pauseForeground() {
         pollingTask?.cancel()
         pollingTask = nil
+        refreshID = nil
     }
 
     public func returnToIdentifier() {
@@ -328,7 +370,8 @@ public final class SignInFlowController {
     }
 
     private var shouldPollTelegram: Bool {
-        challenge?.state == .waiting && challenge?.factor == .telegram && !isUsingRecoveryCode
+        loginMode == .telegramLogin && challenge?.needsCode == false
+            && challenge?.state == .waiting && challenge?.factor == .telegram && !isUsingRecoveryCode
             && (step == .challenge)
     }
 
@@ -348,6 +391,11 @@ public final class SignInFlowController {
         error = nil
         isBusy = true
         step = .beginning
+        defer {
+            if isCurrent(requestGeneration), challenge == nil, step != .authenticated {
+                isUsingRecoveryCode = false
+            }
+        }
         do {
             let response = try await signInService.beginSignIn(
                 login: identifier.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -359,6 +407,8 @@ public final class SignInFlowController {
             )
             guard isCurrent(requestGeneration) else { await cancelIfStale(response); return }
             if response.errorCode == "account_not_found" {
+                await cancelIfStale(response)
+                guard isCurrent(requestGeneration) else { return }
                 challenge = nil
                 password = ""
                 verificationCode = ""
@@ -367,18 +417,22 @@ public final class SignInFlowController {
                 return
             }
             if response.errorCode == "login_mode_disabled" {
+                await cancelIfStale(response)
+                guard isCurrent(requestGeneration) else { return }
                 await refreshModeAfterMismatch(generation: requestGeneration)
                 return
             }
             guard response.errorCode == nil else {
                 await cancelIfStale(response)
+                guard isCurrent(requestGeneration) else { return }
                 fail(.unsupportedServer, step: retryStep(for: loginMode))
                 return
             }
             do {
-                try validateActiveChallenge(response)
+                try validateActiveChallenge(response, recovery: recovery)
             } catch {
                 await cancelIfStale(response)
+                guard isCurrent(requestGeneration) else { return }
                 fail(.malformedResponse, step: retryStep(for: loginMode))
                 return
             }
@@ -386,7 +440,9 @@ public final class SignInFlowController {
             selectedFactor = response.factor
             isUsingRecoveryCode = recovery
             verificationCode = ""
-            resendAvailableAt = nil
+            resendAvailableAt = response.state == .waiting && response.needsCode && !recovery
+                && (response.factor == .email || response.factor == .telegram)
+                ? now().addingTimeInterval(60) : nil
             switch response.state {
             case .waiting:
                 step = .challenge
@@ -394,7 +450,7 @@ public final class SignInFlowController {
                 if response.needsCode {
                     error = nil
                 }
-                if response.factor == .telegram && !recovery { resumeForeground() }
+                if shouldPollTelegram { resumeForeground() }
             case .approved, .completed:
                 isBusy = false
                 await completeCurrentChallenge(
@@ -436,6 +492,7 @@ public final class SignInFlowController {
         }
         let requestGeneration = expectedGeneration ?? generation
         guard isCurrent(requestGeneration) else { return }
+        refreshID = nil
         step = .completing
         isBusy = true
         error = nil
@@ -481,7 +538,10 @@ public final class SignInFlowController {
                     error = .cancelled
                     return
                 }
-                guard isCurrent(requestGeneration) else { return }
+                guard isCurrent(requestGeneration) else {
+                    await admissionService.invalidateSignInAttempt(receipt.attempt)
+                    return
+                }
                 admissionReceipt = receipt
                 challenge = nil
                 password = ""
@@ -490,6 +550,7 @@ public final class SignInFlowController {
                 error = nil
                 step = .authenticated
                 pauseForeground()
+                await onAuthenticated?(receipt)
             case .waiting:
                 setChallengeState(.waiting)
                 step = .challenge
@@ -545,8 +606,8 @@ public final class SignInFlowController {
         }
     }
 
-    private func validateActiveChallenge(_ value: SignInChallenge) throws {
-        try validateChallenge(value)
+    private func validateActiveChallenge(_ value: SignInChallenge, recovery: Bool? = nil) throws {
+        try validateChallenge(value, recovery: recovery)
         guard let reference = value.reference, !reference.id.isEmpty, !reference.secret.isEmpty,
               let expiresAt = value.expiresAt, expiresAt > now() else {
             throw SignInRepositoryError.malformedResponse
@@ -568,7 +629,7 @@ public final class SignInFlowController {
         )
     }
 
-    private func validateChallenge(_ value: SignInChallenge) throws {
+    private func validateChallenge(_ value: SignInChallenge, recovery: Bool? = nil) throws {
         if case .unknown = value.state { throw SignInRepositoryError.malformedResponse }
         if let factor = value.factor, case .unknown(let raw) = factor, raw != 0 {
             throw SignInRepositoryError.malformedResponse
@@ -587,7 +648,8 @@ public final class SignInFlowController {
         case .some(.telegramLogin):
             guard value.factor == .telegram else { throw SignInRepositoryError.malformedResponse }
         case .some(.passwordSecondFactor):
-            guard value.factor == .email || value.factor == .telegram || value.factor == .authenticator else {
+            guard value.factor == .email || value.factor == .telegram || value.factor == .authenticator
+                || ((recovery ?? isUsingRecoveryCode) && value.factor == .unknown(0)) else {
                 throw SignInRepositoryError.malformedResponse
             }
         case .some(.unknown), .none:
