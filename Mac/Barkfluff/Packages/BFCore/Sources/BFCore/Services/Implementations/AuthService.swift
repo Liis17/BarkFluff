@@ -9,20 +9,25 @@ import Foundation
 import BFNetworking
 
 /// Реализация сервиса аутентификации
-public actor AuthService: AuthServiceProtocol {
+public actor AuthService: AuthServiceProtocol, SignInServiceProtocol, SignInSessionAdmissionService {
 
     private let identityRepository: IdentityRepositoryProtocol
     private let tokenProvider: TokenProvider
     private let connectionManager: ConnectionManager
+    private let signInRepository: SignInRepositoryProtocol
+    private var activeSignInAttempts: Set<SignInSessionAdmissionAttempt> = []
+    private var winningSignInAttempt: SignInSessionAdmissionAttempt?
 
     public init(
         identityRepository: IdentityRepositoryProtocol,
         tokenProvider: TokenProvider,
-        connectionManager: ConnectionManager
+        connectionManager: ConnectionManager,
+        signInRepository: SignInRepositoryProtocol? = nil
     ) {
         self.identityRepository = identityRepository
         self.tokenProvider = tokenProvider
         self.connectionManager = connectionManager
+        self.signInRepository = signInRepository ?? SignInRepository(connectionManager: connectionManager)
     }
 
     // MARK: - AuthServiceProtocol
@@ -121,10 +126,12 @@ public actor AuthService: AuthServiceProtocol {
         // 2. Только при успехе серверного шага — стираем токены и device_id локально.
         //    Очистка остальных кешей/БД делается на уровне DependencyContainer.reset().
         await tokenProvider.purgeAll()
+        resetSignInAdmission()
     }
 
     public func forceLocalLogout() async {
         await tokenProvider.purgeAll()
+        resetSignInAdmission()
     }
 
     public func setPassword(password: String) async throws {
@@ -149,6 +156,94 @@ public actor AuthService: AuthServiceProtocol {
         } catch let error as BFNetworkingError {
             throw Self.mapError(error)
         }
+    }
+
+    // MARK: - Challenge-based sign-in
+
+    public func resolveSignIn(login: String) async throws -> SignInResolution {
+        try await signInRepository.resolveSignIn(login: login)
+    }
+
+    public func beginSignIn(
+        login: String,
+        password: String,
+        mode: SignInLoginMode,
+        factor: SignInFactor?,
+        useRecoveryCode: Bool,
+        reportLoginModeMismatch: Bool
+    ) async throws -> SignInChallenge {
+        try await signInRepository.beginSignIn(
+            login: login,
+            password: password,
+            mode: mode,
+            factor: factor,
+            useRecoveryCode: useRecoveryCode,
+            reportLoginModeMismatch: reportLoginModeMismatch
+        )
+    }
+
+    public func getAuthChallenge(_ reference: SignInChallengeReference) async throws -> SignInChallenge {
+        try await signInRepository.getAuthChallenge(reference)
+    }
+
+    public func completeAuthChallenge(
+        _ reference: SignInChallengeReference,
+        code: String,
+        useRecoveryCode: Bool
+    ) async throws -> SignInCompletion {
+        try await signInRepository.completeAuthChallenge(reference, code: code, useRecoveryCode: useRecoveryCode)
+    }
+
+    public func cancelAuthChallenge(_ reference: SignInChallengeReference) async {
+        await signInRepository.cancelAuthChallenge(reference)
+    }
+
+    public func resendAuthChallenge(_ reference: SignInChallengeReference) async throws -> SignInChallenge {
+        try await signInRepository.resendAuthChallenge(reference)
+    }
+
+    public func beginSignInAttempt() -> SignInSessionAdmissionAttempt {
+        let attempt = SignInSessionAdmissionAttempt()
+        if winningSignInAttempt == nil {
+            activeSignInAttempts.insert(attempt)
+        }
+        return attempt
+    }
+
+    public func invalidateSignInAttempt(_ attempt: SignInSessionAdmissionAttempt) {
+        activeSignInAttempts.remove(attempt)
+    }
+
+    public func commitSignInSession(
+        _ session: SignInSessionTokens,
+        for attempt: SignInSessionAdmissionAttempt
+    ) async -> SignInSessionAdmissionReceipt? {
+        guard winningSignInAttempt == nil, activeSignInAttempts.contains(attempt),
+              !session.accessToken.isEmpty, !session.refreshToken.isEmpty,
+              session.accessExpiresAt.timeIntervalSince1970.isFinite,
+              session.refreshExpiresAt.timeIntervalSince1970.isFinite,
+              session.accessExpiresAt > Date(), session.refreshExpiresAt > Date() else { return nil }
+
+        // This is the admission linearization point. Other QR/challenge completions can no longer
+        // persist after this attempt wins, even while the token provider writes asynchronously.
+        winningSignInAttempt = attempt
+        activeSignInAttempts.removeAll()
+        await tokenProvider.saveTokens(
+            accessToken: session.accessToken,
+            accessExpiresAt: session.accessExpiresAt,
+            refreshToken: session.refreshToken,
+            refreshExpiresAt: session.refreshExpiresAt
+        )
+        return SignInSessionAdmissionReceipt(attempt: attempt)
+    }
+
+    public func isCurrentSignInSession(_ receipt: SignInSessionAdmissionReceipt) -> Bool {
+        winningSignInAttempt == receipt.attempt
+    }
+
+    private func resetSignInAdmission() {
+        activeSignInAttempts.removeAll()
+        winningSignInAttempt = nil
     }
 
     // MARK: - FastAuth (QR-логин)
