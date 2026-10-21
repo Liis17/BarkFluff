@@ -11,6 +11,7 @@ public static class LogsCompressionEndpoints
     {
         var group = app.MapGroup("/api/seq/compress-metrics")
             .WithTags("LogsCompression")
+            .RequireSeqEnabled()
             .RequirePermission(AdminPermissions.SeqDelete);
 
         // POST /api/seq/compress-metrics/run?date=YYYY-MM-DD

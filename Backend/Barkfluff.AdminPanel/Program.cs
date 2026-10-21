@@ -109,6 +109,9 @@ public class Program
         // Register S3BrowserService as Singleton
         builder.Services.AddSingleton<S3BrowserService>();
 
+        builder.Services.AddSingleton<IDockerCommandRunner, DockerCommandRunner>();
+        builder.Services.AddSingleton<DockerContainerNameResolver>();
+
         // Register DockerService as Singleton
         builder.Services.AddSingleton<DockerService>();
 
