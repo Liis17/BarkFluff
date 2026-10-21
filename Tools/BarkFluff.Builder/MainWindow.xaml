@@ -34,11 +34,6 @@
                         IsEnabled="{Binding LognaraEnable}"
                         ClearButtonEnabled="False" />
         </DataTemplate>
-        <DataTemplate x:Key="RelaySpoolTemplate">
-            <ui:TextBox Text="{Binding SpoolPath, UpdateSourceTrigger=PropertyChanged}"
-                        IsEnabled="{Binding LognaraEnable}"
-                        ClearButtonEnabled="False" />
-        </DataTemplate>
     </ui:FluentWindow.Resources>
 
     <Grid>
@@ -110,6 +105,9 @@
                             </ui:InfoBar.Style>
                         </ui:InfoBar>
                         <ui:InfoBar Margin="0,8,0,0" Severity="Warning" IsClosable="False" IsOpen="True"
+                                    Title="Compose-проект имеет имя barkfluff"
+                                    Message="Если на хосте уже есть Compose-проект barkfluff (например, nightly-стек из каталога barkfluff), команда docker compose up --remove-orphans затронет его контейнеры. Разворачивайте стек на отдельном хосте и не смешивайте проекты." />
+                        <ui:InfoBar Margin="0,8,0,0" Severity="Warning" IsClosable="False" IsOpen="True"
                                     Title="Не подключайте старый nightly-стек к этой Docker-сети"
                                     Message="В одной сети Compose-имена сервисов совпадут, и запросы могут попасть в контейнеры старого стека." />
                         <ui:InfoBar Margin="0,8,0,0" Severity="Warning" IsClosable="False"
@@ -146,7 +144,7 @@
                         <TextBlock FontSize="16" FontWeight="SemiBold" Text="Логирование приложений и инфраструктуры" />
                         <TextBlock Margin="0,2,0,8" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                    TextWrapping="Wrap"
-                                   Text="Console, Seq и Lognara настраиваются независимо для каждой строки. Переключатели Seq и Lognara выше применяются сразу ко всем строкам. Relay token и spool path используются включёнными Lognara-агентами." />
+                                   Text="Console, Seq и Lognara настраиваются независимо для каждой строки. Переключатели Seq и Lognara выше применяются сразу ко всем строкам. Relay token заполняется после регистрации каждого включённого агента в Core." />
                         <TextBlock Margin="0,4,0,4" FontWeight="SemiBold" Text="Приложения" />
                         <DataGrid ItemsSource="{Binding LognaraApplications}"
                                   AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
@@ -169,7 +167,6 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTemplateColumn Header="Relay token" CellTemplate="{StaticResource RelayTokenTemplate}" Width="210" />
-                                <DataGridTemplateColumn Header="Spool path" CellTemplate="{StaticResource RelaySpoolTemplate}" Width="300" />
                             </DataGrid.Columns>
                         </DataGrid>
 
@@ -195,7 +192,6 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTemplateColumn Header="Relay token" CellTemplate="{StaticResource RelayTokenTemplate}" Width="210" />
-                                <DataGridTemplateColumn Header="Spool path" CellTemplate="{StaticResource RelaySpoolTemplate}" Width="300" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </StackPanel>

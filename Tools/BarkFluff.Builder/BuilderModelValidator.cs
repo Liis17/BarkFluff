@@ -15,6 +15,8 @@ public static class BuilderModelValidator
 
         Require(model.PostgresPassword, "Пароль PostgreSQL обязателен.");
         Require(model.PostgresUser, "Пользователь PostgreSQL обязателен.");
+        ValidateConnectionStringComponent(model.PostgresUser, "Пользователь PostgreSQL", errors);
+        ValidateConnectionStringComponent(model.PostgresPassword, "Пароль PostgreSQL", errors);
         Require(model.RabbitPassword, "Пароль RabbitMQ обязателен.");
         Require(model.RabbitUser, "Пользователь RabbitMQ обязателен.");
         Require(model.SetupToken, "Токен setup обязателен.");
@@ -29,7 +31,7 @@ public static class BuilderModelValidator
         }
 
         if (!IsDnsName(model.PublicDomain))
-            errors.Add("Публичный домен должен быть корректным DNS-именем.");
+            errors.Add("Публичный домен должен быть ASCII DNS-именем; для IDN введите punycode (например, xn--...).");
         ValidateHttpUrl(model.NavigatorUrl, "URL Navigator", required: true, errors);
         if (!model.IncludeMinio)
             ValidateHttpUrl(model.S3Endpoint, "S3 endpoint", required: true, errors);
@@ -49,8 +51,9 @@ public static class BuilderModelValidator
         if (!string.IsNullOrWhiteSpace(model.TelegramProxyUrl)
             && (!Uri.TryCreate(model.TelegramProxyUrl, UriKind.Absolute, out var proxyUri)
                 || proxyUri.Scheme is not ("http" or "https" or "socks5")
-                || string.IsNullOrWhiteSpace(proxyUri.Host)))
-            errors.Add("Telegram proxy URL должен быть корректным HTTP(S) или SOCKS5 URL.");
+                || string.IsNullOrWhiteSpace(proxyUri.Host)
+                || proxyUri.Host.Any(c => !char.IsAscii(c))))
+            errors.Add("Telegram proxy URL должен быть корректным HTTP(S) или SOCKS5 URL; для IDN введите punycode.");
 
         if (!IsMailSecurity(model.SmtpSecurity) || !IsMailSecurity(model.ImapSecurity))
             errors.Add("Тип защиты SMTP/IMAP должен быть Auto, SslOnConnect, StartTls, StartTlsWhenAvailable или None.");
@@ -109,7 +112,6 @@ public static class BuilderModelValidator
 
         var active = ActiveLognaraTargets(model).ToArray();
         var tokens = new HashSet<string>(StringComparer.Ordinal);
-        var spoolPaths = new HashSet<string>(StringComparer.Ordinal);
         foreach (var target in active)
         {
             var token = LognaraAgentToken.Normalize(target.RelayToken);
@@ -118,16 +120,6 @@ public static class BuilderModelValidator
             else if (!tokens.Add(token))
                 errors.Add("Токены relay активных Lognara-агентов должны быть уникальными.");
 
-            if (string.IsNullOrWhiteSpace(target.SpoolPath))
-                errors.Add($"Путь spool обязателен для агента {target.DisplayName}.");
-            else
-            {
-                if (target.SpoolPath.Contains(':') || target.SpoolPath.Any(char.IsControl))
-                    errors.Add($"Путь spool агента {target.DisplayName} содержит неподдерживаемые символы.");
-                var normalized = target.SpoolPath.Replace('\\', '/').TrimEnd('/');
-                if (!spoolPaths.Add(normalized))
-                    errors.Add("Пути spool активных Lognara-агентов должны быть уникальными.");
-            }
         }
     }
 
@@ -162,8 +154,9 @@ public static class BuilderModelValidator
             || uri.UserInfo.Length != 0
             || !string.IsNullOrEmpty(uri.Query)
             || !string.IsNullOrEmpty(uri.Fragment)
-            || !uri.AbsolutePath.TrimEnd('/').EndsWith("/v1/batches", StringComparison.Ordinal))
-            errors.Add("Lognara Core URL должен быть HTTP(S) URL, оканчивающимся на /v1/batches.");
+            || !uri.AbsolutePath.TrimEnd('/').EndsWith("/v1/batches", StringComparison.Ordinal)
+            || uri.Host.Any(c => !char.IsAscii(c)))
+            errors.Add("Lognara Core URL должен быть HTTP(S) URL, оканчивающимся на /v1/batches; для IDN введите punycode.");
     }
 
     private static void ValidateHttpUrl(
@@ -191,6 +184,12 @@ public static class BuilderModelValidator
             return;
         }
 
+        if (uri.Host.Any(c => !char.IsAscii(c)))
+        {
+            errors.Add($"{label}: хост должен быть ASCII; для IDN введите punycode.");
+            return;
+        }
+
         if (originOnly && uri.AbsolutePath is not ("" or "/"))
             errors.Add($"{label} должен содержать только схему, хост и необязательный порт.");
     }
@@ -200,13 +199,13 @@ public static class BuilderModelValidator
         if (string.IsNullOrWhiteSpace(value)
             || value.Length > 253
             || value.EndsWith(".", StringComparison.Ordinal)
+            || value.Any(c => !char.IsAscii(c))
             || IPAddress.TryParse(value, out _))
             return false;
 
         try
         {
-            var ascii = new IdnMapping().GetAscii(value);
-            var labels = ascii.Split('.');
+            var labels = value.Split('.');
             return labels.Length >= 2 && labels.All(label =>
                 label.Length is > 0 and <= 63
                 && label[0] != '-'
@@ -237,6 +236,12 @@ public static class BuilderModelValidator
             || !path.StartsWith("/", StringComparison.Ordinal)
             || path.Any(c => char.IsControl(c) || char.IsWhiteSpace(c) || c is ';' or '"' or '\'' or '{' or '}' or '#'))
             errors.Add($"{label} должен быть абсолютным Unix-путём без пробелов и управляющих символов.");
+    }
+
+    private static void ValidateConnectionStringComponent(string value, string label, ICollection<string> errors)
+    {
+        if (value.Any(c => c is ';' or '=' or '"' or '\'' || char.IsWhiteSpace(c)))
+            errors.Add($"{label} не должен содержать ;, =, кавычки или пробелы, так как Settings формирует строку подключения PostgreSQL.");
     }
 
     private static void ValidatePort(string value, string label, bool required, ICollection<string> errors)
@@ -301,14 +306,15 @@ public static class BuilderModelValidator
     {
         foreach (var property in typeof(BuilderModel).GetProperties().Where(x => x.PropertyType == typeof(string)))
         {
-            if (property.GetValue(model) is string value && value.Any(c => char.IsControl(c) && c is not '\r' and not '\n' and not '\t'))
+            var allowsNewLines = property.Name == nameof(BuilderModel.FirebasePrivateKey);
+            if (property.GetValue(model) is string value
+                && value.Any(c => char.IsControl(c) && !(allowsNewLines && c == '\n')))
                 errors.Add($"Поле {property.Name} содержит символ, который нельзя представить в .env.");
         }
 
         foreach (var target in model.AllLognaraTargets())
         {
-            if (target.RelayToken.Any(c => char.IsControl(c) && c is not '\r' and not '\n' and not '\t')
-                || target.SpoolPath.Any(c => char.IsControl(c) && c is not '\r' and not '\n' and not '\t'))
+            if (target.RelayToken.Any(char.IsControl))
                 errors.Add($"Параметры Lognara-агента {target.DisplayName} содержат символ, который нельзя представить в .env.");
         }
     }

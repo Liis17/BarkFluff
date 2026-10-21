@@ -140,6 +140,45 @@ public sealed class BuilderConfigLoaderTests
     }
 
     [Fact]
+    public void UnquotedComposeDotenvValuesLoadAndAreRewrittenCanonically()
+    {
+        var temporaryRoot = CreateTemporaryDirectory();
+        try
+        {
+            var output = Path.Combine(temporaryRoot, "node");
+            var model = CreateModel(output, "Nightly", NginxMode.None, false, false, true);
+            BuilderOutputWriter.Write(model);
+
+            var environmentPath = Path.Combine(output, ".env");
+            var lines = File.ReadAllLines(environmentPath).Select(line => line switch
+            {
+                var value when value.StartsWith("LOGNARA_RELAY_CORE_TOKEN=", StringComparison.Ordinal) => "LOGNARA_RELAY_CORE_TOKEN=manual-core-token # pasted from Core",
+                var value when value.StartsWith("BEACON_LOGNARA_RELAY_TOKEN=", StringComparison.Ordinal) => "BEACON_LOGNARA_RELAY_TOKEN=manual-beacon-token # pasted from Core",
+                var value when value.StartsWith("LOGNARA_ENVIRONMENT=", StringComparison.Ordinal) => "LOGNARA_ENVIRONMENT= # intentionally empty",
+                _ => line
+            }).ToList();
+            lines.Add("BUILDER_LOGNARA_APPLICATION_BEACON_SPOOL_PATH=\"./legacy/spool\"");
+            lines.Add("BEACON_LOGNARA_SPOOL_PATH=\"./legacy/spool\"");
+            File.WriteAllLines(environmentPath, lines);
+
+            var loaded = BuilderConfigLoader.Load(output);
+            Assert.Equal("manual-core-token", loaded.LognaraCoreToken);
+            Assert.Equal("manual-beacon-token", loaded.Application("BEACON").RelayToken);
+            Assert.Equal(string.Empty, loaded.LognaraEnvironment);
+
+            BuilderOutputWriter.Write(loaded);
+            var canonical = File.ReadAllText(environmentPath);
+            Assert.Contains("LOGNARA_RELAY_CORE_TOKEN=\"manual-core-token\"", canonical);
+            Assert.Contains("BEACON_LOGNARA_RELAY_TOKEN=\"manual-beacon-token\"", canonical);
+            Assert.DoesNotContain("SPOOL_PATH", canonical);
+        }
+        finally
+        {
+            Directory.Delete(temporaryRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public void MalformedLiveKitConfigHasReadableError()
     {
         var temporaryRoot = CreateTemporaryDirectory();
@@ -193,7 +232,7 @@ public sealed class BuilderConfigLoaderTests
         {
             var output = Path.Combine(temporaryRoot, "node");
             BuilderOutputWriter.Write(CreateModel(output, "Nightly", NginxMode.None, false, false, false));
-            File.WriteAllText(Path.Combine(output, ".env"), "BROKEN=unquoted\n");
+            File.WriteAllText(Path.Combine(output, ".env"), "BROKEN=\"unclosed\n");
 
             var error = Assert.Throws<FormatException>(() => BuilderConfigLoader.Load(output));
             Assert.Contains(".env", error.Message);
@@ -221,7 +260,7 @@ public sealed class BuilderConfigLoaderTests
         model.PublicDomain = "node.example.com";
         model.NavigatorUrl = "https://nav.example.com";
         model.PostgresUser = "postgres-user";
-        model.PostgresPassword = "postgres-$\"#\\password";
+        model.PostgresPassword = "postgres-$#\\password";
         model.PostgresHostPort = "5442";
         model.RabbitUser = "rabbit-user";
         model.RabbitPassword = "rabbit-$\"#\\password";
@@ -265,7 +304,7 @@ public sealed class BuilderConfigLoaderTests
         model.MailPrivacyPassword = "privacy-$\"#\\password";
         model.MailSecurityPassword = "security-$\"#\\password";
         model.LiveKitApiKey = "LK$\"#\\key";
-        model.LiveKitApiSecret = "livekit-$\"#\\secret\nsecond-line";
+        model.LiveKitApiSecret = "livekit-$\"#\\secret";
         model.SetupHostPort = "7033";
         model.SetupPublicOrigin = "https://setup.example.com";
         model.SetupToken = "setup-$\"#\\token";
@@ -287,7 +326,6 @@ public sealed class BuilderConfigLoaderTests
             target.SeqEnable = targetIndex % 3 == 0;
             target.LognaraEnable = false;
             target.RelayToken = $"relay-{target.Prefix}-$\"#\\token";
-            target.SpoolPath = $"./data/lognara/spool/{target.Prefix.ToLowerInvariant()}-$\"#\\spool";
             targetIndex++;
         }
         model.Application("BEACON").LognaraEnable = true;

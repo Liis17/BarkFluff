@@ -53,6 +53,32 @@ public static class BuilderOutputWriter
         "NEXT_STEPS.md"
     };
 
+    public static bool ContainsForeignConfiguration(string outputDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(outputDirectory))
+            return false;
+
+        var root = Path.GetFullPath(outputDirectory);
+        if (!Directory.Exists(root))
+            return false;
+
+        var environmentPath = Path.Combine(root, ".env");
+        HashSet<string> builderKeys = File.Exists(environmentPath)
+            ? File.ReadLines(environmentPath)
+                .Select(line => line.TrimStart())
+                .Where(line => !line.StartsWith('#') && line.Contains('='))
+                .Select(line => line[..line.IndexOf('=')])
+                .ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
+        var hasBuilderMarker = builderKeys.Contains("BUILDER_IMAGE_CHANNEL")
+            && builderKeys.Contains("BUILDER_NGINX_MODE");
+
+        return !hasBuilderMarker
+            && (File.Exists(environmentPath)
+                || File.Exists(Path.Combine(root, "docker-compose.yml"))
+                || File.Exists(Path.Combine(root, "docker-compose.setup.yml")));
+    }
+
     public static IReadOnlyList<string> Write(BuilderModel model)
     {
         ArgumentNullException.ThrowIfNull(model);

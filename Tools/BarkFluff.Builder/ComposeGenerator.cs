@@ -111,12 +111,12 @@ public static class ComposeGenerator
                 "./.env:/.env:ro");
         if (model.IncludeSeq)
             admin = admin.WithDependency("seq");
-        services.Add(admin.WithAgent(model, model.Application("ADMIN_PANEL")));
+        services.Add(admin);
 
         if (model.IncludeSeq)
         {
             var seq = ComposeService.New("seq", "datalust/seq:latest")
-                .WithPorts($"${{SEQ_HOST_PORT}}:80")
+                .WithPorts($"127.0.0.1:${{SEQ_HOST_PORT}}:80")
                 .WithEnvironment(("ACCEPT_EULA", "Y"), ("SEQ_FIRSTRUN_ADMINPASSWORD", "${SEQ_ADMIN_PASSWORD}"))
                 .WithVolumes("./data/seq:/data");
             services.Add(WithInfrastructureAgent(model, seq, "SEQ", "datalust/seq:latest", "/bin/seqentry", "[]"));
@@ -177,7 +177,7 @@ public static class ComposeGenerator
                     ("MINIO_ROOT_PASSWORD", "${MINIO_ROOT_PASSWORD}"))
                 .WithVolumes("./data/minio:/data")
                 .WithCommand(ComposeArray("server", "/data", "--console-address", ":9001"))
-                .WithPorts("${MINIO_API_HOST_PORT}:9000", "${MINIO_CONSOLE_HOST_PORT}:9001");
+                .WithPorts("127.0.0.1:${MINIO_API_HOST_PORT}:9000", "127.0.0.1:${MINIO_CONSOLE_HOST_PORT}:9001");
             services.Add(WithInfrastructureAgent(model, minio, "MINIO", baseImage, "/usr/bin/docker-entrypoint.sh", "server /data --console-address \":9001\""));
         }
 
@@ -254,7 +254,7 @@ public static class ComposeGenerator
         if (model.IncludeSeq)
         {
             var seq = ComposeService.New("seq", "datalust/seq:latest")
-                .WithPorts("${SEQ_HOST_PORT}:80")
+                .WithPorts("127.0.0.1:${SEQ_HOST_PORT}:80")
                 .WithEnvironment(("ACCEPT_EULA", "Y"), ("SEQ_FIRSTRUN_ADMINPASSWORD", "${SEQ_ADMIN_PASSWORD}"))
                 .WithVolumes("./data/seq:/data");
             services.Add(WithInfrastructureAgent(model, seq, "SEQ", "datalust/seq:latest", "/bin/seqentry", "[]"));
@@ -379,9 +379,7 @@ public static class ComposeGenerator
             Add($"BUILDER_LOGNARA_{kind}_{target.Prefix}_CONSOLE_OUTPUT", Bool(target.ConsoleOutput));
             Add($"BUILDER_LOGNARA_{kind}_{target.Prefix}_SEQ_ENABLE", Bool(target.SeqEnable));
             Add($"BUILDER_LOGNARA_{kind}_{target.Prefix}_LOGNARA_ENABLE", Bool(target.LognaraEnable));
-            Add($"BUILDER_LOGNARA_{kind}_{target.Prefix}_SPOOL_PATH", target.SpoolPath);
             Add($"{target.RelayTokenVariable}", LognaraAgentToken.Normalize(target.RelayToken));
-            Add($"{target.SpoolPathVariable}", target.SpoolPath);
         }
 
         return b.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
@@ -463,9 +461,9 @@ FROM {{baseImage}}
 COPY --from=lognara-agent --chmod=0755 /usr/local/bin/lognara-agent /usr/local/bin/lognara-agent
 """;
 
-    private const string LognaraAgentRelease = "agent-20261018-041923-6db0c80dd298";
-    private const string LognaraAmd64Sha256 = "97f0fd07b9e61500a5d008461e5a285e3132bc756f12f6aca12bcc4c78492ff";
-    private const string LognaraArm64Sha256 = "8539aadd71cdd7978687ec8a6c3cb106c82e9efe54693b80b735e6f6110bff83";
+    internal const string LognaraAgentRelease = "agent-20261018-041923-6db0c80dd298";
+    internal const string LognaraAmd64Sha256 = "97f0fd07b9e61500a5d0084616e5a285e3132bc756f12f6aca12bcc4c78492ff";
+    internal const string LognaraArm64Sha256 = "8539aadd71cdd7978687ec8a6c3cb106c82e9efe54693b80b735e6f6110bff83";
 
     public static (string ApiKey, string ApiSecret) GenerateLiveKitCredentials()
     {
@@ -533,7 +531,7 @@ COPY --from=lognara-agent --chmod=0755 /usr/local/bin/lognara-agent /usr/local/b
             .WithProperty("stop_grace_period", "60s")
             .WithEnvironment(LognaraInfrastructureEnvironment(target))
             .WithCommandIfMissing(command)
-            .WithVolumes(target.SpoolPathVariableMount());
+            .WithVolumes($"{LognaraSpoolVolume(target)}:/var/lib/lognara-agent/spool");
     }
 
     private static IEnumerable<(string Key, string Value)> LognaraInfrastructureEnvironment(BuilderLognaraTarget target) =>
@@ -587,6 +585,8 @@ COPY --from=lognara-agent --chmod=0755 /usr/local/bin/lognara-agent /usr/local/b
         {
             foreach (var target in targets.Where(x => x.LognaraEnable))
             {
+                var spoolVolume = LognaraSpoolVolume(target);
+                names.Add($"  {spoolVolume}:\n    name: barkfluff-{spoolVolume}\n");
                 if (model.LognaraApplications.Contains(target))
                     names.Add($"  lognara-buffer-{VolumeKey(target)}:\n    name: barkfluff-lognara-buffer-{VolumeKey(target)}\n");
             }
@@ -685,7 +685,7 @@ done
     }
 
     private static string HostPort(string hostPort, string environmentKey, string containerPort) =>
-        string.IsNullOrWhiteSpace(hostPort) ? "" : $"${{{environmentKey}}}:{containerPort}";
+        string.IsNullOrWhiteSpace(hostPort) ? "" : $"127.0.0.1:${{{environmentKey}}}:{containerPort}";
 
     private static string Bool(bool value) => value ? "true" : "false";
 
@@ -698,8 +698,10 @@ done
             .Replace("\n", "\\n", StringComparison.Ordinal)
             .Replace("\r", "\\r", StringComparison.Ordinal) + "\"";
 
-    private static string VolumeKey(BuilderLognaraTarget target) =>
-        target.Prefix.ToLowerInvariant().Replace('_', '-');
+    private static string VolumeKey(BuilderLognaraTarget target) => target.ServiceName;
+
+    private static string LognaraSpoolVolume(BuilderLognaraTarget target) =>
+        $"lognara-agent-spool-{VolumeKey(target)}";
 
     private sealed class ComposeService(string key, string image)
     {
@@ -743,7 +745,7 @@ done
             _properties["stop_grace_period"] = "90s";
             _environment.AddRange(LognaraApplicationEnvironment(target));
             _volumes.Add($"lognara-buffer-{VolumeKey(target)}:/app/logs");
-            _volumes.Add(target.SpoolPathVariableMount());
+            _volumes.Add($"{LognaraSpoolVolume(target)}:/var/lib/lognara-agent/spool");
             return this;
         }
 
@@ -838,6 +840,4 @@ done
         }
     }
 
-    private static string SpoolPathVariableMount(this BuilderLognaraTarget target) =>
-        $"${{{target.SpoolPathVariable}}}:/var/lib/lognara-agent/spool";
 }

@@ -6,6 +6,34 @@ namespace BarkFluff.Builder.Tests;
 public sealed class BuilderOutputWriterTests
 {
     [Fact]
+    public void ForeignConfigurationIsDetectedWithoutBuilderMarker()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "barkfluff-builder-ownership-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            Assert.False(BuilderOutputWriter.ContainsForeignConfiguration(directory));
+
+            File.WriteAllText(Path.Combine(directory, ".env"), "CUSTOM_TOKEN=\"value\"\n");
+            Assert.True(BuilderOutputWriter.ContainsForeignConfiguration(directory));
+
+            File.Delete(Path.Combine(directory, ".env"));
+            File.WriteAllText(Path.Combine(directory, "docker-compose.yml"), "services:\n  custom:\n");
+            Assert.True(BuilderOutputWriter.ContainsForeignConfiguration(directory));
+
+            File.WriteAllText(Path.Combine(directory, ".env"), "BUILDER_IMAGE_CHANNEL=\"Nightly\"\n");
+            Assert.True(BuilderOutputWriter.ContainsForeignConfiguration(directory));
+
+            File.AppendAllText(Path.Combine(directory, ".env"), "BUILDER_NGINX_MODE=\"None\"\n");
+            Assert.False(BuilderOutputWriter.ContainsForeignConfiguration(directory));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void WriterRemovesOnlyItsStaleFilesAndPreservesUserData()
     {
         var temporaryRoot = Path.Combine(Path.GetTempPath(), "barkfluff-builder-tests-" + Guid.NewGuid().ToString("N"));
