@@ -2,6 +2,7 @@ using BarkFluff.Client.Core.Infrastructure.Localization;
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
+using BarkFluff.Proto.Identity;
 
 using System.Runtime.CompilerServices;
 
@@ -72,7 +73,8 @@ public sealed class AuthenticationViewModelTests
         await viewModel.LoadFastAuthAsync();
 
         Assert.Null(viewModel.FastAuthQrCode);
-        Assert.Equal("Error_FastAuthFailed", viewModel.ErrorMessage);
+        Assert.Equal("Error_FastAuthFailed", viewModel.FastAuthStatusMessage);
+        Assert.Null(viewModel.ErrorMessage);
     }
 
     [Fact]
@@ -145,6 +147,8 @@ public sealed class AuthenticationViewModelTests
 
     private sealed class FakeAuthenticationService : IAuthenticationService
     {
+        private AuthenticationAttempt? _currentAttempt;
+
         public FastAuthSession? FastAuthSession { get; init; }
         public IReadOnlyList<FastAuthUpdate> FastAuthUpdates { get; init; } = [];
         public RegistrationStartResult RegistrationStart { get; init; } = RegistrationStartResult.Failure("Error_RegistrationFailed");
@@ -155,16 +159,60 @@ public sealed class AuthenticationViewModelTests
         public Queue<FastAuthSession?> FastAuthSessions { get; } = [];
         public Queue<IReadOnlyList<FastAuthUpdate>> FastAuthUpdateSequences { get; } = [];
 
+        public AuthenticationAttempt? CreateAuthenticationAttempt() => _currentAttempt = AuthenticationAttempt.Create();
+
+        public bool IsCurrentAuthenticationAttempt(AuthenticationAttempt attempt) => _currentAttempt == attempt;
+
+        public Task CancelAuthenticationAttemptAsync(AuthenticationAttempt attempt)
+        {
+            if (_currentAttempt == attempt)
+            {
+                _currentAttempt = null;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task<SignInResolutionResult> ResolveSignInAsync(AuthenticationAttempt attempt, string login, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SignInResolutionResult.Success(AuthLoginMode.Password));
+
+        public Task<SignInChallengeResult> BeginSignInAsync(
+            AuthenticationAttempt attempt,
+            string login,
+            string password,
+            AuthLoginMode loginMode,
+            OtpTypeId factor,
+            bool useRecoveryCode,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(SignInChallengeResult.Failure(null, "Error_LoginFailed"));
+
+        public Task<SignInChallengeResult> GetAuthChallengeAsync(AuthenticationAttempt attempt, AuthChallengeReference reference, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SignInChallengeResult.Failure(null, "Error_LoginUnavailable"));
+
+        public Task<AuthenticationOperationResult> CompleteAuthChallengeAsync(
+            AuthenticationAttempt attempt,
+            AuthChallengeReference reference,
+            string code,
+            bool useRecoveryCode,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(AuthenticationOperationResult.Failure("Error_LoginFailed"));
+
+        public Task<SignInChallengeResult> ResendAuthChallengeAsync(AuthenticationAttempt attempt, AuthChallengeReference reference, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SignInChallengeResult.Failure(null, "Error_LoginUnavailable"));
+
+        public Task<AuthenticationOperationResult> CancelAuthChallengeAsync(AuthenticationAttempt attempt, AuthChallengeReference reference, CancellationToken cancellationToken = default) =>
+            Task.FromResult(AuthenticationOperationResult.Success());
+
         public Task<LoginResult> LoginAsync(string loginOrEmail, string password, string otpCode, CancellationToken cancellationToken = default) =>
             Task.FromResult(LoginResult.Success());
 
-        public Task<FastAuthSession?> CreateFastAuthSessionAsync(CancellationToken cancellationToken = default)
+        public Task<FastAuthSession?> CreateFastAuthSessionAsync(AuthenticationAttempt attempt, CancellationToken cancellationToken = default)
         {
             FastAuthSessionCalls++;
             return Task.FromResult(FastAuthSessions.Count > 0 ? FastAuthSessions.Dequeue() : FastAuthSession);
         }
 
-        public async IAsyncEnumerable<FastAuthUpdate> SubscribeFastAuthAsync(FastAuthSession session, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<FastAuthUpdate> SubscribeFastAuthAsync(AuthenticationAttempt attempt, FastAuthSession session, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             if (FastAuthStreamGate is not null)
             {
@@ -174,6 +222,11 @@ public sealed class AuthenticationViewModelTests
             var updates = FastAuthUpdateSequences.Count > 0 ? FastAuthUpdateSequences.Dequeue() : FastAuthUpdates;
             foreach (var update in updates)
             {
+                if (update.Kind == FastAuthUpdateKind.Accepted && _currentAttempt == attempt)
+                {
+                    _currentAttempt = null;
+                }
+
                 yield return update;
             }
 
