@@ -16,6 +16,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.signal.libsignal.protocol.IdentityKey
 import org.signal.libsignal.protocol.SessionBuilder
 import org.signal.libsignal.protocol.SessionCipher
@@ -85,6 +86,9 @@ class SecretChatRepository(
                 val address = addressFor(peerDeviceId)
                 val chatId = existing?.id ?: UUID.randomUUID().toString()
                 val chat = signalStore.transaction(operation) {
+                    // An expired invitation is replaced: its undelivered initial plaintext must not
+                    // reach history, while its invite ids still map a late acceptance to this chat.
+                    existing?.let { scrubPendingInitial(it.id) }
                     SessionBuilder(signalStore, address).process(bundle)
                     val encrypted = SessionCipher(signalStore, address)
                         .encrypt(initialPlaintext.toByteArray(Charsets.UTF_8))
@@ -96,11 +100,11 @@ class SecretChatRepository(
                         id = chatId,
                         peerUserId = peerUserId,
                         peerDeviceId = peerDeviceId,
-                        inviteId = "",
+                        inviteId = existing?.inviteId.orEmpty(),
                         role = SecretChatRole.INITIATOR,
                         accepted = false,
-                        inviteIds = emptySet(),
-                        pendingAcceptInviteIds = emptySet(),
+                        inviteIds = existing?.inviteIds.orEmpty(),
+                        pendingAcceptInviteIds = existing?.pendingAcceptInviteIds.orEmpty(),
                         initialPlaintext = initialPlaintext,
                         initialEnvelope = envelope,
                         pendingSend = true,
@@ -220,7 +224,11 @@ class SecretChatRepository(
                 saveMeta(chat.copy(accepted = true, pendingSend = false))
             } else if (!chat.accepted) {
                 val remaining = chat.inviteIds - inviteId
-                if (remaining.isEmpty()) {
+                if (remaining.isEmpty() && chat.pendingSend) {
+                    // A replacement invitation is still queued; only the old id is resolved.
+                    saveMeta(chat.copy(inviteId = "", inviteIds = emptySet()))
+                } else if (remaining.isEmpty()) {
+                    scrubPendingInitial(chat.id)
                     signalStore.writeMetadata(secretChatMetadataKey(chat.id), null)
                 } else {
                     saveMeta(chat.copy(inviteId = remaining.first(), inviteIds = remaining))
@@ -253,12 +261,18 @@ class SecretChatRepository(
                     }
                     signalStore.assertCurrent(operation)
                     val result = grpc.sendSecretMessage(chat.peerUserId, chat.peerDeviceId, envelope)
-                    signalStore.assertCurrent(operation)
                     result.getOrNull()?.let { sent ->
-                        signalStore.transaction(operation) {
-                            signalStore.recordReplay("message:out:${sha256("${chat.id}|${sent.messageId}")}",
-                                encodeReplay(ReplayRecord(chat.id, plaintext, "out:${sent.messageId}",
-                                    operation.scope.userId, operation.scope.deviceId, System.currentTimeMillis())))
+                        // The server already accepted the message, so a local record failure must
+                        // not turn it into a send failure that invites a duplicate resend.
+                        try {
+                            signalStore.transaction(operation) {
+                                signalStore.recordReplay("message:out:${sha256("${chat.id}|${sent.messageId}")}",
+                                    encodeReplay(ReplayRecord(chat.id, plaintext, "out:${sent.messageId}",
+                                        operation.scope.userId, operation.scope.deviceId, System.currentTimeMillis())))
+                            }
+                        } catch (e: Exception) {
+                            if (e is CancellationException) throw e
+                            Log.w(tag, "Sent secret message was not recorded locally: ${e::class.java.simpleName}")
                         }
                     }
                     result
@@ -278,6 +292,7 @@ class SecretChatRepository(
         peerLock(senderUserId, senderDeviceId).withLock {
             try {
                 signalStore.assertCurrent(operation)
+                applyPendingHistoryClear(operation)
                 val raw = envelope.envelope.toByteArray()
                 val replayKey = messageReplayKey(senderUserId, senderDeviceId, envelope.messageId)
                 val prior = signalStore.transaction(operation) {
@@ -368,14 +383,16 @@ class SecretChatRepository(
     suspend fun persistPendingHistory(chatId: String, persist: suspend (HistoryMessage) -> Unit): Set<String> =
         withContext(Dispatchers.IO) {
             val operation = signalStore.captureOperation()
-            historyMutex.withLock {
-                val chat = getChat(chatId) ?: return@withLock emptySet()
+            // Network acks run outside the history lock, so logout and clear never wait on them.
+            val acks = historyMutex.withLock {
+                applyPendingHistoryClear(operation)
+                val chat = getChat(chatId) ?: return@withLock emptyList()
                 migrateInitialHistory(chat, operation)
                 val pending = signalStore.allReplay().mapValues { decodeReplay(it.value) }
                     .filterValues { it.pending && it.messageId.isNotBlank() &&
                         (it.chatId == chatId || (it.chatId.isBlank() && it.senderUserId == chat.peerUserId &&
                             it.senderDeviceId == chat.peerDeviceId)) }
-                if (pending.isEmpty()) return@withLock emptySet()
+                if (pending.isEmpty()) return@withLock emptyList()
                 val messages = pending.values.distinctBy { it.messageId }
                 for (record in messages) {
                     signalStore.assertCurrent(operation)
@@ -383,7 +400,7 @@ class SecretChatRepository(
                 }
                 signalStore.assertCurrent(operation)
                 val deliveredIds = messages.map { it.messageId }.toSet()
-                val acks = signalStore.transaction(operation) {
+                signalStore.transaction(operation) {
                     val delivered = signalStore.allReplay().mapValues { decodeReplay(it.value) }
                         .filterValues { it.messageId in deliveredIds }
                     delivered.forEach { (key, record) ->
@@ -394,9 +411,17 @@ class SecretChatRepository(
                     }
                     delivered.values.map { it.ackMessageId }.filter(String::isNotBlank).distinct()
                 }
-                acks.forEach { ack(it) }
-                acks.toSet()
             }
+            // A missed ack is redelivered and resolved by the scrubbed replay record.
+            acks.forEach { id ->
+                try {
+                    withTimeoutOrNull(ACK_TIMEOUT_MS) { ack(id) }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    Log.w(tag, "Secret message ack remains pending: ${e::class.java.simpleName}")
+                }
+            }
+            acks.toSet()
         }
 
     // Upgrade the initial metadata written by the previous snapshot format exactly once.
@@ -422,8 +447,41 @@ class SecretChatRepository(
     /** Serialize user deletion with handoff; retain ratchet/replay security markers. */
     suspend fun clearHistory(clearCache: suspend () -> Unit) = withContext(Dispatchers.IO) {
         historyMutex.withLock {
-            signalStore.transaction { scrubHistory(null) }
-            clearCache()
+            // The durable intent is written first; the cache is cleared even if the crypto scrub
+            // fails, and a failed scrub is repeated before any pending plaintext is handed off.
+            val failures = mutableListOf<Exception>()
+            val scope = attempt(failures) { signalStore.markHistoryClearPending() }
+            val scrubbed = attempt(failures) { signalStore.transaction { scrubHistory(null) } } != null
+            attempt(failures) { clearCache() }
+            if (scrubbed && scope != null) attempt(failures) { signalStore.completeHistoryClear(scope) }
+            failures.firstOrNull()?.let { first ->
+                failures.drop(1).forEach(first::addSuppressed)
+                throw first
+            }
+        }
+    }
+
+    private inline fun <T> attempt(failures: MutableList<Exception>, block: () -> T): T? = try {
+        block()
+    } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        failures += e
+        null
+    }
+
+    private fun applyPendingHistoryClear(operation: CryptoOperation) {
+        if (!signalStore.hasHistoryClearPending(operation.scope)) return
+        signalStore.transaction(operation) { scrubHistory(null) }
+        signalStore.completeHistoryClear(operation.scope)
+    }
+
+    /** Drops undelivered outgoing initial plaintext only; accepted history records stay intact. */
+    private fun scrubPendingInitial(chatId: String) {
+        signalStore.allReplay().forEach { (key, value) ->
+            val record = decodeReplay(value)
+            if (record.chatId == chatId && record.pending && (record.messageId.isBlank() || record.messageId.startsWith("init:"))) {
+                signalStore.updateReplay(key, encodeReplay(record.copy(plaintext = "", pending = false)))
+            }
         }
     }
 
@@ -721,6 +779,7 @@ class SecretChatRepository(
         private const val INVITE_TTL_SECONDS = 24 * 60 * 60L
         private const val MAX_INVITE_IDS = 1000
         private const val MAX_METADATA_BYTES = 16 * 1024 * 1024
+        private const val ACK_TIMEOUT_MS = 15_000L
 
         private fun secretChatMetadataKey(chatId: String) = "$SECRET_CHAT_NAMESPACE$chatId"
 

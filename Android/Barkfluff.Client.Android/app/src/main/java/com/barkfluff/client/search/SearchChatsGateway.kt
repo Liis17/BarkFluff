@@ -12,6 +12,8 @@ import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.repository.SecretChatRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class SearchChat(
     val chat: ChatSummary,
@@ -48,7 +50,9 @@ class GrpcSearchChatsGateway @Inject constructor(
             SearchChat(chat, display?.title ?: chat.title, display?.avatarFileId ?: avatar(chat), peer(chat))
         }
         if (!globalParam.secretChatsEnabled) return chats
-        return chats + secretChats.listChats().map { secret ->
+        // Decrypting the encrypted crypto snapshot is disk I/O; keep it off the caller's Main dispatcher.
+        val secrets = withContext(Dispatchers.IO) { secretChats.listChats() }
+        return chats + secrets.map { secret ->
             val profile = userProfiles.user(secret.peerUserId).getOrNull()
             val title = profile?.let { "${it.firstName} ${it.lastName}".trim().ifBlank { it.username } }.orEmpty()
             SearchChat(
