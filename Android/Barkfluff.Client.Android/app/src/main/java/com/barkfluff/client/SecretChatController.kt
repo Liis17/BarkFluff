@@ -21,6 +21,25 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+sealed interface SecretSendOutcome {
+    data object Sent : SecretSendOutcome
+    data class SendFailed(val error: Throwable) : SecretSendOutcome
+    data class HistoryFailed(val error: Throwable) : SecretSendOutcome
+}
+
+/** A definite server send is never reported as a send failure because local history failed. */
+internal suspend fun sendThenRefresh(send: suspend () -> Result<*>, refresh: suspend () -> Unit): SecretSendOutcome {
+    send().exceptionOrNull()?.let { return SecretSendOutcome.SendFailed(it) }
+    return try {
+        refresh()
+        SecretSendOutcome.Sent
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        SecretSendOutcome.HistoryFailed(e)
+    }
+}
+
 /**
  * Контроллер секретного чата (E2E через Signal Double Ratchet). Рендерит в общий shell
  * ChatActivity (ActivityChatBinding + MessageAdapter). Порт логики бывшего SecretChatActivity.
@@ -102,15 +121,24 @@ class SecretChatController(
         if (text.isEmpty()) return
         binding.messageEditText.setText("")
         activity.lifecycleScope.launch {
-            try {
-                repo.sendMessage(chat, text).getOrThrow()
-                refreshHistory()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Toast.makeText(activity,
-                    activity.getString(R.string.private_chat_message_send_failed, e.message.orEmpty()),
-                    Toast.LENGTH_LONG).show()
+            val outcome = sendThenRefresh(send = { repo.sendMessage(chat, text) }, refresh = { refreshHistory() })
+            when (outcome) {
+                is SecretSendOutcome.Sent -> Unit
+                is SecretSendOutcome.SendFailed -> {
+                    // Nothing reached the server: give the text back for an explicit resend.
+                    if (binding.messageEditText.text.isNullOrEmpty()) {
+                        binding.messageEditText.setText(text)
+                        binding.messageEditText.setSelection(text.length)
+                    }
+                    Toast.makeText(activity,
+                        activity.getString(R.string.private_chat_message_send_failed, outcome.error.message.orEmpty()),
+                        Toast.LENGTH_LONG).show()
+                }
+                // The server accepted it; the pending handoff is recovered on the next refresh.
+                is SecretSendOutcome.HistoryFailed -> {
+                    Log.w(TAG, "Sent secret message is not in local history yet", outcome.error)
+                    Toast.makeText(activity, R.string.secret_message_history_failed, Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

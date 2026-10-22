@@ -106,6 +106,71 @@ class BarkFluffSignalStoreInstrumentedTest {
         }
     }
 
+    @Test
+    fun logoutClearsUnmigratedLegacyFilesForEmptyAndNullScopesButKeepsOtherAccounts() {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val emptyScope = newScope()
+        val otherScope = newScope()
+        val other = newStore(context, otherScope)
+        try {
+            other.transaction { other.initialize(IdentityKeyPair.generate(), 505) }
+
+            seedLegacyFiles(context)
+            newStore(context, emptyScope).reset(emptyScope)
+            assertLegacyFilesEmpty(context)
+
+            seedLegacyFiles(context)
+            BarkFluffSignalStore(context) { null }.reset(null)
+            assertLegacyFilesEmpty(context)
+
+            assertTrue(newStore(context, otherScope).isInitialized())
+        } finally {
+            other.reset()
+            deleteScope(context, emptyScope)
+            deleteScope(context, otherScope)
+        }
+    }
+
+    @Test
+    fun retryPendingCleanupAttemptsEveryJournaledScopeAndKeepsOnlyFailedOnes() {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val failing = newScope()
+        val cleanable = newScope()
+        try {
+            listOf(failing, cleanable).forEach { scope ->
+                val store = newStore(context, scope)
+                store.transaction { store.initialize(IdentityKeyPair.generate(), 606) }
+                val rejecting = BarkFluffSignalStore(RejectCommitContext(context, scopedFileName(scope))) { scope }
+                assertThrows(DurableCryptoCommitException::class.java) { rejecting.reset(rejecting.invalidateForLogout()) }
+            }
+
+            val stillFailing = BarkFluffSignalStore(RejectCommitContext(context, scopedFileName(failing))) { null }
+            assertThrows(DurableCryptoCommitException::class.java) { stillFailing.retryPendingCleanup() }
+
+            assertFalse(stillFailing.hasPendingCleanup(cleanable))
+            assertFalse(newStore(context, cleanable).isInitialized())
+            assertTrue(stillFailing.hasPendingCleanup(failing))
+
+            BarkFluffSignalStore(context) { null }.retryPendingCleanup()
+            assertFalse(stillFailing.hasPendingCleanup(failing))
+        } finally {
+            deleteScope(context, failing)
+            deleteScope(context, cleanable)
+        }
+    }
+
+    private fun seedLegacyFiles(context: Context) {
+        assertTrue(encryptedPreferences(context, LEGACY_SIGNAL_FILE).edit().putString("self::identity_key", "legacy-private").commit())
+        assertTrue(encryptedPreferences(context, LEGACY_SECRET_CHATS_FILE).edit().putString("chat", "legacy-chat").commit())
+        assertTrue(context.getSharedPreferences(LEGACY_PREKEY_STATE_FILE, Context.MODE_PRIVATE).edit().putInt("next", 7).commit())
+    }
+
+    private fun assertLegacyFilesEmpty(context: Context) {
+        assertTrue(encryptedPreferences(context, LEGACY_SIGNAL_FILE).all.isEmpty())
+        assertTrue(encryptedPreferences(context, LEGACY_SECRET_CHATS_FILE).all.isEmpty())
+        assertTrue(context.getSharedPreferences(LEGACY_PREKEY_STATE_FILE, Context.MODE_PRIVATE).all.isEmpty())
+    }
+
     private fun newStore(context: Context, scope: CryptoStoreScope) = BarkFluffSignalStore(context) { scope }
 
     private fun newScope() = CryptoStoreScope(
@@ -187,5 +252,8 @@ class BarkFluffSignalStoreInstrumentedTest {
 
     private companion object {
         const val STATE_BLOB_KEY = "crypto_state"
+        const val LEGACY_SIGNAL_FILE = "barkfluff_signal_store"
+        const val LEGACY_SECRET_CHATS_FILE = "barkfluff_secret_chats"
+        const val LEGACY_PREKEY_STATE_FILE = "barkfluff_prekey_state"
     }
 }

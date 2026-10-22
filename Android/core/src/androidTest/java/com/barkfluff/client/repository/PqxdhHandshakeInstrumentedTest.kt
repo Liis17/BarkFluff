@@ -14,6 +14,7 @@ import com.google.protobuf.ByteString
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -394,6 +395,136 @@ class PqxdhHandshakeInstrumentedTest {
         }
     }
 
+    @Test
+    fun rejectedAndReplacedInvitationsScrubPendingInitialAndKeepLateInviteMapping() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val aliceScope = newScope("l1-alice")
+        val bobScope = newScope("l1-bob")
+        val alice = newStore(context, aliceScope)
+        val bob = newStore(context, bobScope)
+        try {
+            initializeDevice(alice, 101, 111)
+            val keys = initializeDevice(bob, 202, 121)
+            val bundle = createBundle("bob-device", keys.identity, keys.signed, keys.ec, keys.kyber, true)
+            val transport = FakeSecretChatTransport(context, bundle, "l1").apply { expiresAtSeconds = 1 }
+            val repo = SecretChatRepository(transport, alice)
+            val first = repo.createSecretChat(202, "bob-device", "expired first text").getOrThrow()
+            transport.expiresAtSeconds = System.currentTimeMillis() / 1000 + 86400
+            val second = repo.createSecretChat(202, "bob-device", "replacement text").getOrThrow()
+            assertEquals(first.id, second.id)
+            // A late resolution of the expired invitation still maps to the same chat.
+            assertEquals(first.id, repo.findByInviteId("l1-1")?.id)
+            val rows = mutableListOf<SecretChatRepository.HistoryMessage>()
+            repo.persistPendingHistory(first.id) { rows += it }
+            assertEquals(listOf("replacement text"), rows.map { it.plaintext })
+
+            repo.markInviteResolution("l1-1", accepted = false)
+            assertEquals(first.id, repo.getChat(first.id)?.id)
+            repo.markInviteResolution("l1-2", accepted = false)
+            assertEquals(null, repo.getChat(first.id))
+
+            val pendingChat = repo.createSecretChat(202, "bob-device", "rejected initial text").getOrThrow()
+            repo.markInviteResolution(pendingChat.inviteId, accepted = false)
+            assertEquals(null, repo.getChat(pendingChat.id))
+            assertFalse(replayContains(alice, "rejected initial text"))
+        } finally {
+            deleteScope(context, aliceScope)
+            deleteScope(context, bobScope)
+        }
+    }
+
+    @Test
+    fun blockedAckDoesNotHoldHistoryLockForClearOrLogout() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val fixture = pendingIncomingFixture(context, "l4")
+        try {
+            fixture.transport.ackStarted = CompletableDeferred()
+            fixture.transport.ackGate = CompletableDeferred()
+            val handoff = async { fixture.repo.persistPendingHistory(fixture.chatId) { } }
+            fixture.transport.ackStarted!!.await()
+            withTimeout(5_000) {
+                fixture.repo.awaitHistoryIdle()
+                fixture.repo.clearHistory { }
+            }
+            fixture.transport.ackGate!!.complete(Unit)
+            assertEquals(setOf("l4-message"), handoff.await())
+            fixture.repo.persistPendingHistory(fixture.chatId) { error("cleared history must not resurrect") }
+        } finally {
+            fixture.delete(context)
+        }
+    }
+
+    @Test
+    fun failedHistoryScrubStillClearsCacheAndRecoveryScrubsBeforeHandoff() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val fixture = pendingIncomingFixture(context, "l5")
+        try {
+            var cacheCleared = false
+            // Invalidating this instance makes its crypto transaction fail like a broken store.
+            fixture.store.invalidateForLogout()
+            assertTrue(runCatching { fixture.repo.clearHistory { cacheCleared = true } }.isFailure)
+            assertTrue(cacheCleared)
+            assertTrue(fixture.store.hasHistoryClearPending(fixture.scope))
+
+            val restarted = newStore(context, fixture.scope)
+            SecretChatRepository(fixture.transport, restarted)
+                .persistPendingHistory(fixture.chatId) { error("cleared history must not resurrect after recovery") }
+            assertFalse(restarted.hasHistoryClearPending(fixture.scope))
+            assertFalse(replayContains(restarted, "l5 pending text"))
+        } finally {
+            fixture.delete(context)
+        }
+    }
+
+    private class PendingIncomingFixture(
+        val scope: CryptoStoreScope,
+        val senderScope: CryptoStoreScope,
+        val store: BarkFluffSignalStore,
+        val repo: SecretChatRepository,
+        val transport: FakeSecretChatTransport,
+        val chatId: String,
+    )
+
+    private fun PendingIncomingFixture.delete(context: Context) {
+        deleteScope(context, scope)
+        deleteScope(context, senderScope)
+        context.getSharedPreferences("barkfluff_secret_history_clear", Context.MODE_PRIVATE).edit().clear().commit()
+    }
+
+    /** Bob holds one decrypted, not yet handed-off incoming message whose ack id is "<label>-message". */
+    private suspend fun pendingIncomingFixture(context: Context, label: String): PendingIncomingFixture {
+        val aliceScope = newScope("$label-alice")
+        val bobScope = newScope("$label-bob")
+        val alice = newStore(context, aliceScope)
+        val bob = newStore(context, bobScope)
+        initializeDevice(alice, 101, 131)
+        val keys = initializeDevice(bob, 202, 141)
+        val bundle = createBundle("bob-device", keys.identity, keys.signed, keys.ec, keys.kyber, true)
+        val aliceTransport = FakeSecretChatTransport(context, bundle, "$label-alice")
+        val bobTransport = FakeSecretChatTransport(context, bundle, label)
+        SecretChatRepository(aliceTransport, alice).createSecretChat(202, "bob-device", "$label first").getOrThrow()
+        val bobRepo = SecretChatRepository(bobTransport, bob)
+        val chat = bobRepo.acceptIncomingInvite("$label-invite", 101, "alice-device", aliceTransport.sentEnvelopes.single())
+            .getOrThrow().first
+        bobRepo.persistPendingHistory(chat.id) { }
+        val ciphertext = alice.transaction {
+            SessionCipher(alice, SignalProtocolAddress("bob-device", 1))
+                .encrypt("$label pending text".toByteArray(StandardCharsets.UTF_8)).serialize()
+        }
+        val envelope = Shared.SecretEnvelope.newBuilder().setMessageId("$label-message")
+            .setSenderUserId(101).setSenderDeviceId("alice-device")
+            .setEnvelope(ByteString.copyFrom(ciphertext))
+            .setSentAt(Timestamp.newBuilder().setSeconds(456)).build()
+        assertEquals("$label pending text", bobRepo.decryptIncoming(envelope).getOrThrow().plaintext)
+        bobTransport.ackedMessageIds.clear()
+        return PendingIncomingFixture(bobScope, aliceScope, bob, bobRepo, bobTransport, chat.id)
+    }
+
+    private fun replayContains(store: BarkFluffSignalStore, text: String): Boolean =
+        store.allReplay().values.any {
+            String(android.util.Base64.decode(it, android.util.Base64.NO_WRAP), StandardCharsets.ISO_8859_1).contains(text)
+        }
+
     private fun verifyHandshake(includeEcOneTimePrekey: Boolean, useLastResortKyber: Boolean) {
         val context = InstrumentationRegistry.getInstrumentation().context
         val aliceScope = newScope("alice")
@@ -671,7 +802,12 @@ class PqxdhHandshakeInstrumentedTest {
             return Result.success(Unit)
         }
 
+        var ackStarted: CompletableDeferred<Unit>? = null
+        var ackGate: CompletableDeferred<Unit>? = null
+
         override suspend fun ackSecretMessage(messageId: String): Result<Unit> {
+            ackStarted?.complete(Unit)
+            ackGate?.await()
             ackedMessageIds += messageId
             return Result.success(Unit)
         }

@@ -480,7 +480,7 @@ class RealtimeService(
     private suspend fun collectSecretChatInvites() {
         val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeSecretChatInvitesRequest.getDefaultInstance()
-        val scopeId = CryptoStoreScope.from(globalParam)?.scopeId ?: throw CancellationException("No authenticated crypto scope")
+        val scopeId = awaitCryptoScopeId()
         Log.d(TAG, "Subscribing to SecretChatInvites stream (device-scope)")
         client.subscribeSecretChatInvites(request).collect { event ->
             Log.d(TAG, "Secret chat invite received: inviteId=${event.inviteId}, sender=${event.senderUserId}/${event.senderDeviceId}")
@@ -494,13 +494,23 @@ class RealtimeService(
     private suspend fun collectSecretChatResolutions() {
         val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeSecretChatResolutionsRequest.getDefaultInstance()
-        val scopeId = CryptoStoreScope.from(globalParam)?.scopeId ?: throw CancellationException("No authenticated crypto scope")
+        val scopeId = awaitCryptoScopeId()
         client.subscribeSecretChatResolutions(request).collect { event ->
             Log.d(TAG, "Secret chat resolution: inviteId=${event.inviteId}, accepted=${event.accepted}")
             _secretChatResolutions.emit(event)
             if (CryptoStoreScope.from(globalParam)?.scopeId == scopeId) {
                 _scopedSecretChatResolutions.emit(ScopedSecretChatResolution(scopeId, event))
             }
+        }
+    }
+
+    /** Waits with backoff for a signed-in crypto scope; only real cancellation ends the stream. */
+    private suspend fun awaitCryptoScopeId(): String {
+        var waitMs = BASE_BACKOFF_MS
+        while (true) {
+            CryptoStoreScope.from(globalParam)?.scopeId?.let { return it }
+            delay(waitMs)
+            waitMs = min(waitMs * 2, MAX_BACKOFF_MS)
         }
     }
 

@@ -70,6 +70,9 @@ class CryptoOperationInvalidatedException : IllegalStateException("Crypto operat
 
 class DurableCryptoCommitException(cause: Throwable? = null) : IllegalStateException("Could not durably save encrypted crypto state", cause)
 
+/** Logout cleanup could not be journaled, so credentials must be retained for a retry. */
+class CryptoCleanupJournalException(cause: Throwable? = null) : IllegalStateException("Could not record crypto cleanup", cause)
+
 /**
  * One encrypted snapshot contains libsignal keys and sessions, prekey publication state, secret
  * chat metadata, and replay records. Libsignal calls are staged in [transaction] and saved by one
@@ -136,56 +139,110 @@ class BarkFluffSignalStore(
 
     fun reset() = reset(invalidateForLogout())
 
+    /**
+     * Journals the exact scope and the unscoped legacy files, then clears both. Legacy files
+     * belong to no account scope, so every logout removes them even when they were never migrated.
+     * Throws [CryptoCleanupJournalException] when nothing was journaled.
+     */
     fun reset(scope: CryptoStoreScope?) {
         lock.withLock {
+            // Keep the exact scope retryable after clearUserData generates a new device id.
+            val journal = cleanupPreferences().edit().putBoolean(KEY_LEGACY_CLEANUP, true)
             if (scope != null) {
-                // Keep the exact scope retryable after clearUserData generates a new device id.
                 val bytes = ByteArrayOutputStream()
                 DataOutputStream(bytes).use { it.writeUtf8(scope.server); it.writeLong(scope.userId); it.writeUtf8(scope.deviceId) }
-                if (!cleanupPreferences().edit().putString(sha256(scope.id), encode(bytes.toByteArray())).commit()) {
-                    throw DurableCryptoCommitException()
-                }
+                journal.putString(sha256(scope.id), encode(bytes.toByteArray()))
+            }
+            val journaled = try { journal.commit() } catch (e: Exception) { throw CryptoCleanupJournalException(e) }
+            if (!journaled) throw CryptoCleanupJournalException()
+            val failures = mutableListOf<Exception>()
+            if (scope != null) {
                 try {
                     clearScope(scope)
                 } catch (e: DurableCryptoCommitException) {
-                    throw e
+                    failures += e
                 } catch (e: Exception) {
                     FAILED_SCOPES += scope
-                    throw DurableCryptoCommitException(e)
+                    failures += DurableCryptoCommitException(e)
                 }
             }
+            runCleanupStep(failures) { clearLegacyFiles() }
+            throwAggregated(failures)
         }
     }
 
     fun hasPendingCleanup(scope: CryptoStoreScope?): Boolean = scope != null &&
         cleanupPreferences().contains(sha256(scope.id))
 
+    /** Attempts every journaled cleanup independently; failed entries remain journaled. */
     fun retryPendingCleanup() = lock.withLock {
-        cleanupPreferences().all.values.filterIsInstance<String>().forEach { encoded ->
-            val scope = DataInputStream(ByteArrayInputStream(decode(encoded))).use {
-                CryptoStoreScope(it.readUtf8(), it.readLong(), it.readUtf8())
+        val failures = mutableListOf<Exception>()
+        val prefs = cleanupPreferences()
+        prefs.all.forEach { (key, value) ->
+            if (key == KEY_LEGACY_CLEANUP || value !is String) return@forEach
+            runCleanupStep(failures) {
+                val scope = DataInputStream(ByteArrayInputStream(decode(value))).use {
+                    CryptoStoreScope(it.readUtf8(), it.readLong(), it.readUtf8())
+                }
+                clearScope(scope)
             }
-            clearScope(scope)
+        }
+        if (prefs.getBoolean(KEY_LEGACY_CLEANUP, false)) runCleanupStep(failures) { clearLegacyFiles() }
+        throwAggregated(failures)
+    }
+
+    private inline fun runCleanupStep(failures: MutableList<Exception>, step: () -> Unit) {
+        try {
+            step()
+        } catch (e: Exception) {
+            failures += e
         }
     }
 
+    private fun throwAggregated(failures: List<Exception>) {
+        val first = failures.firstOrNull() ?: return
+        failures.drop(1).forEach(first::addSuppressed)
+        throw first as? DurableCryptoCommitException ?: DurableCryptoCommitException(first)
+    }
+
+    /**
+     * Records a user history clear outside the encrypted snapshot, so a scrub that failed in the
+     * snapshot is repeated before pending replay plaintext can be handed to history again.
+     */
+    fun markHistoryClearPending(): CryptoStoreScope? = lock.withLock {
+        val scope = scopeProvider() ?: return null
+        if (!historyClearPreferences().edit().putBoolean(sha256(scope.id), true).commit()) throw DurableCryptoCommitException()
+        scope
+    }
+
+    fun hasHistoryClearPending(scope: CryptoStoreScope): Boolean =
+        historyClearPreferences().getBoolean(sha256(scope.id), false)
+
+    fun completeHistoryClear(scope: CryptoStoreScope) {
+        if (!historyClearPreferences().edit().remove(sha256(scope.id)).commit()) throw DurableCryptoCommitException()
+    }
+
+    private fun historyClearPreferences() =
+        appContext.getSharedPreferences("barkfluff_secret_history_clear", Context.MODE_PRIVATE)
+
     private fun cleanupPreferences() = appContext.getSharedPreferences("barkfluff_crypto_cleanup", Context.MODE_PRIVATE)
 
-    private fun clearScope(scope: CryptoStoreScope) {
-        val identity = readState(scope).entries[KEY_IDENTITY_KEY]
-        val legacy = legacyEncryptedPreferences(LEGACY_SIGNAL_FILE)
-        if (identity != null && legacy.getString(KEY_IDENTITY_KEY, null) == identity) {
-            listOf(LEGACY_SECRET_CHATS_FILE, LEGACY_SIGNAL_FILE).forEach { name ->
-                if (!legacyEncryptedPreferences(name).edit().clear().commit()) throw DurableCryptoCommitException()
-            }
-            if (!appContext.getSharedPreferences(LEGACY_PREKEY_STATE_FILE, Context.MODE_PRIVATE).edit().clear().commit()) {
-                throw DurableCryptoCommitException()
-            }
+    private fun clearLegacyFiles() {
+        listOf(LEGACY_SECRET_CHATS_FILE, LEGACY_SIGNAL_FILE).forEach { name ->
+            if (!legacyEncryptedPreferences(name).edit().clear().commit()) throw DurableCryptoCommitException()
         }
+        if (!appContext.getSharedPreferences(LEGACY_PREKEY_STATE_FILE, Context.MODE_PRIVATE).edit().clear().commit()) {
+            throw DurableCryptoCommitException()
+        }
+        if (!cleanupPreferences().edit().remove(KEY_LEGACY_CLEANUP).commit()) throw DurableCryptoCommitException()
+    }
+
+    private fun clearScope(scope: CryptoStoreScope) {
         if (!preferences(scope).edit().clear().commit()) {
             FAILED_SCOPES += scope
             throw DurableCryptoCommitException()
         }
+        historyClearPreferences().edit().remove(sha256(scope.id)).commit()
         if (!cleanupPreferences().edit().remove(sha256(scope.id)).commit()) throw DurableCryptoCommitException()
         FAILED_SCOPES -= scope
     }
@@ -199,6 +256,7 @@ class BarkFluffSignalStore(
         val scope = currentScope()
         val current = readState(scope)
         if (isInitialized(current)) return true
+        if (cleanupPreferences().getBoolean(KEY_LEGACY_CLEANUP, false)) return false
 
         val legacy = legacyEncryptedPreferences(LEGACY_SIGNAL_FILE)
         val encodedIdentity = legacy.getString(KEY_IDENTITY_KEY, null) ?: return false
@@ -590,6 +648,7 @@ class BarkFluffSignalStore(
         private const val SECRET_CHAT_NAMESPACE = "secret_chat::"
         private const val PREFIX_MANAGER = "manager::"
         private const val KEY_LEGACY_MIGRATED = "legacy_migrated"
+        private const val KEY_LEGACY_CLEANUP = "legacy_unscoped_files"
         private const val LEGACY_SIGNAL_FILE = "barkfluff_signal_store"
         private const val LEGACY_PREKEY_STATE_FILE = "barkfluff_prekey_state"
         private const val LEGACY_SECRET_CHATS_FILE = "barkfluff_secret_chats"
