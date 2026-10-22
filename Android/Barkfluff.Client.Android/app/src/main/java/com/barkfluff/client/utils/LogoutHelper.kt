@@ -3,6 +3,9 @@ package com.barkfluff.client.utils
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import android.widget.Toast
+import com.barkfluff.client.BarkFluffApplication
+import com.barkfluff.client.R
 import com.barkfluff.client.LoginActivity
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
@@ -31,6 +34,48 @@ object LogoutHelper {
 
     private const val TAG = "LogoutHelper"
 
+    /** Used by every credential-clearing exit, including rejected refresh on Splash. */
+    suspend fun clearCredentials(context: Context, prekeyManager: PrekeyManager): Boolean {
+        if (!prepareCryptoExit(context, prekeyManager)) return false
+        val app = context.applicationContext as BarkFluffApplication
+        app.secretChatRepository.awaitHistoryIdle()
+        app.chatCacheRepository.clearAll()
+        withContext(Dispatchers.IO) { GlobalParam(context).clearUserData() }
+        return true
+    }
+
+    private suspend fun prepareCryptoExit(context: Context, manager: PrekeyManager): Boolean {
+        var scope: com.barkfluff.client.crypto.CryptoStoreScope? = null
+        try {
+            withContext(Dispatchers.IO) {
+                scope = manager.invalidateForLogout()
+                manager.reset(scope)
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Crypto cleanup failed; retry is required", e)
+            val retryRecorded = try {
+                withContext(Dispatchers.IO) { manager.hasPendingCleanup(scope) }
+            } catch (journalError: Exception) {
+                if (journalError is kotlinx.coroutines.CancellationException) throw journalError
+                Log.e(TAG, "Could not read crypto cleanup journal", journalError)
+                false
+            }
+            Toast.makeText(context, context.getString(R.string.settings_error_detail, e.message.orEmpty()), Toast.LENGTH_LONG).show()
+            // Retain credentials if even the exact-scope cleanup journal could not be saved.
+            if (!retryRecorded) return false
+        }
+        return true
+    }
+
+    suspend fun performFullLogout(context: Context, authGateway: AuthGateway) {
+        val app = context.applicationContext as BarkFluffApplication
+        performFullLogout(context, authGateway, app.realtimeService, app.callEventsService,
+            app.outgoingMessageQueue, app.chatCacheRepository, app.privateChatRepository,
+            app.prekeyManager, app.secretChatRepository)
+    }
+
     /** Gateway-only entry point used by migrated screens and tests. */
     suspend fun performFullLogout(
         context: Context,
@@ -49,10 +94,12 @@ object LogoutHelper {
             realtimeShutdown = realtimeService::shutdown,
             callEventsShutdown = callEventsService::shutdown,
             cancelOutgoing = outgoingMessageQueue::cancelAllForCurrentScope,
-            clearChatCache = chatCacheRepository::clearAll,
+            clearChatCache = {
+                secretChatRepository.awaitHistoryIdle()
+                chatCacheRepository.clearAll()
+            },
             forgetPrivateChats = privateChatRepository::forgetAll,
-            forgetSecretChats = secretChatRepository::forgetAll,
-            resetPrekeys = prekeyManager::reset,
+            prekeyManager = prekeyManager,
         )
     }
 
@@ -64,17 +111,15 @@ object LogoutHelper {
         cancelOutgoing: suspend () -> Unit,
         clearChatCache: suspend () -> Unit,
         forgetPrivateChats: () -> Unit,
-        forgetSecretChats: () -> Unit,
-        resetPrekeys: () -> Unit,
+        prekeyManager: PrekeyManager,
     ) {
         // 1. Остановка realtime-стримов — первым делом, чтобы они не писали в кеши
         //    во время очистки и не ушли в бесконечный retry после сброса токенов
         realtimeShutdown()
         callEventsShutdown()
-        runCatching(forgetSecretChats)
-            .onFailure { Log.e(TAG, "Ошибка очистки метаданных секретных чатов", it) }
-        runCatching(resetPrekeys)
-            .onFailure { Log.e(TAG, "Ошибка очистки криптографического состояния", it) }
+        // Invalidate immediately, before any network await. Clear only after the durable
+        // cleanup record exists; the captured scope survives credential/device-id removal.
+        if (!prepareCryptoExit(context, prekeyManager)) return
         // WorkManager inputs contain no payload; cancel jobs before removing the scoped DB
         // rows and no-backup media so an old account can never resume after a switch.
         cancelOutgoing()
@@ -138,8 +183,10 @@ object LogoutHelper {
         // 5. Очистка всех настроек аккаунта (оставляем только адреса сервера).
         //    device_id удаляется — при следующем входе будет создан новый.
         val globalParam = GlobalParam(context)
-        forgetPrivateChats()
-        globalParam.clearUserData()
+        withContext(Dispatchers.IO) {
+            forgetPrivateChats()
+            globalParam.clearUserData()
+        }
         Log.i(TAG, "Настройки аккаунта очищены (device_id сброшен)")
 
         // 6. Переход на экран входа.

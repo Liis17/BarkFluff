@@ -2444,7 +2444,7 @@ open class GrpcApiTransport(context: Context) {
         }
     }
 
-    suspend fun sendSecretMessage(
+    open suspend fun sendSecretMessage(
         recipientUserId: Long,
         recipientDeviceId: String,
         envelope: ByteArray
@@ -2464,7 +2464,7 @@ open class GrpcApiTransport(context: Context) {
         }
     }
 
-    suspend fun ackSecretMessage(messageId: String): Result<Unit> = withContext(Dispatchers.IO) {
+    open suspend fun ackSecretMessage(messageId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
             val request = MessagesApiOuterClass.AckSecretMessageRequest.newBuilder().setMessageId(messageId).build()

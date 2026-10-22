@@ -137,6 +137,15 @@ class BarkFluffApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        applicationScope.launch(Dispatchers.IO) {
+            try {
+                prekeyManager.retryPendingCleanup()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("BarkFluffApplication", "Pending crypto cleanup failed", e)
+            }
+        }
         System.loadLibrary("sqlcipher")
         // Применяем выбранный язык приложения до создания UI.
         // Для "system" сбрасывается override → используется системная локаль.
@@ -220,11 +229,18 @@ class BarkFluffApplication : Application() {
     private fun startSecretChatEventBridge() {
         if (secretChatEventsJob?.isActive == true) return
         secretChatEventsJob = applicationScope.launch {
-            launch {
+            launch(Dispatchers.IO) {
                 realtimeService.scopedSecretChatResolutions.collect { scoped ->
-                    val globalParam = GlobalParam(this@BarkFluffApplication)
-                    if (CryptoStoreScope.from(globalParam)?.scopeId != scoped.scopeId) return@collect
-                    secretChatRepository.markInviteResolution(scoped.event.inviteId, scoped.event.accepted)
+                    try {
+                        val globalParam = GlobalParam(this@BarkFluffApplication)
+                        if (!globalParam.secretChatsEnabled) return@collect
+                        if (CryptoStoreScope.from(globalParam)?.scopeId != scoped.scopeId) return@collect
+                        secretChatRepository.markInviteResolution(scoped.event.inviteId, scoped.event.accepted)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        android.util.Log.w("BarkFluffApplication", "Secret invite resolution could not be saved", e)
+                    }
                 }
             }
         }

@@ -12,6 +12,7 @@ import com.barkfluff.client.crypto.InvalidPrekeyStateException
 import com.barkfluff.client.crypto.PrekeyServerUpdateRequiredException
 import com.barkfluff.client.grpc.GrpcApiTransport
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -43,6 +44,7 @@ class SecretChatRepository(
 ) {
     private val tag = "SecretChatRepo"
     private val peerLocks = ConcurrentHashMap<String, Mutex>()
+    private val historyMutex = Mutex()
 
     suspend fun createSecretChat(
         peerUserId: Long,
@@ -53,8 +55,15 @@ class SecretChatRepository(
         peerLock(peerUserId, peerDeviceId).withLock {
             try {
                 signalStore.assertCurrent(operation)
-                val existing = findByPeer(peerUserId, peerDeviceId)
-                if (existing != null) {
+                var existing = findByPeer(peerUserId, peerDeviceId)
+                if (existing != null && !existing.accepted && existing.expiresAtSeconds == 0L) {
+                    // Old metadata had no server expiry. Give it one conservative maximum
+                    // invitation lifetime, persisted once, so it cannot remain stuck forever.
+                    val recovered = existing.copy(expiresAtSeconds = System.currentTimeMillis() / 1000L + INVITE_TTL_SECONDS)
+                    signalStore.transaction(operation) { saveMeta(recovered) }
+                    existing = recovered
+                }
+                if (existing != null && (existing.accepted || !existing.invitationExpired)) {
                     if (existing.pendingSend && existing.initialEnvelope != null) {
                         return@withLock sendPendingInvite(existing, operation).fold(
                             onSuccess = { Result.success(it) },
@@ -74,7 +83,7 @@ class SecretChatRepository(
                 val protoBundle = fetched.bundle
                 val bundle = protoBundle.toLibsignal(peerDeviceId)
                 val address = addressFor(peerDeviceId)
-                val chatId = UUID.randomUUID().toString()
+                val chatId = existing?.id ?: UUID.randomUUID().toString()
                 val chat = signalStore.transaction(operation) {
                     SessionBuilder(signalStore, address).process(bundle)
                     val encrypted = SessionCipher(signalStore, address)
@@ -96,13 +105,20 @@ class SecretChatRepository(
                         initialEnvelope = envelope,
                         pendingSend = true,
                         initialEnvelopeHash = sha256(envelope),
+                        expiresAtSeconds = System.currentTimeMillis() / 1000L + INVITE_TTL_SECONDS,
                     )
                     saveMeta(created)
+                    signalStore.recordReplay(
+                        inviteReplayKey(operation.scope.userId, operation.scope.deviceId, envelope),
+                        encodeReplay(ReplayRecord(chatId, initialPlaintext, "init:${sha256(envelope)}",
+                            operation.scope.userId, operation.scope.deviceId, System.currentTimeMillis())),
+                    )
                     created
                 }
                 signalStore.assertCurrent(operation)
                 sendPendingInvite(chat, operation)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Log.w(tag, "createSecretChat failed: ${e::class.java.simpleName}")
                 Result.failure(e)
             }
@@ -128,10 +144,17 @@ class SecretChatRepository(
                     val duplicate = signalStore.readReplay(replayKey)
                     if (duplicate != null) {
                         val replay = decodeReplay(duplicate)
-                        val existing = getChat(replay.chatId)
-                            ?: throw InvalidPrekeyStateException("Invite replay record has no matching chat metadata.")
-                        val updated = existing.withInvite(inviteId, accepted = true)
+                        val existing = replay.chatId.takeIf(String::isNotBlank)?.let(::getChat)
+                            ?: findByPeer(senderUserId, senderDeviceId)
+                        // A prekey message can arrive before its invitation. Its ratchet was
+                        // already consumed, so recover the pending plaintext instead of decrypting twice.
+                        check(existing != null || replay.pending) { "Invite was already removed" }
+                        val updated = (existing ?: SecretChat(
+                            UUID.randomUUID().toString(), senderUserId, senderDeviceId, "",
+                            SecretChatRole.RECIPIENT, true,
+                        )).withInvite(inviteId, accepted = true)
                         saveMeta(updated)
+                        signalStore.updateReplay(replayKey, encodeReplay(replay.copy(chatId = updated.id)))
                         updated to replay.plaintext
                     } else {
                         val address = addressFor(senderDeviceId)
@@ -161,7 +184,10 @@ class SecretChatRepository(
                             )
                         }
                         saveMeta(chat)
-                        signalStore.recordReplay(replayKey, encodeReplay(chat.id, plaintext))
+                        signalStore.recordReplay(replayKey, encodeReplay(ReplayRecord(
+                            chat.id, plaintext, "init:${sha256(initialEnvelope)}", senderUserId,
+                            senderDeviceId, System.currentTimeMillis(),
+                        )))
                         chat to plaintext
                     }
                 }
@@ -170,6 +196,7 @@ class SecretChatRepository(
                 acceptPendingInvites(chat, operation)
                 Result.success(chat to accepted.second)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Log.w(tag, "acceptIncomingInvite failed: ${e::class.java.simpleName}")
                 Result.failure(e)
             }
@@ -204,8 +231,13 @@ class SecretChatRepository(
 
     fun markInitiatorChatAccepted(inviteId: String) = markInviteResolution(inviteId, accepted = true)
 
-    fun forgetChat(chatId: String) {
-        signalStore.writeMetadata(secretChatMetadataKey(chatId), null)
+    suspend fun forgetChat(chatId: String) = withContext(Dispatchers.IO) {
+        historyMutex.withLock {
+            signalStore.transaction {
+                scrubHistory(chatId)
+                signalStore.writeMetadata(secretChatMetadataKey(chatId), null)
+            }
+        }
     }
 
     suspend fun sendMessage(chat: SecretChat, plaintext: String): Result<GrpcApiTransport.SecretMessageSent> =
@@ -222,8 +254,16 @@ class SecretChatRepository(
                     signalStore.assertCurrent(operation)
                     val result = grpc.sendSecretMessage(chat.peerUserId, chat.peerDeviceId, envelope)
                     signalStore.assertCurrent(operation)
+                    result.getOrNull()?.let { sent ->
+                        signalStore.transaction(operation) {
+                            signalStore.recordReplay("message:out:${sha256("${chat.id}|${sent.messageId}")}",
+                                encodeReplay(ReplayRecord(chat.id, plaintext, "out:${sent.messageId}",
+                                    operation.scope.userId, operation.scope.deviceId, System.currentTimeMillis())))
+                        }
+                    }
                     result
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     Log.w(tag, "sendMessage failed for ${chat.id}: ${e::class.java.simpleName}")
                     Result.failure(e)
                 }
@@ -240,9 +280,24 @@ class SecretChatRepository(
                 signalStore.assertCurrent(operation)
                 val raw = envelope.envelope.toByteArray()
                 val replayKey = messageReplayKey(senderUserId, senderDeviceId, envelope.messageId)
-                val prior = signalStore.readReplay(replayKey)
+                val prior = signalStore.transaction(operation) {
+                    val existing = signalStore.readReplay(replayKey)
+                    val encoded = existing ?: signalStore.readReplay(inviteReplayKey(senderUserId, senderDeviceId, raw))
+                        ?: return@transaction null
+                    var replay = decodeReplay(encoded)
+                    if (replay.pending && (existing == null || replay.ackMessageId.isBlank())) {
+                        replay = replay.copy(messageId = replay.messageId.ifBlank { "in:${envelope.messageId}" },
+                            senderUserId = senderUserId, senderDeviceId = senderDeviceId,
+                            sentAtMillis = replay.sentAtMillis.takeIf { it > 0 } ?: (envelope.sentAt.seconds * 1000L),
+                            ackMessageId = envelope.messageId)
+                    }
+                    val updated = encodeReplay(replay)
+                    if (existing == null) signalStore.recordReplay(replayKey, updated)
+                    else if (existing != updated) signalStore.updateReplay(replayKey, updated)
+                    replay
+                }
                 if (prior != null) {
-                    val replay = decodeReplay(prior)
+                    val replay = prior
                     return@withLock Result.success(
                         DecryptedSecret(
                             envelope.messageId,
@@ -252,6 +307,7 @@ class SecretChatRepository(
                             replay.plaintext,
                             envelope.sentAt.seconds,
                             duplicate = true,
+                            historyPending = replay.pending,
                         ),
                     )
                 }
@@ -266,7 +322,12 @@ class SecretChatRepository(
                     }
                     val text = String(plaintextBytes, Charsets.UTF_8)
                     val chat = findByPeer(senderUserId, senderDeviceId)
-                    signalStore.recordReplay(replayKey, encodeReplay(chat?.id.orEmpty(), text))
+                    val record = ReplayRecord(chat?.id.orEmpty(), text, "in:${envelope.messageId}",
+                        senderUserId, senderDeviceId, envelope.sentAt.seconds * 1000L, ackMessageId = envelope.messageId)
+                    signalStore.recordReplay(replayKey, encodeReplay(record))
+                    if (prekey) {
+                        signalStore.recordReplay(inviteReplayKey(senderUserId, senderDeviceId, raw), encodeReplay(record))
+                    }
                     DecryptedSecret(
                         messageId = envelope.messageId,
                         chat = chat,
@@ -280,25 +341,107 @@ class SecretChatRepository(
                 val decrypted = try {
                     decryptAndRecord(prekey = false)
                 } catch (first: Exception) {
-                    if (first is DurableCryptoCommitException || first is CryptoOperationInvalidatedException) throw first
+                    if (first is CancellationException || first is DurableCryptoCommitException || first is CryptoOperationInvalidatedException) throw first
                     decryptAndRecord(prekey = true)
                 }
                 signalStore.assertCurrent(operation)
                 Result.success(decrypted)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Log.w(tag, "decryptIncoming failed: ${e::class.java.simpleName}")
                 Result.failure(e)
             }
         }
     }
 
-    suspend fun ack(messageId: String): Result<Unit> {
+    suspend fun ack(messageId: String): Result<Unit> = withContext(Dispatchers.IO) {
         val operation = signalStore.captureOperation()
         signalStore.assertCurrent(operation)
         val result = grpc.ackSecretMessage(messageId)
         signalStore.assertCurrent(operation)
-        return result
+        result
     }
+
+    /** Await the history store, then scrub plaintext. A crash between the two steps safely
+     * repeats the same primary-key upsert. Failed/cancelled writes remain recoverable on open.
+     * Returns delivery ids whose ack was attempted, so realtime callers do not send it twice. */
+    suspend fun persistPendingHistory(chatId: String, persist: suspend (HistoryMessage) -> Unit): Set<String> =
+        withContext(Dispatchers.IO) {
+            val operation = signalStore.captureOperation()
+            historyMutex.withLock {
+                val chat = getChat(chatId) ?: return@withLock emptySet()
+                migrateInitialHistory(chat, operation)
+                val pending = signalStore.allReplay().mapValues { decodeReplay(it.value) }
+                    .filterValues { it.pending && it.messageId.isNotBlank() &&
+                        (it.chatId == chatId || (it.chatId.isBlank() && it.senderUserId == chat.peerUserId &&
+                            it.senderDeviceId == chat.peerDeviceId)) }
+                if (pending.isEmpty()) return@withLock emptySet()
+                val messages = pending.values.distinctBy { it.messageId }
+                for (record in messages) {
+                    signalStore.assertCurrent(operation)
+                    persist(HistoryMessage(record.messageId, record.senderUserId, record.plaintext, record.sentAtMillis))
+                }
+                signalStore.assertCurrent(operation)
+                val deliveredIds = messages.map { it.messageId }.toSet()
+                val acks = signalStore.transaction(operation) {
+                    val delivered = signalStore.allReplay().mapValues { decodeReplay(it.value) }
+                        .filterValues { it.messageId in deliveredIds }
+                    delivered.forEach { (key, record) ->
+                        signalStore.updateReplay(key, encodeReplay(record.copy(chatId = chatId, plaintext = "", pending = false)))
+                    }
+                    getChat(chatId)?.takeIf { it.initialPlaintext.isNotEmpty() }?.let {
+                        saveMeta(it.copy(initialPlaintext = ""))
+                    }
+                    delivered.values.map { it.ackMessageId }.filter(String::isNotBlank).distinct()
+                }
+                acks.forEach { ack(it) }
+                acks.toSet()
+            }
+        }
+
+    // Upgrade the initial metadata written by the previous snapshot format exactly once.
+    private fun migrateInitialHistory(chat: SecretChat, operation: CryptoOperation) {
+        if (chat.initialPlaintext.isEmpty()) return
+        val hash = chat.initialEnvelopeHash ?: chat.initialEnvelope?.let(::sha256) ?: return
+        val outgoing = chat.initialEnvelope != null
+        val userId = if (outgoing) operation.scope.userId else chat.peerUserId
+        val deviceId = if (outgoing) operation.scope.deviceId else chat.peerDeviceId
+        val key = "invite:${sha256("$userId|$deviceId|$hash")}"
+        signalStore.transaction(operation) {
+            val existing = signalStore.readReplay(key)?.let(::decodeReplay)
+            if (existing == null) {
+                signalStore.recordReplay(key, encodeReplay(ReplayRecord(chat.id, chat.initialPlaintext,
+                    "init:$hash", userId, deviceId, System.currentTimeMillis())))
+            } else if (existing.pending && existing.messageId.isBlank()) {
+                signalStore.updateReplay(key, encodeReplay(existing.copy(messageId = "init:$hash", senderUserId = userId,
+                    senderDeviceId = deviceId, sentAtMillis = System.currentTimeMillis())))
+            }
+        }
+    }
+
+    /** Serialize user deletion with handoff; retain ratchet/replay security markers. */
+    suspend fun clearHistory(clearCache: suspend () -> Unit) = withContext(Dispatchers.IO) {
+        historyMutex.withLock {
+            signalStore.transaction { scrubHistory(null) }
+            clearCache()
+        }
+    }
+
+    private fun scrubHistory(chatId: String?) {
+        val chat = chatId?.let(::getChat)
+        signalStore.allReplay().forEach { (key, value) ->
+            val record = decodeReplay(value)
+            if (chatId == null || record.chatId == chatId || (record.chatId.isBlank() &&
+                    record.senderUserId == chat?.peerUserId && record.senderDeviceId == chat.peerDeviceId)) {
+                signalStore.updateReplay(key, encodeReplay(record.copy(plaintext = "", pending = false)))
+            }
+        }
+        listChats().filter { chatId == null || it.id == chatId }.forEach { saveMeta(it.copy(initialPlaintext = "")) }
+    }
+
+    data class HistoryMessage(val messageId: String, val senderUserId: Long, val plaintext: String, val sentAtMillis: Long)
+
+    suspend fun awaitHistoryIdle() { historyMutex.withLock { } }
 
     /** Retries durable invite sends and accepts after process restart or a returned network. */
     suspend fun retryPendingOperations() = withContext(Dispatchers.IO) {
@@ -308,10 +451,13 @@ class SecretChatRepository(
             runCatching {
                 peerLock(chat.peerUserId, chat.peerDeviceId).withLock {
                     signalStore.assertCurrent(operation)
-                    if (chat.pendingSend && chat.initialEnvelope != null) sendPendingInvite(chat, operation)
+                    if (chat.pendingSend && !chat.invitationExpired && chat.initialEnvelope != null) sendPendingInvite(chat, operation)
                     val current = getChat(chat.id) ?: return@withLock
                     acceptPendingInvites(current, operation)
                 }
+            }.onFailure {
+                if (it is CancellationException) throw it
+                Log.w(tag, "Secret chat retry remains pending: ${it::class.java.simpleName}")
             }
         }
     }
@@ -331,7 +477,14 @@ class SecretChatRepository(
     fun findByInviteId(inviteId: String): SecretChat? =
         listChats().firstOrNull { inviteId == it.inviteId || inviteId in it.inviteIds }
 
-    fun forgetAll() = signalStore.forgetSecretChats()
+    suspend fun forgetAll() = withContext(Dispatchers.IO) {
+        historyMutex.withLock {
+            signalStore.transaction {
+                scrubHistory(null)
+                signalStore.forgetSecretChats()
+            }
+        }
+    }
 
     private suspend fun sendPendingInvite(chat: SecretChat, operation: CryptoOperation): Result<SecretChat> {
         val envelope = chat.initialEnvelope
@@ -349,6 +502,7 @@ class SecretChatRepository(
                 inviteId = current.inviteId.ifBlank { sent.inviteId },
                 inviteIds = inviteIds,
                 pendingSend = false,
+                expiresAtSeconds = sent.expiresAtSeconds.takeIf { it > 0 } ?: current.expiresAtSeconds,
             ).also(::saveMeta)
         }
         return Result.success(updated)
@@ -382,6 +536,7 @@ class SecretChatRepository(
     private fun decodeMeta(chatId: String, encoded: String): SecretChat? = try {
         if (encoded.contains('|')) decodeLegacyMeta(chatId, encoded) else decodeChat(chatId, encoded)
     } catch (e: Exception) {
+        if (e is CancellationException) throw e
         Log.w(tag, "Could not decode secret-chat metadata: ${e::class.java.simpleName}")
         null
     }
@@ -415,13 +570,15 @@ class SecretChatRepository(
             output.writeByteArray(chat.initialEnvelope)
             output.writeBoolean(chat.pendingSend)
             output.writeString(chat.initialEnvelopeHash.orEmpty())
+            output.writeLong(chat.expiresAtSeconds)
         }
         return Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP)
     }
 
     private fun decodeChat(chatId: String, encoded: String): SecretChat {
         DataInputStream(ByteArrayInputStream(Base64.decode(encoded, Base64.NO_WRAP))).use { input ->
-            require(input.readInt() == CHAT_METADATA_VERSION) { "Unknown secret-chat metadata version" }
+            val version = input.readInt()
+            require(version in 2..CHAT_METADATA_VERSION) { "Unknown secret-chat metadata version" }
             return SecretChat(
                 id = chatId,
                 peerUserId = input.readLong(),
@@ -435,6 +592,7 @@ class SecretChatRepository(
                 initialEnvelope = input.readByteArray(),
                 pendingSend = input.readBoolean(),
                 initialEnvelopeHash = input.readString().ifBlank { null },
+                expiresAtSeconds = if (version >= 3) input.readLong() else 0,
             )
         }
     }
@@ -455,18 +613,29 @@ class SecretChatRepository(
     private fun messageReplayKey(senderUserId: Long, senderDeviceId: String, messageId: String): String =
         "message:${sha256("$senderUserId|$senderDeviceId|$messageId")}"
 
-    private fun encodeReplay(chatId: String, plaintext: String): String {
+    private fun encodeReplay(record: ReplayRecord): String {
         val bytes = ByteArrayOutputStream()
         DataOutputStream(bytes).use {
-            it.writeString(chatId)
-            it.writeString(plaintext)
+            it.writeString(record.chatId)
+            it.writeString(record.plaintext)
+            it.writeString(record.messageId)
+            it.writeLong(record.senderUserId)
+            it.writeString(record.senderDeviceId)
+            it.writeLong(record.sentAtMillis)
+            it.writeBoolean(record.pending)
+            it.writeString(record.ackMessageId)
         }
         return Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP)
     }
 
     private fun decodeReplay(encoded: String): ReplayRecord =
         DataInputStream(ByteArrayInputStream(Base64.decode(encoded, Base64.NO_WRAP))).use {
-            ReplayRecord(it.readString(), it.readString())
+            val chatId = it.readString()
+            val plaintext = it.readString()
+            if (it.available() == 0) ReplayRecord(chatId, plaintext) else {
+                val record = ReplayRecord(chatId, plaintext, it.readString(), it.readLong(), it.readString(), it.readLong(), it.readBoolean())
+                record.copy(ackMessageId = if (it.available() > 0) it.readString() else "")
+            }
         }
 
     private fun DataOutputStream.writeStrings(values: Set<String>) {
@@ -519,7 +688,11 @@ class SecretChatRepository(
         val initialEnvelope: ByteArray? = null,
         val pendingSend: Boolean = false,
         val initialEnvelopeHash: String? = null,
-    )
+        val expiresAtSeconds: Long = 0,
+    ) {
+        val invitationExpired: Boolean get() = !accepted && expiresAtSeconds > 0 &&
+            expiresAtSeconds <= System.currentTimeMillis() / 1000L
+    }
 
     enum class SecretChatRole { INITIATOR, RECIPIENT, BOTH }
 
@@ -532,13 +705,20 @@ class SecretChatRepository(
         val sentAtSeconds: Long,
         val duplicate: Boolean = false,
         val isPrekeyMessage: Boolean = false,
+        val historyPending: Boolean = true,
     )
 
-    private data class ReplayRecord(val chatId: String, val plaintext: String)
+    private data class ReplayRecord(
+        val chatId: String, val plaintext: String, val messageId: String = "",
+        val senderUserId: Long = 0, val senderDeviceId: String = "", val sentAtMillis: Long = 0,
+        val pending: Boolean = true,
+        val ackMessageId: String = "",
+    )
 
     companion object {
         private const val SECRET_CHAT_NAMESPACE = "secret_chat::"
-        private const val CHAT_METADATA_VERSION = 2
+        private const val CHAT_METADATA_VERSION = 3
+        private const val INVITE_TTL_SECONDS = 24 * 60 * 60L
         private const val MAX_INVITE_IDS = 1000
         private const val MAX_METADATA_BYTES = 16 * 1024 * 1024
 
@@ -594,6 +774,7 @@ internal fun UsersApiOuterClass.PrekeyBundle.toLibsignal(peerDeviceId: String): 
     } catch (e: PrekeyServerUpdateRequiredException) {
         throw e
     } catch (e: Exception) {
+        if (e is CancellationException) throw e
         throw InvalidPrekeyBundleException("Users returned an invalid PQXDH prekey bundle.", e)
     }
 }

@@ -218,8 +218,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideChatCacheRepository(@ApplicationContext context: Context): ChatCacheRepository =
-        ChatCacheRepository(context)
+    fun provideChatCacheRepository(@ApplicationContext context: Context, secretChats: SecretChatRepository): ChatCacheRepository =
+        ChatCacheRepository(context, secretChats)
 
     @Provides
     @Singleton

@@ -10,6 +10,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.signal.libsignal.protocol.IdentityKeyPair
@@ -46,6 +48,37 @@ class BarkFluffSignalStoreInstrumentedTest {
     }
 
     @Test
+    fun failedLogoutCleanupRetainsCapturedScopeAndRetriesAfterCredentialsDisappear() {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val oldScope = newScope()
+        val unrelatedScope = newScope()
+        var activeScope: CryptoStoreScope? = oldScope
+        val old = newStore(context, oldScope)
+        val unrelated = newStore(context, unrelatedScope)
+        try {
+            old.transaction { old.initialize(IdentityKeyPair.generate(), 101) }
+            unrelated.transaction { unrelated.initialize(IdentityKeyPair.generate(), 202) }
+            val runningOperation = old.captureOperation()
+            val rejecting = BarkFluffSignalStore(RejectCommitContext(context, scopedFileName(oldScope))) { activeScope }
+            val captured = rejecting.invalidateForLogout()
+            assertThrows(DurableCryptoCommitException::class.java) { rejecting.reset(captured) }
+            assertTrue(rejecting.hasPendingCleanup(oldScope))
+            assertThrows(CryptoOperationInvalidatedException::class.java) { old.assertCurrent(runningOperation) }
+            activeScope = null
+            // Reopening with no active credentials still has enough information for exact cleanup.
+            BarkFluffSignalStore(context) { activeScope }.retryPendingCleanup()
+            assertFalse(newStore(context, oldScope).isInitialized())
+            assertTrue(newStore(context, unrelatedScope).isInitialized())
+            assertFalse(rejecting.hasPendingCleanup(oldScope))
+        } finally {
+            old.reset()
+            unrelated.reset()
+            deleteScope(context, oldScope)
+            deleteScope(context, unrelatedScope)
+        }
+    }
+
+    @Test
     fun failedDurableCommitLeavesPriorSnapshotAndFailsClosed() {
         val context = InstrumentationRegistry.getInstrumentation().context
         val scope = newScope()
@@ -57,6 +90,7 @@ class BarkFluffSignalStoreInstrumentedTest {
 
             val rejectingContext = RejectCommitContext(context, name)
             val rejectingStore = BarkFluffSignalStore(rejectingContext) { scope }
+            assertEquals(303, rejectingStore.transaction { rejectingStore.getLocalRegistrationId() })
             assertThrows(DurableCryptoCommitException::class.java) {
                 rejectingStore.transaction {
                     rejectingStore.initialize(IdentityKeyPair.generate(), 404)

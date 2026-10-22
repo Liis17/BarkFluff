@@ -55,6 +55,12 @@ class PrekeyManager(
                 requireServerIdentity(status)
             }
 
+            // A rotation can have reached Users even when its reply never reached this process.
+            // Only the exact durable pending publication may advance the local current key.
+            store.readManagerValue(KEY_PENDING_ROTATION)?.let { encoded ->
+                val pending = decodeRotation(encoded)
+                if (pendingRotationMatches(status, pending)) finalizeRotation(operation, pending)
+            }
             val pendingRegistration = store.readManagerValue(KEY_PENDING_REGISTER)
             if (status.hasBundle && status.supportsPqxdh && localLastResortMatches(status)) {
                 finalizeRegistration(operation, status)
@@ -77,14 +83,7 @@ class PrekeyManager(
                 finalizeRegistration(operation, status)
             }
 
-            status = ownStatus(gateway, operation)
-            requireServerIdentity(status)
-            if (!status.hasBundle || !status.supportsPqxdh || !localLastResortMatches(status)) {
-                throw InvalidPrekeyStateException("The server's PQXDH registration changed while synchronizing keys.")
-            }
-
-            rotateIfNeeded(gateway, operation, status)
-            status = ownStatus(gateway, operation)
+            status = rotateIfNeeded(gateway, operation, status)
             requireServerIdentity(status)
             if (!status.supportsPqxdh || !localLastResortMatches(status)) {
                 throw InvalidPrekeyStateException("The server's current PQXDH key does not match local device keys.")
@@ -94,6 +93,10 @@ class PrekeyManager(
     }
 
     fun reset() = store.reset()
+    fun invalidateForLogout() = store.invalidateForLogout()
+    fun reset(scope: CryptoStoreScope?) = store.reset(scope)
+    fun hasPendingCleanup(scope: CryptoStoreScope?) = store.hasPendingCleanup(scope)
+    fun retryPendingCleanup() = store.retryPendingCleanup()
 
     private suspend fun createInitialRegistration(operation: CryptoOperation) {
         store.transaction(operation) {
@@ -165,7 +168,7 @@ class PrekeyManager(
         gateway: PrekeyGateway,
         operation: CryptoOperation,
         status: UsersApiOuterClass.GetOwnPrekeyStatusResponse,
-    ) {
+    ): UsersApiOuterClass.GetOwnPrekeyStatusResponse {
         var pending = store.readManagerValue(KEY_PENDING_ROTATION)
         if (pending == null) {
             val signedId = store.readManagerValue(KEY_CURRENT_SIGNED_ID)?.toIntOrNull()
@@ -177,7 +180,7 @@ class PrekeyManager(
             val lastResort = store.loadKyberPreKey(lastResortId)
             val due = System.currentTimeMillis() - signed.timestamp >= ROTATION_INTERVAL_MILLIS ||
                 System.currentTimeMillis() - lastResort.timestamp >= ROTATION_INTERVAL_MILLIS
-            if (!due) return
+            if (!due) return status
 
             store.transaction(operation) {
                 ensureCounters()
@@ -200,13 +203,9 @@ class PrekeyManager(
         }
 
         val request = decodeRotation(pending!!)
-        if (status.supportsPqxdh && status.hasLastResortKyberPrekey() &&
-            request.lastResortKyberPrekey.prekeyId == status.lastResortKyberPrekey.prekeyId &&
-            request.lastResortKyberPrekey.publicKey == status.lastResortKyberPrekey.publicKey &&
-            request.lastResortKyberPrekey.signature == status.lastResortKyberPrekey.signature
-        ) {
+        if (pendingRotationMatches(status, request)) {
             finalizeRotation(operation, request)
-            return
+            return status
         }
 
         store.assertCurrent(operation)
@@ -222,7 +221,14 @@ class PrekeyManager(
             throw InvalidPrekeyStateException("The server did not confirm the signed-prekey rotation.")
         }
         finalizeRotation(operation, request)
+        return confirmed
     }
+
+    private fun pendingRotationMatches(
+        status: UsersApiOuterClass.GetOwnPrekeyStatusResponse,
+        request: UsersApiOuterClass.RotateSignedPrekeyRequest,
+    ): Boolean = status.hasBundle && status.supportsPqxdh && status.hasLastResortKyberPrekey() &&
+        request.lastResortKyberPrekey == status.lastResortKyberPrekey
 
     private suspend fun replenishIfNeeded(
         gateway: PrekeyGateway,
@@ -314,10 +320,13 @@ class PrekeyManager(
 
     private fun finalizeRegistration(operation: CryptoOperation, status: UsersApiOuterClass.GetOwnPrekeyStatusResponse) {
         val identity = encode(status.identityPubkey.toByteArray())
+        val marker = "1|$identity|${status.registrationId}|${status.lastResortKyberPrekey.prekeyId}"
+        if (store.readManagerValue(KEY_PQ_REGISTRATION_MARKER) == marker &&
+            store.readManagerValue(KEY_PENDING_REGISTER) == null) return
         store.transaction(operation) {
             val id = status.lastResortKyberPrekey.prekeyId
             store.writeManagerValue(KEY_CURRENT_LAST_RESORT_ID, id.toString())
-            store.writeManagerValue(KEY_PQ_REGISTRATION_MARKER, "1|$identity|${status.registrationId}|$id")
+            store.writeManagerValue(KEY_PQ_REGISTRATION_MARKER, marker)
             store.writeManagerValue(KEY_PENDING_REGISTER, null)
         }
     }

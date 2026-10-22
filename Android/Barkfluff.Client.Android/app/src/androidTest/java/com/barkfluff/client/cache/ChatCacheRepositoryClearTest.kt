@@ -90,6 +90,18 @@ class ChatCacheRepositoryClearTest {
     }
 
     @Test
+    fun secretHistoryHandoffIsVisibleOnReturnAndRetryUsesTheSameRow() = runBlocking {
+        cache.saveSecretMessage(scope, "secret-chat", "init:durable-envelope", "Peer", "first text", 123000)
+        val reopened = ChatCacheRepository(context)
+        repositories += reopened
+        assertEquals("first text", reopened.latestSecretMessages(scope, "secret-chat", 10).single().plaintext)
+        reopened.saveSecretMessage(scope, "secret-chat", "init:durable-envelope", "Peer", "first text", 123000)
+        val rows = cache.latestSecretMessages(scope, "secret-chat", 10)
+        assertEquals(1, rows.size)
+        assertEquals(123000L, rows.single().sentAtMillis)
+    }
+
+    @Test
     fun clearSecretHistoryLeavesOtherCachedDataAlone() = runBlocking {
         cache.saveChatPage(scope, listOf(chat("chat")), totalCount = 1)
         cache.saveMessages(scope, "chat", listOf(message(1)))

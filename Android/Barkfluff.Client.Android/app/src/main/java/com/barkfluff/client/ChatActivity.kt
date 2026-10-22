@@ -692,17 +692,24 @@ class ChatActivity : AppCompatActivity() {
                 )
                     .start(inviteState, inviterUserId)
             }
-            KIND_SECRET -> {
-                val chat = secretChatRepository.getChat(chatId)
+            KIND_SECRET -> lifecycleScope.launch {
+                val chat = try {
+                    withContext(Dispatchers.IO) { secretChatRepository.getChat(chatId) }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "Secret chat state unavailable", e)
+                    null
+                }
                 if (chat == null) {
-                    Toast.makeText(this, R.string.secret_chat_not_found, Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@ChatActivity, R.string.secret_chat_not_found, Toast.LENGTH_LONG).show()
                     finish()
-                    return
+                    return@launch
                 }
                 binding.chatNameTextView.text = getString(R.string.secret_chat_title, chat.peerUserId)
                 binding.chatAvatarPlaceholder.text = "🔒"
                 SecretChatController(
-                    activity = this,
+                    activity = this@ChatActivity,
                     binding = binding,
                     adapter = e2eAdapter,
                     repo = secretChatRepository,
@@ -711,10 +718,7 @@ class ChatActivity : AppCompatActivity() {
                     globalParam = globalParam,
                     chat = chat,
                 )
-                    .start(
-                        intent.getStringExtra(EXTRA_INITIAL_MESSAGE),
-                        intent.getLongExtra(EXTRA_INITIAL_MESSAGE_SENDER_ID, globalParam.userId),
-                    )
+                    .start()
             }
         }
 
