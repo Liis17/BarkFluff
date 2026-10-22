@@ -4,6 +4,7 @@ using BarkFluff.Users.Features.Prekeys.ListPeerDevices;
 using BarkFluff.Users.Features.Prekeys.RegisterPrekeyBundle;
 using BarkFluff.Users.Features.Prekeys.ReplenishOneTimePrekeys;
 using BarkFluff.Users.Features.Prekeys.RotateSignedPrekey;
+using BarkFluff.Users.Persistence.Services;
 using FluentAssertions;
 using Google.Protobuf;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,23 @@ public class ListPeerDevicesQueryHandlerTests : IAsyncDisposable
         var result = await handler.Handle(new ListPeerDevicesQuery { UserId = user.Id }, CancellationToken.None);
 
         result.Devices.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_PqBundle_SetsSupportsPqxdhWithoutChangingHasBundle()
+    {
+        var user = await _h.SeedUser();
+        var device = await _h.SeedDevice(null, user.Id, "PQ device");
+        await _h.PrekeyStorage.RegisterBundleAsync(
+            device.Id, user.Id, 1, [1], 1, [2], [3], [],
+            new KyberPrekeyInput(30, [30], [31]));
+        var handler = new ListPeerDevicesQueryHandler(_h.PrekeyStorage);
+
+        var result = await handler.Handle(new ListPeerDevicesQuery { UserId = user.Id }, CancellationToken.None);
+
+        var peer = result.Devices.Single();
+        peer.HasBundle.Should().BeTrue();
+        peer.SupportsPqxdh.Should().BeTrue();
     }
 
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();

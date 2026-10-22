@@ -4,6 +4,7 @@ using BarkFluff.Users.Features.Prekeys.ListPeerDevices;
 using BarkFluff.Users.Features.Prekeys.RegisterPrekeyBundle;
 using BarkFluff.Users.Features.Prekeys.ReplenishOneTimePrekeys;
 using BarkFluff.Users.Features.Prekeys.RotateSignedPrekey;
+using BarkFluff.Users.Persistence.Services;
 using FluentAssertions;
 using Google.Protobuf;
 using Microsoft.EntityFrameworkCore;
@@ -47,7 +48,8 @@ public class FetchPrekeyBundleQueryHandlerTests : IAsyncDisposable
             DeviceId = "invalid"
         }, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var error = await act.Should().ThrowAsync<PrekeyException>();
+        error.Which.StatusCode.Should().Be(Grpc.Core.StatusCode.InvalidArgument);
     }
 
     [Fact]
@@ -61,7 +63,8 @@ public class FetchPrekeyBundleQueryHandlerTests : IAsyncDisposable
             DeviceId = Guid.NewGuid().ToString()
         }, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var error = await act.Should().ThrowAsync<PrekeyException>();
+        error.Which.StatusCode.Should().Be(Grpc.Core.StatusCode.NotFound);
     }
 
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();

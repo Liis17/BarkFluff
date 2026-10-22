@@ -44,6 +44,8 @@ dotnet test Tests/BarkFluff.Messages.Tests/BarkFluff.Messages.Tests.csproj
 
 PostgreSQL integration-тесты условно пропускаются без соответствующих env; backend CI предоставляет обе переменные через изолированный PostgreSQL service. Их отсутствие в локальном прогоне не означает проверенную PostgreSQL-семантику. SQLite полезен и для Messages/Users, но не заменяет PostgreSQL-specific raw SQL.
 
+`Tests/BarkFluff.Users.Tests/Features/Prekeys/PrekeyPostgresTests.cs` использует `BARKFLUFF_PREKEY_POSTGRES` как admin connection к disposable PostgreSQL с правом `CREATE DATABASE`; каждый сценарий создаёт и удаляет собственную тестовую БД. Набор проверяет конкурентный fetch, Kyber exhaustion/fallback, tombstone re-upload/conflicts для обоих пулов, регистрацию и replacement, fetch-races, own-device status/ownership, cascade deletion и upgrade старой Users-схемы. `.github/workflows/test-backend.yml` передаёт эту переменную из того же изолированного PostgreSQL 16 service. Без неё эти integration-тесты пропускаются; InMemory не доказывает блокировки, `UPDATE ... RETURNING` и миграцию PostgreSQL.
+
 ## Известные ограничения
 
 - `Tests/BarkFluff.Users.Tests/Features/Prekeys/FetchPrekeyBundleQueryHandlerTests.cs` содержит явно пропущенный кейс: EF InMemory не выполняет raw SQL `DELETE … RETURNING`. Для проверки этого поведения нужен PostgreSQL. Точный путь сверять по дереву тестов при переносе feature.

@@ -1,5 +1,6 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Users;
+using BarkFluff.Users.Features.Prekeys;
 using BarkFluff.Users.Persistence.Services;
 
 using MediatR;
@@ -16,28 +17,30 @@ public class ReplenishOneTimePrekeysCommandHandler(
         ReplenishOneTimePrekeysCommand command,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(userContext.DeviceId) || !Guid.TryParse(userContext.DeviceId, out var deviceGuid))
-        {
-            logger.LogWarning("ReplenishOneTimePrekeys: некорректный DeviceId {DeviceId}", userContext.DeviceId);
-            return new ReplenishOneTimePrekeysResponse();
-        }
+        var deviceGuid = PrekeyRequestContext.RequireDeviceId(userContext);
 
         var prekeys = command.Request.Prekeys
             .Select(p => ((long)p.PrekeyId, p.PublicKey.ToByteArray()))
             .ToList();
+        var kyberPrekeys = command.Request.KyberPrekeys
+            .Select(p => new KyberPrekeyInput(p.PrekeyId, p.PublicKey.ToByteArray(), p.Signature.ToByteArray()))
+            .ToList();
 
-        var total = await prekeyStorage.ReplenishOneTimePrekeysAsync(
+        var totals = await prekeyStorage.ReplenishOneTimePrekeysAsync(
             deviceGuid,
             userContext.UserId,
-            prekeys);
+            prekeys,
+            kyberPrekeys,
+            cancellationToken);
 
         logger.LogInformation(
-            "Пополнение one-time prekeys устройства {DeviceId} (user {UserId}): добавлено {Added}, всего {Total}",
-            deviceGuid, userContext.UserId, prekeys.Count, total);
+            "Пополнение one-time prekeys устройства {DeviceId} (user {UserId}): EC {EcTotal}, Kyber {KyberTotal}",
+            deviceGuid, userContext.UserId, totals.OneTimePrekeys, totals.OneTimeKyberPrekeys);
 
         return new ReplenishOneTimePrekeysResponse
         {
-            TotalOneTimePrekeys = total,
+            TotalOneTimePrekeys = totals.OneTimePrekeys,
+            TotalOneTimeKyberPrekeys = totals.OneTimeKyberPrekeys,
         };
     }
 }
