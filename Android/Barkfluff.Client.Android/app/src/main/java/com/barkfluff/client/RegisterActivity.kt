@@ -2,12 +2,10 @@ package com.barkfluff.client
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
@@ -22,7 +20,6 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.viewModels
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -797,7 +794,7 @@ class RegisterActivity : AppCompatActivity() {
         val b = step6Binding ?: return
 
         b.uploadAvatarButton.setOnClickListener {
-            checkPermissionAndPickImage()
+            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
 
         b.skipAvatarButton.setOnClickListener {
@@ -814,30 +811,6 @@ class RegisterActivity : AppCompatActivity() {
             b.croppedImageView.visibility = View.VISIBLE
             b.avatarPlaceholder.visibility = View.GONE
         }
-    }
-
-    private fun checkPermissionAndPickImage() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    android.Manifest.permission.READ_MEDIA_IMAGES
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                requestPermissions(arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES), 100)
-                return
-            }
-        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                requestPermissions(arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE), 100)
-                return
-            }
-        }
-
-        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
     private fun startUCrop(uri: Uri) {
@@ -1180,17 +1153,6 @@ class RegisterActivity : AppCompatActivity() {
     override fun onBackPressed() {
         // Не позволяем возвращаться назад по шагам — только закрыть активити
         super.onBackPressed()
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 100) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-            } else {
-                Toast.makeText(this, R.string.register_photo_permission_denied, Toast.LENGTH_SHORT).show()
-            }
-        }
     }
 
     override fun onDestroy() {
