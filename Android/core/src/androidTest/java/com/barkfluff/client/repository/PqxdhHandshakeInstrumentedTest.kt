@@ -44,6 +44,11 @@ class PqxdhHandshakeInstrumentedTest {
     }
 
     @Test
+    fun pqxdhWithoutEcOneTimeKeyUsesKyberOneTimeKey() {
+        verifyHandshake(includeEcOneTimePrekey = false, useLastResortKyber = false)
+    }
+
+    @Test
     fun pqxdhWithoutEcOneTimeKeyUsesLastResortAndPersistsReplayTuple() {
         verifyHandshake(includeEcOneTimePrekey = false, useLastResortKyber = true)
     }
