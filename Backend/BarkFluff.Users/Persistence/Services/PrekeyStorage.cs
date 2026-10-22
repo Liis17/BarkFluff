@@ -53,7 +53,7 @@ public class PrekeyStorage(UsersContext context)
             }
             else if (replacingRegistration)
             {
-                await InvalidateOneTimePoolsAsync(deviceId, now, cancellationToken);
+                await ClearRegistrationPoolsAsync(deviceId, cancellationToken);
                 existing.LastResortKyberPrekeyId = null;
                 existing.LastResortKyberPrekeyPublic = null;
                 existing.LastResortKyberPrekeySignature = null;
@@ -422,23 +422,20 @@ public class PrekeyStorage(UsersContext context)
         }
     }
 
-    private async Task InvalidateOneTimePoolsAsync(Guid deviceId, DateTime now, CancellationToken cancellationToken)
+    private async Task ClearRegistrationPoolsAsync(Guid deviceId, CancellationToken cancellationToken)
     {
+        // Tombstones belong to the old identity/registration epoch. Keeping them would reject
+        // a fresh installation which legitimately restarts its prekey id counters.
         var ecPrekeys = await context.OneTimePrekeys
-            .Where(prekey => prekey.DeviceId == deviceId && prekey.ConsumedAt == null)
+            .Where(prekey => prekey.DeviceId == deviceId)
             .ToListAsync(cancellationToken);
-        foreach (var prekey in ecPrekeys)
-        {
-            prekey.ConsumedAt = now;
-        }
-
         var kyberPrekeys = await context.OneTimeKyberPrekeys
-            .Where(prekey => prekey.DeviceId == deviceId && prekey.ConsumedAt == null)
+            .Where(prekey => prekey.DeviceId == deviceId)
             .ToListAsync(cancellationToken);
-        foreach (var prekey in kyberPrekeys)
-        {
-            prekey.ConsumedAt = now;
-        }
+        context.OneTimePrekeys.RemoveRange(ecPrekeys);
+        context.OneTimeKyberPrekeys.RemoveRange(kyberPrekeys);
+        // Apply deletes before the idempotent add queries, inside the device transaction.
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<OneTimePrekey?> ConsumeNextEcPrekeyAsync(Guid deviceId, CancellationToken cancellationToken)
