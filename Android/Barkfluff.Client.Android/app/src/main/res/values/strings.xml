@@ -1124,7 +1124,6 @@
     <string name="register_2fa_configured">2FA настроена</string>
     <string name="register_invalid_code">Неверный код</string>
     <string name="register_authenticator_open_failed">Не удалось открыть аутентификатор</string>
-    <string name="register_photo_permission_denied">Разрешение на доступ к фото не предоставлено</string>
     <string name="register_full_name_format">%1$s %2$s</string>
     <string name="register_username_format">@%1$s</string>
 

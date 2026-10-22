@@ -68,6 +68,7 @@ OutgoingMessageQueue — единственная публичная грани�
 
 - LoginActivity сначала вызывает Identity `ResolveSignIn`: режим аккаунта `PASSWORD`/`PASSWORD_SECOND_FACTOR` открывает поле пароля, `TELEGRAM_LOGIN` сразу начинает Telegram challenge. Каждый `BeginSignIn` отправляет `report_login_mode_mismatch`, чтобы обнаружить смену режима после resolution; подтверждение и сохранение токенов остаются в challenge flow.
 - Регистрация и восстановление пароля используют Identity challenge API: RegisterActivity, ResetPasswordActivity и AuthenticationChallengeGateway.
+- RegisterActivity открывает Photo Picker для аватара без разрешения на доступ к медиатеке; выбранное изображение проходит через UCrop, сохраняется в `avatarBytes` и загружается при продолжении регистрации.
 - Поиск пользователей находится в SearchActivity; поиск чатов и сообщений — в ChatSearchActivity. Оба экрана на Compose, остальные основные экраны — XML/ViewBinding.
 - Обычные чаты поддерживают realtime сообщения, read receipts, durable drafts/outbox, файлы, голосовые сообщения и звонки.
 - Private chat шифрует содержимое через passphrase-derived key (Argon2id + AES-GCM). Secret-chat слой на libsignal сейчас не проходит handshake: SecretChatRepository.toLibsignal() бросает UnsupportedOperationException, потому что серверный Users prekey bundle не содержит Kyber fields, требуемых libsignal 0.86+. Не описывай secret chats как доступную функцию до расширения протокола.

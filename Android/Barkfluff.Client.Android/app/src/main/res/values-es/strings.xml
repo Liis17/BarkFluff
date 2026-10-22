@@ -1105,7 +1105,6 @@
     <string name="register_2fa_configured">2FA configurada</string>
     <string name="register_invalid_code">Código no válido</string>
     <string name="register_authenticator_open_failed">No se pudo abrir el autenticador</string>
-    <string name="register_photo_permission_denied">No se concedió el permiso para acceder a las fotos</string>
     <string name="register_full_name_format">%1$s %2$s</string>
     <string name="register_username_format">@%1$s</string>
     <string name="login_2fa_title">Autenticación de dos factores</string>

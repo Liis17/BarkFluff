@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -34,7 +35,23 @@ class WidgetConfigureActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_EDIT_MODE = "edit_mode"
-        private const val REQ_PICK_CHATS = 7001
+    }
+
+    private val pickChats = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data
+                ?.getStringArrayListExtra(FolderChatPickerActivity.RESULT_SELECTED_CHAT_IDS)
+                ?.let { picked ->
+                    if (picked.size > WidgetConfig.MAX_CHATS) {
+                        Toast.makeText(this, R.string.widget_max_chats_reached, Toast.LENGTH_SHORT).show()
+                    }
+                    selectedChatIds.clear()
+                    selectedChatIds.addAll(picked.take(WidgetConfig.MAX_CHATS))
+                    renderSelected()
+                }
+        }
     }
 
     private lateinit var binding: ActivityWidgetConfigureBinding
@@ -90,27 +107,13 @@ class WidgetConfigureActivity : AppCompatActivity() {
                 FolderChatPickerActivity.EXTRA_INITIAL_SELECTED,
                 ArrayList(selectedChatIds)
             )
-            startActivityForResult(intent, REQ_PICK_CHATS)
+            pickChats.launch(intent)
         }
 
         binding.saveButton.setOnClickListener { onSaveClicked() }
 
         loadChats()
         renderSelected()
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQ_PICK_CHATS && resultCode == Activity.RESULT_OK) {
-            val picked = data?.getStringArrayListExtra(FolderChatPickerActivity.RESULT_SELECTED_CHAT_IDS)
-                ?: return
-            if (picked.size > WidgetConfig.MAX_CHATS) {
-                Toast.makeText(this, R.string.widget_max_chats_reached, Toast.LENGTH_SHORT).show()
-            }
-            selectedChatIds.clear()
-            selectedChatIds.addAll(picked.take(WidgetConfig.MAX_CHATS))
-            renderSelected()
-        }
     }
 
     private fun loadChats() {
