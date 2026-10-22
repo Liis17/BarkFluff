@@ -18,6 +18,9 @@ import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.widget.WidgetUpdater
 import java.util.concurrent.ConcurrentHashMap
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 
 /**
  * App-реализация [RealtimeSideEffects]: уведомления о новых сообщениях ([NotificationHelper]),
@@ -134,11 +137,18 @@ class RealtimeSideEffectsImpl(
     override suspend fun showSecretMessageNotification(messageId: String, senderUserId: Long, senderDeviceId: String, expectedScopeId: String?) {
         val scopeId = expectedScopeId ?: CacheScope.from(globalParam)?.id ?: return
         if (CacheScope.from(globalParam)?.id != scopeId) return
-        if (!globalParam.notificationsEnabled || senderUserId <= 0) return
+        if (!globalParam.secretChatsEnabled || !globalParam.notificationsEnabled || senderUserId <= 0) return
         val eventId = runCatching { UUID.fromString(messageId).toString() }.getOrNull() ?: return
         val deviceId = runCatching { UUID.fromString(senderDeviceId).toString() }.getOrNull() ?: return
         if (senderUserId == globalParam.userId && deviceId.equals(globalParam.deviceId, ignoreCase = true)) return
-        val chat = secretChatRepository.findByPeer(senderUserId, deviceId)
+        val chat = try {
+            withContext(Dispatchers.IO) { secretChatRepository.findByPeer(senderUserId, deviceId) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Secret notification chat lookup failed", e)
+            null
+        }
         if (chat != null && (chat.id in globalParam.mutedChatIds || OpenChatManager.isOpen(chat.id))) return
         val threadId = "$senderUserId:$deviceId"
         NotificationHelper.showEncryptedMessageNotification(

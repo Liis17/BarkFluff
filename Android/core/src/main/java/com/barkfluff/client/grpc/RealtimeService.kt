@@ -480,7 +480,7 @@ class RealtimeService(
     private suspend fun collectSecretChatInvites() {
         val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeSecretChatInvitesRequest.getDefaultInstance()
-        val scopeId = CryptoStoreScope.from(globalParam)?.scopeId ?: return
+        val scopeId = CryptoStoreScope.from(globalParam)?.scopeId ?: throw CancellationException("No authenticated crypto scope")
         Log.d(TAG, "Subscribing to SecretChatInvites stream (device-scope)")
         client.subscribeSecretChatInvites(request).collect { event ->
             Log.d(TAG, "Secret chat invite received: inviteId=${event.inviteId}, sender=${event.senderUserId}/${event.senderDeviceId}")
@@ -494,7 +494,7 @@ class RealtimeService(
     private suspend fun collectSecretChatResolutions() {
         val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeSecretChatResolutionsRequest.getDefaultInstance()
-        val scopeId = CryptoStoreScope.from(globalParam)?.scopeId ?: return
+        val scopeId = CryptoStoreScope.from(globalParam)?.scopeId ?: throw CancellationException("No authenticated crypto scope")
         client.subscribeSecretChatResolutions(request).collect { event ->
             Log.d(TAG, "Secret chat resolution: inviteId=${event.inviteId}, accepted=${event.accepted}")
             _secretChatResolutions.emit(event)

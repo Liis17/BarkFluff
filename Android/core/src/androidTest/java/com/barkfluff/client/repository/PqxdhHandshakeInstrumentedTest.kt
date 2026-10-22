@@ -4,12 +4,16 @@ import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import barkfluff.users.UsersApiOuterClass
+import barkfluff.shared.Shared
+import com.google.protobuf.Timestamp
 import com.barkfluff.client.crypto.BarkFluffSignalStore
 import com.barkfluff.client.crypto.CryptoStoreScope
 import com.barkfluff.client.crypto.PrekeyServerUpdateRequiredException
 import com.barkfluff.client.grpc.GrpcApiTransport
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -185,6 +189,19 @@ class PqxdhHandshakeInstrumentedTest {
             assertEquals(1, aliceTransport.fetchCount)
             assertEquals(1, aliceTransport.sentEnvelopes.size)
 
+            val aliceHistory = linkedMapOf<String, SecretChatRepository.HistoryMessage>()
+            val bobHistory = linkedMapOf<String, SecretChatRepository.HistoryMessage>()
+            aliceRepository.persistPendingHistory(aliceChat.id) { aliceHistory[it.messageId] = it }
+            bobRepository.persistPendingHistory(bobChat.id) { bobHistory[it.messageId] = it }
+            assertEquals(setOf("hello from Alice", "hello from Bob"), aliceHistory.values.map { it.plaintext }.toSet())
+            assertEquals(2, aliceHistory.size)
+            assertEquals(2, bobHistory.size)
+            assertTrue(aliceHistory.values.any { it.senderUserId == aliceScope.userId && it.plaintext == "hello from Alice" })
+            assertTrue(bobHistory.values.any { it.senderUserId == bobScope.userId && it.plaintext == "hello from Bob" })
+            val reopenedBob = SecretChatRepository(bobTransport, newStore(context, bobScope))
+            reopenedBob.acceptIncomingInvite("another-server-retry", 101, "alice-device", aliceTransport.sentEnvelopes.single()).getOrThrow()
+            reopenedBob.persistPendingHistory(bobChat.id) { error("crossed invite retry must not duplicate history") }
+
             val orphanKeys = initializeDevice(orphan, registrationId = 303, keyIdBase = 51)
             val orphanAddress = SignalProtocolAddress("bob-device", 1)
             orphan.transaction {
@@ -202,6 +219,145 @@ class PqxdhHandshakeInstrumentedTest {
             deleteScope(context, aliceScope)
             deleteScope(context, bobScope)
             deleteScope(context, orphanScope)
+        }
+    }
+
+    @Test
+    fun delayedInviteAndFailedHistoryHandoffRecoverAfterRestartWithoutResurrectingClearedText() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val aliceScope = newScope("handoff-alice")
+        val bobScope = newScope("handoff-bob")
+        val alice = newStore(context, aliceScope)
+        val bob = newStore(context, bobScope)
+        try {
+            initializeDevice(alice, 101, 11)
+            val keys = initializeDevice(bob, 202, 21)
+            val bundle = createBundle("bob-device", keys.identity, keys.signed, keys.ec, keys.kyber, true)
+            val aliceTransport = FakeSecretChatTransport(context, bundle, "handoff")
+            val bobTransport = FakeSecretChatTransport(context, bundle, "bob").apply { failNextAccept = true }
+            val aliceRepo = SecretChatRepository(aliceTransport, alice)
+            val aliceChat = aliceRepo.createSecretChat(202, "bob-device", "durable first text").getOrThrow()
+            // A later prekey-wrapped message overtakes the original invitation on the wire.
+            val overtakingMessage = alice.transaction {
+                SessionCipher(alice, SignalProtocolAddress("bob-device", 1))
+                    .encrypt("message before invitation".toByteArray(StandardCharsets.UTF_8)).serialize()
+            }
+            val envelope = Shared.SecretEnvelope.newBuilder().setMessageId("message-before-invite")
+                .setSenderUserId(101).setSenderDeviceId("alice-device")
+                .setEnvelope(ByteString.copyFrom(overtakingMessage))
+                .setSentAt(Timestamp.newBuilder().setSeconds(123)).build()
+            assertEquals("message before invitation", SecretChatRepository(bobTransport, bob).decryptIncoming(envelope).getOrThrow().plaintext)
+
+            val reopened = SecretChatRepository(bobTransport, newStore(context, bobScope))
+            val chat = reopened.acceptIncomingInvite("late-invite", 101, "alice-device", aliceTransport.sentEnvelopes.single()).getOrThrow().first
+            assertTrue(reopened.getChat(chat.id)!!.pendingAcceptInviteIds.contains("late-invite"))
+            reopened.retryPendingOperations()
+            assertTrue(reopened.getChat(chat.id)!!.pendingAcceptInviteIds.isEmpty())
+
+            val rows = linkedMapOf<String, SecretChatRepository.HistoryMessage>()
+            assertTrue(runCatching { reopened.persistPendingHistory(chat.id) {
+                rows[it.messageId] = it
+                error("process interrupted after cache upsert, before crypto marker commit")
+            } }.isFailure)
+            assertTrue(bobTransport.ackedMessageIds.isEmpty())
+            val recovered = SecretChatRepository(bobTransport, newStore(context, bobScope))
+            recovered.persistPendingHistory(chat.id) { rows[it.messageId] = it }
+            assertEquals(2, rows.size)
+            assertEquals(setOf("durable first text", "message before invitation"), rows.values.map { it.plaintext }.toSet())
+            assertEquals(123000L, rows.getValue("in:message-before-invite").sentAtMillis)
+            assertEquals(listOf("message-before-invite"), bobTransport.ackedMessageIds)
+            val delivered = recovered.decryptIncoming(envelope).getOrThrow()
+            assertTrue(delivered.duplicate)
+            assertFalse(delivered.historyPending)
+            assertEquals("", delivered.plaintext)
+            recovered.persistPendingHistory(chat.id) { error("delivered message must not be handed off again") }
+
+            recovered.clearHistory { rows.clear() }
+            assertTrue(recovered.decryptIncoming(envelope).getOrThrow().duplicate)
+            recovered.persistPendingHistory(chat.id) { error("cleared history must not resurrect") }
+            assertTrue(rows.isEmpty())
+            assertTrue(bob.containsSession(SignalProtocolAddress("alice-device", 1)))
+            val ownRows = mutableListOf<SecretChatRepository.HistoryMessage>()
+            aliceRepo.persistPendingHistory(aliceChat.id) { ownRows += it }
+            assertEquals(aliceScope.userId, ownRows.single().senderUserId)
+            assertEquals("durable first text", ownRows.single().plaintext)
+            assertEquals("", aliceRepo.getChat(aliceChat.id)!!.initialPlaintext)
+            aliceRepo.sendMessage(aliceChat, "sent before UI closed").getOrThrow()
+            val sentRows = mutableListOf<SecretChatRepository.HistoryMessage>()
+            SecretChatRepository(aliceTransport, newStore(context, aliceScope)).persistPendingHistory(aliceChat.id) { sentRows += it }
+            assertEquals("out:sent-1", sentRows.single().messageId)
+            assertEquals("sent before UI closed", sentRows.single().plaintext)
+            aliceRepo.createSecretChat(202, "bob-device", "ignored").getOrThrow()
+            aliceRepo.persistPendingHistory(aliceChat.id) { error("reopening must not duplicate the initial message") }
+            aliceRepo.sendMessage(aliceChat, "logout during handoff").getOrThrow()
+            val started = CompletableDeferred<Unit>()
+            val gate = CompletableDeferred<Unit>()
+            val interrupted = async {
+                runCatching { aliceRepo.persistPendingHistory(aliceChat.id) { started.complete(Unit); gate.await() } }
+            }
+            started.await()
+            alice.reset()
+            gate.complete(Unit)
+            assertTrue(interrupted.await().isFailure)
+            assertFalse(newStore(context, aliceScope).isInitialized())
+        } finally {
+            deleteScope(context, aliceScope)
+            deleteScope(context, bobScope)
+        }
+    }
+
+    @Test
+    fun logoutDuringBundleFetchCannotPersistChatOrPublishInvite() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val scope = newScope("logout-repository")
+        val store = newStore(context, scope)
+        try {
+            initializeDevice(store, 101, 31)
+            val transport = FakeSecretChatTransport(context, UsersApiOuterClass.PrekeyBundle.getDefaultInstance(), "logout")
+                .apply { fetchStarted = CompletableDeferred(); fetchGate = CompletableDeferred() }
+            val repository = SecretChatRepository(transport, store)
+            val create = async { repository.createSecretChat(202, "bob-device", "must never publish") }
+            transport.fetchStarted!!.await()
+            store.reset()
+            transport.fetchGate!!.complete(Unit)
+            assertTrue(create.await().isFailure)
+            assertTrue(transport.sentEnvelopes.isEmpty())
+            val reopened = SecretChatRepository(transport, newStore(context, scope))
+            assertTrue(reopened.listChats().isEmpty())
+            assertFalse(newStore(context, scope).isInitialized())
+        } finally {
+            deleteScope(context, scope)
+        }
+    }
+
+    @Test
+    fun expiredInvitationRestartsHandshakeWithStableChatIdAndFreshEnvelope() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val aliceScope = newScope("expiry-alice")
+        val bobScope = newScope("expiry-bob")
+        val alice = newStore(context, aliceScope)
+        val bob = newStore(context, bobScope)
+        try {
+            initializeDevice(alice, 101, 41)
+            val keys = initializeDevice(bob, 202, 51)
+            val bundle = createBundle("bob-device", keys.identity, keys.signed, keys.ec, keys.kyber, true)
+            val transport = FakeSecretChatTransport(context, bundle, "expiry").apply { expiresAtSeconds = 1 }
+            val repo = SecretChatRepository(transport, alice)
+            val first = repo.createSecretChat(202, "bob-device", "first").getOrThrow()
+            repo.clearHistory { }
+            assertEquals("", repo.getChat(first.id)!!.initialPlaintext)
+            repo.persistPendingHistory(first.id) { error("clear must scrub pending initial plaintext too") }
+            transport.expiresAtSeconds = System.currentTimeMillis() / 1000 + 86400
+            val reopened = SecretChatRepository(transport, newStore(context, aliceScope))
+            val second = reopened.createSecretChat(202, "bob-device", "retry after expiry").getOrThrow()
+            assertEquals(first.id, second.id)
+            assertEquals(2, transport.fetchCount)
+            assertFalse(transport.sentEnvelopes[0].contentEquals(transport.sentEnvelopes[1]))
+            assertEquals(second.id, reopened.createSecretChat(202, "bob-device", "open pending").getOrThrow().id)
+            assertEquals(2, transport.sentEnvelopes.size)
+        } finally {
+            deleteScope(context, aliceScope)
+            deleteScope(context, bobScope)
         }
     }
 
@@ -468,6 +624,12 @@ class PqxdhHandshakeInstrumentedTest {
     ) : GrpcApiTransport(context) {
         val sentEnvelopes = mutableListOf<ByteArray>()
         val acceptedInviteIds = mutableListOf<String>()
+        val ackedMessageIds = mutableListOf<String>()
+        var failNextAccept = false
+        var expiresAtSeconds = 0L
+        var fetchStarted: CompletableDeferred<Unit>? = null
+        var fetchGate: CompletableDeferred<Unit>? = null
+        var sentCount = 0
         var failNextInvite = false
         var fetchCount = 0
             private set
@@ -477,6 +639,8 @@ class PqxdhHandshakeInstrumentedTest {
             deviceId: String,
         ): Result<UsersApiOuterClass.FetchPrekeyBundleResponse> {
             fetchCount++
+            fetchStarted?.complete(Unit)
+            fetchGate?.await()
             return Result.success(
                 UsersApiOuterClass.FetchPrekeyBundleResponse.newBuilder().setBundle(bundle).build(),
             )
@@ -492,7 +656,7 @@ class PqxdhHandshakeInstrumentedTest {
                 failNextInvite = false
                 return Result.failure(IllegalStateException("simulated lost invite acknowledgement"))
             }
-            return Result.success(GrpcApiTransport.SecretInviteSent("$invitePrefix-${sentEnvelopes.size}", 0))
+            return Result.success(GrpcApiTransport.SecretInviteSent("$invitePrefix-${sentEnvelopes.size}", expiresAtSeconds))
         }
 
         override suspend fun acceptSecretChatInvite(
@@ -500,8 +664,20 @@ class PqxdhHandshakeInstrumentedTest {
             responseEnvelope: ByteArray,
         ): Result<Unit> {
             acceptedInviteIds += inviteId
+            if (failNextAccept) {
+                failNextAccept = false
+                return Result.failure(IllegalStateException("accept RPC unavailable"))
+            }
             return Result.success(Unit)
         }
+
+        override suspend fun ackSecretMessage(messageId: String): Result<Unit> {
+            ackedMessageIds += messageId
+            return Result.success(Unit)
+        }
+
+        override suspend fun sendSecretMessage(recipientUserId: Long, recipientDeviceId: String, envelope: ByteArray): Result<GrpcApiTransport.SecretMessageSent> =
+            Result.success(GrpcApiTransport.SecretMessageSent("sent-${++sentCount}", 0))
     }
 
     private fun newScope(label: String) = CryptoStoreScope(

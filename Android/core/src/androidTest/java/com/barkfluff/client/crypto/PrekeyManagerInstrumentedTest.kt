@@ -164,6 +164,43 @@ class PrekeyManagerInstrumentedTest {
     }
 
     @Test
+    fun lostRotationReplyReconcilesExactPendingKeyAfterReopenButRejectsMismatch() = runBlocking {
+        val context = testContext()
+        val scope = newScope("rotation-lost-reply")
+        val store = newStore(context, scope)
+        val gateway = InMemoryPrekeyGateway()
+        try {
+            PrekeyManager(store).synchronize(gateway)
+            val signed = store.loadSignedPreKey(store.readManagerValue("prekey_current_signed_id")!!.toInt())
+            store.storeSignedPreKey(signed.id, SignedPreKeyRecord(signed.id,
+                System.currentTimeMillis() - PrekeyManager.ROTATION_INTERVAL_MILLIS - 1,
+                signed.keyPair, signed.signature))
+            gateway.failNextRotationAfterApply = true
+            assertTrue(runCatching { PrekeyManager(store).synchronize(gateway) }.isFailure)
+            val pending = store.readManagerValue("pending_rotation")!!
+            val published = UsersApiOuterClass.RotateSignedPrekeyRequest.parseFrom(Base64.decode(pending, Base64.NO_WRAP))
+            val reopened = newStore(context, scope)
+
+            gateway.statusKeyOverride = published.lastResortKyberPrekey.toBuilder()
+                .setSignature(com.google.protobuf.ByteString.copyFrom(byteArrayOf(99))).build()
+            assertTrue(runCatching { PrekeyManager(reopened).synchronize(gateway) }.exceptionOrNull() is InvalidPrekeyStateException)
+            assertEquals(pending, reopened.readManagerValue("pending_rotation"))
+
+            gateway.statusKeyOverride = null
+            PrekeyManager(reopened).synchronize(gateway)
+            assertNull(reopened.readManagerValue("pending_rotation"))
+            assertEquals(published.lastResortKyberPrekey.prekeyId.toString(), reopened.readManagerValue("prekey_current_last_resort_id"))
+            assertEquals(1, gateway.rotationRequests.size)
+            assertTrue(PrekeyManager(reopened).isRegistered)
+            val calls = gateway.statusCalls
+            PrekeyManager(reopened).synchronize(gateway)
+            assertEquals(calls + 1, gateway.statusCalls)
+        } finally {
+            deleteScope(context, scope)
+        }
+    }
+
+    @Test
     fun logoutDuringPublishInvalidatesOldScopeAndNextDeviceStartsEmpty() = runBlocking {
         val context = testContext()
         val oldScope = newScope("logout-old")
@@ -261,6 +298,9 @@ class PrekeyManagerInstrumentedTest {
         val rotationRequests = CopyOnWriteArrayList<ByteArray>()
         var failNextRegistration = false
         var failNextReplenishmentAfterApply = false
+        var failNextRotationAfterApply = false
+        var statusKeyOverride: UsersApiOuterClass.SignedKyberPreKey? = null
+        var statusCalls = 0
         var statusFailure: Throwable? = null
         var statusDelayMillis = 0L
         var registerStarted: CompletableDeferred<Unit>? = null
@@ -321,10 +361,15 @@ class PrekeyManagerInstrumentedTest {
             if (registeredRequest == null) return Result.failure(IllegalStateException("not registered"))
             rotationRequests += request.toByteArray()
             rotatedLastResort = request.lastResortKyberPrekey
+            if (failNextRotationAfterApply) {
+                failNextRotationAfterApply = false
+                return Result.failure(IllegalStateException("lost rotation reply after commit"))
+            }
             return Result.success(Unit)
         }
 
         override suspend fun ownStatus(): Result<UsersApiOuterClass.GetOwnPrekeyStatusResponse> {
+            statusCalls++
             synchronized(this) {
                 activeStatusRequests++
                 maxConcurrentStatusRequests = maxOf(maxConcurrentStatusRequests, activeStatusRequests)
@@ -341,7 +386,7 @@ class PrekeyManagerInstrumentedTest {
                         .setSupportsPqxdh(true)
                         .setIdentityPubkey(request.identityPubkey)
                         .setRegistrationId(request.registrationId)
-                        .setLastResortKyberPrekey(rotatedLastResort ?: request.lastResortKyberPrekey)
+                        .setLastResortKyberPrekey(statusKeyOverride ?: rotatedLastResort ?: request.lastResortKyberPrekey)
                         .setRemainingOneTimePrekeys(availableEcPrekeys.size)
                         .setRemainingOneTimeKyberPrekeys(availableKyberPrekeys.size)
                         .build(),

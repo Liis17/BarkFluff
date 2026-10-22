@@ -171,7 +171,6 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
                 startActivity(ChatActivity.secretChatIntent(
                     this@CreateEncryptedChatActivity,
                     secretChatId = chat.id,
-                    initialMessage = chat.initialPlaintext.ifBlank { initialMessage }
                 ))
                 finish()
             }.onFailure {

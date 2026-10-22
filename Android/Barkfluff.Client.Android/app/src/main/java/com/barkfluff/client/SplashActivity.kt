@@ -206,7 +206,12 @@ class SplashActivity : AppCompatActivity() {
                         val refreshed = authGateway.ensureValid(forceRefresh = true)
                         if (!refreshed) {
                             // Refresh тоже невалиден — на Login
-                            globalParam.clearUserData()
+                            val app = applicationContext as BarkFluffApplication
+                            app.realtimeService.shutdown()
+                            if (!com.barkfluff.client.utils.LogoutHelper.clearCredentials(this@SplashActivity, app.prekeyManager)) {
+                                userSettingsDeferred.cancel()
+                                return@coroutineScope false
+                            }
                             navigateToLogin()
                             userSettingsDeferred.cancel()
                             return@coroutineScope false

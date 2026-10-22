@@ -63,6 +63,7 @@ data class CryptoStoreScope(
 class CryptoOperation internal constructor(
     internal val scope: CryptoStoreScope,
     internal val generation: Long,
+    internal val scopeGeneration: Long,
 )
 
 class CryptoOperationInvalidatedException : IllegalStateException("Crypto operation belongs to a previous account or device")
@@ -87,11 +88,15 @@ class BarkFluffSignalStore(
     private var invalidatedScope: CryptoStoreScope? = null
     private val masterKeyAlias by lazy { MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC) }
 
-    fun captureOperation(): CryptoOperation = lock.withLock { CryptoOperation(currentScope(), generation) }
+    fun captureOperation(): CryptoOperation = lock.withLock {
+        val scope = currentScope()
+        CryptoOperation(scope, generation, SCOPE_GENERATIONS[scope] ?: 0)
+    }
 
     fun assertCurrent(operation: CryptoOperation) {
         lock.withLock {
-            if (generation != operation.generation || currentScope() != operation.scope) {
+            if (generation != operation.generation || SCOPE_GENERATIONS.getOrDefault(operation.scope, 0) != operation.scopeGeneration ||
+                currentScope() != operation.scope) {
                 throw CryptoOperationInvalidatedException()
             }
         }
@@ -101,11 +106,12 @@ class BarkFluffSignalStore(
         assertCurrent(operation)
         check(transactionState.get() == null) { "Nested crypto store transactions are not supported" }
         val state = readState(operation.scope)
+        val before = state.entries.toMap()
         transactionState.set(state)
         try {
             val result = block()
             assertCurrent(operation)
-            writeState(operation.scope, state)
+            if (state.entries != before) writeState(operation.scope, state)
             result
         } finally {
             transactionState.remove()
@@ -119,18 +125,28 @@ class BarkFluffSignalStore(
         state.entries[KEY_REGISTRATION_ID] = registrationId.toString()
     }
 
-    fun reset() {
+    /** Capture before credentials/device id are cleared; this does no encrypted-store I/O. */
+    fun invalidateForLogout(): CryptoStoreScope? = lock.withLock {
+        val scope = scopeProvider() ?: invalidatedScope
+        generation++
+        invalidatedScope = scope
+        scope?.let { SCOPE_GENERATIONS[it] = (SCOPE_GENERATIONS[it] ?: 0) + 1 }
+        scope
+    }
+
+    fun reset() = reset(invalidateForLogout())
+
+    fun reset(scope: CryptoStoreScope?) {
         lock.withLock {
-            generation++
-            val scope = scopeProvider()
-            invalidatedScope = scope
             if (scope != null) {
+                // Keep the exact scope retryable after clearUserData generates a new device id.
+                val bytes = ByteArrayOutputStream()
+                DataOutputStream(bytes).use { it.writeUtf8(scope.server); it.writeLong(scope.userId); it.writeUtf8(scope.deviceId) }
+                if (!cleanupPreferences().edit().putString(sha256(scope.id), encode(bytes.toByteArray())).commit()) {
+                    throw DurableCryptoCommitException()
+                }
                 try {
-                    if (!preferences(scope).edit().clear().commit()) {
-                        FAILED_SCOPES += scope
-                        throw DurableCryptoCommitException()
-                    }
-                    FAILED_SCOPES -= scope
+                    clearScope(scope)
                 } catch (e: DurableCryptoCommitException) {
                     throw e
                 } catch (e: Exception) {
@@ -138,13 +154,40 @@ class BarkFluffSignalStore(
                     throw DurableCryptoCommitException(e)
                 }
             }
-            listOf(LEGACY_SIGNAL_FILE, LEGACY_SECRET_CHATS_FILE).forEach { name ->
+        }
+    }
+
+    fun hasPendingCleanup(scope: CryptoStoreScope?): Boolean = scope != null &&
+        cleanupPreferences().contains(sha256(scope.id))
+
+    fun retryPendingCleanup() = lock.withLock {
+        cleanupPreferences().all.values.filterIsInstance<String>().forEach { encoded ->
+            val scope = DataInputStream(ByteArrayInputStream(decode(encoded))).use {
+                CryptoStoreScope(it.readUtf8(), it.readLong(), it.readUtf8())
+            }
+            clearScope(scope)
+        }
+    }
+
+    private fun cleanupPreferences() = appContext.getSharedPreferences("barkfluff_crypto_cleanup", Context.MODE_PRIVATE)
+
+    private fun clearScope(scope: CryptoStoreScope) {
+        val identity = readState(scope).entries[KEY_IDENTITY_KEY]
+        val legacy = legacyEncryptedPreferences(LEGACY_SIGNAL_FILE)
+        if (identity != null && legacy.getString(KEY_IDENTITY_KEY, null) == identity) {
+            listOf(LEGACY_SECRET_CHATS_FILE, LEGACY_SIGNAL_FILE).forEach { name ->
                 if (!legacyEncryptedPreferences(name).edit().clear().commit()) throw DurableCryptoCommitException()
             }
             if (!appContext.getSharedPreferences(LEGACY_PREKEY_STATE_FILE, Context.MODE_PRIVATE).edit().clear().commit()) {
                 throw DurableCryptoCommitException()
             }
         }
+        if (!preferences(scope).edit().clear().commit()) {
+            FAILED_SCOPES += scope
+            throw DurableCryptoCommitException()
+        }
+        if (!cleanupPreferences().edit().remove(sha256(scope.id)).commit()) throw DurableCryptoCommitException()
+        FAILED_SCOPES -= scope
     }
 
     /** Remove only EC one-time prekeys. Signed and Kyber last-resort keys are retained until reset. */
@@ -208,9 +251,7 @@ class BarkFluffSignalStore(
 
     fun forgetSecretChats() = mutate { state ->
         state.entries.keys.filter {
-            it.startsWith(METADATA_PREFIX) ||
-                it.startsWith("${REPLAY_PREFIX}invite:") ||
-                it.startsWith("${REPLAY_PREFIX}message:")
+            it.startsWith("$METADATA_PREFIX$SECRET_CHAT_NAMESPACE")
         }
             .forEach(state.entries::remove)
     }
@@ -228,6 +269,17 @@ class BarkFluffSignalStore(
     }
 
     fun readReplay(key: String): String? = readOnly { it.entries["$REPLAY_PREFIX$key"] }
+
+    fun allReplay(): Map<String, String> = readOnly { state ->
+        state.entries.filterKeys { it.startsWith("${REPLAY_PREFIX}invite:") || it.startsWith("${REPLAY_PREFIX}message:") }
+            .mapKeys { it.key.removePrefix(REPLAY_PREFIX) }
+    }
+
+    /** Replace delivery payload with its tombstone; never remove the consumed-ratchet marker. */
+    fun updateReplay(key: String, value: String) = mutate { state ->
+        check(state.entries.containsKey("$REPLAY_PREFIX$key")) { "Missing replay record" }
+        state.entries["$REPLAY_PREFIX$key"] = value
+    }
 
     // --- IdentityKeyStore ----------------------------------------------------
 
@@ -387,6 +439,7 @@ class BarkFluffSignalStore(
             ?: throw IllegalStateException("Crypto state requires an authenticated server, user, and device scope")
         if (invalidatedScope != null && invalidatedScope != scope) invalidatedScope = null
         check(invalidatedScope != scope) { "Crypto state was invalidated during logout" }
+        check(!hasPendingCleanup(scope)) { "Crypto state is awaiting logout cleanup" }
         check(scope !in FAILED_SCOPES) { "Crypto state is unavailable after a durable commit failure" }
         return scope
     }
@@ -518,6 +571,7 @@ class BarkFluffSignalStore(
     companion object {
         private val PROCESS_LOCK = ReentrantLock()
         private val FAILED_SCOPES = mutableSetOf<CryptoStoreScope>()
+        private val SCOPE_GENERATIONS = mutableMapOf<CryptoStoreScope, Long>()
         private const val STORE_VERSION = 1
         private const val MAX_STATE_ENTRIES = 1_000_000
         private const val MAX_STATE_STRING_BYTES = 64 * 1024 * 1024

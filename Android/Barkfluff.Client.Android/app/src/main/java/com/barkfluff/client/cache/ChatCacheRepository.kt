@@ -368,7 +368,7 @@ abstract class ChatCacheDatabase : RoomDatabase() {
     abstract fun pendingReadDao(): PendingMessageReadDao
 }
 
-class ChatCacheRepository(context: Context) {
+class ChatCacheRepository(context: Context, private val secretChats: com.barkfluff.client.repository.SecretChatRepository? = null) {
 
     private val appContext = context.applicationContext
     private val databaseMutex = Mutex()
@@ -821,7 +821,8 @@ class ChatCacheRepository(context: Context) {
 
     suspend fun clearSecretHistory() {
         withContext(Dispatchers.IO) {
-            database().cacheDao().deleteAllSecretMessages()
+            val clear: suspend () -> Unit = { database().cacheDao().deleteAllSecretMessages() }
+            if (secretChats != null) secretChats.clearHistory(clear) else clear()
         }
     }
 

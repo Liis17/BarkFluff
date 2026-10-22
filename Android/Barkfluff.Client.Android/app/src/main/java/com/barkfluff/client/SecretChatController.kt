@@ -17,6 +17,9 @@ import com.barkfluff.client.repository.SecretChatRepository
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Контроллер секретного чата (E2E через Signal Double Ratchet). Рендерит в общий shell
@@ -50,51 +53,48 @@ class SecretChatController(
         private const val SELF_LABEL = "Вы"
     }
 
-    fun start(initialMessage: String?, initialMessageSenderUserId: Long = globalParam.userId) {
+    private val historyMutex = Mutex()
+
+    fun start() {
         binding.messageEditText.setHint(R.string.hint_secret_message)
         binding.sendButton.setOnClickListener { onSendClicked() }
         loadCachedHistory()
-
-        // Если чат только что создан — показать первое сообщение в UI
-        initialMessage?.takeIf { it.isNotBlank() }?.let { firstMsg ->
-            val sid = "init:${System.currentTimeMillis()}"
-            val item = MessageItem(
-                messageId = longIdFor(sid),
-                senderId = initialMessageSenderUserId,
-                text = firstMsg,
-                timestamp = System.currentTimeMillis(),
-                attachments = emptyList(),
-                type = MessageType.MESSAGE
-            )
-            adapter.submitList(listOf(item))
-        }
 
         observeRealtime()
     }
 
     private fun loadCachedHistory() {
-        val scope = cacheScope ?: return
         activity.lifecycleScope.launch {
-            val messages = runCatching {
-                chatCacheRepository.latestSecretMessages(scope, chat.id, limit = 50)
-            }.getOrNull().orEmpty()
-            if (messages.isEmpty()) return@launch
-
-            val items = messages.map {
-                val isSelf = it.senderLabel == SELF_LABEL
-                MessageItem(
-                    messageId = longIdFor(it.messageId),
-                    senderId = if (isSelf) globalParam.userId else chat.peerUserId,
-                    text = it.plaintext,
-                    timestamp = it.sentAtMillis,
-                    attachments = emptyList(),
-                    type = MessageType.MESSAGE
-                )
-            }
-            adapter.submitList(items) {
-                binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
+            try {
+                refreshHistory()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not recover secret history", e)
             }
         }
+    }
+
+    private suspend fun refreshHistory() = historyMutex.withLock {
+        val scope = checkNotNull(cacheScope) { "Secret history requires an account scope" }
+        val attemptedAcks = repo.persistPendingHistory(chat.id) { message ->
+            chatCacheRepository.saveSecretMessage(scope, chat.id, message.messageId,
+                if (message.senderUserId == globalParam.userId) SELF_LABEL else "ID ${message.senderUserId}",
+                message.plaintext, message.sentAtMillis)
+        }
+        val messages = chatCacheRepository.latestSecretMessages(scope, chat.id, limit = 50)
+        val items = messages.map {
+            MessageItem(
+                messageId = longIdFor(it.messageId),
+                senderId = if (it.senderLabel == SELF_LABEL) globalParam.userId else chat.peerUserId,
+                text = it.plaintext, timestamp = it.sentAtMillis,
+                attachments = emptyList(), type = MessageType.MESSAGE,
+            )
+        }
+        adapter.submitList(items) {
+            binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
+        }
+        attemptedAcks
     }
 
     private fun onSendClicked() {
@@ -102,35 +102,16 @@ class SecretChatController(
         if (text.isEmpty()) return
         binding.messageEditText.setText("")
         activity.lifecycleScope.launch {
-            repo.sendMessage(chat, text)
-                .onSuccess { sent ->
-                    val sid = "out:${sent.messageId}"
-                    val sentAt = System.currentTimeMillis()
-                    val item = MessageItem(
-                        messageId = longIdFor(sid),
-                        senderId = globalParam.userId,
-                        text = text,
-                        timestamp = sentAt,
-                        attachments = emptyList(),
-                        type = MessageType.MESSAGE
-                    )
-                    cacheScope?.let { scope ->
-                        activity.lifecycleScope.launch {
-                            chatCacheRepository.saveSecretMessage(scope, chat.id, sid, SELF_LABEL, text, sentAt)
-                        }
-                    }
-                    val list = adapter.currentList + item
-                    adapter.submitList(list) {
-                        binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
-                    }
-                }
-                .onFailure {
-                    Toast.makeText(
-                        activity,
-                        activity.getString(R.string.private_chat_message_send_failed, it.message.orEmpty()),
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
+            try {
+                repo.sendMessage(chat, text).getOrThrow()
+                refreshHistory()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Toast.makeText(activity,
+                    activity.getString(R.string.private_chat_message_send_failed, e.message.orEmpty()),
+                    Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -144,39 +125,19 @@ class SecretChatController(
                 .collect { event ->
                     repo.decryptIncoming(event.envelope)
                         .onSuccess { decrypted ->
-                            if (decrypted.duplicate) {
-                                repo.ack(decrypted.messageId)
-                                return@onSuccess
-                            }
-                            if (decrypted.isPrekeyMessage) {
-                                activity.lifecycleScope.launch(Dispatchers.IO) {
-                                    E2EBootstrap.ensurePrekeyBundleRegistered(activity.applicationContext)
+                            try {
+                                val attemptedAcks = refreshHistory()
+                                if (decrypted.messageId !in attemptedAcks) repo.ack(decrypted.messageId)
+                                if (decrypted.isPrekeyMessage) {
+                                    activity.lifecycleScope.launch(Dispatchers.IO) {
+                                        E2EBootstrap.ensurePrekeyBundleRegistered(activity.applicationContext)
+                                    }
                                 }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Could not persist incoming secret message", e)
                             }
-                            val sid = "in:${decrypted.messageId}"
-                            val sentAt = decrypted.sentAtSeconds * 1000L
-                            val label = "ID ${decrypted.senderUserId}"
-                            val item = MessageItem(
-                                messageId = longIdFor(sid),
-                                senderId = decrypted.senderUserId,
-                                text = decrypted.plaintext,
-                                timestamp = sentAt,
-                                attachments = emptyList(),
-                                type = MessageType.MESSAGE
-                            )
-                            cacheScope?.let { scope ->
-                                activity.lifecycleScope.launch {
-                                    chatCacheRepository.saveSecretMessage(
-                                        scope, chat.id, sid, label, decrypted.plaintext, sentAt
-                                    )
-                                }
-                            }
-                            val list = adapter.currentList + item
-                            adapter.submitList(list) {
-                                binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
-                            }
-                            // Подтверждаем доставку, чтобы сервер удалил из Redis-буфера
-                            repo.ack(decrypted.messageId)
                         }
                         .onFailure {
                             Log.w(TAG, "Failed to decrypt incoming secret envelope", it)

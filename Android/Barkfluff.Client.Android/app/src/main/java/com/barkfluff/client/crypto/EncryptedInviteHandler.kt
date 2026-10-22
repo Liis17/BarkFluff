@@ -180,8 +180,6 @@ object EncryptedInviteHandler {
                 activity.startActivity(ChatActivity.secretChatIntent(
                     activity,
                     secretChatId = chat.id,
-                    initialMessage = plaintext,
-                    initialMessageSenderUserId = chat.peerUserId,
                 ))
             }.onFailure {
                 Log.w(TAG, "acceptSecret failed", it)
