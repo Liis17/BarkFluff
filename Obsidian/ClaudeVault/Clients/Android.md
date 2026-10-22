@@ -15,7 +15,7 @@ Kotlin-клиент в Android/Barkfluff.Client.Android. Поддерживае�
 | Kotlin | 2.2.20 | Android/gradle/libs.versions.toml |
 | KSP | 2.2.20-2.0.3 | Android/gradle/libs.versions.toml |
 | min / compile / target SDK | 31 / 36 / 36 | Android/Barkfluff.Client.Android/app/build.gradle.kts |
-| Java bytecode | 17; Gradle daemon toolchain — JDK 21 | Android/Barkfluff.Client.Android/app/build.gradle.kts, Android/gradle/gradle-daemon-jvm.properties |
+| Java bytecode | 17; Gradle daemon toolchain — JDK 21; CI — JDK 21 | Android/Barkfluff.Client.Android/app/build.gradle.kts, Android/gradle/gradle-daemon-jvm.properties, .github/workflows/build-client-android.yml, .github/workflows/test-clients.yml |
 | RPC transport | gRPC-OkHttp 1.60.0; gRPC Kotlin 1.4.1 | Android/core/build.gradle.kts |
 
 Сборка debug-варианта из Android: ./gradlew :app-v1:assembleStableDebug; короткие имена задач неоднозначны из-за flavors dev/nightly/stable (compileDebugKotlin → compileStableDebugKotlin и т.п.). На Windows обёртку вызывают через gradlew.bat: скрипт gradlew имеет CRLF и завершается до старта Gradle. Для flavors stable, dev и nightly заданы отдельные applicationId; стабильный канал публикуется как release в ClientStorage. Release использует R8, resource shrinking и только arm64-v8a.
