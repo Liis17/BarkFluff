@@ -1101,7 +1101,6 @@
     <string name="register_2fa_configured">2FA set up</string>
     <string name="register_invalid_code">Incorrect code</string>
      <string name="register_authenticator_open_failed">Couldn\'t open the authenticator</string>
-    <string name="register_photo_permission_denied">Photo access permission was not granted</string>
     <string name="register_full_name_format">%1$s %2$s</string>
     <string name="register_username_format">@%1$s</string>
     <string name="login_2fa_title">Two-factor authentication</string>
