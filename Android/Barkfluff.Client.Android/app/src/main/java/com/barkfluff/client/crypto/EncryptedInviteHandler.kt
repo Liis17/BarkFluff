@@ -3,14 +3,16 @@ package com.barkfluff.client.crypto
 import android.app.Activity
 import android.text.InputType
 import android.util.Log
-import android.widget.Toast
 import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import barkfluff.updates.UpdatesApiOuterClass
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.ChatActivity
 import com.barkfluff.client.R
+import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.grpc.RealtimeService.ScopedSecretChatInvite
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.textfield.TextInputEditText
@@ -23,8 +25,8 @@ import kotlinx.coroutines.launch
  *
  *  - PrivateChatInviteEvent → запрос passphrase, AcceptPrivateChat / RejectPrivateChat
  *  - PrivateChatInviteResolutionEvent → Toast («собеседник принял/отклонил»)
- *  - SecretChatInviteEvent → диалог Принять/Отклонить, при принятии локально создать SecretChat
- *  - SecretChatInviteResolutionEvent → пометить локальный SecretChat как accepted (или удалить)
+ *  - SecretChatInviteEvent → scope-checked диалог Принять/Отклонить и локальное создание SecretChat
+ *  - SecretChatInviteResolutionEvent → уведомление о результате для текущего устройства
  */
 object EncryptedInviteHandler {
 
@@ -47,19 +49,20 @@ object EncryptedInviteHandler {
             }
         }
         owner.lifecycleScope.launch {
-            app.realtimeService.secretChatInvites.collect { invite ->
-                showSecretInviteDialog(activity, invite)
+            app.realtimeService.scopedSecretChatInvites.collect { scoped ->
+                if (isCurrentScope(activity, scoped.scopeId) && GlobalParam(activity).secretChatsEnabled) {
+                    showSecretInviteDialog(activity, scoped)
+                }
             }
         }
         owner.lifecycleScope.launch {
-            app.realtimeService.secretChatResolutions.collect { res ->
-                if (res.accepted) {
-                    app.secretChatRepository.markInitiatorChatAccepted(res.inviteId)
-                    Toast.makeText(activity, R.string.secret_chat_confirmed, Toast.LENGTH_SHORT).show()
-                } else {
-                    val chat = app.secretChatRepository.findByInviteId(res.inviteId)
-                    chat?.let { app.secretChatRepository.forgetChat(it.id) }
-                    Toast.makeText(activity, R.string.secret_chat_declined_by_peer, Toast.LENGTH_SHORT).show()
+            app.realtimeService.scopedSecretChatResolutions.collect { scoped ->
+                if (isCurrentScope(activity, scoped.scopeId)) {
+                    Toast.makeText(
+                        activity,
+                        if (scoped.event.accepted) R.string.secret_chat_confirmed else R.string.secret_chat_declined_by_peer,
+                        Toast.LENGTH_SHORT,
+                    ).show()
                 }
             }
         }
@@ -139,7 +142,9 @@ object EncryptedInviteHandler {
         }
     }
 
-    private fun showSecretInviteDialog(activity: Activity, invite: UpdatesApiOuterClass.SecretChatInviteEvent) {
+    private fun showSecretInviteDialog(activity: Activity, scoped: ScopedSecretChatInvite) {
+        if (!isCurrentScope(activity, scoped.scopeId) || !GlobalParam(activity).secretChatsEnabled) return
+        val invite = scoped.event
         MaterialAlertDialogBuilder(activity)
             .setTitle(R.string.secret_invite_title)
             .setMessage(
@@ -150,14 +155,17 @@ object EncryptedInviteHandler {
                 )
             )
             .setCancelable(false)
-            .setPositiveButton(R.string.private_chat_invite_accept) { _, _ -> acceptSecret(activity, invite) }
-            .setNegativeButton(R.string.private_chat_invite_decline) { _, _ -> rejectSecret(activity, invite.inviteId) }
+            .setPositiveButton(R.string.private_chat_invite_accept) { _, _ -> acceptSecret(activity, scoped) }
+            .setNegativeButton(R.string.private_chat_invite_decline) { _, _ -> rejectSecret(activity, scoped) }
             .show()
     }
 
-    private fun acceptSecret(activity: Activity, invite: UpdatesApiOuterClass.SecretChatInviteEvent) {
+    private fun acceptSecret(activity: Activity, scoped: ScopedSecretChatInvite) {
+        if (!isCurrentScope(activity, scoped.scopeId)) return
+        val invite = scoped.event
         val app = activity.applicationContext as BarkFluffApplication
         (activity as? LifecycleOwner)?.lifecycleScope?.launch {
+            if (!isCurrentScope(activity, scoped.scopeId)) return@launch
             val result = app.secretChatRepository.acceptIncomingInvite(
                 inviteId = invite.inviteId,
                 senderUserId = invite.senderUserId,
@@ -165,11 +173,15 @@ object EncryptedInviteHandler {
                 initialEnvelope = invite.initialEnvelope.toByteArray()
             )
             result.onSuccess { (chat, plaintext) ->
+                if (!isCurrentScope(activity, scoped.scopeId)) return@onSuccess
+                E2EBootstrap.ensurePrekeyBundleRegistered(activity.applicationContext)
+                if (!isCurrentScope(activity, scoped.scopeId)) return@onSuccess
                 Toast.makeText(activity, R.string.secret_chat_started, Toast.LENGTH_SHORT).show()
                 activity.startActivity(ChatActivity.secretChatIntent(
                     activity,
                     secretChatId = chat.id,
-                    initialMessage = plaintext
+                    initialMessage = plaintext,
+                    initialMessageSenderUserId = chat.peerUserId,
                 ))
             }.onFailure {
                 Log.w(TAG, "acceptSecret failed", it)
@@ -182,10 +194,16 @@ object EncryptedInviteHandler {
         }
     }
 
-    private fun rejectSecret(activity: Activity, inviteId: String) {
+    private fun rejectSecret(activity: Activity, scoped: ScopedSecretChatInvite) {
+        if (!isCurrentScope(activity, scoped.scopeId)) return
         val app = activity.applicationContext as BarkFluffApplication
         (activity as? LifecycleOwner)?.lifecycleScope?.launch {
-            app.secretChatRepository.rejectIncomingInvite(inviteId)
+            if (isCurrentScope(activity, scoped.scopeId)) {
+                app.secretChatRepository.rejectIncomingInvite(scoped.event.inviteId)
+            }
         }
     }
+
+    private fun isCurrentScope(activity: Activity, scopeId: String): Boolean =
+        CryptoStoreScope.from(GlobalParam(activity))?.scopeId == scopeId
 }

@@ -85,7 +85,7 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val result = userDirectoryGateway.peerDevices(peerId)
             result.onSuccess { devices ->
-                peerDevices = devices.filter { it.hasBundle }
+                peerDevices = devices.filter { it.hasBundle && it.supportsPqxdh }
                 val labels = if (peerDevices.isEmpty()) listOf(getString(R.string.encrypted_devices_empty))
                     else peerDevices.map { "${it.displayName} (${it.deviceId.take(8)})" }
                 binding.peerDeviceSpinner.adapter = ArrayAdapter(
@@ -168,11 +168,10 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
             binding.progressBar.visibility = View.GONE
             binding.createButton.isEnabled = true
             result.onSuccess { chat ->
-                Toast.makeText(this@CreateEncryptedChatActivity, R.string.secret_invite_sent, Toast.LENGTH_LONG).show()
                 startActivity(ChatActivity.secretChatIntent(
                     this@CreateEncryptedChatActivity,
                     secretChatId = chat.id,
-                    initialMessage = initialMessage
+                    initialMessage = chat.initialPlaintext.ifBlank { initialMessage }
                 ))
                 finish()
             }.onFailure {

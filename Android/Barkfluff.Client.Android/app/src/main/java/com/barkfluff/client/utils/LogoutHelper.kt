@@ -9,8 +9,10 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.calls.CallEventsService
+import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.repository.PrivateChatRepository
+import com.barkfluff.client.repository.SecretChatRepository
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -38,6 +40,8 @@ object LogoutHelper {
         outgoingMessageQueue: OutgoingMessageQueue,
         chatCacheRepository: ChatCacheRepository,
         privateChatRepository: PrivateChatRepository,
+        prekeyManager: PrekeyManager,
+        secretChatRepository: SecretChatRepository,
     ) {
         performFullLogoutInternal(
             context = context,
@@ -47,6 +51,8 @@ object LogoutHelper {
             cancelOutgoing = outgoingMessageQueue::cancelAllForCurrentScope,
             clearChatCache = chatCacheRepository::clearAll,
             forgetPrivateChats = privateChatRepository::forgetAll,
+            forgetSecretChats = secretChatRepository::forgetAll,
+            resetPrekeys = prekeyManager::reset,
         )
     }
 
@@ -58,11 +64,17 @@ object LogoutHelper {
         cancelOutgoing: suspend () -> Unit,
         clearChatCache: suspend () -> Unit,
         forgetPrivateChats: () -> Unit,
+        forgetSecretChats: () -> Unit,
+        resetPrekeys: () -> Unit,
     ) {
         // 1. Остановка realtime-стримов — первым делом, чтобы они не писали в кеши
         //    во время очистки и не ушли в бесконечный retry после сброса токенов
         realtimeShutdown()
         callEventsShutdown()
+        runCatching(forgetSecretChats)
+            .onFailure { Log.e(TAG, "Ошибка очистки метаданных секретных чатов", it) }
+        runCatching(resetPrekeys)
+            .onFailure { Log.e(TAG, "Ошибка очистки криптографического состояния", it) }
         // WorkManager inputs contain no payload; cancel jobs before removing the scoped DB
         // rows and no-backup media so an old account can never resume after a switch.
         cancelOutgoing()

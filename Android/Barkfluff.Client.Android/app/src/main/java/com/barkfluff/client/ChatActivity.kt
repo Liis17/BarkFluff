@@ -273,6 +273,7 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_INVITE_STATE = "invite_state"
         private const val EXTRA_INVITER_USER_ID = "inviter_user_id"
         private const val EXTRA_INITIAL_MESSAGE = "initial_message"
+        private const val EXTRA_INITIAL_MESSAGE_SENDER_ID = "initial_message_sender_id"
         const val EXTRA_TARGET_MESSAGE_ID = "target_message_id"
         /** Метка ClipData — техническая, пользователю не показывается. */
         private const val CLIP_LABEL = "BarkFluff message"
@@ -326,11 +327,13 @@ class ChatActivity : AppCompatActivity() {
         fun secretChatIntent(
             context: Context,
             secretChatId: String,
-            initialMessage: String? = null
+            initialMessage: String? = null,
+            initialMessageSenderUserId: Long? = null,
         ): Intent = Intent(context, ChatActivity::class.java).apply {
             putExtra(EXTRA_CHAT_KIND, KIND_SECRET)
             putExtra(EXTRA_CHAT_ID, secretChatId)
             putExtra(EXTRA_INITIAL_MESSAGE, initialMessage)
+            initialMessageSenderUserId?.let { putExtra(EXTRA_INITIAL_MESSAGE_SENDER_ID, it) }
         }
     }
 
@@ -708,7 +711,10 @@ class ChatActivity : AppCompatActivity() {
                     globalParam = globalParam,
                     chat = chat,
                 )
-                    .start(intent.getStringExtra(EXTRA_INITIAL_MESSAGE))
+                    .start(
+                        intent.getStringExtra(EXTRA_INITIAL_MESSAGE),
+                        intent.getLongExtra(EXTRA_INITIAL_MESSAGE_SENDER_ID, globalParam.userId),
+                    )
             }
         }
 
