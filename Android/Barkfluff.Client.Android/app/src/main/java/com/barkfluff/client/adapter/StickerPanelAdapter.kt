@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 class StickerPanelAdapter(
     private val getFileUrl: suspend (String) -> String?,
     private val onStickerClick: (StickerInfo) -> Unit,
+    private val onRetry: () -> Unit,
     private val onStickerLongPress: ((StickerInfo) -> Unit)? = null
 ) : ListAdapter<StickerPanelItem, RecyclerView.ViewHolder>(DiffCallback()) {
 
@@ -35,6 +36,7 @@ class StickerPanelAdapter(
         const val VIEW_TYPE_STICKER = 1
         const val VIEW_TYPE_LOADING = 2
         const val VIEW_TYPE_EMPTY = 3
+        const val VIEW_TYPE_ERROR = 4
         private const val LONG_PRESS_DURATION_MS = 1500L
     }
 
@@ -44,6 +46,7 @@ class StickerPanelAdapter(
             is StickerPanelItem.Sticker -> VIEW_TYPE_STICKER
             is StickerPanelItem.Loading -> VIEW_TYPE_LOADING
             is StickerPanelItem.Empty -> VIEW_TYPE_EMPTY
+            is StickerPanelItem.Error -> VIEW_TYPE_ERROR
         }
     }
 
@@ -59,6 +62,10 @@ class StickerPanelAdapter(
             VIEW_TYPE_LOADING -> LoadingViewHolder(
                 inflater.inflate(R.layout.item_sticker_loading, parent, false)
             )
+            VIEW_TYPE_ERROR -> ErrorViewHolder(
+                inflater.inflate(R.layout.item_sticker_error, parent, false),
+                onRetry,
+            )
             else -> EmptyViewHolder(
                 inflater.inflate(R.layout.item_sticker_empty, parent, false)
             )
@@ -71,6 +78,7 @@ class StickerPanelAdapter(
             is StickerPanelItem.Sticker -> (holder as StickerViewHolder).bind(item)
             is StickerPanelItem.Loading -> {}
             is StickerPanelItem.Empty -> {}
+            is StickerPanelItem.Error -> (holder as ErrorViewHolder).bind()
         }
     }
 
@@ -266,6 +274,15 @@ class StickerPanelAdapter(
     class LoadingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
     class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
 
+    class ErrorViewHolder(
+        itemView: View,
+        private val onRetry: () -> Unit,
+    ) : RecyclerView.ViewHolder(itemView) {
+        fun bind() {
+            itemView.findViewById<View>(R.id.stickerErrorRetryButton).setOnClickListener { onRetry() }
+        }
+    }
+
     private class DiffCallback : DiffUtil.ItemCallback<StickerPanelItem>() {
         override fun areItemsTheSame(oldItem: StickerPanelItem, newItem: StickerPanelItem): Boolean {
             return when {
@@ -275,6 +292,7 @@ class StickerPanelAdapter(
                     oldItem.stickerInfo.id == newItem.stickerInfo.id
                 oldItem is StickerPanelItem.Loading && newItem is StickerPanelItem.Loading -> true
                 oldItem is StickerPanelItem.Empty && newItem is StickerPanelItem.Empty -> true
+                oldItem is StickerPanelItem.Error && newItem is StickerPanelItem.Error -> true
                 else -> false
             }
         }

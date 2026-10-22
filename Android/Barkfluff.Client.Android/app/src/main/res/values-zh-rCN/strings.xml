@@ -654,6 +654,7 @@
     <!-- Sticker empty -->
     <string name="stickers_empty">没有贴纸</string>
     <string name="stickers_empty_subtitle">尚未添加贴纸包</string>
+    <string name="stickers_load_failed">无法加载贴纸</string>
 
     <!-- Message actions popup -->
     <string name="msg_action_reply">回复</string>

@@ -798,6 +798,7 @@
     <!-- Sticker empty -->
     <string name="stickers_empty">Нет стикеров</string>
     <string name="stickers_empty_subtitle">Стикерпаки пока не добавлены</string>
+    <string name="stickers_load_failed">Не удалось загрузить стикеры</string>
 
     <!-- Message actions popup -->
     <string name="msg_action_reply">Ответить</string>
