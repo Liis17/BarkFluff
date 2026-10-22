@@ -666,6 +666,7 @@
     <!-- Sticker empty -->
     <string name="stickers_empty">No stickers</string>
     <string name="stickers_empty_subtitle">No sticker packs added yet</string>
+    <string name="stickers_load_failed">Could not load stickers</string>
 
     <!-- Message actions popup -->
     <string name="msg_action_reply">Reply</string>
