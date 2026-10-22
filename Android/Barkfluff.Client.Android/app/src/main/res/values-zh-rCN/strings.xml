@@ -451,6 +451,8 @@
     <string name="logout_dialog_title">退出登录</string>
     <string name="logout_dialog_message">确定要退出登录吗？</string>
     <string name="logout_dialog_confirm">退出</string>
+    <string name="crypto_cleanup_failed">无法清除秘密聊天密钥，请重试。</string>
+    <string name="secret_message_history_failed">消息已发送，但尚未保存到此设备。重新打开聊天后将显示。</string>
 
     <!-- Account Settings -->
     <string name="account_settings_title">账户</string>

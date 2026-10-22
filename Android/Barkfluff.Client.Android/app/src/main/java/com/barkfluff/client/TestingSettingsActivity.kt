@@ -2,8 +2,11 @@ package com.barkfluff.client
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import com.barkfluff.client.crypto.E2EBootstrap
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityTestingSettingsBinding
+import kotlinx.coroutines.launch
 
 class TestingSettingsActivity : AppCompatActivity() {
 
@@ -34,6 +37,12 @@ class TestingSettingsActivity : AppCompatActivity() {
         }
         binding.switchSecretChats.setOnCheckedChangeListener { _, isChecked ->
             globalParam.secretChatsEnabled = isChecked
+            if (isChecked) {
+                lifecycleScope.launch {
+                    E2EBootstrap.ensurePrekeyBundleRegistered(applicationContext)
+                    (application as BarkFluffApplication).secretChatRepository.retryPendingOperations()
+                }
+            }
         }
         binding.switchPrivateChats.setOnCheckedChangeListener { _, isChecked ->
             globalParam.privateChatsEnabled = isChecked

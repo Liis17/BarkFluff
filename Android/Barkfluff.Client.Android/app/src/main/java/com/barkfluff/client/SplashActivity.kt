@@ -10,8 +10,13 @@ import com.barkfluff.client.domain.gateway.ServerDiscoveryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.grpc.GrpcClientRegistry
+import com.barkfluff.client.grpc.TokenValidity
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.FirebaseTokenHelper
+import com.barkfluff.client.utils.LogoutHelper
+import com.barkfluff.client.utils.SessionGate
+import com.barkfluff.client.utils.gateTokenValidity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.barkfluff.client.utils.ServerInfoRefreshResult
 import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import dagger.hilt.android.AndroidEntryPoint
@@ -203,17 +208,21 @@ class SplashActivity : AppCompatActivity() {
                 if (userDataResult.isFailure) {
                     val errMsg = userDataResult.exceptionOrNull()?.message ?: ""
                     if (errMsg.contains("401") || errMsg.contains("UNAUTHENTICATED")) {
-                        val refreshed = authGateway.ensureValid(forceRefresh = true)
-                        if (!refreshed) {
-                            // Refresh тоже невалиден — на Login
-                            globalParam.clearUserData()
-                            navigateToLogin()
-                            userSettingsDeferred.cancel()
-                            return@coroutineScope false
+                        // Only a rejected refresh is destructive; an unavailable Identity keeps
+                        // the session and continues to the offline chat cache.
+                        when (val validity = authGateway.tokenValidity(forceRefresh = true)) {
+                            TokenValidity.REJECTED -> {
+                                userSettingsDeferred.cancel()
+                                handleRejectedSession(validity)
+                                return@coroutineScope false
+                            }
+                            TokenValidity.UNAVAILABLE -> Unit
+                            TokenValidity.VALID -> {
+                                // Повторяем запрос с новым токеном
+                                userDataResult = userProfileGateway.currentUser()
+                                reloadUserSettings = true
+                            }
                         }
-                        // Повторяем запрос с новым токеном
-                        userDataResult = userProfileGateway.currentUser()
-                        reloadUserSettings = true
                     }
                 }
 
@@ -254,6 +263,27 @@ class SplashActivity : AppCompatActivity() {
             // Ошибка загрузки данных пользователя - не критично, продолжаем
         }
         navigateToChats()
+    }
+
+    /** A failed cleanup journal keeps credentials; offer an explicit retry instead of a stuck Splash. */
+    private suspend fun handleRejectedSession(validity: TokenValidity) {
+        val app = applicationContext as BarkFluffApplication
+        app.realtimeService.shutdown()
+        val gate = gateTokenValidity(validity) { LogoutHelper.clearCredentials(this, app.prekeyManager) }
+        if (gate == SessionGate.LOGIN) {
+            navigateToLogin()
+            return
+        }
+        if (isFinishing || isDestroyed) return
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.error)
+            .setMessage(R.string.crypto_cleanup_failed)
+            .setCancelable(false)
+            .setPositiveButton(R.string.action_retry) { _, _ ->
+                lifecycleScope.launch { handleRejectedSession(validity) }
+            }
+            .setNegativeButton(R.string.btn_close) { _, _ -> finish() }
+            .show()
     }
 
     private fun navigateToWelcome() {

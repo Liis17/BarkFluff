@@ -53,6 +53,7 @@ jobs:
     env:
       DEVELOPERS_TEST_POSTGRES: Host=localhost;Port=5432;Database=developers_test;Username=postgres;Password=postgres
       BARKFLUFF_SEARCH_POSTGRES: Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres
+      BARKFLUFF_PREKEY_POSTGRES: Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres
     services:
       postgres:
         image: postgres:16

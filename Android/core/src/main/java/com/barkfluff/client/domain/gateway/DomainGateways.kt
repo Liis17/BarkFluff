@@ -302,14 +302,14 @@ interface SecretChatGateway {
 }
 
 interface PrekeyGateway {
-    suspend fun register(
-        registrationId: Int,
-        identityPubkey: ByteArray,
-        signedPreKey: UsersApiOuterClass.SignedPreKey,
-        oneTimePreKeys: List<UsersApiOuterClass.OneTimePreKey>,
-    ): Result<Unit>
+    suspend fun register(request: UsersApiOuterClass.RegisterPrekeyBundleRequest): Result<Unit>
 
-    suspend fun replenish(prekeys: List<UsersApiOuterClass.OneTimePreKey>): Result<Int>
+    suspend fun replenish(request: UsersApiOuterClass.ReplenishOneTimePrekeysRequest):
+        Result<UsersApiOuterClass.ReplenishOneTimePrekeysResponse>
+
+    suspend fun rotate(request: UsersApiOuterClass.RotateSignedPrekeyRequest): Result<Unit>
+
+    suspend fun ownStatus(): Result<UsersApiOuterClass.GetOwnPrekeyStatusResponse>
 }
 
 /** Common fake-friendly token dependency for workers and gateways. */

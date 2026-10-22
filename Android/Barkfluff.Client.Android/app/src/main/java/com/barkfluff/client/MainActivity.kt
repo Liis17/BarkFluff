@@ -127,8 +127,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun registerPrekeyBundleIfNeeded() {
-        val app = applicationContext as BarkFluffApplication
-        if (!app.prekeyManager.isRegistered) {
+        if (GlobalParam(this).secretChatsEnabled) {
             lifecycleScope.launch {
                 com.barkfluff.client.crypto.E2EBootstrap.ensurePrekeyBundleRegistered(this@MainActivity)
             }

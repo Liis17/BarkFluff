@@ -16,4 +16,6 @@ public class OneTimePrekey
     public byte[] PublicKey { get; set; } = Array.Empty<byte>();
 
     public DateTime CreatedAt { get; set; }
+
+    public DateTime? ConsumedAt { get; set; }
 }

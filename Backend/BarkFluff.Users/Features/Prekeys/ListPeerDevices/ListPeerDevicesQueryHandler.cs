@@ -11,12 +11,12 @@ public class ListPeerDevicesQueryHandler(PrekeyStorage prekeyStorage)
 {
     public async Task<ListPeerDevicesResponse> Handle(ListPeerDevicesQuery query, CancellationToken cancellationToken)
     {
-        var devices = await prekeyStorage.ListPeerDevicesAsync(query.UserId);
+        var devices = await prekeyStorage.ListPeerDevicesAsync(query.UserId, cancellationToken);
 
         var response = new ListPeerDevicesResponse();
-        foreach (var (device, hasBundle) in devices)
+        foreach (var (device, hasBundle, supportsPqxdh) in devices)
         {
-            response.Devices.Add(device.ToPeerInfoGrpc(hasBundle));
+            response.Devices.Add(device.ToPeerInfoGrpc(hasBundle, supportsPqxdh));
         }
 
         return response;

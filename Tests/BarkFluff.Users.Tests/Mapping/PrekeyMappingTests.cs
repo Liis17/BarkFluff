@@ -97,10 +97,11 @@ public class PrekeyMappingTests
             AuthorizedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         };
 
-        var grpc = device.ToPeerInfoGrpc(true);
+        var grpc = device.ToPeerInfoGrpc(true, false);
 
         grpc.DisplayName.Should().Be("My Phone");
         grpc.HasBundle.Should().BeTrue();
+        grpc.SupportsPqxdh.Should().BeFalse();
     }
 
     [Fact]
@@ -114,7 +115,7 @@ public class PrekeyMappingTests
             AuthorizedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         };
 
-        var grpc = device.ToPeerInfoGrpc(false);
+        var grpc = device.ToPeerInfoGrpc(false, false);
 
         grpc.DisplayName.Should().Be("Pixel 8");
         grpc.HasBundle.Should().BeFalse();

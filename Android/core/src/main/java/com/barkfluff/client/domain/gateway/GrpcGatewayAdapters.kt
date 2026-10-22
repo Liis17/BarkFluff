@@ -616,16 +616,19 @@ class GrpcFastAuthGateway(private val grpc: GrpcApiTransport) : FastAuthGateway 
 }
 
 class GrpcPrekeyGateway(private val grpc: GrpcApiTransport) : PrekeyGateway {
-    override suspend fun register(
-        registrationId: Int,
-        identityPubkey: ByteArray,
-        signedPreKey: barkfluff.users.UsersApiOuterClass.SignedPreKey,
-        oneTimePreKeys: List<barkfluff.users.UsersApiOuterClass.OneTimePreKey>,
-    ): Result<Unit> = grpc.registerPrekeyBundle(registrationId, identityPubkey, signedPreKey, oneTimePreKeys)
+    override suspend fun register(request: barkfluff.users.UsersApiOuterClass.RegisterPrekeyBundleRequest): Result<Unit> =
+        grpc.registerPrekeyBundle(request)
 
     override suspend fun replenish(
-        prekeys: List<barkfluff.users.UsersApiOuterClass.OneTimePreKey>,
-    ): Result<Int> = grpc.replenishOneTimePrekeys(prekeys)
+        request: barkfluff.users.UsersApiOuterClass.ReplenishOneTimePrekeysRequest,
+    ): Result<barkfluff.users.UsersApiOuterClass.ReplenishOneTimePrekeysResponse> =
+        grpc.replenishOneTimePrekeys(request)
+
+    override suspend fun rotate(request: barkfluff.users.UsersApiOuterClass.RotateSignedPrekeyRequest): Result<Unit> =
+        grpc.rotateSignedPrekey(request)
+
+    override suspend fun ownStatus(): Result<barkfluff.users.UsersApiOuterClass.GetOwnPrekeyStatusResponse> =
+        grpc.getOwnPrekeyStatus()
 }
 
 /**
