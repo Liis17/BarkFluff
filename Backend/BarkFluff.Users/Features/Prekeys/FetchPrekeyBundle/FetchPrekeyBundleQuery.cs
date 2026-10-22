@@ -9,4 +9,6 @@ public class FetchPrekeyBundleQuery : IRequest<FetchPrekeyBundleResponse>
     public long UserId { get; set; }
 
     public string DeviceId { get; set; } = string.Empty;
+
+    public bool RequirePqxdh { get; set; }
 }

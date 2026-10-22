@@ -4,6 +4,7 @@ using BarkFluff.Users.Features.Prekeys.ListPeerDevices;
 using BarkFluff.Users.Features.Prekeys.RegisterPrekeyBundle;
 using BarkFluff.Users.Features.Prekeys.ReplenishOneTimePrekeys;
 using BarkFluff.Users.Features.Prekeys.RotateSignedPrekey;
+using BarkFluff.Users.Persistence.Services;
 using FluentAssertions;
 using Google.Protobuf;
 using Microsoft.EntityFrameworkCore;
@@ -43,7 +44,7 @@ public class RotateSignedPrekeyCommandHandlerTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task Handle_NullSignedPrekey_ThrowsInvalidOperationException()
+    public async Task Handle_NoPrekey_ThrowsInvalidArgument()
     {
         var user = await _h.SeedUser();
         var deviceId = Guid.NewGuid();
@@ -56,11 +57,41 @@ public class RotateSignedPrekeyCommandHandlerTests : IAsyncDisposable
             Request = new RotateSignedPrekeyRequest { SignedPrekey = null }
         }, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var error = await act.Should().ThrowAsync<PrekeyException>();
+        error.Which.StatusCode.Should().Be(Grpc.Core.StatusCode.InvalidArgument);
     }
 
     [Fact]
-    public async Task Handle_InvalidDeviceId_ReturnsWithoutError()
+    public async Task Handle_KyberOnlyRequest_RotatesLastResortKey()
+    {
+        var user = await _h.SeedUser();
+        var deviceId = Guid.NewGuid();
+        await _h.SeedDevice(deviceId, user.Id);
+        await _h.PrekeyStorage.RegisterBundleAsync(deviceId, user.Id, 1,
+            [1], 1, [2], [3], [], new KyberPrekeyInput(30, [30], [31]));
+        var ctx = _h.CreateUserContext(user.Id, deviceId.ToString());
+        var handler = new RotateSignedPrekeyCommandHandler(_h.PrekeyStorage, ctx, TestHelper.CreateLogger<RotateSignedPrekeyCommandHandler>());
+
+        await handler.Handle(new RotateSignedPrekeyCommand
+        {
+            Request = new RotateSignedPrekeyRequest
+            {
+                LastResortKyberPrekey = new SignedKyberPreKey
+                {
+                    PrekeyId = 40,
+                    PublicKey = ByteString.CopyFrom([40]),
+                    Signature = ByteString.CopyFrom([41]),
+                },
+            },
+        }, CancellationToken.None);
+
+        var bundle = await _h.DbContext.DevicePrekeyBundles.FirstAsync(bundle => bundle.DeviceId == deviceId);
+        bundle.LastResortKyberPrekeyId.Should().Be(40);
+        bundle.SignedPrekeyId.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_InvalidDeviceId_ThrowsUnauthenticatedError()
     {
         var user = await _h.SeedUser();
         var ctx = _h.CreateUserContext(user.Id, "invalid");
@@ -74,7 +105,8 @@ public class RotateSignedPrekeyCommandHandlerTests : IAsyncDisposable
             }
         }, CancellationToken.None);
 
-        await act.Should().NotThrowAsync();
+        var error = await act.Should().ThrowAsync<PrekeyException>();
+        error.Which.StatusCode.Should().Be(Grpc.Core.StatusCode.Unauthenticated);
     }
 
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();

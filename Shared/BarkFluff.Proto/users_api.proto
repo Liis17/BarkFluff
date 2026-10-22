@@ -137,6 +137,9 @@ service UsersApi {
 
   // Сменить signed prekey текущего устройства.
   rpc RotateSignedPrekey(RotateSignedPrekeyRequest) returns(RotateSignedPrekeyResponse);
+
+  // Получить непотребляющий статус prekey-bundle текущего устройства.
+  rpc GetOwnPrekeyStatus(GetOwnPrekeyStatusRequest) returns(GetOwnPrekeyStatusResponse);
 }
 
 service UsersServerApi {
@@ -1021,6 +1024,16 @@ message PrekeyBundle {
   SignedPreKey signed_prekey = 4;   // Текущий signed prekey
   OneTimePreKey one_time_prekey = 5; // Разовая prekey (отсутствует если пул исчерпан)
   bool has_one_time_prekey = 6;     // true если one_time_prekey заполнен — позволяет различать "пусто" и "не задан"
+  SignedKyberPreKey kyber_prekey = 7; // Выбранная разовая Kyber prekey либо last-resort fallback
+  bool kyber_prekey_is_last_resort = 8; // true если kyber_prekey взят из last-resort слота
+}
+
+// Сериализованный libsignal Kyber prekey и подпись identity-ключом. Сервер ограничивает размер полей,
+// но подпись и содержимое криптографически проверяет клиент.
+message SignedKyberPreKey {
+  uint32 prekey_id = 1;
+  bytes public_key = 2;
+  bytes signature = 3;
 }
 
 // Регистрация bundle текущего устройства
@@ -1030,6 +1043,8 @@ message RegisterPrekeyBundleRequest {
   bytes identity_pubkey = 2;             // Ed25519 публичный identity-ключ устройства (32 байта)
   SignedPreKey signed_prekey = 3;        // Начальный signed prekey
   repeated OneTimePreKey one_time_prekeys = 4; // Стартовый пул разовых prekeys (рекомендуется 100 шт)
+  SignedKyberPreKey last_resort_kyber_prekey = 5; // PQXDH last-resort key; требуется при публикации Kyber pool
+  repeated SignedKyberPreKey one_time_kyber_prekeys = 6; // Стартовый PQXDH pool
 }
 
 message RegisterPrekeyBundleResponse { }
@@ -1039,11 +1054,13 @@ message RegisterPrekeyBundleResponse { }
 message FetchPrekeyBundleRequest {
   int64 user_id = 1;       // ID пользователя-собеседника
   string device_id = 2;    // ID устройства собеседника
+  bool require_pqxdh = 3;  // Если true, не расходовать EC key при отсутствии PQXDH support
 }
 
 message FetchPrekeyBundleResponse {
   PrekeyBundle bundle = 1;     // Bundle с расходуемой one-time prekey (если осталась)
   int32 remaining_one_time_prekeys = 2; // Сколько prekey осталось у этого устройства после fetch
+  int32 remaining_one_time_kyber_prekeys = 3; // Доступный PQXDH pool после fetch
 }
 
 // Список устройств пользователя для выбора цели секретного чата
@@ -1061,25 +1078,41 @@ message PeerDeviceInfo {
   string display_name = 2; // Имя для отображения (custom_name либо original_name)
   bool has_bundle = 3;    // true если устройство зарегистрировало prekey-bundle (без этого секретный чат с ним невозможен)
   google.protobuf.Timestamp last_seen_at = 4; // Время последней активности (опционально, для сортировки в UI)
+  bool supports_pqxdh = 5; // true если опубликован last-resort Kyber prekey
 }
 
 // Пополнение пула one-time prekeys текущего устройства
 
 message ReplenishOneTimePrekeysRequest {
   repeated OneTimePreKey prekeys = 1; // Новые prekeys; ID не должны пересекаться с уже существующими у устройства
+  repeated SignedKyberPreKey kyber_prekeys = 2; // Новые подписанные Kyber prekeys
 }
 
 message ReplenishOneTimePrekeysResponse {
   int32 total_one_time_prekeys = 1; // Сколько prekey теперь у устройства всего
+  int32 total_one_time_kyber_prekeys = 2; // Сколько неиспользованных Kyber prekey теперь у устройства
 }
 
 // Ротация signed prekey текущего устройства
 
 message RotateSignedPrekeyRequest {
   SignedPreKey signed_prekey = 1; // Новый signed prekey (старый удерживается на сервере короткое время для in-flight handshakes)
+  SignedKyberPreKey last_resort_kyber_prekey = 2; // Новый Kyber last-resort key; можно ротировать вместе с EC или отдельно
 }
 
 message RotateSignedPrekeyResponse { }
+
+message GetOwnPrekeyStatusRequest { }
+
+message GetOwnPrekeyStatusResponse {
+  int32 remaining_one_time_prekeys = 1;
+  int32 remaining_one_time_kyber_prekeys = 2;
+  bool supports_pqxdh = 3;
+  bytes identity_pubkey = 4;
+  uint32 registration_id = 5;
+  SignedKyberPreKey last_resort_kyber_prekey = 6;
+  bool has_bundle = 7;
+}
 
 // -- Федеративные профили (этап 2.1) --------------------------------------------
 

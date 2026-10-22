@@ -53,6 +53,8 @@ data class ChatsUiState(
 
 sealed interface ChatsEvent {
     data object NavigateToLogin : ChatsEvent
+    /** Identity rejected the refresh token: wipe account crypto state before Login. */
+    data object SessionRejected : ChatsEvent
     /** Аватар/профиль могли подтянуться при первом входе — перерисовать шапку. */
     data object RefreshUserAvatar : ChatsEvent
     data class ChatLoadError(val message: String) : ChatsEvent
@@ -598,7 +600,7 @@ class ChatsViewModel @Inject constructor(
             TokenValidity.VALID -> true
             TokenValidity.REJECTED -> {
                 Log.w(TAG, "Refresh token rejected, navigating to login")
-                _events.tryEmit(ChatsEvent.NavigateToLogin)
+                _events.tryEmit(ChatsEvent.SessionRejected)
                 false
             }
             TokenValidity.UNAVAILABLE -> {

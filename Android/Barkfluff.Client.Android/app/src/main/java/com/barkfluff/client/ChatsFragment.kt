@@ -157,6 +157,7 @@ class ChatsFragment : Fragment() {
             viewModel.events.collect { event ->
                 when (event) {
                     ChatsEvent.NavigateToLogin -> navigateToLogin()
+                    ChatsEvent.SessionRejected -> exitRejectedSession()
                     ChatsEvent.RefreshUserAvatar -> loadUserAvatar()
                     is ChatsEvent.ChatLoadError -> Snackbar.make(
                         binding.root,
@@ -514,6 +515,19 @@ class ChatsFragment : Fragment() {
     private fun showEmptyState(show: Boolean) {
         binding.emptyState.visibility = if (show) View.VISIBLE else View.GONE
         binding.chatRecyclerView.visibility = if (show) View.GONE else View.VISIBLE
+    }
+
+    /** Ordinary cache and outbox stay scoped for a later login; only crypto state is wiped. */
+    private suspend fun exitRejectedSession() {
+        val app = requireContext().applicationContext as BarkFluffApplication
+        if (com.barkfluff.client.utils.LogoutHelper.exitRejectedSession(app, app.prekeyManager)) {
+            if (isAdded) navigateToLogin()
+            return
+        }
+        val root = _binding?.root ?: return
+        Snackbar.make(root, R.string.crypto_cleanup_failed, Snackbar.LENGTH_INDEFINITE)
+            .setAction(R.string.action_retry) { viewModel.retry() }
+            .show()
     }
 
     private fun navigateToLogin() {
