@@ -147,10 +147,30 @@ public class PrekeyPostgresTests
         replaced.RemainingEcPrekeys.Should().Be(1);
         replaced.RemainingKyberPrekeys.Should().Be(1);
 
-        var oldEc = await database.Context.OneTimePrekeys.SingleAsync(prekey => prekey.DeviceId == device.Id && prekey.PrekeyId == 10);
-        var oldKyber = await database.Context.OneTimeKyberPrekeys.SingleAsync(prekey => prekey.DeviceId == device.Id && prekey.PrekeyId == 20);
-        oldEc.ConsumedAt.Should().NotBeNull();
-        oldKyber.ConsumedAt.Should().NotBeNull();
+        (await database.Context.OneTimePrekeys.AnyAsync(prekey => prekey.DeviceId == device.Id && prekey.PrekeyId == 10)).Should().BeFalse();
+        (await database.Context.OneTimeKyberPrekeys.AnyAsync(prekey => prekey.DeviceId == device.Id && prekey.PrekeyId == 20)).Should().BeFalse();
+    }
+
+    [PrekeyPostgresFact]
+    public async Task ReplacementCanReuseConsumedIdsWithNewKeyMaterialInBothPools()
+    {
+        await using var database = await PrekeyDatabase.Create();
+        var (user, device) = await SeedDeviceAsync(database.Context);
+        var storage = new PrekeyStorage(database.Context);
+        await RegisterAsync(storage, device.Id, user.Id, 1, 1, [(10, EcKey(10))], [KyberKey(20)], KyberKey(30));
+        await storage.FetchBundleAsync(user.Id, device.Id, requirePqxdh: true);
+
+        await RegisterAsync(storage, device.Id, user.Id, 2, 2,
+            [(10, EcKey(11))], [new KyberPrekeyInput(20, KyberKey(21).PublicKey, Signature(21))], KyberKey(30));
+        var fetched = await storage.FetchBundleAsync(user.Id, device.Id, requirePqxdh: true);
+        fetched!.Bundle.IdentityPubkey.Should().Equal(EcKey(2));
+        fetched.EcPrekey!.PrekeyId.Should().Be(10);
+        fetched.EcPrekey.PublicKey.Should().Equal(EcKey(11));
+        fetched.KyberPrekey!.PrekeyId.Should().Be(20);
+        fetched.KyberPrekey.PublicKey.Should().Equal(KyberKey(21).PublicKey);
+        var exhausted = await storage.GetOwnPrekeyStatusAsync(device.Id, user.Id);
+        exhausted.RemainingEcPrekeys.Should().Be(0);
+        exhausted.RemainingKyberPrekeys.Should().Be(0);
     }
 
     [PrekeyPostgresFact]
