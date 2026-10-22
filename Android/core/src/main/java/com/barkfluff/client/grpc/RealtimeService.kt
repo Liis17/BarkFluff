@@ -7,6 +7,7 @@ import com.barkfluff.client.domain.gateway.MessageGateway
 import barkfluff.onliner.OnlinerApiOuterClass
 import barkfluff.updates.UpdatesApiOuterClass
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.crypto.CryptoStoreScope
 import io.grpc.Status
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.*
@@ -32,6 +33,16 @@ class RealtimeService(
     private val messageGateway: MessageGateway,
     private val sideEffects: RealtimeSideEffects? = null
 ) {
+
+    data class ScopedSecretChatInvite(
+        val scopeId: String,
+        val event: UpdatesApiOuterClass.SecretChatInviteEvent,
+    )
+
+    data class ScopedSecretChatResolution(
+        val scopeId: String,
+        val event: UpdatesApiOuterClass.SecretChatInviteResolutionEvent,
+    )
 
     companion object {
         private const val TAG = "RealtimeService"
@@ -98,8 +109,14 @@ class RealtimeService(
     private val _secretChatInvites = MutableSharedFlow<UpdatesApiOuterClass.SecretChatInviteEvent>(extraBufferCapacity = 16)
     val secretChatInvites: SharedFlow<UpdatesApiOuterClass.SecretChatInviteEvent> = _secretChatInvites
 
+    private val _scopedSecretChatInvites = MutableSharedFlow<ScopedSecretChatInvite>(extraBufferCapacity = 16)
+    val scopedSecretChatInvites: SharedFlow<ScopedSecretChatInvite> = _scopedSecretChatInvites
+
     private val _secretChatResolutions = MutableSharedFlow<UpdatesApiOuterClass.SecretChatInviteResolutionEvent>(extraBufferCapacity = 16)
     val secretChatResolutions: SharedFlow<UpdatesApiOuterClass.SecretChatInviteResolutionEvent> = _secretChatResolutions
+
+    private val _scopedSecretChatResolutions = MutableSharedFlow<ScopedSecretChatResolution>(extraBufferCapacity = 16)
+    val scopedSecretChatResolutions: SharedFlow<ScopedSecretChatResolution> = _scopedSecretChatResolutions
 
     private val _secretMessages = MutableSharedFlow<UpdatesApiOuterClass.NewSecretMessageEvent>(extraBufferCapacity = 64)
     val secretMessages: SharedFlow<UpdatesApiOuterClass.NewSecretMessageEvent> = _secretMessages
@@ -463,19 +480,27 @@ class RealtimeService(
     private suspend fun collectSecretChatInvites() {
         val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeSecretChatInvitesRequest.getDefaultInstance()
+        val scopeId = CryptoStoreScope.from(globalParam)?.scopeId ?: return
         Log.d(TAG, "Subscribing to SecretChatInvites stream (device-scope)")
         client.subscribeSecretChatInvites(request).collect { event ->
             Log.d(TAG, "Secret chat invite received: inviteId=${event.inviteId}, sender=${event.senderUserId}/${event.senderDeviceId}")
             _secretChatInvites.emit(event)
+            if (CryptoStoreScope.from(globalParam)?.scopeId == scopeId) {
+                _scopedSecretChatInvites.emit(ScopedSecretChatInvite(scopeId, event))
+            }
         }
     }
 
     private suspend fun collectSecretChatResolutions() {
         val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeSecretChatResolutionsRequest.getDefaultInstance()
+        val scopeId = CryptoStoreScope.from(globalParam)?.scopeId ?: return
         client.subscribeSecretChatResolutions(request).collect { event ->
             Log.d(TAG, "Secret chat resolution: inviteId=${event.inviteId}, accepted=${event.accepted}")
             _secretChatResolutions.emit(event)
+            if (CryptoStoreScope.from(globalParam)?.scopeId == scopeId) {
+                _scopedSecretChatResolutions.emit(ScopedSecretChatResolution(scopeId, event))
+            }
         }
     }
 

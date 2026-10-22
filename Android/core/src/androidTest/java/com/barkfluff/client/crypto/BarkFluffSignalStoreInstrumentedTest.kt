@@ -1,0 +1,157 @@
+package com.barkfluff.client.crypto
+
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.signal.libsignal.protocol.IdentityKeyPair
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.util.UUID
+
+@RunWith(AndroidJUnit4::class)
+class BarkFluffSignalStoreInstrumentedTest {
+
+    @Test
+    fun failedCryptoOperationRollsBackAndReopenedStoreKeepsCommittedIdentity() {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val scope = newScope()
+        val store = newStore(context, scope)
+        val committedIdentity = IdentityKeyPair.generate()
+        try {
+            store.transaction { store.initialize(committedIdentity, 101) }
+
+            assertThrows(IllegalStateException::class.java) {
+                store.transaction {
+                    store.initialize(IdentityKeyPair.generate(), 202)
+                    error("interrupt the staged crypto operation")
+                }
+            }
+
+            val reopened = newStore(context, scope)
+            assertArrayEquals(committedIdentity.serialize(), reopened.getIdentityKeyPair().serialize())
+            assertEquals(101, reopened.getLocalRegistrationId())
+        } finally {
+            store.reset()
+            deleteScope(context, scope)
+        }
+    }
+
+    @Test
+    fun failedDurableCommitLeavesPriorSnapshotAndFailsClosed() {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val scope = newScope()
+        val name = scopedFileName(scope)
+        val store = newStore(context, scope)
+        try {
+            store.transaction { store.initialize(IdentityKeyPair.generate(), 303) }
+            val before = encryptedPreferences(context, name).getString(STATE_BLOB_KEY, null)
+
+            val rejectingContext = RejectCommitContext(context, name)
+            val rejectingStore = BarkFluffSignalStore(rejectingContext) { scope }
+            assertThrows(DurableCryptoCommitException::class.java) {
+                rejectingStore.transaction {
+                    rejectingStore.initialize(IdentityKeyPair.generate(), 404)
+                }
+            }
+            assertThrows(IllegalStateException::class.java) { rejectingStore.getIdentityKeyPair() }
+
+            val after = encryptedPreferences(context, name).getString(STATE_BLOB_KEY, null)
+            assertEquals(before, after)
+        } finally {
+            store.reset()
+            deleteScope(context, scope)
+        }
+    }
+
+    private fun newStore(context: Context, scope: CryptoStoreScope) = BarkFluffSignalStore(context) { scope }
+
+    private fun newScope() = CryptoStoreScope(
+        server = "instrumentation://store-${UUID.randomUUID()}",
+        userId = UUID.randomUUID().mostSignificantBits.ushr(1).coerceAtLeast(1),
+        deviceId = UUID.randomUUID().toString(),
+    )
+
+    private fun scopedFileName(scope: CryptoStoreScope): String =
+        "barkfluff_crypto_" + MessageDigest.getInstance("SHA-256")
+            .digest(scope.scopeId.toByteArray(StandardCharsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+
+    private fun encryptedPreferences(context: Context, name: String): SharedPreferences =
+        EncryptedSharedPreferences.create(
+            name,
+            MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC),
+            context,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+
+    private fun deleteScope(context: Context, scope: CryptoStoreScope) {
+        context.deleteSharedPreferences(scopedFileName(scope))
+    }
+
+    private class RejectCommitContext(
+        base: Context,
+        private val rejectedFileName: String,
+    ) : ContextWrapper(base) {
+        override fun getApplicationContext(): Context = this
+
+        override fun getSharedPreferences(name: String, mode: Int): SharedPreferences {
+            val preferences = super.getSharedPreferences(name, mode)
+            return if (name == rejectedFileName) RejectCommitPreferences(preferences) else preferences
+        }
+    }
+
+    private class RejectCommitPreferences(
+        private val delegate: SharedPreferences,
+    ) : SharedPreferences by delegate {
+        override fun edit(): SharedPreferences.Editor = RejectCommitEditor(delegate.edit())
+    }
+
+    private class RejectCommitEditor(
+        private val delegate: SharedPreferences.Editor,
+    ) : SharedPreferences.Editor {
+        override fun putString(key: String, value: String?): SharedPreferences.Editor =
+            applyToDelegate { putString(key, value) }
+
+        override fun putStringSet(key: String, values: MutableSet<String>?): SharedPreferences.Editor =
+            applyToDelegate { putStringSet(key, values) }
+
+        override fun putInt(key: String, value: Int): SharedPreferences.Editor =
+            applyToDelegate { putInt(key, value) }
+
+        override fun putLong(key: String, value: Long): SharedPreferences.Editor =
+            applyToDelegate { putLong(key, value) }
+
+        override fun putFloat(key: String, value: Float): SharedPreferences.Editor =
+            applyToDelegate { putFloat(key, value) }
+
+        override fun putBoolean(key: String, value: Boolean): SharedPreferences.Editor =
+            applyToDelegate { putBoolean(key, value) }
+
+        override fun remove(key: String): SharedPreferences.Editor = applyToDelegate { remove(key) }
+
+        override fun clear(): SharedPreferences.Editor = applyToDelegate { clear() }
+
+        override fun commit(): Boolean = false
+
+        override fun apply() = Unit
+
+        private inline fun applyToDelegate(block: SharedPreferences.Editor.() -> SharedPreferences.Editor): SharedPreferences.Editor {
+            delegate.block()
+            return this
+        }
+    }
+
+    private companion object {
+        const val STATE_BLOB_KEY = "crypto_state"
+    }
+}

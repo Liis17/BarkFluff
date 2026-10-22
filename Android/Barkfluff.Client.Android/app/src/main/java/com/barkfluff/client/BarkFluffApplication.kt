@@ -18,6 +18,8 @@ import com.barkfluff.client.calls.CallRepository
 import com.barkfluff.client.calls.CallTelecomManager
 import com.barkfluff.client.calls.CallTelecomRegistry
 import com.barkfluff.client.crypto.BarkFluffSignalStore
+import com.barkfluff.client.crypto.CryptoStoreScope
+import com.barkfluff.client.crypto.E2EBootstrap
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.crypto.PrekeyManager
@@ -87,6 +89,7 @@ class BarkFluffApplication : Application() {
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var callEventsUiJob: Job? = null
+    private var secretChatEventsJob: Job? = null
     private lateinit var connectivityManager: ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -168,10 +171,16 @@ class BarkFluffApplication : Application() {
         // pause() вызывается когда ВСЕ activity приложения уходят в фон
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
+                startSecretChatEventBridge()
                 realtimeService.resume()
                 applicationScope.launch(Dispatchers.IO) {
                     chatDraftRepository.flushAll()
                     outgoingMessageQueue.resume()
+                    val globalParam = GlobalParam(this@BarkFluffApplication)
+                    if (globalParam.userId > 0 && !globalParam.accessToken.isNullOrBlank() && globalParam.secretChatsEnabled) {
+                        E2EBootstrap.ensurePrekeyBundleRegistered(applicationContext)
+                        secretChatRepository.retryPendingOperations()
+                    }
                 }
                 startCallEventsUiBridge()
                 callEventsService.resume()
@@ -204,6 +213,19 @@ class BarkFluffApplication : Application() {
         callEventsUiJob = applicationScope.launch {
             callEventsService.events.collect { event ->
                 handleCallEvent(event)
+            }
+        }
+    }
+
+    private fun startSecretChatEventBridge() {
+        if (secretChatEventsJob?.isActive == true) return
+        secretChatEventsJob = applicationScope.launch {
+            launch {
+                realtimeService.scopedSecretChatResolutions.collect { scoped ->
+                    val globalParam = GlobalParam(this@BarkFluffApplication)
+                    if (CryptoStoreScope.from(globalParam)?.scopeId != scoped.scopeId) return@collect
+                    secretChatRepository.markInviteResolution(scoped.event.inviteId, scoped.event.accepted)
+                }
             }
         }
     }

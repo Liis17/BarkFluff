@@ -45,7 +45,7 @@ import java.net.URL
  * Channel/stub lifecycle belongs to [GrpcClientRegistry]; this class only preserves the existing
  * request/response mapping for production adapters and background workers.
  */
-class GrpcApiTransport(context: Context) {
+open class GrpcApiTransport(context: Context) {
 
     companion object {
         private const val TAG = "GrpcApiTransport"
@@ -2397,7 +2397,7 @@ class GrpcApiTransport(context: Context) {
     data class SecretInviteSent(val inviteId: String, val expiresAtSeconds: Long)
     data class SecretMessageSent(val messageId: String, val expiresAtSeconds: Long)
 
-    suspend fun sendSecretChatInvite(
+    open suspend fun sendSecretChatInvite(
         recipientUserId: Long,
         recipientDeviceId: String,
         initialEnvelope: ByteArray
@@ -2417,7 +2417,7 @@ class GrpcApiTransport(context: Context) {
         }
     }
 
-    suspend fun acceptSecretChatInvite(inviteId: String, responseEnvelope: ByteArray = ByteArray(0)): Result<Unit> = withContext(Dispatchers.IO) {
+    open suspend fun acceptSecretChatInvite(inviteId: String, responseEnvelope: ByteArray = ByteArray(0)): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val client = messagesClient ?: return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
             val request = MessagesApiOuterClass.AcceptSecretChatInviteRequest.newBuilder()
@@ -2479,19 +2479,10 @@ class GrpcApiTransport(context: Context) {
     // ==================== Prekey bundle (X3DH) ====================
 
     suspend fun registerPrekeyBundle(
-        registrationId: Int,
-        identityPubkey: ByteArray,
-        signedPreKey: UsersApiOuterClass.SignedPreKey,
-        oneTimePreKeys: List<UsersApiOuterClass.OneTimePreKey>
+        request: UsersApiOuterClass.RegisterPrekeyBundleRequest,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
-            val request = UsersApiOuterClass.RegisterPrekeyBundleRequest.newBuilder()
-                .setRegistrationId(registrationId)
-                .setIdentityPubkey(com.google.protobuf.ByteString.copyFrom(identityPubkey))
-                .setSignedPrekey(signedPreKey)
-                .addAllOneTimePrekeys(oneTimePreKeys)
-                .build()
             client.registerPrekeyBundle(request)
             Result.success(Unit)
         } catch (e: Exception) {
@@ -2500,7 +2491,7 @@ class GrpcApiTransport(context: Context) {
         }
     }
 
-    suspend fun fetchPrekeyBundle(
+    open suspend fun fetchPrekeyBundle(
         userId: Long,
         deviceId: String
     ): Result<UsersApiOuterClass.FetchPrekeyBundleResponse> = withContext(Dispatchers.IO) {
@@ -2509,6 +2500,7 @@ class GrpcApiTransport(context: Context) {
             val request = UsersApiOuterClass.FetchPrekeyBundleRequest.newBuilder()
                 .setUserId(userId)
                 .setDeviceId(deviceId)
+                .setRequirePqxdh(true)
                 .build()
             Result.success(client.fetchPrekeyBundle(request))
         } catch (e: Exception) {
@@ -2528,27 +2520,35 @@ class GrpcApiTransport(context: Context) {
         }
     }
 
-    suspend fun replenishOneTimePrekeys(prekeys: List<UsersApiOuterClass.OneTimePreKey>): Result<Int> = withContext(Dispatchers.IO) {
+    suspend fun replenishOneTimePrekeys(
+        request: UsersApiOuterClass.ReplenishOneTimePrekeysRequest,
+    ): Result<UsersApiOuterClass.ReplenishOneTimePrekeysResponse> = withContext(Dispatchers.IO) {
         try {
             val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
-            val request = UsersApiOuterClass.ReplenishOneTimePrekeysRequest.newBuilder()
-                .addAllPrekeys(prekeys)
-                .build()
-            Result.success(client.replenishOneTimePrekeys(request).totalOneTimePrekeys)
+            Result.success(client.replenishOneTimePrekeys(request))
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка пополнения one-time prekeys", e)
             Result.failure(e)
         }
     }
 
-    suspend fun rotateSignedPrekey(signedPreKey: UsersApiOuterClass.SignedPreKey): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun rotateSignedPrekey(request: UsersApiOuterClass.RotateSignedPrekeyRequest): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
-            val request = UsersApiOuterClass.RotateSignedPrekeyRequest.newBuilder().setSignedPrekey(signedPreKey).build()
             client.rotateSignedPrekey(request)
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка ротации signed prekey", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getOwnPrekeyStatus(): Result<UsersApiOuterClass.GetOwnPrekeyStatusResponse> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            Result.success(client.getOwnPrekeyStatus(UsersApiOuterClass.GetOwnPrekeyStatusRequest.getDefaultInstance()))
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения статуса собственных prekeys", e)
             Result.failure(e)
         }
     }

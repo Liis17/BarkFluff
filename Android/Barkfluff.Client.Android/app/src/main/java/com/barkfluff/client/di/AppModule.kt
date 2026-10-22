@@ -262,10 +262,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun providePrekeyManager(
-        @ApplicationContext context: Context,
-        signalStore: BarkFluffSignalStore
-    ): PrekeyManager = PrekeyManager(context, signalStore)
+    fun providePrekeyManager(signalStore: BarkFluffSignalStore): PrekeyManager =
+        PrekeyManager(signalStore)
 
     @Provides
     @Singleton
@@ -301,10 +299,9 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSecretChatRepository(
-        @ApplicationContext context: Context,
         transport: GrpcApiTransport,
         signalStore: BarkFluffSignalStore
-    ): SecretChatRepository = SecretChatRepository(context, transport, signalStore)
+    ): SecretChatRepository = SecretChatRepository(transport, signalStore)
 
     @Provides
     @Singleton

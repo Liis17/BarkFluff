@@ -11,9 +11,11 @@ import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityChatBinding
+import com.barkfluff.client.crypto.E2EBootstrap
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.repository.SecretChatRepository
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
@@ -48,7 +50,7 @@ class SecretChatController(
         private const val SELF_LABEL = "Вы"
     }
 
-    fun start(initialMessage: String?) {
+    fun start(initialMessage: String?, initialMessageSenderUserId: Long = globalParam.userId) {
         binding.messageEditText.setHint(R.string.hint_secret_message)
         binding.sendButton.setOnClickListener { onSendClicked() }
         loadCachedHistory()
@@ -58,7 +60,7 @@ class SecretChatController(
             val sid = "init:${System.currentTimeMillis()}"
             val item = MessageItem(
                 messageId = longIdFor(sid),
-                senderId = globalParam.userId,
+                senderId = initialMessageSenderUserId,
                 text = firstMsg,
                 timestamp = System.currentTimeMillis(),
                 attachments = emptyList(),
@@ -142,6 +144,15 @@ class SecretChatController(
                 .collect { event ->
                     repo.decryptIncoming(event.envelope)
                         .onSuccess { decrypted ->
+                            if (decrypted.duplicate) {
+                                repo.ack(decrypted.messageId)
+                                return@onSuccess
+                            }
+                            if (decrypted.isPrekeyMessage) {
+                                activity.lifecycleScope.launch(Dispatchers.IO) {
+                                    E2EBootstrap.ensurePrekeyBundleRegistered(activity.applicationContext)
+                                }
+                            }
                             val sid = "in:${decrypted.messageId}"
                             val sentAt = decrypted.sentAtSeconds * 1000L
                             val label = "ID ${decrypted.senderUserId}"
