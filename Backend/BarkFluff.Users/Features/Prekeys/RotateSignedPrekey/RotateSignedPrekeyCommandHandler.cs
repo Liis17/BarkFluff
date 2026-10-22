@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Users.Features.Prekeys;
 using BarkFluff.Users.Persistence.Services;
 
 using MediatR;
@@ -13,25 +14,29 @@ public class RotateSignedPrekeyCommandHandler(
 {
     public async Task<Unit> Handle(RotateSignedPrekeyCommand command, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(userContext.DeviceId) || !Guid.TryParse(userContext.DeviceId, out var deviceGuid))
-        {
-            logger.LogWarning("RotateSignedPrekey: некорректный DeviceId {DeviceId}", userContext.DeviceId);
-            return Unit.Value;
-        }
+        var deviceGuid = PrekeyRequestContext.RequireDeviceId(userContext);
 
-        var signedPrekey = command.Request.SignedPrekey
-            ?? throw new InvalidOperationException("SignedPrekey обязателен");
+        var signedPrekey = command.Request.SignedPrekey;
+        var ecInput = signedPrekey == null
+            ? ((long PrekeyId, byte[] PublicKey, byte[] Signature)?)null
+            : (signedPrekey.PrekeyId, signedPrekey.PublicKey.ToByteArray(), signedPrekey.Signature.ToByteArray());
+        var kyberInput = command.Request.LastResortKyberPrekey == null
+            ? null
+            : new KyberPrekeyInput(
+                command.Request.LastResortKyberPrekey.PrekeyId,
+                command.Request.LastResortKyberPrekey.PublicKey.ToByteArray(),
+                command.Request.LastResortKyberPrekey.Signature.ToByteArray());
 
         await prekeyStorage.RotateSignedPrekeyAsync(
             deviceGuid,
             userContext.UserId,
-            signedPrekey.PrekeyId,
-            signedPrekey.PublicKey.ToByteArray(),
-            signedPrekey.Signature.ToByteArray());
+            ecInput,
+            kyberInput,
+            cancellationToken);
 
         logger.LogInformation(
-            "Сменён signed prekey устройства {DeviceId} (user {UserId}), новый id {PrekeyId}",
-            deviceGuid, userContext.UserId, signedPrekey.PrekeyId);
+            "Обновлены signed prekeys устройства {DeviceId} (user {UserId})",
+            deviceGuid, userContext.UserId);
 
         return Unit.Value;
     }

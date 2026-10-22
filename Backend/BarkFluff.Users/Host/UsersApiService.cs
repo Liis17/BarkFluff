@@ -32,6 +32,7 @@ using BarkFluff.Users.Features.UserSettings.GetUserSettings;
 using BarkFluff.Users.Features.UserSettings.SetChatBackground;
 using BarkFluff.Users.Features.UserSettings.SetGlobalChatBackground;
 using BarkFluff.Users.Features.Prekeys.FetchPrekeyBundle;
+using BarkFluff.Users.Features.Prekeys.GetOwnPrekeyStatus;
 using BarkFluff.Users.Features.Prekeys.ListPeerDevices;
 using BarkFluff.Users.Features.Prekeys.RegisterPrekeyBundle;
 using BarkFluff.Users.Features.Prekeys.ReplenishOneTimePrekeys;
@@ -470,7 +471,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
     public override async Task<RegisterPrekeyBundleResponse> RegisterPrekeyBundle(RegisterPrekeyBundleRequest request, ServerCallContext context)
     {
         _metrics.Increment("prekey_bundle_registrations");
-        await _mediator.Send(new RegisterPrekeyBundleCommand { Request = request });
+        await _mediator.Send(new RegisterPrekeyBundleCommand { Request = request }, context.CancellationToken);
         return new RegisterPrekeyBundleResponse();
     }
 
@@ -481,25 +482,31 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         {
             UserId = request.UserId,
             DeviceId = request.DeviceId,
-        });
+            RequirePqxdh = request.RequirePqxdh,
+        }, context.CancellationToken);
     }
 
     public override Task<ListPeerDevicesResponse> ListPeerDevices(ListPeerDevicesRequest request, ServerCallContext context)
     {
         _metrics.Increment("peer_device_listings");
-        return _mediator.Send(new ListPeerDevicesQuery { UserId = request.UserId });
+        return _mediator.Send(new ListPeerDevicesQuery { UserId = request.UserId }, context.CancellationToken);
     }
 
     public override Task<ReplenishOneTimePrekeysResponse> ReplenishOneTimePrekeys(ReplenishOneTimePrekeysRequest request, ServerCallContext context)
     {
         _metrics.Increment("one_time_prekey_replenishments");
-        return _mediator.Send(new ReplenishOneTimePrekeysCommand { Request = request });
+        return _mediator.Send(new ReplenishOneTimePrekeysCommand { Request = request }, context.CancellationToken);
     }
 
     public override async Task<RotateSignedPrekeyResponse> RotateSignedPrekey(RotateSignedPrekeyRequest request, ServerCallContext context)
     {
         _metrics.Increment("signed_prekey_rotations");
-        await _mediator.Send(new RotateSignedPrekeyCommand { Request = request });
+        await _mediator.Send(new RotateSignedPrekeyCommand { Request = request }, context.CancellationToken);
         return new RotateSignedPrekeyResponse();
+    }
+
+    public override Task<GetOwnPrekeyStatusResponse> GetOwnPrekeyStatus(GetOwnPrekeyStatusRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new GetOwnPrekeyStatusQuery(), context.CancellationToken);
     }
 }

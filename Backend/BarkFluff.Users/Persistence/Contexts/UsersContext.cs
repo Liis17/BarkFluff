@@ -34,6 +34,8 @@ public class UsersContext : DbContext
 
     public DbSet<OneTimePrekey> OneTimePrekeys { get; set; }
 
+    public DbSet<OneTimeKyberPrekey> OneTimeKyberPrekeys { get; set; }
+
     public DbSet<RemoteUser> RemoteUsers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -170,6 +172,20 @@ public class UsersContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<OneTimePrekey>()
+            .HasIndex(p => p.DeviceId);
+
+        // OneTimeKyberPrekey сохраняет consumed tombstones для идемпотентной публикации.
+        modelBuilder.Entity<OneTimeKyberPrekey>()
+            .HasOne(p => p.Device)
+            .WithMany()
+            .HasForeignKey(p => p.DeviceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OneTimeKyberPrekey>()
+            .HasIndex(p => new { p.DeviceId, p.PrekeyId })
+            .IsUnique();
+
+        modelBuilder.Entity<OneTimeKyberPrekey>()
             .HasIndex(p => p.DeviceId);
 
         // RemoteUser — кеш профилей пользователей чужих нод (этап 2.1).

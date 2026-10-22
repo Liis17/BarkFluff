@@ -17,7 +17,7 @@ namespace BarkFluff.Users.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gin");
@@ -119,32 +119,6 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("ChatMutes");
                 });
 
-            modelBuilder.Entity("BarkFluff.Users.Domain.UserChatSettings", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<Guid>("ChatId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ChatBackgroundFileId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "ChatId")
-                        .IsUnique();
-
-                    b.ToTable("UserChatSettings");
-                });
-
             modelBuilder.Entity("BarkFluff.Users.Domain.DevicePrekeyBundle", b =>
                 {
                     b.Property<Guid>("DeviceId")
@@ -155,6 +129,15 @@ namespace BarkFluff.Users.Persistence.Migrations
 
                     b.Property<byte[]>("IdentityPubkey")
                         .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<long?>("LastResortKyberPrekeyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte[]>("LastResortKyberPrekeyPublic")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("LastResortKyberPrekeySignature")
                         .HasColumnType("bytea");
 
                     b.Property<long>("RegistrationId")
@@ -179,6 +162,44 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("DevicePrekeyBundles");
                 });
 
+            modelBuilder.Entity("BarkFluff.Users.Domain.OneTimeKyberPrekey", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("PrekeyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte[]>("PublicKey")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("Signature")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.HasIndex("DeviceId", "PrekeyId")
+                        .IsUnique();
+
+                    b.ToTable("OneTimeKyberPrekeys");
+                });
+
             modelBuilder.Entity("BarkFluff.Users.Domain.OneTimePrekey", b =>
                 {
                     b.Property<long>("Id")
@@ -186,6 +207,9 @@ namespace BarkFluff.Users.Persistence.Migrations
                         .HasColumnType("bigint");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -253,6 +277,7 @@ namespace BarkFluff.Users.Persistence.Migrations
             modelBuilder.Entity("BarkFluff.Users.Domain.RemoteUser", b =>
                 {
                     b.Property<Guid>("Uuid")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("AvatarFileId")
@@ -267,11 +292,11 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<bool>("IsDeactivated")
                         .HasColumnType("boolean");
 
-                    b.Property<DateTime>("LastSyncedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("LastName")
                         .HasColumnType("text");
+
+                    b.Property<DateTime>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ServerName")
                         .IsRequired()
@@ -332,14 +357,14 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<int>("StorageLimitGb")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<Guid>("Uuid")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -377,6 +402,32 @@ namespace BarkFluff.Users.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("UserBadges");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.UserChatSettings", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ChatBackgroundFileId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ChatId")
+                        .IsUnique();
+
+                    b.ToTable("UserChatSettings");
                 });
 
             modelBuilder.Entity("BarkFluff.Users.Domain.UserContact", b =>
@@ -426,17 +477,17 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<bool>("NotificationsEnabled")
                         .HasColumnType("boolean");
 
-                    b.Property<BarkFluff.Users.Domain.DevicePushPlatform>("PushPlatform")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(BarkFluff.Users.Domain.DevicePushPlatform.Android);
-
                     b.Property<string>("OperationSystem")
                         .HasColumnType("text");
 
                     b.Property<string>("OriginalName")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("PushPlatform")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
@@ -518,22 +569,22 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("BarkFluff.Users.Domain.UserChatSettings", b =>
-                {
-                    b.HasOne("BarkFluff.Users.Domain.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("BarkFluff.Users.Domain.DevicePrekeyBundle", b =>
                 {
                     b.HasOne("BarkFluff.Users.Domain.UserDevice", "Device")
                         .WithOne()
                         .HasForeignKey("BarkFluff.Users.Domain.DevicePrekeyBundle", "DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.OneTimeKyberPrekey", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.UserDevice", "Device")
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -577,6 +628,17 @@ namespace BarkFluff.Users.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Badge");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.UserChatSettings", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -632,8 +694,7 @@ namespace BarkFluff.Users.Persistence.Migrations
 
             modelBuilder.Entity("BarkFluff.Users.Domain.User", b =>
                 {
-                    b.Navigation("Contact")
-                        .IsRequired();
+                    b.Navigation("Contact");
                 });
 #pragma warning restore 612, 618
         }

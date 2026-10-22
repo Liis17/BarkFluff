@@ -19,6 +19,12 @@ public class DevicePrekeyBundle
 
     public byte[] SignedPrekeySignature { get; set; } = Array.Empty<byte>();
 
+    public long? LastResortKyberPrekeyId { get; set; }
+
+    public byte[]? LastResortKyberPrekeyPublic { get; set; }
+
+    public byte[]? LastResortKyberPrekeySignature { get; set; }
+
     public DateTime SignedPrekeyRotatedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
