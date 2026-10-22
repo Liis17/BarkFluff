@@ -87,6 +87,7 @@ import com.barkfluff.client.utils.FileSaveUtils
 import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.utils.KeyboardHeightTracker
 import com.barkfluff.client.utils.StickerCache
+import com.barkfluff.client.stickers.StickerPanelController
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.MessageItemAnimator
@@ -221,8 +222,8 @@ class ChatActivity : AppCompatActivity() {
     private var inputPanelState = InputPanelState.NONE
     private var lastKnownKeyboardHeight = 0
     private var isTransitioningToStickers = false
-    private var stickerDataLoaded = false
     private lateinit var stickerPanelAdapter: StickerPanelAdapter
+    private lateinit var stickerPanelController: StickerPanelController
 
     // Callback назад — включён только когда стикер-панель или оверлей открыты
     private lateinit var backCallback: OnBackPressedCallback
@@ -1974,7 +1975,17 @@ class ChatActivity : AppCompatActivity() {
             },
             onStickerLongPress = { sticker ->
                 showStickerPreview(sticker)
-            }
+            },
+            onRetry = { stickerPanelController.retry() },
+        )
+
+        stickerPanelController = StickerPanelController(
+            scope = lifecycleScope,
+            gateway = stickerGateway,
+            loadCache = StickerCache::loadPanelData,
+            saveCache = StickerCache::savePanelData,
+            clearCache = StickerCache::clear,
+            render = { items -> stickerPanelAdapter.submitList(items) },
         )
 
         binding.stickerPreviewOverlay.setOnClickListener {
@@ -1986,7 +1997,7 @@ class ChatActivity : AppCompatActivity() {
             override fun getSpanSize(position: Int): Int {
                 return when (stickerPanelAdapter.getItemViewType(position)) {
                     StickerPanelAdapter.VIEW_TYPE_STICKER -> 1
-                    else -> 4 // PackHeader, Loading, Empty — full width
+                    else -> 4 // PackHeader, Loading, Empty, Error — full width
                 }
             }
         }
@@ -2046,9 +2057,7 @@ class ChatActivity : AppCompatActivity() {
         inputPanelState = InputPanelState.STICKER_PANEL
         backCallback.isEnabled = true
 
-        if (!stickerDataLoaded) {
-            loadStickerPanelData()
-        }
+        stickerPanelController.open()
     }
 
     private fun hideStickerPanel() {
@@ -2087,48 +2096,6 @@ class ChatActivity : AppCompatActivity() {
         binding.stickerPreviewOverlay.visibility = View.GONE
         binding.stickerPreviewImage.setImageDrawable(null)
         backCallback.isEnabled = inputPanelState == InputPanelState.STICKER_PANEL
-    }
-
-    private fun loadStickerPanelData() {
-        val cached = StickerCache.loadPanelData()
-        if (cached != null) {
-            stickerPanelAdapter.submitList(cached)
-            stickerDataLoaded = true
-            refreshStickerDataFromServer()
-            return
-        }
-        stickerPanelAdapter.submitList(listOf(StickerPanelItem.Loading))
-        refreshStickerDataFromServer()
-    }
-
-    private fun refreshStickerDataFromServer() {
-        lifecycleScope.launch {
-            try {
-                val packs = stickerGateway.packs().getOrNull().orEmpty()
-                if (packs.isEmpty()) {
-                    if (!stickerDataLoaded) stickerPanelAdapter.submitList(listOf(StickerPanelItem.Empty))
-                    return@launch
-                }
-
-                val allItems = mutableListOf<StickerPanelItem>()
-                for (pack in packs) {
-                    allItems.add(StickerPanelItem.PackHeader(
-                        packId = pack.id,
-                        packName = pack.name,
-                        stickerCount = pack.stickerCount,
-                        coverStickerId = pack.coverStickerId
-                    ))
-                    val stickers = stickerGateway.stickerPack(pack.id).getOrNull().orEmpty()
-                    allItems.addAll(stickers.map { StickerPanelItem.Sticker(it, pack.id) })
-                }
-                stickerPanelAdapter.submitList(allItems)
-                stickerDataLoaded = true
-                StickerCache.savePanelData(allItems)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading sticker panel data", e)
-                if (!stickerDataLoaded) stickerPanelAdapter.submitList(listOf(StickerPanelItem.Empty))
-            }
-        }
     }
 
     private fun sendStickerMessage(sticker: barkfluff.files.FilesApiOuterClass.StickerInfo) {
