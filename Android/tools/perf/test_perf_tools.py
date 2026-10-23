@@ -18,6 +18,7 @@ from capture_power import (
     parse_rails,
     parse_trace_bounds,
     require_trace_processor_success,
+    run_trace_query,
 )
 from perf_device import PerfDeviceError, verify_device
 from run_benchmark import parse_instrumentation_output
@@ -111,6 +112,43 @@ INSTRUMENTATION_CODE: 0
             parse_trace_bounds("start_ts,end_ts\nnot-a-number,20\n")
         with self.assertRaises(TraceProcessorError):
             parse_pings("completed_count,mean_duration_ms,unfinished_count\n1\n")
+
+    def test_trace_processor_uses_v58_query_argv_and_parses_stdout_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            directory = Path(temporary_dir)
+            trace_path = directory / "trace.perfetto-trace"
+            trace_path.touch()
+            query_path = directory / "pings.sql"
+            query_path.write_text("SELECT 1;\n", encoding="utf-8")
+            executable = Path("trace_processor_shell.exe")
+            stdout = read_sample("pings.csv")
+
+            with patch("capture_power.subprocess.run") as trace_processor_run:
+                trace_processor_run.return_value.returncode = 0
+                trace_processor_run.return_value.stdout = stdout
+                trace_processor_run.return_value.stderr = "Loading trace: ...\nTrace loaded.\n"
+
+                output = run_trace_query(executable, trace_path, query_path)
+
+        trace_processor_run.assert_called_once_with(
+            [
+                str(executable),
+                "query",
+                "-f",
+                str(directory / ".pings.sql"),
+                str(trace_path),
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        self.assertEqual(output, stdout)
+        self.assertEqual(
+            parse_pings(output),
+            {"completed_count": 199, "mean_duration_ms": 42.5, "unfinished_count": 0},
+        )
 
     def test_analysis_window_is_exactly_minutes_times_sixty(self) -> None:
         outputs = {

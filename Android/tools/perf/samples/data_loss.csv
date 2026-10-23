@@ -1,2 +1,2 @@
-name,idx,severity,source,value
+"name","idx","severity","source","value"
 long_trace_mode_bytes_overwritten,0,data_loss,trace,4096

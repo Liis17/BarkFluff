@@ -132,7 +132,7 @@ def run_trace_query(
     generated_query.write_text(query, encoding="utf-8")
     try:
         result = subprocess.run(
-            [str(executable), "query", "--format", "csv", "-f", str(generated_query), str(trace_path)],
+            [str(executable), "query", "-f", str(generated_query), str(trace_path)],
             capture_output=True,
             text=True,
             encoding="utf-8",
