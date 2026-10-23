@@ -35,3 +35,5 @@ include(":core")
 // V1 (Views/XML) — физически остаётся в своей папке.
 include(":app-v1")
 project(":app-v1").projectDir = file("Barkfluff.Client.Android/app")
+
+include(":benchmark")
