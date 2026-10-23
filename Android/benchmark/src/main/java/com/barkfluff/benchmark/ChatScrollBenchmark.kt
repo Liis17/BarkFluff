@@ -19,7 +19,6 @@ class ChatScrollBenchmark(private val compilationMode: CompilationMode) {
     @OptIn(ExperimentalMetricApi::class)
     @Test
     fun scrollFirstChat() {
-        var firstSetup = true
         benchmarkRule.measureRepeated(
             packageName = TARGET_PACKAGE,
             metrics = listOf(
@@ -29,14 +28,7 @@ class ChatScrollBenchmark(private val compilationMode: CompilationMode) {
             compilationMode = compilationMode,
             iterations = 5,
             setupBlock = {
-                if (firstSetup) {
-                    pressHome()
-                    startActivityAndWait()
-                    firstSetup = false
-                } else {
-                    pressBack()
-                }
-                waitForChatList()
+                ensureChatList()
                 firstChatCard().click()
                 waitForMessages()
             },

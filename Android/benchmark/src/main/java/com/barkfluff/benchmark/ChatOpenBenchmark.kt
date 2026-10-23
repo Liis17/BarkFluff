@@ -18,7 +18,6 @@ class ChatOpenBenchmark(private val compilationMode: CompilationMode) {
     @OptIn(ExperimentalMetricApi::class)
     @Test
     fun openFirstChat() {
-        var firstSetup = true
         benchmarkRule.measureRepeated(
             packageName = TARGET_PACKAGE,
             metrics = listOf(
@@ -28,14 +27,7 @@ class ChatOpenBenchmark(private val compilationMode: CompilationMode) {
             compilationMode = compilationMode,
             iterations = 10,
             setupBlock = {
-                if (firstSetup) {
-                    pressHome()
-                    startActivityAndWait()
-                    firstSetup = false
-                } else {
-                    pressBack()
-                }
-                waitForChatList()
+                ensureChatList()
             },
         ) {
             firstChatCard().click()
