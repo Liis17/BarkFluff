@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.os.StrictMode
 import android.os.Trace
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -138,6 +139,7 @@ class BarkFluffApplication : Application() {
     var pendingDeepLink: android.net.Uri? = null
 
     override fun onCreate() {
+        if (BuildConfig.DEBUG) enableStrictMode()
         PerfTrace.beginAppToChats()
         Trace.beginSection(PerfTrace.APPLICATION_ON_CREATE)
         try {
@@ -216,6 +218,28 @@ class BarkFluffApplication : Application() {
                 }
             }
         })
+    }
+
+    private fun enableStrictMode() {
+        StrictMode.setThreadPolicy(
+            StrictMode.ThreadPolicy.Builder()
+                .detectDiskReads()
+                .detectDiskWrites()
+                .detectNetwork()
+                .detectCustomSlowCalls()
+                .detectResourceMismatches()
+                .penaltyLog()
+                .build()
+        )
+        StrictMode.setVmPolicy(
+            StrictMode.VmPolicy.Builder()
+                .detectLeakedClosableObjects()
+                .detectLeakedSqlLiteObjects()
+                .detectActivityLeaks()
+                .detectLeakedRegistrationObjects()
+                .penaltyLog()
+                .build()
+        )
     }
 
     override fun onTerminate() {
