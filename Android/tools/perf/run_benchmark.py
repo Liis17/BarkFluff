@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,6 +38,43 @@ INSTRUMENTATION = "com.barkfluff.benchmark/androidx.test.runner.AndroidJUnitRunn
 REMOTE_OUTPUT = "/sdcard/Android/media/com.barkfluff.benchmark/"
 
 
+def parse_instrumentation_output(output: str) -> str | None:
+    if "INSTRUMENTATION_FAILED" in output:
+        return "INSTRUMENTATION_FAILED"
+
+    crash = re.search(r"(?m)^INSTRUMENTATION_RESULT: shortMsg=(.+)$", output)
+    if crash:
+        return f"process crash: {crash.group(1).strip()}"
+
+    if "FAILURES!!!" in output:
+        counts = re.search(
+            r"(?m)^Tests run:\s*(\d+)\s*,\s*Failures:\s*(\d+)\s*$",
+            output,
+        )
+        failed_tests = re.findall(r"(?m)^\s*\d+\)\s+(.+)$", output)
+        details = []
+        if counts:
+            details.append(f"{counts.group(1)} tests, {counts.group(2)} failures")
+        if failed_tests:
+            names = ", ".join(failed_tests[:3])
+            if len(failed_tests) > 3:
+                names += ", …"
+            details.append(f"failing tests: {names}")
+        return "; ".join(details) if details else "FAILURES!!!"
+
+    runner_summaries = [
+        line.strip()
+        for line in output.splitlines()
+        if line.strip().startswith("OK (") or line.strip() == "FAILURES!!!"
+    ]
+    if (
+        not runner_summaries
+        or not re.fullmatch(r"OK \(\d+ tests?\)", runner_summaries[-1])
+    ):
+        return "missing final OK (...) summary"
+    return None
+
+
 def run_benchmark(
     serial: str,
     expect_model: str,
@@ -69,15 +107,20 @@ def run_benchmark(
         adb_command=adb_command,
         check=False,
     )
+    instrumentation_output = instrumentation.stdout + instrumentation.stderr
     (output_dir / "instrumentation.txt").write_text(
-        instrumentation.stdout + instrumentation.stderr,
+        instrumentation_output,
         encoding="utf-8",
     )
     run_adb(serial, "pull", REMOTE_OUTPUT, str(output_dir), adb_command=adb_command)
     print(f"Результаты Macrobenchmark сохранены: {output_dir}")
-    if instrumentation.returncode != 0:
+    failure_summary = parse_instrumentation_output(instrumentation_output)
+    if failure_summary is not None:
+        print(f"Проблема Macrobenchmark: {failure_summary}", file=sys.stderr)
+    if failure_summary is not None or instrumentation.returncode != 0:
+        reason = failure_summary or f"код adb {instrumentation.returncode}"
         raise PerfDeviceError(
-            f"Инструментирование завершилось с кодом {instrumentation.returncode}; "
+            f"Инструментирование завершилось с ошибкой ({reason}); "
             f"результаты сохранены в {output_dir}."
         )
     return 0

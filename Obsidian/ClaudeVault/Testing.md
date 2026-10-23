@@ -43,7 +43,13 @@ py -3 tools/perf/run_benchmark.py --serial <serial> --expect-model "Pixel 10 Pro
 
 Не очищай данные приложения: прогоны используют сохранённый логин.
 
-Полный запуск из `Android/`: `py -3 tools/perf/run_benchmark.py --serial <serial> --expect-model "Pixel 10 Pro"`; `--class` запускает один benchmark-класс. Макробенчмарки покрывают холодный старт, открытие чата и прокрутку в режимах `CompilationMode.None` и `Partial` с тремя итерациями прогрева. Для старта они ждут `chatTitle`, для чата — непустой `messagesRecyclerView`; отсутствие залогиненного списка приводит к понятной ошибке. `BF:appToChats` заканчивается на первом реальном чате, `BF:chatOpen` — на первом непустом списке сообщений, а `BF:onlinePing` остаётся async-секцией. Трейсы отдельных итераций Macrobenchmark находятся в его `build/outputs`; скачанные отчёты и логи — в `Android/tools/perf/out/<timestamp>/`.
+Полный запуск из `Android/`: `py -3 tools/perf/run_benchmark.py --serial <serial> --expect-model "Pixel 10 Pro"`; `--class` запускает один benchmark-класс. Макробенчмарки покрывают холодный старт, открытие чата и прокрутку в режимах `CompilationMode.None` и `Partial` с тремя итерациями прогрева.
+
+Перед каждой итерацией открытие и прокрутка продолжают работу с видимого списка чатов, возвращаются из открытого чата или заново запускают приложение при неизвестном состоянии; финальное ожидание `chatTitle` сохраняет понятную ошибку для незалогиненного аккаунта.
+
+`run_benchmark.py` сохраняет результаты и завершает работу с ошибкой при `FAILURES!!!`, сбое instrumentation или отсутствии финальной строки `OK (...)`, даже когда `am instrument` вернул код 0.
+
+`BF:appToChats` заканчивается на первом реальном чате, `BF:chatOpen` — на первом непустом списке сообщений, а `BF:onlinePing` остаётся async-секцией. Трейсы отдельных итераций Macrobenchmark находятся в его `build/outputs`; скачанные отчёты и логи — в `Android/tools/perf/out/<timestamp>/`.
 
 Энергозамер запускается из `Android/` командой `py -3 tools/perf/capture_power.py --serial <serial> --expect-model "Pixel 10 Pro" --trace-processor "C:\Tools\Perfetto\trace_processor_shell.exe"`. По умолчанию записываются 60 секунд прогрева, 10 минут замера и 30 секунд запаса; SQL-анализ использует ровно `minutes * 60` секунд начиная с `trace_bounds.start_ts + warmup`. Без trace processor анализ получает статус `NOT_RUN`; трейс всё равно сохраняется. `summary.json`, сырой Perfetto trace и справочный `batterystats.txt` остаются в папке прогона. При ошибке анализа, ошибках trace processor или потерях данных команда завершается с ненулевым кодом.
 
