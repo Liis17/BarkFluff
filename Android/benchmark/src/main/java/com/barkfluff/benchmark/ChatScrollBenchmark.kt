@@ -23,7 +23,8 @@ class ChatScrollBenchmark(private val compilationMode: CompilationMode) {
             packageName = TARGET_PACKAGE,
             metrics = listOf(
                 FrameTimingMetric(),
-                TraceSectionMetric("RV OnBindView", TraceSectionMetric.Mode.Sum),
+                TraceSectionMetric("RV onBindViewHolder%", TraceSectionMetric.Mode.Sum),
+                TraceSectionMetric("RV onCreateViewHolder%", TraceSectionMetric.Mode.Sum),
             ),
             compilationMode = compilationMode,
             iterations = 5,
