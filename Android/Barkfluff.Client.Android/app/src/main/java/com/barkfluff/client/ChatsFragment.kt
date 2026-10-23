@@ -26,6 +26,7 @@ import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.FragmentChatsBinding
 import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.domain.gateway.FileMediaGateway
+import com.barkfluff.client.perf.PerfTrace
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
@@ -115,7 +116,13 @@ class ChatsFragment : Fragment() {
                     if (binding.chatRecyclerView.adapter !== chatAdapter) {
                         binding.chatRecyclerView.adapter = chatAdapter
                     }
-                    chatAdapter.submitList(state.displayItems)
+                    val hasRealChat = state.displayItems.any { !it.isFooter }
+                    chatAdapter.submitList(state.displayItems) {
+                        if (hasRealChat && isAdded && PerfTrace.markFirstChatDisplayed()) {
+                            PerfTrace.endAppToChats()
+                            requireActivity().reportFullyDrawn()
+                        }
+                    }
                     showEmptyState(state.displayItems.isEmpty())
                     if (initialScrollPending && state.displayItems.isNotEmpty()) {
                         initialScrollPending = false
@@ -475,6 +482,7 @@ class ChatsFragment : Fragment() {
     }
 
     private fun onChatClicked(chat: ChatSummary) {
+        PerfTrace.beginChatOpen()
         // Находим display item для получения дополнительной информации
         val displayItem = chatAdapter.currentList.find { !it.isFooter && it.chatData.id == chat.id }
 
@@ -485,7 +493,7 @@ class ChatsFragment : Fragment() {
                 title = displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.create_chat_private) },
                 inviteState = chat.privateInviteState.number,
                 inviterUserId = chat.privateInviterUserId
-            ))
+            ).putExtra(PerfTrace.EXTRA_CHAT_OPEN, true))
             return
         }
 
@@ -495,6 +503,7 @@ class ChatsFragment : Fragment() {
             putExtra("chat_avatar_file_id", displayItem?.displayAvatarFileId ?: chat.pictureFileId.ifBlank { null })
             putExtra("is_group_chat", chat.isGroupChat)
             putExtra("other_user_id", displayItem?.otherUserId ?: 0L)
+            putExtra(PerfTrace.EXTRA_CHAT_OPEN, true)
         }
 
         // Устанавливаем чат как открытый перед запуском Activity
