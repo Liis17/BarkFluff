@@ -21,6 +21,7 @@ import com.barkfluff.client.voice.VoiceRecordingController
 import com.barkfluff.client.voice.VoiceRecordingMode
 import com.barkfluff.client.voice.VoiceRecordingState
 import com.barkfluff.client.voice.VoiceDraftPreview
+import com.barkfluff.client.perf.PerfTrace
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -137,6 +138,8 @@ class ChatActivity : AppCompatActivity() {
     private val viewModel: ChatViewModel by viewModels()
     private var submittedItemsVersion = 0L
     private var committedItemsVersion = 0L
+    private var chatOpenTracePending = false
+    private var chatOpenTraceEnded = false
     private var scrollToBottomJob: Job? = null
 
     private lateinit var globalParam: GlobalParam
@@ -359,6 +362,7 @@ class ChatActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        chatOpenTracePending = intent.getBooleanExtra(PerfTrace.EXTRA_CHAT_OPEN, false)
         binding = ActivityChatBinding.inflate(layoutInflater)
         setContentView(binding.root)
         messageActionsOverlay = MessageActionsOverlay(binding.chatRootLayout)
@@ -477,6 +481,10 @@ class ChatActivity : AppCompatActivity() {
                     val version = ++submittedItemsVersion
                     messageAdapter.submitList(messageRowProjector.project(state.items)) {
                         if (version != submittedItemsVersion) return@submitList
+                        if (chatOpenTracePending && !chatOpenTraceEnded && messageAdapter.currentList.isNotEmpty()) {
+                            PerfTrace.endChatOpen()
+                            chatOpenTraceEnded = true
+                        }
                         committedItemsVersion = version
                         if (applyMessageNavigation(listIsCommitted = true)) {
                             // A target has priority while its window is loading or committing.
@@ -3026,6 +3034,10 @@ class ChatActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        if (chatOpenTracePending && !chatOpenTraceEnded) {
+            PerfTrace.endChatOpen()
+            chatOpenTraceEnded = true
+        }
         binding.messagesRecyclerView.adapter = null
         super.onDestroy()
         // Сбрасываем открытый чат
