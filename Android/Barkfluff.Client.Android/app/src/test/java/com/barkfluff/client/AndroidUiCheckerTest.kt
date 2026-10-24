@@ -7,7 +7,12 @@ class AndroidUiCheckerTest {
     @Test
     fun `Android UI source passes localization checks`() {
         val checkerScript = requireNotNull(System.getProperty("androidUiCheckerScript"))
-        val process = ProcessBuilder("python3", checkerScript)
+        val pythonCommand = if (System.getProperty("os.name").orEmpty().startsWith("Windows", ignoreCase = true)) {
+            listOf("py", "-3")
+        } else {
+            listOf("python3")
+        }
+        val process = ProcessBuilder(pythonCommand + checkerScript)
             .redirectErrorStream(true)
             .start()
         val output = process.inputStream.bufferedReader().use { it.readText() }

@@ -2,6 +2,7 @@ package com.barkfluff.client
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
@@ -294,6 +295,23 @@ class SplashActivity : AppCompatActivity() {
 
     private fun navigateToLogin() {
         val intent = Intent(this, LoginActivity::class.java)
+        if (this.intent.hasExtra(NotificationHelper.EXTRA_KIND)) {
+            intent.action = this.intent.action
+            intent.data = this.intent.data
+            listOf(
+                NotificationHelper.EXTRA_SCOPE_ID,
+                NotificationHelper.EXTRA_KIND,
+                NotificationHelper.EXTRA_CHAT_ID,
+                NotificationHelper.EXTRA_EVENT_ID,
+                NotificationHelper.EXTRA_THREAD_ID,
+            ).forEach { key ->
+                if (this.intent.hasExtra(key)) intent.putExtra(key, this.intent.getStringExtra(key))
+            }
+            if (this.intent.hasExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT)) {
+                intent.putExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT,
+                    this.intent.getBooleanExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT, false))
+            }
+        }
         startActivity(intent)
         finish()
     }
@@ -306,16 +324,22 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun navigateToChats() {
+        val expectedScope = intent.getStringExtra(NotificationHelper.EXTRA_SCOPE_ID)
+        val isNotificationRoute = intent.hasExtra(NotificationHelper.EXTRA_KIND)
+        val beforeInitScope = com.barkfluff.client.cache.CacheScope.from(globalParam)?.id
         // Пересоздаём каналы с актуальным токеном (interceptor читает GlobalParam динамически,
         // но каналы могли остаться от предыдущей сессии).
         clientRegistry.recreateAllClients(globalParam, this)
 
         val intent = Intent(this, MainActivity::class.java)
-        // Пробрасываем chatId из уведомления, если есть
-        val chatId = MainActivity.pendingChatId
-        if (chatId != null) {
-            intent.putExtra(NotificationHelper.EXTRA_CHAT_ID, chatId)
-            MainActivity.pendingChatId = null
+        val afterInitScope = com.barkfluff.client.cache.CacheScope.from(GlobalParam(this))?.id
+        if (isNotificationRoute && (expectedScope != beforeInitScope || expectedScope != afterInitScope)) {
+            Log.w("SplashActivity", "Forwarding notification route for a stale scope to MainActivity for rejection")
+        }
+        if (isNotificationRoute) {
+            intent.action = this.intent.action
+            intent.data = this.intent.data
+            this.intent.extras?.let(intent::putExtras)
         }
         startActivity(intent)
         finish()

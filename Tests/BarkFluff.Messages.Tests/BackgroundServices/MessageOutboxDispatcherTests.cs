@@ -23,7 +23,8 @@ public class MessageOutboxDispatcherTests
     {
         var observed = new List<(ActivityContext Context, string? Correlation)>();
         var publisher = new Mock<IPublishEndpoint>();
-        publisher.Setup(endpoint => endpoint.Publish(It.IsAny<NewMessageEvent>(), It.IsAny<CancellationToken>()))
+        publisher.Setup(endpoint => endpoint.Publish(
+                It.IsAny<NewMessageEvent>(), It.IsAny<IPipe<PublishContext<NewMessageEvent>>>(), It.IsAny<CancellationToken>()))
             .Returns(() =>
             {
                 observed.Add((Activity.Current!.Context, TraceContext.CorrelationId));
@@ -73,6 +74,7 @@ public class MessageOutboxDispatcherTests
         publishEndpoint
             .Setup(endpoint => endpoint.Publish(
                 It.IsAny<NewMessageEvent>(),
+                It.IsAny<IPipe<PublishContext<NewMessageEvent>>>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         await using var provider = CreateProvider(publishEndpoint.Object);
@@ -87,7 +89,73 @@ public class MessageOutboxDispatcherTests
         row.Status.Should().Be(MessageOutboxStatus.Delivered);
         publishEndpoint.Verify(endpoint => endpoint.Publish(
             It.Is<NewMessageEvent>(message => message.EventId == eventId),
+            It.IsAny<IPipe<PublishContext<NewMessageEvent>>>(),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DispatchOnceAsync_PrioritizesNewMessagesAheadOfLargeReadBacklog()
+    {
+        var readEvents = 0;
+        var publishEndpoint = new Mock<IPublishEndpoint>();
+        publishEndpoint.Setup(endpoint => endpoint.Publish(
+                It.IsAny<NewMessageEvent>(), It.IsAny<IPipe<PublishContext<NewMessageEvent>>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        publishEndpoint.Setup(endpoint => endpoint.Publish(
+                It.IsAny<MessageReadEvent>(), It.IsAny<IPipe<PublishContext<MessageReadEvent>>>(), It.IsAny<CancellationToken>()))
+            .Callback<MessageReadEvent, IPipe<PublishContext<MessageReadEvent>>, CancellationToken>((_, _, _) => readEvents++)
+            .Returns(Task.CompletedTask);
+        await using var provider = CreateProvider(publishEndpoint.Object);
+        long newMessageRowId;
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<MessagesContext>();
+            var now = DateTime.UtcNow;
+            for (var index = 0; index < 1_000; index++)
+            {
+                var readEvent = new MessageReadEvent { ChatId = Guid.NewGuid(), MessageId = index + 1 };
+                context.MessageOutbox.Add(new MessageOutboxEntry
+                {
+                    EventId = Guid.NewGuid(),
+                    MessageId = index + 1,
+                    EventKind = MessageOutboxEventKind.ReadBy,
+                    Payload = JsonSerializer.SerializeToUtf8Bytes(readEvent),
+                    CreatedAt = now,
+                    NextAttemptAt = now,
+                });
+            }
+            var newEventId = Guid.NewGuid();
+            var newEvent = new NewMessageEvent { EventId = newEventId };
+            var newRow = new MessageOutboxEntry
+            {
+                EventId = newEventId,
+                MessageId = 2_000,
+                Payload = JsonSerializer.SerializeToUtf8Bytes(newEvent),
+                CreatedAt = now,
+                NextAttemptAt = now,
+            };
+            context.MessageOutbox.Add(newRow);
+            await context.SaveChangesAsync();
+            newMessageRowId = newRow.Id;
+        }
+
+        var metrics = new MetricsCollector();
+        await new MessageOutboxDispatcher(
+            provider.GetRequiredService<IServiceScopeFactory>(), metrics,
+            TestHelper.CreateLogger<MessageOutboxDispatcher>())
+            .DispatchOnceAsync(CancellationToken.None);
+
+        readEvents.Should().Be(99);
+        await using var verification = provider.CreateAsyncScope();
+        var db = verification.ServiceProvider.GetRequiredService<MessagesContext>();
+        (await db.MessageOutbox.SingleAsync(entry => entry.Id == newMessageRowId)).Status
+            .Should().Be(MessageOutboxStatus.Delivered);
+        var pendingReads = await db.MessageOutbox.CountAsync(entry =>
+            entry.EventKind == MessageOutboxEventKind.ReadBy && entry.Status == MessageOutboxStatus.Pending);
+        pendingReads.Should().Be(901);
+        var counters = metrics.SnapshotAndReset();
+        counters["message_outbox_new_message_delivered"].Should().Be(1);
+        counters["message_outbox_read_by_delivered"].Should().Be(99);
     }
 
     [Fact]
@@ -97,6 +165,7 @@ public class MessageOutboxDispatcherTests
         publishEndpoint
             .Setup(endpoint => endpoint.Publish(
                 It.IsAny<NewMessageEvent>(),
+                It.IsAny<IPipe<PublishContext<NewMessageEvent>>>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("RabbitMQ unavailable"));
         await using var provider = CreateProvider(publishEndpoint.Object);
@@ -122,6 +191,7 @@ public class MessageOutboxDispatcherTests
         publishEndpoint
             .Setup(endpoint => endpoint.Publish(
                 It.IsAny<NewMessageEvent>(),
+                It.IsAny<IPipe<PublishContext<NewMessageEvent>>>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         await using var provider = CreateProvider(publishEndpoint.Object);
@@ -148,6 +218,7 @@ public class MessageOutboxDispatcherTests
         publishEndpoint
             .Setup(endpoint => endpoint.Publish(
                 It.IsAny<NewMessageEvent>(),
+                It.IsAny<IPipe<PublishContext<NewMessageEvent>>>(),
                 It.IsAny<CancellationToken>()))
             .Returns(() => brokerAvailable
                 ? Task.CompletedTask
@@ -180,6 +251,7 @@ public class MessageOutboxDispatcherTests
         delivered.Attempts.Should().Be(1);
         publishEndpoint.Verify(endpoint => endpoint.Publish(
             It.IsAny<NewMessageEvent>(),
+            It.IsAny<IPipe<PublishContext<NewMessageEvent>>>(),
             It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
@@ -190,6 +262,7 @@ public class MessageOutboxDispatcherTests
         publishEndpoint
             .Setup(endpoint => endpoint.Publish(
                 It.IsAny<NewMessageEvent>(),
+                It.IsAny<IPipe<PublishContext<NewMessageEvent>>>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("RabbitMQ unavailable"));
         await using var provider = CreateProvider(publishEndpoint.Object);

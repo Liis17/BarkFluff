@@ -2,8 +2,11 @@ package com.barkfluff.client.notifications
 
 import android.Manifest
 import android.app.NotificationManager
+import android.app.RemoteInput
 import android.content.Context
+import android.content.Intent
 import android.os.Build
+import android.os.Bundle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.barkfluff.client.BarkFluffApplication
@@ -21,7 +24,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /** Multi-process fixture: run each step separately with -e cold_start_step <step>.
- * Kill the app between steps; SystemUI sends the saved Reply/Hide PendingIntents while it is dead.
+ * Stop the app after seed; the test package sends the saved Reply/Hide PendingIntents while it is dead.
  */
 @RunWith(AndroidJUnit4::class)
 class ColdNotificationScenarioTest {
@@ -74,8 +77,50 @@ class ColdNotificationScenarioTest {
         assertEquals(OutgoingMessageState.QUEUED, record.state)
         assertEquals(0L, record.replyToMessageId)
         assertNull(record.draftGeneration)
-        assertEquals(1001L, application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).single().messageId)
-        assertFalse(manager.activeNotifications.any { it.tag == null && it.id == CHAT.hashCode() })
+        assertEquals(1001L, record.notificationReadMessageId)
+        assertEquals(1001L, application.chatCacheRepository
+            .readyPendingChatReadRanges(scope(), Long.MAX_VALUE).single().upToMessageId)
+        val card = manager.activeNotifications.single {
+            it.tag == "regular:${CacheScope.from(GlobalParam(context))?.id}:$CHAT" && it.id == 0
+        }.notification
+        val ownReply = androidx.core.app.NotificationCompat.MessagingStyle
+            .extractMessagingStyleFromNotification(card)!!.messages
+            .single { it.extras.getString(NotificationHelper.EXTRA_OPERATION_ID) == operations.single() }
+        assertTrue(androidx.core.app.NotificationCompat.MessagingStyle
+            .extractMessagingStyleFromNotification(card)!!.messages.any {
+                it.extras.getLong(NotificationHelper.EXTRA_SERVER_MESSAGE_ID) == 1001L
+            })
+        assertEquals("cold_reply", ownReply.extras.getString(NotificationHelper.EXTRA_REPLY_BODY))
+        assertTrue(ownReply.extras.getString(NotificationHelper.EXTRA_REPLY_STATUS) in setOf("queued", "sent", "failed"))
+        assertTrue(card.actions.any { it.remoteInputs?.any { remote ->
+            remote.resultKey == NotificationHelper.REPLY_INPUT_KEY
+        } == true })
+    }
+
+    @Test
+    fun sendReply() = runBlocking {
+        step("sendReply")
+        val notification = manager.activeNotifications.single {
+            it.tag == "regular:${scope().id}:$CHAT" && it.id == 0
+        }.notification
+        val action = notification.actions.single { candidate ->
+            candidate.remoteInputs?.any { it.resultKey == NotificationHelper.REPLY_INPUT_KEY } == true
+        }
+        val fillIn = Intent()
+        RemoteInput.addResultsToIntent(action.remoteInputs, fillIn, Bundle().apply {
+            putCharSequence(NotificationHelper.REPLY_INPUT_KEY, "cold_reply")
+        })
+        action.actionIntent.send(context, 0, fillIn)
+
+        withTimeout(10_000) {
+            while (manager.activeNotifications.none { active ->
+                    active.tag == "regular:${scope().id}:$CHAT" &&
+                        androidx.core.app.NotificationCompat.MessagingStyle
+                            .extractMessagingStyleFromNotification(active.notification)?.messages?.any { message ->
+                                message.extras.getString(NotificationHelper.EXTRA_REPLY_BODY) == "cold_reply"
+                            } == true
+                }) delay(25)
+        }
     }
 
     @Test
@@ -88,19 +133,50 @@ class ColdNotificationScenarioTest {
     }
 
     @Test
+    fun sendHide() = runBlocking {
+        step("sendHide")
+        val encrypted = manager.activeNotifications.filter { active ->
+            active.notification.extras.getString(NotificationHelper.EXTRA_SCOPE_ID) == scope().id &&
+                active.notification.extras.getString(NotificationHelper.EXTRA_KIND) in
+                listOf(NotificationHelper.KIND_PRIVATE, NotificationHelper.KIND_SECRET)
+        }
+        assertEquals(setOf(NotificationHelper.KIND_PRIVATE, NotificationHelper.KIND_SECRET),
+            encrypted.map { it.notification.extras.getString(NotificationHelper.EXTRA_KIND) }.toSet())
+        encrypted.forEach { active ->
+            val hide = active.notification.actions.single()
+            hide.actionIntent.send(context, 0, null)
+        }
+        withTimeout(5_000) {
+            while (manager.activeNotifications.any { active ->
+                    active.notification.extras.getString(NotificationHelper.EXTRA_SCOPE_ID) == scope().id &&
+                        active.notification.extras.getString(NotificationHelper.EXTRA_KIND) in
+                        listOf(NotificationHelper.KIND_PRIVATE, NotificationHelper.KIND_SECRET)
+                }) delay(25)
+        }
+    }
+
+    @Test
     fun verifyIndependentReadRetry() = runBlocking {
         step("verifyIndependentReadRetry")
         val operationId = application.chatCacheRepository.outgoingOperationIds(scope()).single()
         val before = application.chatCacheRepository.outgoing(scope(), operationId)
-        application.outgoingMessageQueue.drainPendingReads(scope(), Long.MAX_VALUE) {
+        application.outgoingMessageQueue.drainPendingChatReadRanges(
+            scope(), Long.MAX_VALUE,
+            markRange = { _, _ ->
             Result.failure(IOException("offline"))
-        }
-        assertTrue(application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).single().attemptCount > 0)
-        application.outgoingMessageQueue.drainPendingReads(scope(), Long.MAX_VALUE) { ids ->
-            assertEquals(listOf(1001L), ids)
-            Result.success(Unit)
-        }
-        assertTrue(application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).isEmpty())
+            },
+        )
+        assertTrue(application.chatCacheRepository
+            .readyPendingChatReadRanges(scope(), Long.MAX_VALUE).single().attemptCount > 0)
+        application.outgoingMessageQueue.drainPendingChatReadRanges(
+            scope(), Long.MAX_VALUE,
+            markRange = { chatId, cutoff ->
+                assertEquals(CHAT, chatId)
+                assertEquals(1001L, cutoff)
+                Result.success(false)
+            },
+        )
+        assertTrue(application.chatCacheRepository.readyPendingChatReadRanges(scope(), Long.MAX_VALUE).isEmpty())
         assertEquals(before, application.chatCacheRepository.outgoing(scope(), operationId))
         assertEquals(setOf(operationId), application.chatCacheRepository.outgoingOperationIds(scope()).toSet())
     }
