@@ -21,6 +21,13 @@ import kotlin.math.min
 import kotlin.math.pow
 
 /**
+ * Updates шлёт пустой NewMessageEvent сразу после подписки и как heartbeat (keep-alive для прокси):
+ * без chat_id и сообщения. Такие события не являются сообщениями и не должны попадать в UI.
+ */
+internal fun UpdatesApiOuterClass.NewMessageEvent.isHeartbeat(): Boolean =
+    chatId.isBlank() || !hasMessage() || message.id <= 0L
+
+/**
  * Сервис реального времени — подписывается на обновления сообщений, прочтений и онлайн-статусов.
  * Аналог RealtimeUpdateService + OnlineStatusService из WPF клиента.
  *
@@ -321,6 +328,7 @@ class RealtimeService(
         hasEstablishedMessagesConnection = true
         _connectionState.value = ConnectionState.CONNECTED
         client.subscribeNewMessages(request).collect { event ->
+            if (event.isHeartbeat()) return@collect
             val msgId = event.message.id
             // Dedup
             synchronized(seenMessageIds) {
