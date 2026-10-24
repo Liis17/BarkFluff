@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import net.zetetic.database.sqlcipher.SQLiteDatabase
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import java.io.File
 import java.security.SecureRandom
@@ -905,7 +906,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
                 // Composer previews are deliberately outside Room so they survive process death;
                 // a full cache clear/logout must remove that journal and its private bytes too.
                 File(appContext.noBackupFilesDir, "composer").deleteRecursively()
-                securePreferences.edit().remove(KEY_PASSPHRASE).apply()
+                securePreferences.edit().remove(KEY_PASSPHRASE).remove(KEY_RAW_KEY).apply()
             }
         }
         _clearedEvents.tryEmit(Unit)
@@ -930,11 +931,40 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
     }
 
     private fun buildDatabase(): ChatCacheDatabase {
-        val passphrase = databasePassphrase()
+        val key = databaseKey()
         return Room.databaseBuilder(appContext, ChatCacheDatabase::class.java, DATABASE_NAME)
-            .openHelperFactory(SupportOpenHelperFactory(passphrase))
+            .openHelperFactory(SupportOpenHelperFactory(key))
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
+    }
+
+    /**
+     * Raw key once derived from the passphrase, so connections skip PBKDF2. The file is never re-encrypted and
+     * the passphrase stays valid for older builds; until derivation succeeds the passphrase is used as before.
+     */
+    private fun databaseKey(): ByteArray {
+        securePreferences.getString(KEY_RAW_KEY, null)?.let { return it.toByteArray(Charsets.US_ASCII) }
+        val passphrase = databasePassphrase()
+        val rawKey = deriveVerifiedRawKey(passphrase) ?: return passphrase
+        securePreferences.edit().putString(KEY_RAW_KEY, rawKey).apply()
+        return rawKey.toByteArray(Charsets.US_ASCII)
+    }
+
+    private fun deriveVerifiedRawKey(passphrase: ByteArray): String? {
+        val file = appContext.getDatabasePath(DATABASE_NAME)
+        if (file.length() < SqlCipherRawKey.SALT_LENGTH) return null
+        return runCatching {
+            val salt = file.inputStream().use { input ->
+                ByteArray(SqlCipherRawKey.SALT_LENGTH).also { check(input.read(it) == it.size) }
+            }
+            val rawKey = SqlCipherRawKey.format(SqlCipherRawKey.deriveFromPassphrase(passphrase, salt))
+            SQLiteDatabase.openDatabase(
+                file.path, rawKey.toByteArray(Charsets.US_ASCII), null, SQLiteDatabase.OPEN_READWRITE, null, null
+            ).use { db -> db.rawQuery("SELECT count(*) FROM sqlite_master", null).use { it.moveToFirst() } }
+            rawKey
+        }.onFailure { error ->
+            Log.w("ChatCacheRepository", "Raw database key unavailable, keeping passphrase", error)
+        }.getOrNull()
     }
 
     private fun databasePassphrase(): ByteArray {
@@ -1161,6 +1191,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         const val DATABASE_NAME = "offline_chat_cache.db"
         const val KEY_PREFERENCES = "offline_chat_cache_secure"
         const val KEY_PASSPHRASE = "database_passphrase"
+        const val KEY_RAW_KEY = "database_raw_key"
         const val SEPARATOR = ""
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
