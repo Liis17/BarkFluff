@@ -8,6 +8,7 @@ import barkfluff.onliner.OnlinerApiOuterClass
 import barkfluff.updates.UpdatesApiOuterClass
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.crypto.CryptoStoreScope
+import com.barkfluff.client.perf.PerfTrace
 import io.grpc.Status
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.*
@@ -561,7 +562,12 @@ class RealtimeService(
                 val client = clientRegistry.onlinerClient
                 if (client != null) {
                     val request = OnlinerApiOuterClass.SetOnlineStatusRequest.getDefaultInstance()
-                    client.setOnlineStatus(request)
+                    val cookie = PerfTrace.beginOnlinePing()
+                    try {
+                        client.setOnlineStatus(request)
+                    } finally {
+                        PerfTrace.endOnlinePing(cookie)
+                    }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Online ping failed: ${e.message}")
