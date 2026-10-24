@@ -12,6 +12,7 @@ import java.security.KeyStore
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
@@ -44,7 +45,13 @@ class TlsTransportFactory internal constructor(
 
     fun createGrpcChannel(address: String): ManagedChannel {
         val endpoint = TlsEndpoint.parseAddress(address, TlsVariantPolicy.allowCleartext)
+        // HTTP/2 PING only while calls are active (streams stop in background): a connection silently
+        // dropped by NAT or a dead network fails within ~50 s instead of hanging until TCP gives up. The timeout
+        // leaves room for a PING queued behind a file upload on a slow uplink.
         val builder = OkHttpChannelBuilder.forAddress(endpoint.host, endpoint.port)
+            .keepAliveTime(GRPC_KEEPALIVE_TIME_SECONDS, TimeUnit.SECONDS)
+            .keepAliveTimeout(GRPC_KEEPALIVE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .keepAliveWithoutCalls(false)
         return TlsVariantPolicy.configureGrpcBuilder(builder, endpoint, trustStore).build()
     }
 
@@ -76,6 +83,11 @@ class TlsTransportFactory internal constructor(
 
     private fun socketConfig(host: String): TlsSocketConfig =
         TlsVariantPolicy.socketConfig(TlsEndpoint.canonicalHost(host), trustStore)
+
+    private companion object {
+        const val GRPC_KEEPALIVE_TIME_SECONDS = 30L
+        const val GRPC_KEEPALIVE_TIMEOUT_SECONDS = 20L
+    }
 }
 
 /** Selects an OkHttp TLS configuration for each requested hostname. */
