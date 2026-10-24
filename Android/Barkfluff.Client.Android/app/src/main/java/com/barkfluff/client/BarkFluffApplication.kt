@@ -28,6 +28,7 @@ import com.barkfluff.client.domain.media.AutoDownloadNetworkState
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
@@ -64,6 +65,8 @@ class BarkFluffApplication : Application() {
     @Inject lateinit var clientRegistry: GrpcClientRegistry
 
     @Inject lateinit var chatCacheRepository: ChatCacheRepository
+
+    @Inject lateinit var chatRepository: ChatRepository
 
     @Inject lateinit var chatDraftRepository: ChatDraftRepository
 

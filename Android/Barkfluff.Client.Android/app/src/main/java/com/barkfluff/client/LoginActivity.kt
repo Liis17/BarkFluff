@@ -33,6 +33,7 @@ import com.barkfluff.client.domain.model.AuthenticationErrorCodes
 import com.barkfluff.client.domain.model.AuthenticationLoginMode
 import com.barkfluff.client.domain.model.SignInRequest
 import com.barkfluff.client.grpc.GrpcClientRegistry
+import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.applySpringPress
 import com.google.android.material.color.DynamicColors
 import dagger.hilt.android.AndroidEntryPoint
@@ -632,6 +633,11 @@ class LoginActivity : AppCompatActivity() {
 
     private fun navigateToChats() {
         val intent = Intent(this, MainActivity::class.java)
+        if (this.intent.hasExtra(NotificationHelper.EXTRA_KIND)) {
+            intent.action = this.intent.action
+            intent.data = this.intent.data
+            this.intent.extras?.let(intent::putExtras)
+        }
         startActivity(intent)
         finish()
     }

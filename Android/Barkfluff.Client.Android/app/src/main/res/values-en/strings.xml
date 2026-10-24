@@ -956,6 +956,11 @@
     <string name="notification_reply">Reply</string>
     <string name="notification_reply_hint">Message</string>
     <string name="notification_reply_failed">Could not save your reply. Please try again.</string>
+    <string name="notification_reply_queued">Queued</string>
+    <string name="notification_reply_sent">Sent</string>
+    <string name="notification_reply_failed_short">Failed</string>
+    <string name="notification_mark_read_failed">Could not save read status. The notification is still here.</string>
+    <string name="notification_chat_unavailable">This chat is unavailable or you no longer have access.</string>
     <string name="notification_hide">Hide</string>
     <string name="notification_encrypted_message">New encrypted message</string>
     <string name="notification_photo">Photo</string>
@@ -1283,6 +1288,8 @@
     <string name="private_chat_decryption_failed">[couldn\'t decrypt]</string>
     <string name="storage_cache_cleared">Cache cleared</string>
     <string name="notification_unknown_sender">Unknown sender</string>
+    <string name="notification_group_chat">Group chat</string>
+    <string name="notification_unknown_sender_id">User %1$d</string>
     <string name="notification_sender_in_chat">%1$s in %2$s</string>
     <string name="select_server_connection_failed">Couldn\'t connect to the node</string>
     <string name="select_server_connection_timeout">The node did not respond in time. Check the address and try again.</string>

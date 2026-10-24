@@ -206,6 +206,7 @@ interface MessageGateway {
     suspend fun editMessage(messageId: Long, text: String, fileIds: List<String> = emptyList()): Result<Shared.Message>
     suspend fun deleteMessage(messageId: Long): Result<Unit>
     suspend fun markAsRead(messageIds: List<Long>): Result<Unit>
+    suspend fun markChatAsReadUpTo(chatId: String, upToMessageId: Long): Result<Boolean>
     suspend fun chatInfo(chatId: String): Result<ChatInfo>
     suspend fun pinnedMessages(chatId: String, offset: Int = 0, size: Int = 50): Result<PinnedMessagePage>
     suspend fun pinMessage(chatId: String, messageId: Long): Result<Shared.PinnedMessageInfo>

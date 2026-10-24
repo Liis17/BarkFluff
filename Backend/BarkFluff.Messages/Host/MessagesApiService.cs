@@ -48,6 +48,7 @@ using Grpc.Core;
 using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Configuration;
 
 using OutgoingMessage = BarkFluff.Messages.Features.SendMessage.OutgoingMessage;
 
@@ -57,10 +58,12 @@ namespace BarkFluff.Messages.Host;
 public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesApiBase
 {
     private readonly IMediator _mediator;
+    private readonly IConfiguration? _configuration;
 
-    public MessagesApiService(IMediator mediator)
+    public MessagesApiService(IMediator mediator, IConfiguration? configuration = null)
     {
         _mediator = mediator;
+        _configuration = configuration;
     }
 
     public override Task<SearchMessagesResponse> SearchMessages(SearchMessagesRequest request, ServerCallContext context)
@@ -356,6 +359,22 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         await _mediator.Send(command);
 
         return new MarkAsReadResponse();
+    }
+
+    public override async Task<MarkChatAsReadUpToResponse> MarkChatAsReadUpTo(
+        MarkChatAsReadUpToRequest request,
+        ServerCallContext context)
+    {
+        if (!bool.TryParse(_configuration?["Messages:ChatReadRangeEnabled"], out var enabled) || !enabled)
+            throw new RpcException(new Status(StatusCode.Unimplemented, "Chat read ranges are disabled"));
+        if (!Guid.TryParse(request.ChatId, out var chatId)) throw new ChatIdNotValidException();
+        if (request.UpToMessageId <= 0)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "up_to_message_id must be positive"));
+
+        var hasMore = await _mediator.Send(
+            new MarkChatAsReadUpToCommand(chatId, request.UpToMessageId),
+            context.CancellationToken);
+        return new MarkChatAsReadUpToResponse { HasMore = hasMore };
     }
 
     public override async Task<GetPersonChatIdResponse> GetPersonChatId(GetPersonChatIdRequest request, ServerCallContext context)
