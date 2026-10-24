@@ -243,7 +243,11 @@ object AppModule {
         userProfileGateway: UserProfileGateway,
         fileMediaGateway: FileMediaGateway,
         secretChatRepository: SecretChatRepository,
-    ): RealtimeSideEffects = RealtimeSideEffectsImpl(context, userProfileGateway, fileMediaGateway, secretChatRepository)
+        chatRepository: com.barkfluff.client.repository.ChatRepository,
+        chatCacheRepository: ChatCacheRepository,
+    ): RealtimeSideEffects = RealtimeSideEffectsImpl(
+        context, userProfileGateway, fileMediaGateway, secretChatRepository, chatRepository, chatCacheRepository,
+    )
 
     @Provides
     @Singleton

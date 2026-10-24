@@ -6,6 +6,7 @@ using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Shared.Exceptions.Messages;
 
 using MediatR;
+using Microsoft.Extensions.Configuration;
 
 namespace BarkFluff.Messages.Features.MarkAsRead;
 
@@ -17,13 +18,15 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
     private readonly ReadByQueueSender _readByQueueSender;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<MarkAsReadCommandHandler> _logger;
+    private readonly bool _readOutboxEnabled;
 
     public MarkAsReadCommandHandler(
         MessagesStorage messagesStorage,
         ChatsStorage chatsStorage,
         UserContext userContext, ReadByQueueSender readByQueueSender,
         MetricsCollector metrics,
-        ILogger<MarkAsReadCommandHandler> logger)
+        ILogger<MarkAsReadCommandHandler> logger,
+        IConfiguration? configuration = null)
     {
         _messagesStorage = messagesStorage;
         _chatsStorage = chatsStorage;
@@ -31,6 +34,7 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
         _readByQueueSender = readByQueueSender;
         _metrics = metrics;
         _logger = logger;
+        _readOutboxEnabled = bool.TryParse(configuration?["Messages:ChatReadRangeEnabled"], out var enabled) && enabled;
     }
 
     public async Task Handle(MarkAsReadCommand request, CancellationToken cancellationToken)
@@ -88,6 +92,16 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
             var chatMembers = await _chatsStorage.GetChatMembers(chatId, 0, int.MaxValue);
             chatMembersCache[chatId] = chatMembers.LocalUserIds();
             chatFullMembersCache[chatId] = chatMembers;
+        }
+
+        if (_readOutboxEnabled)
+        {
+            var changedCount = await _messagesStorage.MarkMessagesAsReadWithOutboxAsync(
+                messages.Select(message => message.Id).ToList(),
+                _userContext.UserId,
+                cancellationToken);
+            _metrics.Add("messages_marked_as_read", changedCount);
+            return;
         }
 
         var newlyReadMessages = messages
