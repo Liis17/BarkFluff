@@ -906,7 +906,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
                 // Composer previews are deliberately outside Room so they survive process death;
                 // a full cache clear/logout must remove that journal and its private bytes too.
                 File(appContext.noBackupFilesDir, "composer").deleteRecursively()
-                securePreferences.edit().remove(KEY_PASSPHRASE).remove(KEY_RAW_KEY).apply()
+                securePreferences.edit().remove(KEY_PASSPHRASE).remove(KEY_RAW_KEY).remove(KEY_RAW_KEY_SALT).apply()
             }
         }
         _clearedEvents.tryEmit(Unit)
@@ -927,7 +927,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
     }
 
     private suspend fun database(): ChatCacheDatabase = databaseMutex.withLock {
-        database ?: buildDatabase().also { database = it }
+        database ?: withContext(Dispatchers.IO) { buildDatabase() }.also { database = it }
     }
 
     private fun buildDatabase(): ChatCacheDatabase {
@@ -941,31 +941,45 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
     /**
      * Raw key once derived from the passphrase, so connections skip PBKDF2. The file is never re-encrypted and
      * the passphrase stays valid for older builds; until derivation succeeds the passphrase is used as before.
+     * The raw key is bound to the file salt: a file recreated by another build gets a fresh derivation.
      */
     private fun databaseKey(): ByteArray {
-        securePreferences.getString(KEY_RAW_KEY, null)?.let { return it.toByteArray(Charsets.US_ASCII) }
+        val salt = databaseFileSalt()
+        val saltTag = salt?.let(SqlCipherRawKey::format)
+        val storedKey = securePreferences.getString(KEY_RAW_KEY, null)
+        if (storedKey != null) {
+            if (saltTag != null && securePreferences.getString(KEY_RAW_KEY_SALT, null) == saltTag) {
+                return storedKey.toByteArray(Charsets.US_ASCII)
+            }
+            securePreferences.edit().remove(KEY_RAW_KEY).remove(KEY_RAW_KEY_SALT).apply()
+        }
         val passphrase = databasePassphrase()
-        val rawKey = deriveVerifiedRawKey(passphrase) ?: return passphrase
-        securePreferences.edit().putString(KEY_RAW_KEY, rawKey).apply()
+        val rawKey = salt?.let { deriveVerifiedRawKey(passphrase, it) } ?: return passphrase
+        securePreferences.edit().putString(KEY_RAW_KEY, rawKey).putString(KEY_RAW_KEY_SALT, saltTag).apply()
         return rawKey.toByteArray(Charsets.US_ASCII)
     }
 
-    private fun deriveVerifiedRawKey(passphrase: ByteArray): String? {
-        val file = appContext.getDatabasePath(DATABASE_NAME)
-        if (file.length() < SqlCipherRawKey.SALT_LENGTH) return null
-        return runCatching {
-            val salt = file.inputStream().use { input ->
-                ByteArray(SqlCipherRawKey.SALT_LENGTH).also { check(input.read(it) == it.size) }
-            }
-            val rawKey = SqlCipherRawKey.format(SqlCipherRawKey.deriveFromPassphrase(passphrase, salt))
-            SQLiteDatabase.openDatabase(
-                file.path, rawKey.toByteArray(Charsets.US_ASCII), null, SQLiteDatabase.OPEN_READWRITE, null, null
-            ).use { db -> db.rawQuery("SELECT count(*) FROM sqlite_master", null).use { it.moveToFirst() } }
-            rawKey
-        }.onFailure { error ->
-            Log.w("ChatCacheRepository", "Raw database key unavailable, keeping passphrase", error)
-        }.getOrNull()
-    }
+    private fun databaseFileSalt(): ByteArray? = runCatching {
+        appContext.getDatabasePath(DATABASE_NAME).inputStream().use { input ->
+            ByteArray(SqlCipherRawKey.SALT_LENGTH).takeIf { input.read(it) == it.size }
+        }
+    }.getOrNull()
+
+    private fun deriveVerifiedRawKey(passphrase: ByteArray, salt: ByteArray): String? = runCatching {
+        val rawKey = SqlCipherRawKey.format(SqlCipherRawKey.deriveFromPassphrase(passphrase, salt))
+        // Read-only open does not touch the journal mode of the live WAL database.
+        SQLiteDatabase.openDatabase(
+            appContext.getDatabasePath(DATABASE_NAME).path,
+            rawKey.toByteArray(Charsets.US_ASCII),
+            null,
+            SQLiteDatabase.OPEN_READONLY,
+            null,
+            null
+        ).use { db -> db.rawQuery("SELECT count(*) FROM sqlite_master", null).use { it.moveToFirst() } }
+        rawKey
+    }.onFailure { error ->
+        Log.w("ChatCacheRepository", "Raw database key unavailable, keeping passphrase", error)
+    }.getOrNull()
 
     private fun databasePassphrase(): ByteArray {
         securePreferences.getString(KEY_PASSPHRASE, null)?.let {
@@ -1192,6 +1206,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         const val KEY_PREFERENCES = "offline_chat_cache_secure"
         const val KEY_PASSPHRASE = "database_passphrase"
         const val KEY_RAW_KEY = "database_raw_key"
+        const val KEY_RAW_KEY_SALT = "database_raw_key_salt"
         const val SEPARATOR = ""
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
