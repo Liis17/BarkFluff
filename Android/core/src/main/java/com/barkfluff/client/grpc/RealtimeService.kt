@@ -1,6 +1,8 @@
 package com.barkfluff.client.grpc
 
 import android.content.Context
+import android.net.Network
+import android.os.SystemClock
 import android.util.Log
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.domain.gateway.MessageGateway
@@ -10,6 +12,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.crypto.CryptoStoreScope
 import com.barkfluff.client.perf.PerfTrace
 import io.grpc.Status
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -19,6 +22,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.random.Random
 
 /**
  * Updates шлёт пустой NewMessageEvent сразу после подписки и как heartbeat (keep-alive для прокси):
@@ -26,6 +30,24 @@ import kotlin.math.pow
  */
 internal fun UpdatesApiOuterClass.NewMessageEvent.isHeartbeat(): Boolean =
     chatId.isBlank() || !hasMessage() || message.id <= 0L
+
+/** После такого времени в фоне соединение могло быть закрыто NAT без уведомления — каналы пересоздаются. */
+internal const val STALE_CONNECTION_AFTER_BACKGROUND_MS = 60_000L
+
+/** Стрим, проживший столько без ошибки, считается установившимся: счётчик попыток начинается заново. */
+internal const val STABLE_STREAM_MS = 30_000L
+
+/**
+ * Каналы пересоздаются на resume только если сеть сменилась, пока стримы стояли, или они стояли дольше
+ * [STALE_CONNECTION_AFTER_BACKGROUND_MS] (с ухода в фон или с создания сервиса, если процесс поднял
+ * FCM/воркер задолго до открытия UI). При коротком переключении живые соединения переиспользуются.
+ */
+internal fun shouldRecreateChannelsOnResume(networkChanged: Boolean, idleMs: Long): Boolean =
+    networkChanged || idleMs >= STALE_CONNECTION_AFTER_BACKGROUND_MS
+
+/** Equal jitter: половина паузы фиксирована, половина случайна, чтобы ~20 стримов не переподключались строем. */
+internal fun jitteredBackoff(backoffMs: Long, random: Random = Random.Default): Long =
+    backoffMs / 2 + random.nextLong(backoffMs / 2 + 1)
 
 /**
  * Сервис реального времени — подписывается на обновления сообщений, прочтений и онлайн-статусов.
@@ -58,6 +80,7 @@ class RealtimeService(
         private const val MAX_BACKOFF_MS = 30_000L
         private const val BASE_BACKOFF_MS = 2000L
         private const val TOKEN_REFRESH_AFTER_ATTEMPTS = 3
+        private const val NETWORK_CHANGE_DEBOUNCE_MS = 1000L
         private const val DEDUP_MAX_SIZE = 1000
     }
 
@@ -134,14 +157,27 @@ class RealtimeService(
 
     // Internal state
     private val globalParam = GlobalParam(context)
+    @Volatile
     private var serviceScope: CoroutineScope? = null
     private val seenMessageIds = LinkedHashSet<Long>()
 
     @Volatile
     private var hasEstablishedMessagesConnection = false
 
-    /** Поколение каналов: растёт при каждом recreateAllClients из стримов и resume(). */
+    /** Поколение каналов: растёт при каждом recreateAllClients из стримов, resume() и смены сети. */
     private val clientsGeneration = AtomicInteger()
+
+    /** С какого момента стримы не работают: создание сервиса, затем каждый pause(). */
+    @Volatile
+    private var streamsIdleSinceElapsedMs = SystemClock.elapsedRealtime()
+
+    @Volatile
+    private var defaultNetwork: Network? = null
+
+    /** Смена сети, после которой каналы ещё не пересозданы; выполняет отложенная job или resume(). */
+    private val networkChangePending = AtomicBoolean(false)
+
+    private var networkChangeJob: Job? = null
 
     // Online subscription state
     @Volatile
@@ -169,11 +205,16 @@ class RealtimeService(
             return
         }
 
-        Log.i(TAG, "Resuming realtime streams")
+        Log.i(TAG, "Resuming realtime streams"); Log.e("BFNET", "resume") // TEMP-MEASURE
 
-        // Пересоздаём каналы принудительно — старые могли сломаться (DNS failure после фона)
-        clientRegistry.recreateAllClients(globalParam, context)
-        clientsGeneration.incrementAndGet()
+        val idleMs = SystemClock.elapsedRealtime() - streamsIdleSinceElapsedMs
+        if (shouldRecreateChannelsOnResume(networkChangePending.getAndSet(false), idleMs)) {
+            clientsGeneration.incrementAndGet()
+            clientRegistry.recreateAllClients(globalParam, context)
+        } else {
+            // Живые соединения переиспользуются; каналы в TRANSIENT_FAILURE (DNS после фона) переподключаются сразу.
+            clientRegistry.resetConnectBackoff()
+        }
 
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         serviceScope = scope
@@ -202,6 +243,8 @@ class RealtimeService(
         scope.launch { streamWithReconnect("SecretMessages") { collectSecretMessages() } }
         scope.launch { onlinePingLoop() }
         scope.launch { notificationLoop() }
+        // Сеть могла смениться, пока scope ещё не был назначен.
+        if (networkChangePending.get()) scheduleNetworkRecreate(scope)
     }
 
     /**
@@ -217,6 +260,41 @@ class RealtimeService(
         }
         serviceScope?.cancel()
         serviceScope = null
+        streamsIdleSinceElapsedMs = SystemClock.elapsedRealtime()
+    }
+
+    /**
+     * Сообщает о новой сети по умолчанию (ConnectivityManager default network callback).
+     * Первая сеть после старта процесса только запоминается. При смене сети в foreground каналы
+     * пересоздаются через ~1 с (схлопывая серию колбэков), в фоне — при следующем resume().
+     */
+    fun onDefaultNetworkChanged(network: Network) {
+        val previous = defaultNetwork
+        defaultNetwork = network
+        if (previous == network) return
+        if (previous == null) {
+            // Первая сеть процесса (в том числе после старта офлайн): пересоздавать нечего, но стримы
+            // в ожидании переподключения пробуют сразу.
+            clientRegistry.onNetworkChanged()
+            return
+        }
+        // Если pause() отменит отложенное пересоздание, его выполнит resume().
+        networkChangePending.set(true)
+        val scope = serviceScope
+        if (scope != null && scope.isActive) scheduleNetworkRecreate(scope)
+    }
+
+    private fun scheduleNetworkRecreate(scope: CoroutineScope) = synchronized(this) {
+        networkChangeJob?.cancel()
+        networkChangeJob = scope.launch {
+            delay(NETWORK_CHANGE_DEBOUNCE_MS)
+            if (!networkChangePending.getAndSet(false)) return@launch
+            Log.i(TAG, "Default network changed, recreating channels")
+            Log.e("BFNET", "network changed -> recreate") // TEMP-MEASURE
+            clientsGeneration.incrementAndGet()
+            clientRegistry.recreateAllClients(globalParam, context)
+            clientRegistry.onNetworkChanged()
+        }
     }
 
     /**
@@ -327,7 +405,9 @@ class RealtimeService(
         val request = UpdatesApiOuterClass.SubscribeNewMessagesRequest.getDefaultInstance()
         hasEstablishedMessagesConnection = true
         _connectionState.value = ConnectionState.CONNECTED
+        var firstEvent = true // TEMP-MEASURE
         client.subscribeNewMessages(request).collect { event ->
+            if (firstEvent) { firstEvent = false; Log.e("BFNET", "NewMessages first event") } // TEMP-MEASURE
             if (event.isHeartbeat()) return@collect
             val msgId = event.message.id
             // Dedup
@@ -612,6 +692,8 @@ class RealtimeService(
         var attempts = 0
         while (coroutineContext.isActive) {
             val generation = clientsGeneration.get()
+            val epoch = clientRegistry.networkEpoch.value
+            val startedAt = SystemClock.elapsedRealtime()
             try {
                 if (reportsConnectionState && hasEstablishedMessagesConnection) {
                     _connectionState.value = ConnectionState.CONNECTING
@@ -629,24 +711,29 @@ class RealtimeService(
                     Log.i(TAG, "[$name] Not supported by server, stream disabled")
                     return
                 }
+                // Обрыв давно работавшего стрима (смена сети, keepalive) не копит попытки до refresh токена.
+                if (SystemClock.elapsedRealtime() - startedAt >= STABLE_STREAM_MS) attempts = 0
                 attempts++
                 Log.w(TAG, "[$name] Stream error (attempt $attempts): ${e.message}")
+                Log.e("BFNET", "[$name] err ${Status.fromThrowable(e).code} attempt=$attempts") // TEMP-MEASURE
 
                 if (attempts >= TOKEN_REFRESH_AFTER_ATTEMPTS) {
                     Log.d(TAG, "[$name] Force-refreshing token after $attempts attempts")
                     forceRefreshToken()
                 }
 
-                val backoff = min(
-                    BASE_BACKOFF_MS * 2.0.pow((attempts - 1).coerceAtMost(10).toDouble()),
-                    MAX_BACKOFF_MS.toDouble()
-                ).toLong()
+                val backoff = jitteredBackoff(
+                    min(
+                        BASE_BACKOFF_MS * 2.0.pow((attempts - 1).coerceAtMost(10).toDouble()),
+                        MAX_BACKOFF_MS.toDouble()
+                    ).toLong()
+                )
 
                 if (reportsConnectionState && hasEstablishedMessagesConnection) {
                     _connectionState.value = ConnectionState.DISCONNECTED
                 }
                 Log.v(TAG, "[$name] Waiting ${backoff}ms before reconnect")
-                delay(backoff)
+                clientRegistry.delayUnlessNetworkChanges(backoff, epoch)
 
                 // Переинициализируем клиенты (каналы могли сломаться). Пересоздание закрывает
                 // старые каналы и роняет все стримы на них — пересоздаёт только первый упавший

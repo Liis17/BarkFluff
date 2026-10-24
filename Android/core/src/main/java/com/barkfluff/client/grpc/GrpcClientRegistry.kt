@@ -19,6 +19,11 @@ import io.grpc.ClientInterceptor
 import io.grpc.ClientInterceptors
 import io.grpc.ManagedChannel
 import java.util.EnumMap
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Small platform-free lifecycle primitive used to pin registry semantics in unit tests.
@@ -346,6 +351,26 @@ class GrpcClientRegistry internal constructor(
         }
     }
 
+    private val networkEpochState = MutableStateFlow(0)
+
+    /** Grows when the default network changes, so streams waiting to reconnect can retry at once. */
+    val networkEpoch: StateFlow<Int> = networkEpochState
+
+    fun onNetworkChanged() {
+        networkEpochState.update { it + 1 }
+    }
+
+    /** Waits [delayMs] before a stream reconnect, returning early once the network has changed since [epoch]. */
+    suspend fun delayUnlessNetworkChanges(delayMs: Long, epoch: Int) {
+        withTimeoutOrNull(delayMs) { networkEpochState.first { it != epoch } }
+    }
+
+    /** Lets channels in TRANSIENT_FAILURE reconnect now instead of waiting out their backoff. */
+    fun resetConnectBackoff() {
+        val channels = synchronized(lock) { entries.values.map { it.managedChannel } }
+        channels.forEach { it.resetConnectBackoff() }
+    }
+
     /** Terminal shutdown. Once called, lazy getters never recreate a channel. */
     fun shutdown() {
         val oldEntries = synchronized(lock) {
@@ -445,6 +470,7 @@ class GrpcClientRegistry internal constructor(
 
         return try {
             val managed = channelFactory(normalized)
+            Log.e("BFNET", "channel created $id force=$force") // TEMP-MEASURE
             val interceptors = buildList {
                 val interceptorContext = context.applicationContext
                 if (includeAuth) add(AuthInterceptor(interceptorContext))
