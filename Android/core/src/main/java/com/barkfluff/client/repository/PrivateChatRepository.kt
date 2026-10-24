@@ -25,7 +25,8 @@ class PrivateChatRepository(
     private val grpc: GrpcApiTransport
 ) {
     private val tag = "PrivateChatRepo"
-    private val keyPrefs: SharedPreferences = run {
+    // Created at app start via DI, but keys are needed only for private chats: defer the Keystore work.
+    private val keyPrefs: SharedPreferences by lazy {
         val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
         EncryptedSharedPreferences.create(
             "barkfluff_private_chat_keys",

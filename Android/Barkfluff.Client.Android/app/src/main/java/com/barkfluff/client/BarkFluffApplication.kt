@@ -100,6 +100,7 @@ class BarkFluffApplication : Application() {
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             autoDownloadNetworkState.available(network)
+            realtimeService.onDefaultNetworkChanged(network)
             applicationScope.launch(Dispatchers.IO) {
                 chatDraftRepository.flushAll()
                 outgoingMessageQueue.retryAfterNetworkReturn()
