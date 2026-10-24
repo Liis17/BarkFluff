@@ -16,6 +16,47 @@ Android instrumented-тесты локально компилируют как �
 
 `PendingChatReadRangeDaoTest` checks cutoff coalescing and stale completion; migration instrumentation covers Room v5→v6. `MessageNotificationTest` covers scoped actions, extras/history roundtrip, hash/legacy collision safety, bounded sender icons, late event/avatar merge, reply/read persistence failures and cold/warm/foreign-scope navigation. `ColdNotificationScenarioTest` covers reply/read-range recovery after process death and independent read retry. Compile/assemble does not execute these instrumented scenarios.
 
+## Android performance
+
+Измерительная инфраструктура относится к Android V1 (`:app-v1`) и запускается на физическом Pixel 10 Pro с тестовым аккаунтом и одним длинным чатом. Эмулятор не используется. Сборка не запускает задачи установки или подключения к устройству; оба perf-скрипта требуют `--serial` и `--expect-model`, проверяют состояние и модель перед командами замера и всегда добавляют выбранный serial к `adb`.
+
+Локальная проверка на Windows из корня репозитория:
+
+```powershell
+py -3 -m unittest discover -s Android/tools/perf -p "test_*.py"
+py -3 Android/tools/perf/capture_power.py --help
+py -3 Android/tools/perf/run_benchmark.py --help
+py -3 Android/tools/check_android_ui.py
+```
+
+Первый прогон выполняй в `Android/`:
+
+1. Собери app и instrumentation APK.
+2. Установи их в режиме `--install-only`; если появится `INSTALL_FAILED_UPDATE_INCOMPATIBLE` из-за CI-подписи уже установленного приложения, один раз удали ту установку вручную и повтори шаг.
+3. Выдай `POST_NOTIFICATIONS`, войди в тестовый аккаунт и открой длинный чат вручную.
+4. Запусти полный Macrobenchmark два раза подряд. После каждого запуска должен открываться авторизованный список без повторного входа.
+
+```powershell
+.\gradlew.bat :app-v1:assembleNightlyBenchmark :benchmark:assembleBenchmark
+py -3 tools/perf/run_benchmark.py --serial <serial> --expect-model "Pixel 10 Pro" --install-only
+adb -s <serial> shell pm grant com.barkfluff.nightly android.permission.POST_NOTIFICATIONS
+py -3 tools/perf/run_benchmark.py --serial <serial> --expect-model "Pixel 10 Pro"
+```
+
+Не очищай данные приложения: прогоны используют сохранённый логин.
+
+Полный запуск из `Android/`: `py -3 tools/perf/run_benchmark.py --serial <serial> --expect-model "Pixel 10 Pro"`; `--class` запускает один benchmark-класс. Макробенчмарки покрывают холодный старт, открытие чата и прокрутку в режимах `CompilationMode.None` и `Partial` с тремя итерациями прогрева.
+
+Перед каждой итерацией открытие и прокрутка продолжают работу с видимого списка чатов, возвращаются из открытого чата или заново запускают приложение при неизвестном состоянии; финальное ожидание `chatTitle` сохраняет понятную ошибку для незалогиненного аккаунта.
+
+`run_benchmark.py` сохраняет результаты и завершает работу с ошибкой при `FAILURES!!!`, сбое instrumentation или отсутствии финальной строки `OK (...)`, даже когда `am instrument` вернул код 0.
+
+`BF:appToChats` заканчивается на первом реальном чате, `BF:chatOpen` — на первом непустом списке сообщений, а `BF:onlinePing` остаётся async-секцией. Трейсы отдельных итераций Macrobenchmark находятся в его `build/outputs`; скачанные отчёты и логи — в `Android/tools/perf/out/<timestamp>/`.
+
+Энергозамер запускается из `Android/` командой `py -3 tools/perf/capture_power.py --serial <serial> --expect-model "Pixel 10 Pro" --trace-processor "C:\Tools\Perfetto\trace_processor_shell.exe"`. По умолчанию записываются 60 секунд прогрева, 10 минут замера и 30 секунд запаса; SQL-анализ использует ровно `minutes * 60` секунд начиная с `trace_bounds.start_ts + warmup`. Без trace processor анализ получает статус `NOT_RUN`; трейс всё равно сохраняется. `summary.json`, сырой Perfetto trace и справочный `batterystats.txt` остаются в папке прогона. При ошибке анализа, ошибках trace processor или потерях данных команда завершается с ненулевым кодом.
+
+Для энергетических выводов используй только аппаратные power rails (ODPM), сравнивая подсистемы, в первую очередь модем/радио. Батарейные счётчики Perfetto и `batterystats` при USB-подключении — справочные данные. Во время сценария выключи Wi-Fi, оставь мобильную сеть, включённый экран и приложение на списке чатов; те же действия можно измерить Android Studio Power Profiler. Число завершённых `BF:onlinePing` — диагностическая метрика: ожидаемый порядок `600 / (3 + средняя длительность RPC в секундах)`, обычно меньше 200; незавершённых ping-секций быть не должно. Debug-сборка StrictMode только пишет нарушения в лог: `adb -s <serial> logcat -s StrictMode:D`.
+
 ## Android PQXDH
 
 `Android/core/src/androidTest/java/com/barkfluff/client/repository/PqxdhHandshakeInstrumentedTest.kt` использует настоящий libsignal JNI и production `PrekeyBundle.toLibsignal()` mapping: handshake/reply после повторного открытия store, optional EC one-time key, Kyber one-time и last-resort fallback для разных sender devices, отказ malformed/signature-invalid bundle, replay tuple и rollback failed decrypt. `Android/core/src/androidTest/java/com/barkfluff/client/crypto/PrekeyManagerInstrumentedTest.kt` покрывает stable registration/replenishment retry, подтверждение marker через own status, старый сервер, serialized bootstrap, rotation/retention, legacy identity/session migration, lost-ack rotation с reopen и отклонением несовпадающего ключа, no-change status RPC count и logout во время upload. `BarkFluffSignalStoreInstrumentedTest.kt` проверяет rollback с reopen после прерванной операции и сохранение старого snapshot плюс fail-closed поведение при отклонённом durable commit. Repository instrumentation дополнительно покрывает initial history handoff, прерывание после cache upsert до replay marker, delayed invite, pending accept RPC retry, expiry/reinvite с тем же chat ID, отсутствие resurrection после clear и logout во время bundle fetch/handoff, scrub pending initial при reject/reinvite с сохранением старого invite ID, ack вне history lock и восстановление после сбоя crypto scrub при clear. Store test проверяет failed cleanup/retry без credentials, изоляцию другого scope, очистку unmigrated legacy-файлов при пустом и null scope и независимый retry каждой записи журнала. JVM-тесты app (`CryptoExitSequenceTest`, `SecretSendOutcomeTest`) проверяют gating REJECTED/UNAVAILABLE, завершение logout после отмены и разделение успешной отправки и ошибки истории; `ChatCacheRepositoryClearTest` — видимость SQLCipher записи после возврата suspend API и idempotent upsert. Эти instrumentation tests требуют Android runtime; compile или assemble не доказывает, что JNI сценарии прошли.

@@ -6,6 +6,8 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.os.StrictMode
+import android.os.Trace
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -28,6 +30,7 @@ import com.barkfluff.client.domain.media.AutoDownloadNetworkState
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.perf.PerfTrace
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.repository.PrivateChatRepository
@@ -139,7 +142,18 @@ class BarkFluffApplication : Application() {
     var pendingDeepLink: android.net.Uri? = null
 
     override fun onCreate() {
-        super.onCreate()
+        if (BuildConfig.DEBUG) enableStrictMode()
+        PerfTrace.beginAppToChats()
+        Trace.beginSection(PerfTrace.APPLICATION_ON_CREATE)
+        try {
+            super.onCreate()
+            onApplicationCreate()
+        } finally {
+            Trace.endSection()
+        }
+    }
+
+    private fun onApplicationCreate() {
         applicationScope.launch(Dispatchers.IO) {
             try {
                 prekeyManager.retryPendingCleanup()
@@ -207,6 +221,28 @@ class BarkFluffApplication : Application() {
                 }
             }
         })
+    }
+
+    private fun enableStrictMode() {
+        StrictMode.setThreadPolicy(
+            StrictMode.ThreadPolicy.Builder()
+                .detectDiskReads()
+                .detectDiskWrites()
+                .detectNetwork()
+                .detectCustomSlowCalls()
+                .detectResourceMismatches()
+                .penaltyLog()
+                .build()
+        )
+        StrictMode.setVmPolicy(
+            StrictMode.VmPolicy.Builder()
+                .detectLeakedClosableObjects()
+                .detectLeakedSqlLiteObjects()
+                .detectActivityLeaks()
+                .detectLeakedRegistrationObjects()
+                .penaltyLog()
+                .build()
+        )
     }
 
     override fun onTerminate() {

@@ -167,6 +167,12 @@ android {
                 "proguard-rules.pro"
             )
         }
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+        }
     }
     compileOptions {
         // libsignal-android 0.86+ использует Java records (Java 16+) и требует
@@ -326,4 +332,14 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
         "androidUiCheckerScript",
         rootProject.file("tools/check_android_ui.py").absolutePath,
     )
+}
+
+tasks.configureEach {
+    if ((name.startsWith("install") || name.startsWith("uninstall")) && name.endsWith("Benchmark")) {
+        doFirst {
+            check(!System.getenv("ANDROID_SERIAL").isNullOrBlank()) {
+                "Refusing to run $name without ANDROID_SERIAL. Use a verified benchmark device."
+            }
+        }
+    }
 }

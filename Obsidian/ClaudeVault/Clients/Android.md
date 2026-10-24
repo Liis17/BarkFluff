@@ -17,8 +17,11 @@ Kotlin-клиент в Android/Barkfluff.Client.Android. Поддерживае�
 | min / compile / target SDK | 31 / 36 / 36 | Android/Barkfluff.Client.Android/app/build.gradle.kts |
 | Java bytecode | 17; Gradle daemon toolchain — JDK 21; CI — JDK 21 | Android/Barkfluff.Client.Android/app/build.gradle.kts, Android/gradle/gradle-daemon-jvm.properties, .github/workflows/build-client-android.yml, .github/workflows/test-clients.yml |
 | RPC transport | gRPC-OkHttp 1.60.0; gRPC Kotlin 1.4.1 | Android/core/build.gradle.kts |
+| Macrobenchmark | androidx.benchmark:benchmark-macro-junit4 1.5.0; androidx.test.uiautomator:uiautomator 2.4.0 | Android/gradle/libs.versions.toml |
 
 Сборка debug-варианта из Android: ./gradlew :app-v1:assembleStableDebug; короткие имена задач неоднозначны из-за flavors dev/nightly/stable (compileDebugKotlin → compileStableDebugKotlin и т.п.). На Windows обёртку вызывают через gradlew.bat: скрипт gradlew имеет CRLF и завершается до старта Gradle. Для flavors stable, dev и nightly заданы отдельные applicationId; стабильный канал публикуется как release в ClientStorage. Release использует R8, resource shrinking и только arm64-v8a.
+
+Для измерений есть build type `benchmark` у `:app-v1` и instrumentation-модуль `:benchmark` (`com.android.test`), нацеленный на `:app-v1` с flavor `nightly`. Целевое приложение не debuggable, но его merged manifest разрешает shell profiling (`profileable android:shell="true"`); команды сборки и порядок запуска описаны в [[Testing#Android performance]]. Маркеры `BF:appToChats`, `BF:Application.onCreate`, `BF:chatOpen` и `BF:onlinePing` используют платформенный `android.os.Trace` и намеренно остаются в release для Macrobenchmark/Perfetto. StrictMode включается только при `BuildConfig.DEBUG` и пишет disk/network и VM нарушения через `penaltyLog`, не завершая приложение.
 
 ## Границы и основные потоки
 
