@@ -365,12 +365,6 @@ class GrpcClientRegistry internal constructor(
         withTimeoutOrNull(delayMs) { networkEpochState.first { it != epoch } }
     }
 
-    /** Lets channels in TRANSIENT_FAILURE reconnect now instead of waiting out their backoff. */
-    fun resetConnectBackoff() {
-        val channels = synchronized(lock) { entries.values.map { it.managedChannel } }
-        channels.forEach { it.resetConnectBackoff() }
-    }
-
     /** Terminal shutdown. Once called, lazy getters never recreate a channel. */
     fun shutdown() {
         val oldEntries = synchronized(lock) {
@@ -470,7 +464,6 @@ class GrpcClientRegistry internal constructor(
 
         return try {
             val managed = channelFactory(normalized)
-            Log.e("BFNET", "channel created $id force=$force") // TEMP-MEASURE
             val interceptors = buildList {
                 val interceptorContext = context.applicationContext
                 if (includeAuth) add(AuthInterceptor(interceptorContext))

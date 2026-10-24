@@ -9,15 +9,15 @@ import org.junit.Test
 class ReconnectPolicyTest {
 
     @Test
-    fun coldStartAndShortBackgroundReuseChannels() {
-        assertFalse(shouldRecreateChannelsOnResume(networkChanged = false, idleMs = 5))
-        assertFalse(shouldRecreateChannelsOnResume(networkChanged = false, idleMs = 10_000))
+    fun freshColdStartChannelsAreReused() {
+        assertFalse(shouldRecreateChannelsOnResume(networkChanged = false, wasPaused = false, idleMs = 500))
     }
 
     @Test
-    fun networkChangeOrLongBackgroundRecreateChannels() {
-        assertTrue(shouldRecreateChannelsOnResume(networkChanged = true, idleMs = 1_000))
-        assertTrue(shouldRecreateChannelsOnResume(networkChanged = false, idleMs = STALE_CONNECTION_AFTER_BACKGROUND_MS))
+    fun backgroundNetworkChangeOrStaleProcessChannelsAreRecreated() {
+        assertTrue(shouldRecreateChannelsOnResume(networkChanged = false, wasPaused = true, idleMs = 500))
+        assertTrue(shouldRecreateChannelsOnResume(networkChanged = true, wasPaused = false, idleMs = 500))
+        assertTrue(shouldRecreateChannelsOnResume(networkChanged = false, wasPaused = false, idleMs = STALE_CHANNELS_MS))
     }
 
     @Test

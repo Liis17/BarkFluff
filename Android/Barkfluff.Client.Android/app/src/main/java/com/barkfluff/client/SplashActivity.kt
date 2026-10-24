@@ -327,9 +327,9 @@ class SplashActivity : AppCompatActivity() {
         val expectedScope = intent.getStringExtra(NotificationHelper.EXTRA_SCOPE_ID)
         val isNotificationRoute = intent.hasExtra(NotificationHelper.EXTRA_KIND)
         val beforeInitScope = com.barkfluff.client.cache.CacheScope.from(globalParam)?.id
-        // Пересоздаём каналы с актуальным токеном (interceptor читает GlobalParam динамически,
-        // но каналы могли остаться от предыдущей сессии).
-        clientRegistry.recreateAllClients(globalParam, this)
+        // Создаём недостающие каналы. Живые не пересоздаём: токен interceptor читает на каждый вызов,
+        // адрес ноды lazy-геттеры сверяют с GlobalParam, а пересоздание оборвало бы уже запущенные стримы.
+        clientRegistry.initAllClients(globalParam, this)
 
         val intent = Intent(this, MainActivity::class.java)
         val afterInitScope = com.barkfluff.client.cache.CacheScope.from(GlobalParam(this))?.id
