@@ -52,6 +52,17 @@ data class CachedChatDisplay(
     val otherUserId: Long
 )
 
+internal fun mergeCachedChatDisplay(previous: ChatSummary?, incoming: ChatSummary): ChatSummary =
+    previous?.let {
+        incoming.copy(
+            title = incoming.title.ifBlank { it.title },
+            picture = incoming.picture.ifBlank { it.picture },
+            pictureFileId = incoming.pictureFileId.ifBlank { it.pictureFileId },
+            picturePreviewFileId = incoming.picturePreviewFileId.ifBlank { it.picturePreviewFileId },
+            memberIds = incoming.memberIds.ifEmpty { it.memberIds },
+        )
+    } ?: incoming
+
 data class CachedChatList(
     val chats: List<ChatSummary>,
     val folders: List<ChatFolder>,
@@ -227,6 +238,9 @@ interface ChatCacheDao {
     @Query("SELECT * FROM cached_chats WHERE scopeId = :scopeId ORDER BY lastActivityAt DESC")
     suspend fun chats(scopeId: String): List<CachedChatEntity>
 
+    @Query("SELECT * FROM cached_chats WHERE scopeId = :scopeId AND chatId IN (:chatIds)")
+    suspend fun chatsByIds(scopeId: String, chatIds: List<String>): List<CachedChatEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertChats(chats: List<CachedChatEntity>)
 
@@ -265,6 +279,9 @@ interface ChatCacheDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertDisplay(display: CachedChatDisplayEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertDisplays(displays: List<CachedChatDisplayEntity>)
 
     @Query("SELECT * FROM cached_chat_drafts WHERE scopeId = :scopeId")
     suspend fun drafts(scopeId: String): List<CachedChatDraftEntity>
@@ -413,14 +430,25 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         folders: List<ChatFolder>? = null,
         replaceExisting: Boolean = false,
         removedChatIds: Collection<String> = emptyList(),
+        preserveCachedDisplayWhenEmpty: Boolean = false,
     ) = withContext(Dispatchers.IO) {
         val db = database()
         db.withTransaction {
             val dao = db.cacheDao()
             dao.upsertMeta(CachedChatMetaEntity(scope.id, totalCount, System.currentTimeMillis()))
+            val incompleteDisplayIds = if (!preserveCachedDisplayWhenEmpty || replaceExisting) emptyList() else chats.filter { chat ->
+                !chat.isGroupChat && (
+                    chat.title.isBlank() || chat.picture.isBlank() || chat.pictureFileId.isBlank() ||
+                        chat.picturePreviewFileId.isBlank() || chat.memberIds.isEmpty()
+                    )
+            }.map { it.id }
+            val existingChats = if (incompleteDisplayIds.isEmpty()) emptyMap() else {
+                dao.chatsByIds(scope.id, incompleteDisplayIds).associate { it.chatId to it.toChatData() }
+            }
+            val mergedChats = chats.map { chat -> mergeCachedChatDisplay(existingChats[chat.id], chat) }
             if (replaceExisting) dao.deleteChats(scope.id)
             removedChatIds.forEach { dao.deleteChat(scope.id, it) }
-            if (chats.isNotEmpty()) dao.upsertChats(chats.map { it.toEntity(scope.id) })
+            if (mergedChats.isNotEmpty()) dao.upsertChats(mergedChats.map { it.toEntity(scope.id) })
             if (folders != null) {
                 dao.deleteFolders(scope.id)
                 if (folders.isNotEmpty()) dao.upsertFolders(folders.map { it.toEntity(scope.id) })
@@ -448,6 +476,15 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
             database().cacheDao().upsertDisplay(
                 CachedChatDisplayEntity(scope.id, chatId, display.title, display.avatarFileId, display.otherUserId)
             )
+        }
+
+    suspend fun saveDisplays(scope: CacheScope, displays: Map<String, CachedChatDisplay>) =
+        withContext(Dispatchers.IO) {
+            if (displays.isNotEmpty()) {
+                database().cacheDao().upsertDisplays(displays.map { (chatId, display) ->
+                    CachedChatDisplayEntity(scope.id, chatId, display.title, display.avatarFileId, display.otherUserId)
+                })
+            }
         }
 
     suspend fun readChatDrafts(scope: CacheScope): List<CachedChatDraft> = withContext(Dispatchers.IO) {
