@@ -49,6 +49,9 @@ service MessagesApi {
   // Отментить сообщения как прочитанные
   rpc MarkAsRead(MarkAsReadRequest) returns(MarkAsReadResponse);
 
+  // Отметить непрочитанные сообщения чата до указанного id включительно.
+  rpc MarkChatAsReadUpTo(MarkChatAsReadUpToRequest) returns(MarkChatAsReadUpToResponse);
+
   // Получить список вложений в чате
   rpc ListChatAttachments(ListChatAttachmentsRequest) returns(ListChatAttachmentsResponse);
 
@@ -200,6 +203,15 @@ message MarkAsReadRequest {
 }
 
 message MarkAsReadResponse { }
+
+message MarkChatAsReadUpToRequest {
+  string chat_id = 1;
+  int64 up_to_message_id = 2;
+}
+
+message MarkChatAsReadUpToResponse {
+  bool has_more = 1;
+}
 
 message KickUserRequest {
   string chat_id = 1; // Идентификатор чата

@@ -383,6 +383,7 @@ public static class SeedData
                   {"name":"CreateGroupChat","req":"CreateGroupChatRequest","resp":"CreateGroupChatResponse","stream":false,"description":"Создать групповой чат"},
                   {"name":"KickUser","req":"KickUserRequest","resp":"KickUserResponse","stream":false,"description":"Удалить пользователя из группового чата"},
                   {"name":"MarkAsRead","req":"MarkAsReadRequest","resp":"MarkAsReadResponse","stream":false,"description":"Отметить сообщения прочитанными"},
+                  {"name":"MarkChatAsReadUpTo","req":"MarkChatAsReadUpToRequest","resp":"MarkChatAsReadUpToResponse","stream":false,"description":"Отметить сообщения чата прочитанными до указанного сообщения"},
                   {"name":"ListChatAttachments","req":"ListChatAttachmentsRequest","resp":"ListChatAttachmentsResponse","stream":false,"description":"Вложения чата с фильтрацией по типу"},
                   {"name":"GetPersonChatId","req":"GetPersonChatIdRequest","resp":"GetPersonChatIdResponse","stream":false,"description":"Получить ID личного чата с пользователем"},
                   {"name":"GetChatInfo","req":"GetChatInfoRequest","resp":"GetChatInfoResponse","stream":false,"description":"Метаданные чата"}

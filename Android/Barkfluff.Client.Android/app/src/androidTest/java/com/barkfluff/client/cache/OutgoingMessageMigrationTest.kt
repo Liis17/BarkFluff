@@ -41,6 +41,32 @@ class OutgoingMessageMigrationTest {
     }
 
     @Test
+    fun migrationFrom5PreservesExactReadQueueAndAddsRangeQueue() {
+        val name = "notification-read-range-migration-test"
+        helper.createDatabase(name, 5).apply {
+            execSQL("INSERT INTO pending_message_reads(scopeId, messageId, chatId, attemptCount, nextAttemptAtMillis) " +
+                "VALUES ('scope', 42, 'chat', 2, 100)")
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 6, true, ChatCacheRepository.MIGRATION_5_6).apply {
+            query("SELECT messageId, attemptCount, nextAttemptAtMillis FROM pending_message_reads").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(42L, cursor.getLong(0))
+                assertEquals(2, cursor.getInt(1))
+                assertEquals(100L, cursor.getLong(2))
+            }
+            query("SELECT count(*) FROM pending_chat_read_ranges").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+            query("SELECT notificationReadMessageId FROM outgoing_messages LIMIT 1").use { cursor ->
+                assertEquals(false, cursor.moveToFirst())
+            }
+            close()
+        }
+    }
+
+    @Test
     fun migrationFrom2PreservesCachedMessagesAndAddsOutboxTables() {
         val name = "outgoing-migration-test"
         helper.createDatabase(name, 2).apply {

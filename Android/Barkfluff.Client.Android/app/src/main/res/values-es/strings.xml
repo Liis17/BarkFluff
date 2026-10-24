@@ -960,6 +960,11 @@
     <string name="notification_reply">Responder</string>
     <string name="notification_reply_hint">Mensaje</string>
     <string name="notification_reply_failed">No se pudo guardar la respuesta. Inténtalo de nuevo.</string>
+    <string name="notification_reply_queued">En cola</string>
+    <string name="notification_reply_sent">Enviado</string>
+    <string name="notification_reply_failed_short">Fallido</string>
+    <string name="notification_mark_read_failed">No se pudo guardar la lectura. La notificación sigue aquí.</string>
+    <string name="notification_chat_unavailable">Este chat no está disponible o ya no tienes acceso.</string>
     <string name="notification_hide">Ocultar</string>
     <string name="notification_encrypted_message">Nuevo mensaje cifrado</string>
     <string name="notification_photo">Foto</string>
@@ -1287,6 +1292,8 @@
     <string name="private_chat_decryption_failed">[no se pudo descifrar]</string>
     <string name="storage_cache_cleared">Caché borrada</string>
     <string name="notification_unknown_sender">Remitente desconocido</string>
+    <string name="notification_group_chat">Chat grupal</string>
+    <string name="notification_unknown_sender_id">Usuario %1$d</string>
     <string name="notification_sender_in_chat">%1$s en %2$s</string>
     <string name="select_server_connection_failed">No se pudo conectar al nodo</string>
     <string name="select_server_connection_timeout">El nodo no respondió a tiempo. Comprueba la dirección e inténtalo de nuevo.</string>

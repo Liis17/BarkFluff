@@ -975,6 +975,11 @@
     <string name="notification_reply">Ответить</string>
     <string name="notification_reply_hint">Сообщение</string>
     <string name="notification_reply_failed">Не удалось сохранить ответ. Попробуйте ещё раз.</string>
+    <string name="notification_reply_queued">В очереди</string>
+    <string name="notification_reply_sent">Отправлено</string>
+    <string name="notification_reply_failed_short">Не отправлено</string>
+    <string name="notification_mark_read_failed">Не удалось сохранить прочтение. Уведомление оставлено.</string>
+    <string name="notification_chat_unavailable">Чат недоступен или вы больше не состоите в нём.</string>
     <string name="notification_hide">Скрыть</string>
     <string name="notification_encrypted_message">Новое зашифрованное сообщение</string>
     <string name="notification_photo">Фото</string>
@@ -1330,6 +1335,8 @@
     <string name="private_chat_decryption_failed">[не удалось расшифровать]</string>
     <string name="storage_cache_cleared">Кеш очищен</string>
     <string name="notification_unknown_sender">Неизвестный отправитель</string>
+    <string name="notification_group_chat">Групповой чат</string>
+    <string name="notification_unknown_sender_id">Пользователь %1$d</string>
     <string name="notification_sender_in_chat">%1$s в %2$s</string>
     <string name="select_server_connection_failed">Не удалось подключиться к ноде</string>
     <string name="select_server_connection_timeout">Нода не ответила вовремя. Проверьте адрес и попробуйте ещё раз.</string>

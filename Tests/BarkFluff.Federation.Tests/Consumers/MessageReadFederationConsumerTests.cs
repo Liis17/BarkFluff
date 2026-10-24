@@ -26,10 +26,11 @@ public class MessageReadFederationConsumerTests
         return (context, new MessageReadFederationConsumer(writer, config, new MetricsCollector()));
     }
 
-    private static ConsumeContext<MessageReadEvent> ConsumeContextOf(MessageReadEvent message)
+    private static ConsumeContext<MessageReadEvent> ConsumeContextOf(MessageReadEvent message, Guid? messageId = null)
     {
         var context = new Mock<ConsumeContext<MessageReadEvent>>();
         context.Setup(c => c.Message).Returns(message);
+        context.Setup(c => c.MessageId).Returns(messageId);
         context.Setup(c => c.CancellationToken).Returns(CancellationToken.None);
         return context.Object;
     }
@@ -108,5 +109,25 @@ public class MessageReadFederationConsumerTests
         var parsed = FederationEvent.Parser.ParseFrom(row.PayloadBytes);
         parsed.MessagesRead.ReaderUuid.Should().Be(Guid.Empty.ToString());
         parsed.MessagesRead.UpToFederatedMessageId.Should().Be(Guid.Empty.ToString());
+    }
+
+    [Fact]
+    public async Task Consume_RedeliveryKeepsStableEventIdAndReadTimestamp()
+    {
+        var (context, consumer) = Create();
+        await TestHelpers.EnsureActiveKeyAsync(context);
+        var stableEventId = Guid.NewGuid();
+        var changedAt = new DateTimeOffset(2026, 10, 1, 12, 30, 0, TimeSpan.Zero);
+        var message = FederatedRead("peer.test");
+        message.LastChangeAt = changedAt;
+
+        await consumer.Consume(ConsumeContextOf(message, stableEventId));
+        await consumer.Consume(ConsumeContextOf(message, stableEventId));
+
+        var rows = await context.Outbox.OrderBy(row => row.Id).ToListAsync();
+        rows.Should().HaveCount(2);
+        rows.Select(row => row.EventId).Should().OnlyContain(id => id == stableEventId);
+        rows.Select(row => FederationEvent.Parser.ParseFrom(row.PayloadBytes).OriginTsMs)
+            .Should().OnlyContain(timestamp => timestamp == changedAt.ToUnixTimeMilliseconds());
     }
 }

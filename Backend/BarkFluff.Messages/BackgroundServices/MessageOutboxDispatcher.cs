@@ -83,6 +83,8 @@ public class MessageOutboxDispatcher : BackgroundService
                 entry.Status = MessageOutboxStatus.Pending;
             await context.SaveChangesAsync(cancellationToken);
             _metrics.Add("message_outbox_reclaimed", expired.Count);
+            foreach (var group in expired.GroupBy(entry => entry.EventKind))
+                _metrics.Add($"message_outbox_{MetricKind(group.Key)}_reclaimed", group.Count());
         }
 
         var batch = await ClaimBatchAsync(context, now, cancellationToken);
@@ -92,14 +94,28 @@ public class MessageOutboxDispatcher : BackgroundService
                 entry.TraceParent, entry.TraceState, entry.CorrelationId);
             try
             {
-                var queueEvent = JsonSerializer.Deserialize<NewMessageEvent>(entry.Payload)
-                    ?? throw new JsonException("Пустой payload outbox");
-                queueEvent.EventId = entry.EventId;
-                await sender.PublishOutbox(queueEvent, cancellationToken);
+                if (entry.EventKind == MessageOutboxEventKind.NewMessage)
+                {
+                    var queueEvent = JsonSerializer.Deserialize<NewMessageEvent>(entry.Payload)
+                        ?? throw new JsonException("Пустой payload outbox");
+                    queueEvent.EventId = entry.EventId;
+                    await sender.PublishOutbox(queueEvent, cancellationToken);
+                }
+                else if (entry.EventKind == MessageOutboxEventKind.ReadBy)
+                {
+                    var queueEvent = JsonSerializer.Deserialize<MessageReadEvent>(entry.Payload)
+                        ?? throw new JsonException("Пустой payload outbox");
+                    await sender.PublishReadOutbox(queueEvent, entry.EventId, cancellationToken);
+                }
+                else
+                {
+                    throw new JsonException($"Неизвестный вид outbox event: {entry.EventKind}");
+                }
 
                 entry.Status = MessageOutboxStatus.Delivered;
                 entry.LastError = null;
                 _metrics.Increment("message_outbox_delivered");
+                _metrics.Increment($"message_outbox_{MetricKind(entry.EventKind)}_delivered");
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -116,6 +132,13 @@ public class MessageOutboxDispatcher : BackgroundService
         var pending = await context.MessageOutbox
             .CountAsync(entry => entry.Status == MessageOutboxStatus.Pending, cancellationToken);
         _metrics.Set("message_outbox_pending", pending);
+        foreach (var kind in Enum.GetValues<MessageOutboxEventKind>())
+        {
+            var kindPending = await context.MessageOutbox.CountAsync(
+                entry => entry.Status == MessageOutboxStatus.Pending && entry.EventKind == kind,
+                cancellationToken);
+            _metrics.Set($"message_outbox_pending_{MetricKind(kind)}", kindPending);
+        }
     }
 
     private static async Task<List<MessageOutboxEntry>> ClaimBatchAsync(
@@ -134,10 +157,11 @@ public class MessageOutboxDispatcher : BackgroundService
             List<MessageOutboxEntry> batch;
             if (isNpgsql)
             {
+                // Prioritize NewMessage to protect chat latency; sustained new-message traffic can delay ReadBy.
                 batch = await context.MessageOutbox.FromSqlInterpolated($"""
                     SELECT * FROM "MessageOutbox"
                     WHERE "Status" = 0 AND "NextAttemptAt" <= {now}
-                    ORDER BY "Id"
+                    ORDER BY "EventKind", "Id"
                     LIMIT {MaxBatchSize}
                     FOR UPDATE SKIP LOCKED
                     """).ToListAsync(cancellationToken);
@@ -146,7 +170,8 @@ public class MessageOutboxDispatcher : BackgroundService
             {
                 batch = await context.MessageOutbox
                     .Where(entry => entry.Status == MessageOutboxStatus.Pending && entry.NextAttemptAt <= now)
-                    .OrderBy(entry => entry.Id)
+                    .OrderBy(entry => entry.EventKind)
+                    .ThenBy(entry => entry.Id)
                     .Take(MaxBatchSize)
                     .ToListAsync(cancellationToken);
             }
@@ -175,12 +200,14 @@ public class MessageOutboxDispatcher : BackgroundService
         {
             entry.Status = MessageOutboxStatus.DeadLetter;
             _metrics.Increment("message_outbox_deadletter");
+            _metrics.Increment($"message_outbox_{MetricKind(entry.EventKind)}_deadletter");
         }
         else
         {
             entry.Status = MessageOutboxStatus.Pending;
             entry.NextAttemptAt = now + GetBackoff(entry.Attempts);
             _metrics.Increment("message_outbox_delivery_errors");
+            _metrics.Increment($"message_outbox_{MetricKind(entry.EventKind)}_delivery_errors");
         }
 
         _logger.LogWarning(
@@ -195,4 +222,11 @@ public class MessageOutboxDispatcher : BackgroundService
         var index = Math.Clamp(attempts - 1, 0, BackoffSteps.Length - 1);
         return BackoffSteps[index];
     }
+
+    private static string MetricKind(MessageOutboxEventKind kind) => kind switch
+    {
+        MessageOutboxEventKind.NewMessage => "new_message",
+        MessageOutboxEventKind.ReadBy => "read_by",
+        _ => $"unknown_{(int)kind}",
+    };
 }

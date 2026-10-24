@@ -27,6 +27,7 @@ import com.barkfluff.client.cache.OutgoingFailureCategory
 import com.barkfluff.client.cache.OutgoingMessageRecord
 import com.barkfluff.client.cache.OutgoingMessageState
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.drafts.ComposerAttachmentStore
 import com.barkfluff.client.grpc.TokenCoordinator
 import com.barkfluff.client.grpc.TokenValidity
@@ -47,6 +48,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import io.grpc.Metadata
+import io.grpc.Status
+import io.grpc.StatusException
+import io.grpc.StatusRuntimeException
 import kotlinx.coroutines.Dispatchers
 import java.io.File
 import java.io.InputStream
@@ -84,10 +89,27 @@ class OutgoingMessageQueue(
     private val chatRepository: ChatRepository,
     private val tokenCoordinator: TokenCoordinator,
     private val composerAttachmentStore: ComposerAttachmentStore? = null,
+    private val sendMessageCall: suspend (
+        String, String, List<String>, Long, String,
+    ) -> Result<barkfluff.shared.Shared.Message> = { chatId, text, fileIds, replyToMessageId, operationId ->
+        chatRepository.sendMessage(chatId, text, fileIds, replyToMessageId, clientOperationId = operationId)
+    },
+    private val markChatReadRangeCall: suspend (String, Long) -> Result<Boolean> =
+        { chatId, cutoff -> chatRepository.markChatAsReadUpTo(chatId, cutoff) },
+    private val markExactReadCall: suspend (List<Long>) -> Result<Unit> =
+        { ids -> chatRepository.markAsRead(ids) },
 ) {
     companion object {
         private const val LEASE_MILLIS = 10 * 60 * 1000L
         private const val SENT_RETENTION_MILLIS = 24 * 60 * 60 * 1000L
+        private const val MAX_READ_CALLS_PER_ACTIVATION = 5
+        private const val MESSAGE_NOT_FOUND_ERROR_CODE = "C0EEF1D9-BE99-4645-9EBD-95FF36A2BF45"
+        private val PERMANENT_READ_RANGE_ERROR_CODES = setOf(
+            "604DD334-0484-4C6B-8113-354B9D2FDF2A", // NoAccessToChat
+            "7506386A-8940-4F3B-87B8-315DD0A7AB08", // ChatNotFound
+            "D0AC27C0-3381-401D-8EF4-E35610C372AB", // ChatTypeMismatch
+            MESSAGE_NOT_FOUND_ERROR_CODE, // Invalid or missing cutoff anchor
+        )
         private val drainMutex = Mutex()
         private val cancellationRequests = ConcurrentHashMap<String, Long>()
     }
@@ -141,6 +163,13 @@ class OutgoingMessageQueue(
         return operationIds
     }
 
+    suspend fun enqueueChatReadRange(chatId: String, upToMessageId: Long, expectedScopeId: String) {
+        val scope = requireScope()
+        require(scope.id == expectedScopeId) { "Notification belongs to a different account" }
+        cache.enqueueChatReadRange(scope, chatId, upToMessageId)
+        wake()
+    }
+
     fun observeChat(chatId: String): Flow<List<OutgoingMessageSnapshot>> {
         val scope = currentScopeOrNull() ?: return kotlinx.coroutines.flow.flowOf(emptyList())
         return cache.observeOutgoing(scope, chatId).map { records -> records.map(::snapshotOf) }
@@ -177,6 +206,10 @@ class OutgoingMessageQueue(
             leaseOwner = null,
             leaseExpiresAtMillis = 0
         ))
+        record.notificationReadMessageId?.let {
+            NotificationHelper.updateNotificationReplyStatus(appContext, scope.id, record.chatId,
+                record.operationId, record.text, "queued")
+        }
         wake()
     }
 
@@ -223,8 +256,14 @@ class OutgoingMessageQueue(
         }
         workManager.cancelAllWorkByTag(workTag(scope)).await()
         cache.clearOutgoingKeepReads(scope)
+        val remainingOperationIds = cache.outgoingOperationIds(scope).toSet()
         records.filter { it.state != OutgoingMessageState.SENT }.forEach { record ->
             operationDirectory(scope, record.operationId).deleteRecursively()
+            if (record.notificationReadMessageId != null && record.operationId !in remainingOperationIds) {
+                NotificationHelper.removeNotificationReply(
+                    appContext, scope.id, record.chatId, record.operationId,
+                )
+            }
         }
         scheduleNext(scope)
     }
@@ -247,9 +286,10 @@ class OutgoingMessageQueue(
 
             val ready = cache.readyOutgoing(scope, now, limit = 2)
             coroutineScope {
-                val reads = async { drainPendingReads(scope, now) }
-                ready.map { record -> async { process(scope, record, onForeground) } }.awaitAll()
-                reads.await()
+                val sends = async { ready.map { record -> async { process(scope, record, onForeground) } }.awaitAll() }
+                val readRanges = drainPendingChatReadRanges(scope, now)
+                drainPendingReads(scope, now, MAX_READ_CALLS_PER_ACTIVATION - readRanges)
+                sends.await()
             }
             scheduleNext(scope)
         }
@@ -259,20 +299,23 @@ class OutgoingMessageQueue(
     internal suspend fun drainPendingReads(
         scope: CacheScope,
         nowMillis: Long,
+        maxCalls: Int = MAX_READ_CALLS_PER_ACTIVATION,
         markRead: suspend (List<Long>) -> Result<Unit> = { ids ->
-            if (tokenCoordinator.ensureValid() && currentScopeOrNull() == scope) chatRepository.markAsRead(ids)
+            if (tokenCoordinator.ensureValid() && currentScopeOrNull() == scope) markExactReadCall(ids)
             else Result.failure(IllegalStateException("Read authorization unavailable"))
         }
-    ) {
+    ): Int {
+        var calls = 0
         for (read in cache.readyPendingReads(scope, nowMillis)) {
-            if (currentScopeOrNull() != scope) return
+            if (calls >= maxCalls || currentScopeOrNull() != scope) return calls
             try {
+                calls++
                 markRead(listOf(read.messageId)).getOrThrow()
                 cache.deletePendingRead(scope, read.messageId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                if (currentScopeOrNull() != scope) return
+                if (currentScopeOrNull() != scope) return calls
                 if (classifyPermanent(e) != null) {
                     cache.deletePendingRead(scope, read.messageId)
                 } else {
@@ -280,6 +323,189 @@ class OutgoingMessageQueue(
                     cache.retryPendingRead(scope, read.messageId, attempt,
                         System.currentTimeMillis() + OutgoingRetryPolicy.delayForAttempt(attempt))
                 }
+            }
+        }
+        return calls
+    }
+
+    /** Range reads and legacy pagination share a five-RPC/page budget for each worker run. */
+    internal suspend fun drainPendingChatReadRanges(
+        scope: CacheScope,
+        nowMillis: Long,
+        maxCalls: Int = MAX_READ_CALLS_PER_ACTIVATION,
+        markRange: suspend (String, Long) -> Result<Boolean> = { chatId, cutoff ->
+            if (tokenCoordinator.ensureValid() && currentScopeOrNull() == scope) markChatReadRangeCall(chatId, cutoff)
+            else Result.failure(IllegalStateException("Read authorization unavailable"))
+        },
+        getChatInfo: suspend (String) -> Result<ChatRepository.ChatInfo> = { chatId ->
+            if (tokenCoordinator.ensureValid() && currentScopeOrNull() == scope) chatRepository.getChatInfo(chatId)
+            else Result.failure<ChatRepository.ChatInfo>(IllegalStateException("Read authorization unavailable"))
+        },
+        loadPage: suspend (String, Long) -> Result<List<barkfluff.shared.Shared.Message>> = { chatId, cursor ->
+            if (tokenCoordinator.ensureValid() && currentScopeOrNull() == scope) {
+                chatRepository.loadMessages(
+                    chatId,
+                    fromMessageId = cursor,
+                    offsetBefore = if (cursor > 0) 50 else 0,
+                    count = 50,
+                )
+            } else Result.failure(IllegalStateException("Read authorization unavailable"))
+        },
+        markExact: suspend (List<Long>) -> Result<Unit> = { ids ->
+            if (tokenCoordinator.ensureValid() && currentScopeOrNull() == scope) markExactReadCall(ids)
+            else Result.failure(IllegalStateException("Read authorization unavailable"))
+        },
+    ): Int {
+        var calls = 0
+        val callLimit = maxCalls.coerceAtLeast(0)
+        val ranges = cache.readyPendingChatReadRanges(scope, nowMillis)
+        for (range in ranges) {
+            if (calls >= callLimit || currentScopeOrNull() != scope) return calls
+            var progress = false
+            try {
+                if (!range.legacyFallback) {
+                    val response = markRange(range.chatId, range.upToMessageId)
+                    calls++
+                    val rangeError = response.exceptionOrNull()
+                    if (rangeError != null) {
+                        if (!rangeError.isUnimplementedRpc()) throw rangeError
+                        cache.useLegacyReadRangeFallback(scope, range.chatId, range.upToMessageId)
+                        progress = true
+                        // The range RPC is absent on this server. Continue through the legacy path.
+                    } else if (!response.getOrThrow()) {
+                        cache.completePendingChatReadRange(scope, range.chatId, range.upToMessageId)
+                        continue
+                    } else {
+                        progress = true
+                        while (calls < callLimit) {
+                            if (currentScopeOrNull() != scope) return calls
+                            val next = markRange(range.chatId, range.upToMessageId)
+                            calls++
+                            if (!next.getOrThrow()) {
+                                cache.completePendingChatReadRange(scope, range.chatId, range.upToMessageId)
+                                break
+                            }
+                            progress = true
+                        }
+                        continue
+                    }
+                }
+
+                if (calls >= callLimit) continue
+                val info = getChatInfo(range.chatId).getOrThrow()
+                calls++
+                val firstUnread = info.firstUnreadMessageId
+                if (firstUnread <= 0 || firstUnread > range.upToMessageId) {
+                    cache.completePendingChatReadRange(scope, range.chatId, range.upToMessageId)
+                    continue
+                }
+
+                var cursor = range.cursorBeforeMessageId
+                val visited = mutableSetOf(cursor)
+                while (calls < callLimit) {
+                    if (currentScopeOrNull() != scope) return calls
+                    val pageResult = loadPage(range.chatId, cursor)
+                    calls++
+                    val pageError = pageResult.exceptionOrNull()
+                    if (pageError != null) {
+                        if (cursor > 0 && pageError.isDeletedMessageCursor()) {
+                            cache.updatePendingChatReadRangeCursor(scope, range.chatId, range.upToMessageId, 0)
+                            val attempt = range.attemptCount + 1
+                            cache.retryPendingChatReadRange(
+                                scope, range.chatId, range.upToMessageId, attempt,
+                                System.currentTimeMillis() + OutgoingRetryPolicy.delayForAttempt(attempt),
+                            )
+                            progress = true
+                            break
+                        }
+                        throw pageError
+                    }
+                    val page = pageResult.getOrThrow()
+                    if (page.isEmpty()) {
+                        cache.completePendingChatReadRange(scope, range.chatId, range.upToMessageId)
+                        break
+                    }
+
+                    val ordered = page.sortedWith(
+                        compareBy<barkfluff.shared.Shared.Message> { it.sentAt.seconds }
+                            .thenBy { it.sentAt.nanos }
+                            .thenBy { it.id },
+                    )
+                    val eligibleIds = ordered.asSequence()
+                        .map { it.id }
+                        .filter { it in firstUnread..range.upToMessageId && (cursor == 0L || it != cursor) }
+                        .distinct()
+                        .toList()
+                    if (eligibleIds.isNotEmpty()) {
+                        if (calls >= callLimit) break
+                        markExact(eligibleIds).getOrThrow()
+                        calls++
+                    }
+
+                    val exhausted = if (cursor == 0L) ordered.size < 50 else ordered.size < 51
+                    if (exhausted) {
+                        cache.completePendingChatReadRange(scope, range.chatId, range.upToMessageId)
+                        break
+                    }
+                    val nextCursor = ordered.first().id
+                    if (nextCursor <= 0 || nextCursor == cursor || !visited.add(nextCursor)) {
+                        throw IllegalStateException("Legacy read pagination made no cursor progress")
+                    }
+                    cache.updatePendingChatReadRangeCursor(scope, range.chatId, range.upToMessageId, nextCursor)
+                    cursor = nextCursor
+                    progress = true
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                if (currentScopeOrNull() != scope) return calls
+                if (e.isPermanentReadRangeFailure()) {
+                    cache.completePendingChatReadRange(scope, range.chatId, range.upToMessageId)
+                    progress = true
+                    Log.w("OutgoingMessageQueue", "Chat read range rejected permanently: ${safeDetail(e)}")
+                } else {
+                    val attempt = range.attemptCount + 1
+                    cache.retryPendingChatReadRange(
+                        scope, range.chatId, range.upToMessageId, attempt,
+                        System.currentTimeMillis() + OutgoingRetryPolicy.delayForAttempt(attempt),
+                    )
+                    Log.w("OutgoingMessageQueue", "Chat read range deferred: ${safeDetail(e)}")
+                }
+            }
+            if (progress && calls >= callLimit) return calls
+        }
+        return calls
+    }
+
+    private fun Throwable.isUnimplementedRpc(): Boolean = generateSequence(this) { it.cause }.any { error ->
+        (error is StatusException && error.status.code == Status.Code.UNIMPLEMENTED) ||
+            (error is StatusRuntimeException && error.status.code == Status.Code.UNIMPLEMENTED)
+    }
+
+    private fun Throwable.isDeletedMessageCursor(): Boolean {
+        return errorCode() == MESSAGE_NOT_FOUND_ERROR_CODE
+    }
+
+    private fun Throwable.isPermanentReadRangeFailure(): Boolean {
+        if (errorCode()?.let { it in PERMANENT_READ_RANGE_ERROR_CODES } == true) return true
+        return generateSequence(this) { it.cause }.any { error ->
+            val status = when (error) {
+                is StatusException -> error.status
+                is StatusRuntimeException -> error.status
+                else -> null
+            } ?: return@any false
+            status.code in setOf(Status.Code.INVALID_ARGUMENT, Status.Code.NOT_FOUND, Status.Code.PERMISSION_DENIED) ||
+                (status.code == Status.Code.UNAUTHENTICATED && classifyPermanent(error) == OutgoingFailureCategory.AUTH_REQUIRED)
+        }
+    }
+
+    private fun Throwable.errorCode(): String? {
+        val key = Metadata.Key.of("x-error-code", Metadata.ASCII_STRING_MARSHALLER)
+        return generateSequence(this) { it.cause }.firstNotNullOfOrNull { error ->
+            when (error) {
+                is StatusException -> error.trailers?.get(key)
+                is StatusRuntimeException -> error.trailers?.get(key)
+                else -> null
             }
         }
     }
@@ -323,9 +549,19 @@ class OutgoingMessageQueue(
             }
             cache.saveOutgoing(scope, staging.copy(
                 state = OutgoingMessageState.QUEUED,
-                attachments = attachments
-            ), notificationReadMessageId = request.notificationReply?.messageId,
+                attachments = attachments,
+                notificationReadMessageId = request.notificationReply?.messageId,
+            ),
                 expectedScopeId = request.notificationReply?.expectedScopeId)
+            request.notificationReply?.let {
+                // The durable outgoing row is authoritative. A notification may have been
+                // swiped while staging, so a failed visual refresh must not delete the reply.
+                runCatching {
+                NotificationHelper.updateNotificationReplyStatus(
+                    appContext, scope.id, request.chatId, operationId, part.text, "queued",
+                )
+                }
+            }
             operationId
         } catch (e: Throwable) {
             cache.deleteOutgoing(scope, operationId)
@@ -432,12 +668,12 @@ class OutgoingMessageQueue(
             onForeground(snapshotOf(record))
             val fileIds = record.existingFileIds + record.attachments.sortedBy { it.attachmentIndex }
                 .mapNotNull { it.finalFileId?.takeIf(String::isNotBlank) }
-            val sent = chatRepository.sendMessage(
-                chatId = record.chatId,
-                text = record.text,
-                fileIds = fileIds,
-                replyToMessageId = record.replyToMessageId,
-                clientOperationId = record.operationId
+            val sent = sendMessageCall(
+                record.chatId,
+                record.text,
+                fileIds,
+                record.replyToMessageId,
+                record.operationId,
             ).getOrElse { throw it }
             ensureNotCancelled(record.operationId)
             cache.saveMessages(scope, record.chatId, listOf(sent))
@@ -451,6 +687,10 @@ class OutgoingMessageQueue(
                 failureDetail = null
             )
             cache.saveOutgoing(scope, record)
+            record.notificationReadMessageId?.let {
+                NotificationHelper.updateNotificationReplyStatus(appContext, scope.id, record.chatId,
+                    record.operationId, record.text, "sent")
+            }
             operationDirectory(scope, record.operationId).deleteRecursively()
         } catch (e: CancellationException) {
             if (cancellationRequests.containsKey(initial.operationId)) return
@@ -467,6 +707,10 @@ class OutgoingMessageQueue(
                     leaseOwner = null,
                     leaseExpiresAtMillis = 0
                 ))
+                latest.notificationReadMessageId?.let {
+                    NotificationHelper.updateNotificationReplyStatus(appContext, scope.id, latest.chatId,
+                        latest.operationId, latest.text, "failed")
+                }
             } else {
                 val attempt = latest.attemptCount + 1
                 val retryAfter = (e as? RetryOutgoingException)?.minimumDelayMillis ?: 0L
@@ -482,6 +726,10 @@ class OutgoingMessageQueue(
                     leaseOwner = null,
                     leaseExpiresAtMillis = 0
                 ))
+                latest.notificationReadMessageId?.let {
+                    NotificationHelper.updateNotificationReplyStatus(appContext, scope.id, latest.chatId,
+                        latest.operationId, latest.text, "queued")
+                }
             }
         }
     }
@@ -708,7 +956,11 @@ class OutgoingMessageQueue(
     }
 
     private suspend fun scheduleNext(scope: CacheScope) {
-        val next = listOfNotNull(cache.nextOutgoingAttempt(scope), cache.nextPendingReadAttempt(scope))
+        val next = listOfNotNull(
+            cache.nextOutgoingAttempt(scope),
+            cache.nextPendingReadAttempt(scope),
+            cache.nextPendingChatReadRangeAttempt(scope),
+        )
             .minOrNull() ?: return
         val delay = (next - System.currentTimeMillis()).coerceAtLeast(0)
         val request = OneTimeWorkRequestBuilder<OutgoingMessageWorker>()
