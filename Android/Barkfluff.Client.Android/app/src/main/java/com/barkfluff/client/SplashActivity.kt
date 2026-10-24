@@ -68,6 +68,13 @@ class SplashActivity : AppCompatActivity() {
                 return@launch
             }
 
+            // Чаты из локального кеша открываются сразу; Beacon и сертификаты проверяются в фоне.
+            if (globalParam.refreshToken != null && globalParam.socketIdentity.isNotBlank()) {
+                (application as BarkFluffApplication).refreshServerInfoInBackground()
+                navigateToChats()
+                return@launch
+            }
+
             val refreshResult = withTimeoutOrNull(SERVER_INFO_REFRESH_TIMEOUT_MS) {
                 refreshServerInfoFromBeacon(serverDiscoveryGateway, globalParam, applicationContext)
             } ?: ServerInfoRefreshResult.Unavailable
