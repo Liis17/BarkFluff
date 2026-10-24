@@ -69,7 +69,8 @@ data class OutgoingMessageEntity(
     val leaseOwner: String?,
     val leaseExpiresAtMillis: Long,
     val serverMessageId: Long,
-    val serverMessagePayload: ByteArray?
+    val serverMessagePayload: ByteArray?,
+    val notificationReadMessageId: Long? = null
 )
 
 @Entity(
@@ -134,7 +135,8 @@ data class OutgoingMessageRecord(
     val leaseExpiresAtMillis: Long,
     val serverMessageId: Long,
     val serverMessagePayload: ByteArray?,
-    val attachments: List<OutgoingAttachmentRecord>
+    val attachments: List<OutgoingAttachmentRecord>,
+    val notificationReadMessageId: Long? = null
 )
 
 @Dao

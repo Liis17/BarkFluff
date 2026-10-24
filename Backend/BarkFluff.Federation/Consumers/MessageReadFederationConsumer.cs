@@ -37,7 +37,7 @@ public class MessageReadFederationConsumer : IConsumer<MessageReadEvent>
 
         var evt = new FederationEvent
         {
-            EventId = Guid.NewGuid().ToString(),
+            EventId = (context.MessageId ?? Guid.NewGuid()).ToString(),
             OriginServer = origin,
             OriginTsMs = ts,
         };

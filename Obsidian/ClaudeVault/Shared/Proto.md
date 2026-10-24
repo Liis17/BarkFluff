@@ -22,6 +22,8 @@ Protobuf wire contracts лежат в `Shared/BarkFluff.Proto/`. .NET 10 stubs �
 
 `SearchMessages` ищет обычные сообщения по тексту, автору (локальный ID или UUID), полуоткрытому диапазону времени `[sent_from, sent_before)`, вложениям и cursor `(sent_at,message_id)`; последний ответ не содержит `next_cursor`. `MessageAttachmentType` определён в `shared.proto`; `UploadFileType` — отдельный enum. Вложение несёт размеры картинки `image_width=8`/`image_height=9`; forwarded snapshot — field 10, `origin_server=11`. `UploadFileInfo` хранит размеры как fields 12/13.
 
+`MessagesApi.MarkChatAsReadUpTo` добавлен как отдельный RPC с `MarkChatAsReadUpToRequest(chat_id, up_to_message_id)` и ответом `has_more`; `MarkAsRead(message_ids)` не менялся. Его server gate по умолчанию выключен и выключенный RPC возвращает `UNIMPLEMENTED`, чтобы Android мог ограниченно перейти на старый paging path.
+
 ## Чаты, события и данные узла
 
 `ChatType`: regular=0, private=1, secret=2. Private chat передаёт `kdf_salt=10` и `passphrase_verifier=11`; `last_activity_at=14`, `private_invite_state=15`, а `CreatePrivateChatResponse.created=2` различает создание и возврат существующей пары. `EncryptedMessage` хранится отдельно от обычных сообщений и сервер не имеет ключа для расшифровки. `SecretEnvelope` — opaque: Messages буферизует его в Redis до 24 часов, не сохраняет в БД; Updates маршрутизирует secret events по устройству, private events — пользователю.

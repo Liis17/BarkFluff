@@ -1661,6 +1661,25 @@ open class GrpcApiTransport(context: Context) {
         }
     }
 
+    suspend fun markChatAsReadUpTo(chatId: String, upToMessageId: Long): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            try {
+                val client = messagesClient
+                    ?: return@withContext Result.failure(IllegalStateException("Messages client not created"))
+                val response = client.markChatAsReadUpTo(
+                    MessagesApiOuterClass.MarkChatAsReadUpToRequest.newBuilder()
+                        .setChatId(chatId)
+                        .setUpToMessageId(upToMessageId)
+                        .build()
+                )
+                Result.success(response.hasMore)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error marking chat messages read through $upToMessageId", e)
+                // Keep StatusRuntimeException intact so legacy fallback is limited to UNIMPLEMENTED.
+                Result.failure(e)
+            }
+        }
+
     data class UploadUrlResult(
         val url: String,
         val fileId: String

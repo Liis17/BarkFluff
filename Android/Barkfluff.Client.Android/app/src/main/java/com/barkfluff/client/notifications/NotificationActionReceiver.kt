@@ -26,12 +26,38 @@ internal data class MessageNotificationTarget(
     val threadId: String = chatId
 )
 
+data class RegularNotificationInput(
+    val scopeId: String,
+    val chatId: String,
+    val messageId: Long,
+    val senderId: Long,
+    val senderName: String,
+    val chatTitle: String,
+    val isGroupChat: Boolean,
+    val timestampMillis: Long,
+    val text: String,
+    val attachmentKind: String = "",
+    val attachmentCount: Int = 1,
+    val senderNameIsFallback: Boolean = false,
+    val chatTitleIsFallback: Boolean = false,
+    val contentIsComplete: Boolean = true,
+)
+
 /** Only accepts text into the durable outbox; all network work belongs to the worker. */
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val target = NotificationHelper.currentTarget(context, intent) ?: return
         when (intent.action) {
             NotificationHelper.ACTION_HIDE -> NotificationHelper.hideEncryptedNotification(context, target)
+            NotificationHelper.ACTION_DISMISSED -> {
+                if (target.kind == NotificationHelper.KIND_REGULAR) {
+                    NotificationHelper.dismissRegularNotificationHistory(
+                        context,
+                        target,
+                        intent.getLongExtra(NotificationHelper.EXTRA_CARD_GENERATION, 0),
+                    )
+                }
+            }
             NotificationHelper.ACTION_REPLY -> {
                 if (target.kind != NotificationHelper.KIND_REGULAR ||
                     (target.eventId.toLongOrNull() ?: 0) <= 0 || replyText(intent).isNullOrBlank()) return
@@ -50,10 +76,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
     internal suspend fun acceptReply(
         context: Context,
         intent: Intent,
-        enqueue: suspend (SendJob) -> Unit = { request ->
+        enqueue: suspend (SendJob) -> List<String> = { request ->
             EntryPointAccessors.fromApplication(context.applicationContext, OutgoingQueueEntryPoint::class.java)
                 .outgoingMessageQueue().enqueue(request)
-            Unit
         }
     ) {
         val target = NotificationHelper.currentTarget(context, intent) ?: return
@@ -76,11 +101,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 }
             }
             return
-        }
-        try {
-            NotificationHelper.dismissAcceptedReply(context, target)
-        } catch (e: Exception) {
-            Log.e("NotificationReply", "Unable to close accepted reply notification: ${e::class.java.simpleName}")
         }
     }
 
