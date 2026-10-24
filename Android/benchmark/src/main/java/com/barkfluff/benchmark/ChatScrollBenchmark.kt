@@ -56,10 +56,9 @@ class ChatScrollBenchmark(private val compilationMode: CompilationMode) {
                 }.fling(direction)
             }
 
-            // UiObject2.fling scrolls in the named direction and swipes opposite (2.4.0 source).
-            // ChatActivity.kt uses stackFromEnd=true, so DOWN reveals older messages.
-            repeat(4) { flingMessages(Direction.DOWN) }
+            // UP reveals older messages above; stackFromEnd=true anchors the bottom but does not reverse item order.
             repeat(4) { flingMessages(Direction.UP) }
+            repeat(4) { flingMessages(Direction.DOWN) }
             device.waitForIdle(5_000L)
         }
     }
