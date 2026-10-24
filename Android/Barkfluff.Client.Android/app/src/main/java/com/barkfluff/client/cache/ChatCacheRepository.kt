@@ -357,15 +357,17 @@ interface ChatCacheDao {
         CachedSecretMessageEntity::class,
         OutgoingMessageEntity::class,
         OutgoingAttachmentEntity::class,
-        PendingMessageReadEntity::class
+        PendingMessageReadEntity::class,
+        PendingChatReadRangeEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class ChatCacheDatabase : RoomDatabase() {
     abstract fun cacheDao(): ChatCacheDao
     abstract fun outgoingDao(): OutgoingMessageDao
     abstract fun pendingReadDao(): PendingMessageReadDao
+    abstract fun pendingChatReadRangeDao(): PendingChatReadRangeDao
 }
 
 class ChatCacheRepository(context: Context, private val secretChats: com.barkfluff.client.repository.SecretChatRepository? = null) {
@@ -618,7 +620,6 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
     suspend fun saveOutgoing(
         scope: CacheScope,
         record: OutgoingMessageRecord,
-        notificationReadMessageId: Long? = null,
         expectedScopeId: String? = null
     ) = withContext(Dispatchers.IO) {
         val db = database()
@@ -628,17 +629,44 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
                     "Notification belongs to a different account"
                 }
             }
-            if (notificationReadMessageId != null) {
-                require(notificationReadMessageId > 0 && record.state == OutgoingMessageState.QUEUED)
-            }
             val dao = db.outgoingDao()
+            val existing = dao.message(scope.id, record.operationId)
+            val initialAcceptance = existing == null || existing.state == OutgoingMessageState.STAGING.name
+            if (record.notificationReadMessageId != null) {
+                require(record.notificationReadMessageId > 0)
+                if (initialAcceptance) require(record.state == OutgoingMessageState.QUEUED)
+            }
             dao.upsertMessage(record.toEntity(scope.id))
             dao.upsertAttachments(record.attachments.map { it.toEntity(scope.id, record.operationId) })
-            notificationReadMessageId?.let { messageId ->
-                db.pendingReadDao().insert(PendingMessageReadEntity(scope.id, messageId, record.chatId))
+            if (initialAcceptance) record.notificationReadMessageId?.let { messageId ->
+                db.pendingChatReadRangeDao().coalesce(scope.id, record.chatId, messageId, System.currentTimeMillis())
             }
         }
     }
+
+    suspend fun enqueueChatReadRange(scope: CacheScope, chatId: String, upToMessageId: Long) = withContext(Dispatchers.IO) {
+        require(chatId.isNotBlank() && upToMessageId > 0)
+        require(CacheScope.from(GlobalParam(appContext)) == scope) { "Notification belongs to a different account" }
+        database().pendingChatReadRangeDao().coalesce(scope.id, chatId, upToMessageId, System.currentTimeMillis())
+    }
+
+    suspend fun readyPendingChatReadRanges(scope: CacheScope, nowMillis: Long, limit: Int = 50) =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().ready(scope.id, nowMillis, limit) }
+
+    suspend fun nextPendingChatReadRangeAttempt(scope: CacheScope): Long? =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().nextWakeAt(scope.id) }
+
+    suspend fun useLegacyReadRangeFallback(scope: CacheScope, chatId: String, cutoff: Long) =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().useLegacyFallback(scope.id, chatId, cutoff) }
+
+    suspend fun updatePendingChatReadRangeCursor(scope: CacheScope, chatId: String, cutoff: Long, cursor: Long) =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().updateCursor(scope.id, chatId, cutoff, cursor) }
+
+    suspend fun retryPendingChatReadRange(scope: CacheScope, chatId: String, cutoff: Long, attempts: Int, nextAttemptAt: Long) =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().retry(scope.id, chatId, cutoff, attempts, nextAttemptAt) }
+
+    suspend fun completePendingChatReadRange(scope: CacheScope, chatId: String, completedCutoff: Long) =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().completeThrough(scope.id, chatId, completedCutoff) }
 
     suspend fun readyPendingReads(scope: CacheScope, nowMillis: Long, limit: Int = 50) =
         withContext(Dispatchers.IO) { database().pendingReadDao().ready(scope.id, nowMillis, limit) }
@@ -770,6 +798,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
             db.outgoingDao().deleteAllAttachments(scope.id)
             db.outgoingDao().deleteAllMessages(scope.id)
             db.pendingReadDao().clear(scope.id)
+            db.pendingChatReadRangeDao().clear(scope.id)
         }
     }
 
@@ -867,7 +896,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         val passphrase = databasePassphrase()
         return Room.databaseBuilder(appContext, ChatCacheDatabase::class.java, DATABASE_NAME)
             .openHelperFactory(SupportOpenHelperFactory(passphrase))
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
     }
 
@@ -920,7 +949,8 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         leaseOwner = leaseOwner,
         leaseExpiresAtMillis = leaseExpiresAtMillis,
         serverMessageId = serverMessageId,
-        serverMessagePayload = serverMessagePayload
+        serverMessagePayload = serverMessagePayload,
+        notificationReadMessageId = notificationReadMessageId
     )
 
     private fun OutgoingAttachmentRecord.toEntity(scopeId: String, operationId: String) = OutgoingAttachmentEntity(
@@ -965,6 +995,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         leaseExpiresAtMillis = leaseExpiresAtMillis,
         serverMessageId = serverMessageId,
         serverMessagePayload = serverMessagePayload,
+        notificationReadMessageId = notificationReadMessageId,
         attachments = attachments.map { attachment ->
             OutgoingAttachmentRecord(
                 attachmentIndex = attachment.attachmentIndex,
@@ -1173,6 +1204,23 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_pending_message_reads_scopeId_nextAttemptAtMillis " +
                         "ON pending_message_reads(scopeId, nextAttemptAtMillis)"
+                )
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE outgoing_messages ADD COLUMN notificationReadMessageId INTEGER")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS pending_chat_read_ranges (" +
+                        "scopeId TEXT NOT NULL, chatId TEXT NOT NULL, upToMessageId INTEGER NOT NULL, " +
+                        "legacyFallback INTEGER NOT NULL, cursorBeforeMessageId INTEGER NOT NULL, " +
+                        "attemptCount INTEGER NOT NULL, nextAttemptAtMillis INTEGER NOT NULL, " +
+                        "PRIMARY KEY(scopeId, chatId))"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_pending_chat_read_ranges_scopeId_nextAttemptAtMillis " +
+                        "ON pending_chat_read_ranges(scopeId, nextAttemptAtMillis)"
                 )
             }
         }

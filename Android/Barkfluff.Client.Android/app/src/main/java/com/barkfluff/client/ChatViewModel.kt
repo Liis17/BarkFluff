@@ -168,6 +168,7 @@ sealed interface ChatIntent {
         val otherUserId: Long,
         val supportsDrafts: Boolean,
         val targetMessageId: Long = 0L,
+        val firstUnreadMessageId: Long = 0L,
     ) : ChatIntent
     data class NavigateToMessage(val messageId: Long) : ChatIntent
     data class MessageNavigationHandled(val requestId: Long) : ChatIntent
@@ -278,6 +279,7 @@ class ChatViewModel @Inject constructor(
                 otherUserId = intent.otherUserId,
                 supportsDrafts = intent.supportsDrafts,
                 targetMessageId = intent.targetMessageId,
+                initialFirstUnreadMessageId = intent.firstUnreadMessageId,
             )
             is ChatIntent.NavigateToMessage -> navigateToMessage(intent.messageId)
             is ChatIntent.MessageNavigationHandled -> acknowledgeMessageNavigation(intent.requestId)
@@ -361,6 +363,7 @@ class ChatViewModel @Inject constructor(
         otherUserId: Long,
         supportsDrafts: Boolean,
         targetMessageId: Long = 0L,
+        initialFirstUnreadMessageId: Long = 0L,
     ) {
         if (initialized) {
             if (this.chatId != chatId) {
@@ -371,6 +374,7 @@ class ChatViewModel @Inject constructor(
         initialized = true
         this.chatId = chatId
         this.supportsDrafts = supportsDrafts
+        firstUnreadMessageId = initialFirstUnreadMessageId.takeIf { it > 0L } ?: 0L
         cacheScope = CacheScope.from(globalParam)
         savedStateHandle[KEY_CHAT_ID] = chatId
         val target = (savedStateHandle.get<Long>(KEY_TARGET_MESSAGE) ?: targetMessageId)

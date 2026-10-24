@@ -466,6 +466,8 @@ class GrpcMessageGateway(
 
     override suspend fun deleteMessage(messageId: Long): Result<Unit> = repository.deleteMessage(messageId)
     override suspend fun markAsRead(messageIds: List<Long>): Result<Unit> = repository.markAsRead(messageIds)
+    override suspend fun markChatAsReadUpTo(chatId: String, upToMessageId: Long): Result<Boolean> =
+        repository.markChatAsReadUpTo(chatId, upToMessageId)
     override suspend fun chatInfo(chatId: String): Result<ChatInfo> = repository.getChatInfo(chatId).map { value ->
         ChatInfo(
             chatId = value.chatId,

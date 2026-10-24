@@ -69,7 +69,7 @@ class ChatCacheRepositoryClearTest {
         cache.saveSecretMessage(scope, "secret-chat", "secret-1", "Peer", "secret", 1)
         cache.saveChatDraft(scope, draft("chat", revision = "draft-revision"))
         saveComposerAttachment()
-        cache.saveOutgoing(scope, outgoing("queued"), notificationReadMessageId = 42L)
+        cache.saveOutgoing(scope, outgoing("queued").copy(notificationReadMessageId = 42L))
 
         cache.clearHistoryCache()
 
@@ -78,7 +78,7 @@ class ChatCacheRepositoryClearTest {
         assertTrue(cache.latestMessages(scope, "chat", 10).isEmpty())
         assertTrue(cache.latestPrivateMessages(scope, "chat", 10).isEmpty())
         assertEquals(OutgoingMessageState.QUEUED, cache.outgoing(scope, "queued")?.state)
-        assertEquals(42L, cache.readyPendingReads(scope, nowMillis = 0).single().messageId)
+        assertEquals(42L, cache.readyPendingChatReadRanges(scope, nowMillis = 0).single().upToMessageId)
         assertEquals(1, cache.readChatDrafts(scope).size)
         assertEquals(1, cache.readComposerAttachments(scope, "chat").size)
         assertEquals(1, cache.latestSecretMessages(scope, "secret-chat", 10).size)
@@ -257,14 +257,14 @@ class ChatCacheRepositoryClearTest {
 
     @Test
     fun clearOutgoingKeepReadsPreservesPendingReadsAndSent() = runBlocking {
-        cache.saveOutgoing(scope, outgoing("queued"), notificationReadMessageId = 42L)
+        cache.saveOutgoing(scope, outgoing("queued").copy(notificationReadMessageId = 42L))
         cache.saveOutgoing(scope, outgoing("sent", state = OutgoingMessageState.SENT))
 
         cache.clearOutgoingKeepReads(scope)
 
         assertEquals(null, cache.outgoing(scope, "queued"))
         assertEquals(OutgoingMessageState.SENT, cache.outgoing(scope, "sent")?.state)
-        assertEquals(listOf(42L), cache.readyPendingReads(scope, nowMillis = 0).map { it.messageId })
+        assertEquals(listOf(42L), cache.readyPendingChatReadRanges(scope, nowMillis = 0).map { it.upToMessageId })
     }
 
     private suspend fun saveComposerAttachment() {

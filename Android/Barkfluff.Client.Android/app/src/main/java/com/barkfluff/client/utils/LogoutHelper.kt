@@ -7,6 +7,7 @@ import android.widget.Toast
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.R
 import com.barkfluff.client.LoginActivity
+import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.gateway.AuthGateway
@@ -15,6 +16,7 @@ import com.barkfluff.client.calls.CallEventsService
 import com.barkfluff.client.crypto.CryptoCleanupJournalException
 import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.send.OutgoingMessageQueue
+import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
 import com.google.firebase.messaging.FirebaseMessaging
@@ -41,13 +43,17 @@ object LogoutHelper {
     /** Used by every credential-clearing exit, including rejected refresh on Splash. */
     suspend fun clearCredentials(context: Context, prekeyManager: PrekeyManager): Boolean {
         val app = context.applicationContext as BarkFluffApplication
+        val notificationScopeId = CacheScope.from(GlobalParam(context))?.id
         return runCryptoExit(
             cryptoExit = { prepareCryptoExit(context, prekeyManager) },
             localCleanup = {
                 app.secretChatRepository.awaitHistoryIdle()
                 app.chatCacheRepository.clearAll()
             },
-            finalizeCredentials = { withContext(Dispatchers.IO) { GlobalParam(context).clearUserData() } },
+            finalizeCredentials = {
+                notificationScopeId?.let { NotificationHelper.dismissAllForScope(context, it) }
+                withContext(Dispatchers.IO) { GlobalParam(context).clearUserData() }
+            },
             onStepError = { Log.e(TAG, "Local cleanup failed", it) },
         )
     }
@@ -128,6 +134,7 @@ object LogoutHelper {
         forgetPrivateChats: () -> Unit,
         prekeyManager: PrekeyManager,
     ) {
+        val notificationScopeId = CacheScope.from(GlobalParam(context))?.id
         // 1. Остановка realtime-стримов — первым делом, чтобы они не писали в кеши
         //    во время очистки и не ушли в бесконечный retry после сброса токенов
         realtimeShutdown()
@@ -156,6 +163,7 @@ object LogoutHelper {
             // 5. Очистка всех настроек аккаунта (оставляем только адреса сервера).
             //    device_id удаляется — при следующем входе будет создан новый.
             finalizeCredentials = {
+                notificationScopeId?.let { NotificationHelper.dismissAllForScope(context, it) }
                 withContext(Dispatchers.IO) {
                     forgetPrivateChats()
                     GlobalParam(context).clearUserData()

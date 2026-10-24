@@ -405,6 +405,7 @@ class ChatActivity : AppCompatActivity() {
             otherUserId = otherUserId,
             supportsDrafts = supportsDrafts,
             targetMessageId = intent.getLongExtra(EXTRA_TARGET_MESSAGE_ID, 0L),
+            firstUnreadMessageId = intent.getLongExtra("first_unread_message_id", 0L),
         ))
         observeViewModel()
 

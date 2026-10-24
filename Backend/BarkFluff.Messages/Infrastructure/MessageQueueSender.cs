@@ -140,7 +140,14 @@ public class MessageQueueSender
 
     public Task PublishOutbox(NewMessageEvent message, CancellationToken cancellationToken)
     {
-        return _publishEndpoint.Publish(message, cancellationToken);
+        return _publishEndpoint.Publish(message, publishContext => publishContext.MessageId = message.EventId,
+            cancellationToken);
+    }
+
+    public Task PublishReadOutbox(MessageReadEvent message, Guid eventId, CancellationToken cancellationToken)
+    {
+        return _publishEndpoint.Publish(message, publishContext => publishContext.MessageId = eventId,
+            cancellationToken);
     }
 
     /// <summary>

@@ -16,6 +16,14 @@ Messages управляет членством в чатах, историей �
 
 Dispatcher polling — 2 секунды, batch до 100, lease 2 минуты; backoff 1/5/30 секунд → 2/10/30 минут, окно retries 7 дней, затем DeadLetter. `MessageOutboxJanitor` раз в час удаляет Delivered старше 7 дней по CreatedAt; DeadLetter автоматически не удаляет. Обычный outbox не гарантирует порядок по чату.
 
+## Диапазон прочтения и read outbox
+
+Additive `MessagesApi.MarkChatAsReadUpTo(chat_id, up_to_message_id)` возвращает `has_more`; прежний `MarkAsRead(message_ids)` сохраняет explicit-ID контракт. Новый RPC по умолчанию отвечает `UNIMPLEMENTED` при `Messages:ChatReadRangeEnabled=false` или отсутствующей настройке. При включении проверяются положительный cutoff, доступ к чату, `ChatType.Regular` и принадлежность anchor чату; anchor может быть soft-deleted. Меняются максимум 100 сообщений за вызов по предикату `chat_id + id<=cutoff + !deleted + user not in ReadBy`, без исключения sender/system/imported типов. `has_more` сообщает о следующих непрочитанных строках.
+
+При gate=true range RPC и exact MarkAsRead записывают изменение `ReadBy` и `MessageReadEvent` в одной транзакции; при gate=false exact RPC сохраняет прежний прямой publisher. `MessageOutboxEntry.EventKind=0` — прежний NewMessage payload, `1` — ReadBy; миграция `20261024002540_AddReadByMessageOutbox` добавляет default 0, сохраняет уникальность `EventId`, ограничивает уникальность MessageId только kind 0 и добавляет claim index по Status/EventKind/Id/NextAttemptAt. Dispatcher обрабатывает оба вида даже при выключенном gate, публикует не более 100 за batch и сортирует NewMessage перед ReadBy. ReadBy snapshots сохраняют `ReadBy`, `NewReaders`, локальных `ChatMembers` и прежний Updates wire semantics. Метрики имеют отдельный суффикс `new_message`/`read_by` для pending, delivered, reclaim, ошибок и dead letter.
+
+Миграция подготовлена, но не применена. Включать gate можно только после обновления всех Messages replicas и их dispatcher; при откате сначала выключить gate, дождаться отсутствия Pending/Processing строк EventKind=1 и разрешить все DeadLetter до возврата старого бинарника. Уже Delivered rows могут оставаться до обычного retention. Полная последовательность: [ChatReadRangeRollout](../../../Docs/ChatReadRangeRollout.md).
+
 ## Личные и секретные чаты
 
 - Состояние приглашения в зашифрованный личный чат хранится в Messages; pending invitations находятся в Redis до принятия, отказа или истечения срока. `AcceptPrivateChat` добавляет участника; отказ оставляет статус `Rejected`.
