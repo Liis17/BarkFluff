@@ -23,7 +23,7 @@ BarkfluffApp создаёт DependencyContainer и AppCoordinator. Coordinator �
 - Ограничение текущего потока: если gate истёк или Beacon недоступен, загрузчики не запускаются и локальный список из SQLite не читается. Индикатор снимается, но отдельная ошибка подключения при этом не задаётся.
 - BFCore хранит локальный кеш в GRDB/SQLite в Application Support. Миграции v1–v6 создают кеш файлов, чатов, сообщений, стикеров, папок и текущего пользователя. Файловый и оперативный кеши управляются через MediaCacheManager и CacheProtocol.
 - OnlineStatusService — единственный источник статуса для наблюдаемых пользователей. UI сначала читает currentStatus(for:), затем вызывает track и подписывается на личный statusStream; каждому track должен соответствовать untrack. Строка списка чатов использует .task(id:) и снимает tracking при отмене.
-- UpdatesService передаёт новые, изменённые и удалённые сообщения независимым подписчикам. stop завершает потоки; последующий start создаёт новые AsyncStream, поэтому потребители должны подписаться заново.
+- UpdatesService передаёт новые, изменённые и удалённые сообщения независимым подписчикам. stop завершает потоки; последующий start создаёт новые AsyncStream, поэтому потребители должны подписаться заново. `UpdatesRepository.subscribeNewMessages` (общий BFNetworking для macOS и iOS) отбрасывает пустые heartbeat `NewMessageEvent` сервера (без chatID/message или с message.id <= 0).
 
 ## Сеть и безопасность
 

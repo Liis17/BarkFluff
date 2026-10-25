@@ -14,13 +14,41 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+internal interface ChatDraftCacheStore {
+    suspend fun readChatDrafts(scope: CacheScope): List<CachedChatDraft>
+    suspend fun saveChatDraft(scope: CacheScope, draft: CachedChatDraft)
+    suspend fun deleteChatDraft(scope: CacheScope, chatId: String)
+}
+
+private class RepositoryChatDraftCacheStore(
+    private val repository: ChatCacheRepository,
+) : ChatDraftCacheStore {
+    override suspend fun readChatDrafts(scope: CacheScope): List<CachedChatDraft> =
+        repository.readChatDrafts(scope)
+
+    override suspend fun saveChatDraft(scope: CacheScope, draft: CachedChatDraft) =
+        repository.saveChatDraft(scope, draft)
+
+    override suspend fun deleteChatDraft(scope: CacheScope, chatId: String) =
+        repository.deleteChatDraft(scope, chatId)
+}
+
 /** Durable, per-node/per-user journal for regular-chat drafts. */
-class ChatDraftRepository(
-    context: Context,
-    private val cache: ChatCacheRepository,
+class ChatDraftRepository internal constructor(
+    private val currentScope: () -> CacheScope?,
+    private val cache: ChatDraftCacheStore,
     private val remote: ChatDraftGateway,
 ) {
-    private val globalParam = GlobalParam(context)
+    constructor(
+        context: Context,
+        cache: ChatCacheRepository,
+        remote: ChatDraftGateway,
+    ) : this(
+        currentScope = { CacheScope.from(GlobalParam(context)) },
+        cache = RepositoryChatDraftCacheStore(cache),
+        remote = remote,
+    )
+
     private val mutex = Mutex()
     // Cover snapshot -> RPC -> persistence, so wipe cannot race an already captured upsert.
     private val networkMutex = Mutex()
@@ -71,7 +99,11 @@ class ChatDraftRepository(
 
     suspend fun edit(chatId: String, text: String, replyToMessageId: Long): LocalChatDraft? = mutex.withLock {
         val scope = ensureLoaded() ?: return@withLock null
-        val next = ChatDraftJournal.edit(entries[chatId], text, replyToMessageId)
+        val current = entries[chatId]
+        val edited = ChatDraftJournal.edit(current, text, replyToMessageId)
+        val next = if (edited.syncState == ChatDraftSyncState.DELETE_PENDING) {
+            edited.copy(text = current?.text.orEmpty())
+        } else edited
         entries[chatId] = next
         persist(scope, chatId, next)
         publish()
@@ -111,13 +143,62 @@ class ChatDraftRepository(
                     return
                 }
                 val deleted = remote.delete(chatId, snapshot.revision)
-                if (deleted.isSuccess) mutex.withLock {
-                    if (entries[chatId]?.generation == snapshot.generation) {
-                        entries.remove(chatId)
-                        cache.deleteChatDraft(scope, chatId)
-                        publish()
-                    }
+                if (deleted.getOrNull() == true) {
+                    removeIfGenerationMatches(scope, chatId, snapshot.generation)
+                } else if (deleted.getOrNull() == false) {
+                    resolveDeleteConflict(scope, chatId, snapshot)
                 }
+            }
+        }
+    }
+
+    private suspend fun resolveDeleteConflict(scope: CacheScope, chatId: String, tombstone: LocalChatDraft) {
+        val latestResult = remote.get(chatId)
+        if (latestResult.isFailure) return
+        val latest = latestResult.getOrNull()
+        if (latest == null) {
+            removeIfGenerationMatches(scope, chatId, tombstone.generation)
+            return
+        }
+
+        if (latest.text.isBlank() || latest.text == tombstone.text) {
+            val currentTombstone = tombstone.copy(revision = latest.revision)
+            val shouldRetry = mutex.withLock {
+                val current = entries[chatId] ?: return@withLock false
+                if (current.generation != tombstone.generation) return@withLock false
+                entries[chatId] = currentTombstone
+                persist(scope, chatId, currentTombstone)
+                publish()
+                true
+            }
+            if (shouldRetry && remote.delete(chatId, latest.revision).getOrNull() == true) {
+                removeIfGenerationMatches(scope, chatId, tombstone.generation)
+            }
+            return
+        }
+
+        mutex.withLock {
+            val current = entries[chatId] ?: return@withLock
+            if (current.generation != tombstone.generation) return@withLock
+            val preserved = LocalChatDraft(
+                text = latest.text,
+                replyToMessageId = latest.replyToMessageId,
+                revision = latest.revision,
+                generation = tombstone.generation + 1,
+                syncState = ChatDraftSyncState.SYNCED,
+            )
+            entries[chatId] = preserved
+            persist(scope, chatId, preserved)
+            publish()
+        }
+    }
+
+    private suspend fun removeIfGenerationMatches(scope: CacheScope, chatId: String, generation: Long) {
+        mutex.withLock {
+            if (entries[chatId]?.generation == generation) {
+                entries.remove(chatId)
+                cache.deleteChatDraft(scope, chatId)
+                publish()
             }
         }
     }
@@ -189,7 +270,7 @@ class ChatDraftRepository(
                 publish()
                 return@withLock
             }
-            val tombstone = ChatDraftJournal.edit(synced, "", 0L)
+            val tombstone = ChatDraftJournal.edit(synced, "", 0L).copy(text = sent.text)
             entries[chatId] = tombstone
             persist(scope, chatId, tombstone)
             publish()
@@ -198,7 +279,7 @@ class ChatDraftRepository(
     }
 
     private suspend fun ensureLoaded(): CacheScope? {
-        val scope = CacheScope.from(globalParam) ?: return null
+        val scope = currentScope() ?: return null
         if (loadedScope?.id == scope.id) return scope
         entries.clear()
         cache.readChatDrafts(scope).forEach { cached -> entries[cached.chatId] = cached.toLocal() }

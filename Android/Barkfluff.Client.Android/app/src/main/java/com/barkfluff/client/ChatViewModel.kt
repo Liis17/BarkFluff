@@ -13,10 +13,11 @@ import com.barkfluff.client.adapter.MessageItem
 import com.barkfluff.client.adapter.MessageRowProjector
 import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
-import com.barkfluff.client.chat.RegularChatSession
+import com.barkfluff.client.chat.ConfirmedMessageTimeline
 import com.barkfluff.client.chat.MessageNavigator
 import com.barkfluff.client.chat.MessageTarget
 import com.barkfluff.client.chat.MessageTargetMissingException
+import com.barkfluff.client.chat.RegularChatSession
 import com.barkfluff.client.chat.messageChronologicalOrder
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.cache.CacheScope
@@ -216,6 +217,61 @@ sealed interface ChatEffect {
     data object FinishActivity : ChatEffect
 }
 
+internal fun insertMessageInChronologicalOrder(
+    target: MutableList<MessageItem>,
+    message: Shared.Message,
+    item: MessageItem,
+    messageForId: (Long) -> Shared.Message?,
+    startOfDay: (Long) -> Long,
+    dateSeparator: (Long) -> MessageItem,
+) {
+    fun isConfirmed(row: MessageItem): Boolean =
+        (row.type == MessageType.MESSAGE || row.type == MessageType.SYSTEM) && messageForId(row.messageId) != null
+
+    val messageDate = startOfDay(message.sentAt.seconds * 1000)
+    val laterIndex = target.indexOfFirst { row ->
+        isConfirmed(row) && messageForId(row.messageId)?.let {
+            messageChronologicalOrder.compare(it, message) > 0
+        } == true
+    }
+
+    if (laterIndex >= 0) {
+        val later = target[laterIndex]
+        val laterDate = startOfDay(later.timestamp)
+        val previous = target.subList(0, laterIndex).lastOrNull(::isConfirmed)
+        val previousDate = previous?.let { startOfDay(it.timestamp) }
+        var dateHeaderIndex: Int? = null
+        if (laterDate != messageDate) {
+            for (index in laterIndex - 1 downTo 0) {
+                val row = target[index]
+                if (isConfirmed(row) && startOfDay(row.timestamp) != laterDate) break
+                if (row.type == MessageType.DATE_SEPARATOR) {
+                    dateHeaderIndex = index
+                    break
+                }
+            }
+        }
+        var insertIndex = dateHeaderIndex ?: laterIndex
+        if (laterDate == messageDate && target.getOrNull(insertIndex - 1)?.type == MessageType.UNREAD_SEPARATOR) {
+            insertIndex--
+        }
+        val needsDateHeader = previousDate != messageDate && laterDate != messageDate
+        if (needsDateHeader) target.add(insertIndex++, dateSeparator(messageDate))
+        target.add(insertIndex, item)
+        return
+    }
+
+    val footerIndex = target.indexOfLast { it.type == MessageType.FOOTER }
+    var insertIndex = if (footerIndex >= 0) footerIndex else target.size
+    val lastItem = target.getOrNull(insertIndex - 1)
+    if (lastItem != null && (lastItem.type == MessageType.MESSAGE || lastItem.type == MessageType.SYSTEM)) {
+        if (startOfDay(lastItem.timestamp) != messageDate) target.add(insertIndex++, dateSeparator(messageDate))
+    } else if (lastItem == null) {
+        target.add(insertIndex++, dateSeparator(messageDate))
+    }
+    target.add(insertIndex, item)
+}
+
 /**
  * Состояние экрана чата, переживающее пересоздание Activity (recreate при смене chatId
  * очищает ViewModelStore, поэтому каждый чат получает свежий VM). Владеет списком сообщений
@@ -259,6 +315,7 @@ class ChatViewModel @Inject constructor(
     private val composerReducer = ChatComposer()
     private val rowProjector = MessageRowProjector()
     private val regularChatSession = RegularChatSession(messageGateway, chatCacheRepository)
+    private val confirmedTimeline = ConfirmedMessageTimeline()
     private val messageNavigator = MessageNavigator { id, before, after ->
         messageGateway.loadMessages(chatId, fromMessageId = id, offsetBefore = before, offsetAfter = after)
     }
@@ -330,6 +387,7 @@ class ChatViewModel @Inject constructor(
     private var hasMoreMessagesDown = true
     private var isLoadingMessages = false
     private var loadMessagesJob: Job? = null
+    private var catchUpJob: Job? = null
     private var timelineLoadVersion = 0L
     private var isAnchoredTimeline = false
     private var firstUnreadMessageId = 0L
@@ -892,9 +950,8 @@ class ChatViewModel @Inject constructor(
      * Ждёт переподключения RealtimeService (каналы пересоздаются в ProcessLifecycleOwner.onStart).
      */
     fun onStartCatchUp() {
-        if (lastVisibleMessageId <= 0L || isLoadingMessages || messageNavigator.pending != null) return
-        val version = timelineLoadVersion
-        viewModelScope.launch {
+        if ((lastVisibleMessageId <= 0L && !isLoadingMessages) || catchUpJob?.isActive == true) return
+        catchUpJob = viewModelScope.launch {
             val tokenValid = authGateway.ensureValid()
             if (!tokenValid) {
                 Log.w(TAG, "onStartCatchUp: Token refresh failed")
@@ -903,11 +960,34 @@ class ChatViewModel @Inject constructor(
             }
 
             waitForConnection()
-            if (lastVisibleMessageId > 0L && !isLoadingMessages && version == timelineLoadVersion && messageNavigator.pending == null) {
-                Log.d(TAG, "onStartCatchUp: loading missed messages from lastVisibleMessageId=$lastVisibleMessageId")
-                hasMoreMessagesDown = true
-                loadMessagesDown()
-                syncRecentMessages()
+            while (isLoadingMessages) {
+                val loadingJob = loadMessagesJob
+                if (loadingJob != null) loadingJob.join() else _uiState.first { !it.isLoading }
+            }
+            if (lastVisibleMessageId <= 0L) return@launch
+
+            val version = timelineLoadVersion
+            val tailVersion = messageNavigator.liveTailVersion
+            val afterMessageId = lastVisibleMessageId
+            Log.d(TAG, "onStartCatchUp: loading missed messages from lastVisibleMessageId=$afterMessageId")
+            setLoading(true)
+            try {
+                val result = regularChatSession.catchUpAfter(cacheScope, chatId, afterMessageId, PAGE_SIZE)
+                if (version != timelineLoadVersion) return@launch
+                if (result.isSuccess) {
+                    val page = result.getOrThrow()
+                    val messages = page.messages
+                    if (messages.isNotEmpty()) {
+                        appendMessages(messages)
+                        markVisibleMessagesAsRead(messages)
+                    }
+                    hasMoreMessagesDown = page.hasMoreAfter || messageNavigator.hasUnloadedTailSince(tailVersion)
+                    syncRecentMessages()
+                } else {
+                    Log.w(TAG, "onStartCatchUp: loading missed messages failed: ${result.exceptionOrNull()?.message}")
+                }
+            } finally {
+                if (version == timelineLoadVersion) setLoading(false)
             }
         }
     }
@@ -1559,7 +1639,8 @@ class ChatViewModel @Inject constructor(
     // ═══════════════════════════════════════════════════════════════
 
     private fun displayMessages(messages: List<Shared.Message>) {
-        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+        confirmedTimeline.replace(messages)
+        val sortedMessages = confirmedTimeline.messages()
         val messageItems = messagesWithDateSeparators(sortedMessages).toMutableList()
 
         // Разделитель непрочитанных вставляется здесь; Activity прокручивает к нему
@@ -1620,14 +1701,40 @@ class ChatViewModel @Inject constructor(
         )
     }
 
+    private fun insertConfirmedMessage(
+        target: MutableList<MessageItem>,
+        message: Shared.Message,
+        localId: String? = null,
+    ) {
+        insertMessageInChronologicalOrder(
+            target = target,
+            message = message,
+            item = toMessageItem(message).copy(localId = localId),
+            messageForId = confirmedTimeline::message,
+            startOfDay = ::startOfDay,
+            dateSeparator = { date -> MessageItem.createDateSeparator(formatDateSeparator(date)) },
+        )
+    }
+
+    private fun isConfirmedTimelineRow(item: MessageItem): Boolean =
+        (item.type == MessageType.MESSAGE || item.type == MessageType.SYSTEM) &&
+            confirmedTimeline.message(item.messageId) != null
+
+    private fun latestConfirmedMessageId(items: List<MessageItem>): Long? = items
+        .asSequence()
+        .filter(::isConfirmedTimelineRow)
+        .mapNotNull { confirmedTimeline.message(it.messageId) }
+        .maxWithOrNull(messageChronologicalOrder)
+        ?.id
+
     private fun prependMessages(messages: List<Shared.Message>) {
         val currentList = _uiState.value.items.toMutableList()
 
         val existingIds = currentList
-            .filter { it.type == MessageType.MESSAGE }
+            .filter { it.type == MessageType.MESSAGE || it.type == MessageType.SYSTEM }
             .map { it.messageId }
             .toSet()
-        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+        val sortedMessages = messages.sortedWith(messageChronologicalOrder)
             .filter { it.id !in existingIds }
 
         if (sortedMessages.isEmpty()) {
@@ -1635,24 +1742,23 @@ class ChatViewModel @Inject constructor(
             return
         }
 
-        if (currentList.isNotEmpty() && currentList.first().type == MessageType.DATE_SEPARATOR) {
-            currentList.removeAt(0)
+        for (message in sortedMessages) {
+            confirmedTimeline.upsert(message)
+            insertConfirmedMessage(currentList, message)
         }
 
-        val newItems = messagesWithDateSeparators(sortedMessages)
-
-        currentList.addAll(0, newItems)
         submitItems(currentList)
+        firstVisibleMessageId = confirmedTimeline.messages().firstOrNull()?.id ?: firstVisibleMessageId
     }
 
     private fun appendMessages(messages: List<Shared.Message>) {
         val currentList = _uiState.value.items.toMutableList()
 
         val existingIds = currentList
-            .filter { it.type == MessageType.MESSAGE }
+            .filter { it.type == MessageType.MESSAGE || it.type == MessageType.SYSTEM }
             .map { it.messageId }
             .toSet()
-        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+        val sortedMessages = messages.sortedWith(messageChronologicalOrder)
             .filter { it.id !in existingIds }
 
         if (sortedMessages.isEmpty()) {
@@ -1660,19 +1766,13 @@ class ChatViewModel @Inject constructor(
             return
         }
 
-        val lastMsgItem = currentList.lastOrNull { it.type == MessageType.MESSAGE }
-        var lastDate = if (lastMsgItem != null) startOfDay(lastMsgItem.timestamp) else -1L
-
         for (msg in sortedMessages) {
-            val msgDate = startOfDay(msg.sentAt.seconds * 1000)
-            if (msgDate != lastDate) {
-                currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
-                lastDate = msgDate
-            }
-            currentList.add(toMessageItem(msg))
+            confirmedTimeline.upsert(msg)
+            insertConfirmedMessage(currentList, msg)
         }
 
         submitItems(currentList)
+        lastVisibleMessageId = latestConfirmedMessageId(currentList) ?: lastVisibleMessageId
     }
 
     private fun addNewMessage(msg: Shared.Message) {
@@ -1703,8 +1803,12 @@ class ChatViewModel @Inject constructor(
                     messageNavigator.deferLiveMessage()
                     hasMoreMessagesDown = true
                 }
-                currentList[optIdx] = toMessageItem(msg).copy(localId = currentList[optIdx].localId)
+                val localId = currentList[optIdx].localId
+                currentList.removeAt(optIdx)
+                confirmedTimeline.upsert(msg)
+                insertConfirmedMessage(currentList, msg, localId)
                 submitItems(currentList)
+                lastVisibleMessageId = latestConfirmedMessageId(currentList) ?: msg.id
                 return
             }
         }
@@ -1721,25 +1825,12 @@ class ChatViewModel @Inject constructor(
             return
         }
 
-        val messageItem = toMessageItem(msg)
-
         currentList.removeAll { it.type == MessageType.UNREAD_SEPARATOR }
-
-        val msgDate = startOfDay(msg.sentAt.seconds * 1000)
-        val lastItem = currentList.lastOrNull()
-        if (lastItem != null && (lastItem.type == MessageType.MESSAGE || lastItem.type == MessageType.SYSTEM)) {
-            val lastMsgDate = startOfDay(lastItem.timestamp)
-            if (msgDate != lastMsgDate) {
-                currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
-            }
-        } else if (currentList.isEmpty()) {
-            currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
-        }
-
-        currentList.add(messageItem)
+        confirmedTimeline.upsert(msg)
+        insertConfirmedMessage(currentList, msg)
         submitItems(currentList)
 
-        lastVisibleMessageId = msg.id
+        lastVisibleMessageId = latestConfirmedMessageId(currentList) ?: msg.id
 
         if (msg.senderId != currentUserId) {
             viewModelScope.launch {
@@ -1775,6 +1866,7 @@ class ChatViewModel @Inject constructor(
             it.type == MessageType.MESSAGE && it.messageId == msg.id
         }
         if (index < 0) return
+        confirmedTimeline.upsert(msg)
 
         val old = currentList[index]
         val updated = old.copy(
@@ -1792,6 +1884,7 @@ class ChatViewModel @Inject constructor(
             it.type == MessageType.MESSAGE && it.messageId == messageId
         }
         if (removed) {
+            confirmedTimeline.remove(messageId)
             submitItems(currentList)
         }
         messageNavigator.pending?.takeIf { it.messageId == messageId }?.let {
@@ -1800,6 +1893,7 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun rebuildMessagesFromList(messages: List<Shared.Message>) {
+        confirmedTimeline.replace(messages)
         submitItems(messages.map { toMessageItem(it) })
     }
 
