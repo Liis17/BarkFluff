@@ -23,6 +23,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.model.ChatFolder
 import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.domain.model.LastMessageSummary
+import com.barkfluff.client.notifications.isPushPreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -323,6 +324,9 @@ interface ChatCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMessages(messages: List<CachedMessageEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertMessageIfAbsent(message: CachedMessageEntity)
+
     @Query("DELETE FROM cached_messages WHERE scopeId = :scopeId AND chatId = :chatId AND messageId = :messageId")
     suspend fun deleteMessage(scopeId: String, chatId: String, messageId: Long)
 
@@ -553,6 +557,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         limit: Int
     ): List<Shared.Message> = withContext(Dispatchers.IO) {
         database().cacheDao().messagesBefore(scope.id, chatId, beforeMessageId, limit).toMessages()
+            .filterNot { it.isPushPreview() }
     }
 
     suspend fun messagesAfter(
@@ -562,6 +567,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         limit: Int
     ): List<Shared.Message> = withContext(Dispatchers.IO) {
         database().cacheDao().messagesAfter(scope.id, chatId, afterMessageId, limit).toMessages()
+            .filterNot { it.isPushPreview() }
     }
 
     suspend fun saveMessages(scope: CacheScope, chatId: String, messages: List<Shared.Message>) {
@@ -580,6 +586,20 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
             )
         }
     }
+    /** Fills a missing row only: a message already cached from the server stays authoritative. */
+    suspend fun saveMessageIfAbsent(scope: CacheScope, chatId: String, message: Shared.Message) =
+        withContext(Dispatchers.IO) {
+            database().cacheDao().insertMessageIfAbsent(
+                CachedMessageEntity(
+                    scopeId = scope.id,
+                    chatId = chatId,
+                    messageId = message.id,
+                    sentAtMillis = message.sentAt.seconds * 1000,
+                    payload = message.toByteArray()
+                )
+            )
+        }
+
     suspend fun latestPrivateMessages(
         scope: CacheScope,
         chatId: String,
