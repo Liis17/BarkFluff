@@ -78,7 +78,7 @@ class ChatCacheRepositoryClearTest {
         assertTrue(cache.latestMessages(scope, "chat", 10).isEmpty())
         assertTrue(cache.latestPrivateMessages(scope, "chat", 10).isEmpty())
         assertEquals(OutgoingMessageState.QUEUED, cache.outgoing(scope, "queued")?.state)
-        assertEquals(42L, cache.readyPendingChatReadRanges(scope, nowMillis = 0).single().upToMessageId)
+        assertEquals(42L, cache.readyPendingChatReadRanges(scope, nowMillis = Long.MAX_VALUE).single().upToMessageId)
         assertEquals(1, cache.readChatDrafts(scope).size)
         assertEquals(1, cache.readComposerAttachments(scope, "chat").size)
         assertEquals(1, cache.latestSecretMessages(scope, "secret-chat", 10).size)
@@ -294,7 +294,7 @@ class ChatCacheRepositoryClearTest {
 
         assertEquals(null, cache.outgoing(scope, "queued"))
         assertEquals(OutgoingMessageState.SENT, cache.outgoing(scope, "sent")?.state)
-        assertEquals(listOf(42L), cache.readyPendingChatReadRanges(scope, nowMillis = 0).map { it.upToMessageId })
+        assertEquals(listOf(42L), cache.readyPendingChatReadRanges(scope, nowMillis = Long.MAX_VALUE).map { it.upToMessageId })
     }
 
     private suspend fun saveComposerAttachment() {
