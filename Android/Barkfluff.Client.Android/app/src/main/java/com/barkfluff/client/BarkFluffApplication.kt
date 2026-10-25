@@ -35,10 +35,13 @@ import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
+import com.barkfluff.client.domain.gateway.ServerDiscoveryGateway
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.LocaleManager
+import com.barkfluff.client.utils.ServerInfoRefreshResult
 import com.barkfluff.client.utils.StickerCache
+import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import com.barkfluff.client.widget.WidgetRefreshWorker
 import com.google.android.material.color.DynamicColors
 import androidx.work.Constraints
@@ -56,6 +59,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 
 /**
@@ -93,6 +97,8 @@ class BarkFluffApplication : Application() {
 
     @Inject lateinit var autoDownloadNetworkState: AutoDownloadNetworkState
 
+    @Inject lateinit var serverDiscoveryGateway: ServerDiscoveryGateway
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var callEventsUiJob: Job? = null
     private var secretChatEventsJob: Job? = null
@@ -100,6 +106,7 @@ class BarkFluffApplication : Application() {
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             autoDownloadNetworkState.available(network)
+            realtimeService.onDefaultNetworkChanged(network)
             applicationScope.launch(Dispatchers.IO) {
                 chatDraftRepository.flushAll()
                 outgoingMessageQueue.retryAfterNetworkReturn()
@@ -243,6 +250,35 @@ class BarkFluffApplication : Application() {
                 .penaltyLog()
                 .build()
         )
+    }
+
+    /**
+     * Обновляет адреса сервера через Beacon и проверяет TLS-сертификаты, не задерживая открытие чатов из кеша.
+     * Неподтверждённый сертификат и так отвергает TLS-слой каналов; если нужно решение пользователя,
+     * задача заменяется экраном проверки сертификата, как раньше делала SplashActivity.
+     */
+    private companion object {
+        const val BACKGROUND_SERVER_INFO_TIMEOUT_MS = 15_000L
+    }
+
+    fun refreshServerInfoInBackground() {
+        // IO: создание Beacon-канала и TLS-проверки не должны конкурировать с первым кадром MainActivity.
+        applicationScope.launch(Dispatchers.IO) {
+            val globalParam = GlobalParam(this@BarkFluffApplication)
+            val result = withTimeoutOrNull(BACKGROUND_SERVER_INFO_TIMEOUT_MS) {
+                refreshServerInfoFromBeacon(serverDiscoveryGateway, globalParam, applicationContext)
+            }
+            if (
+                result == ServerInfoRefreshResult.CertificateApprovalRequired ||
+                result == ServerInfoRefreshResult.CertificateRejected
+            ) {
+                startActivity(
+                    Intent(this@BarkFluffApplication, SelectServerActivity::class.java)
+                        .putExtra(SelectServerActivity.EXTRA_TRUST_REVIEW_ADDRESS, globalParam.socketBeacon)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                )
+            }
+        }
     }
 
     override fun onTerminate() {

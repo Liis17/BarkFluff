@@ -19,6 +19,11 @@ import io.grpc.ClientInterceptor
 import io.grpc.ClientInterceptors
 import io.grpc.ManagedChannel
 import java.util.EnumMap
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Small platform-free lifecycle primitive used to pin registry semantics in unit tests.
@@ -344,6 +349,20 @@ class GrpcClientRegistry internal constructor(
                 )
             }
         }
+    }
+
+    private val networkEpochState = MutableStateFlow(0)
+
+    /** Grows when the default network changes, so streams waiting to reconnect can retry at once. */
+    val networkEpoch: StateFlow<Int> = networkEpochState
+
+    fun onNetworkChanged() {
+        networkEpochState.update { it + 1 }
+    }
+
+    /** Waits [delayMs] before a stream reconnect, returning early once the network has changed since [epoch]. */
+    suspend fun delayUnlessNetworkChanges(delayMs: Long, epoch: Int) {
+        withTimeoutOrNull(delayMs) { networkEpochState.first { it != epoch } }
     }
 
     /** Terminal shutdown. Once called, lazy getters never recreate a channel. */

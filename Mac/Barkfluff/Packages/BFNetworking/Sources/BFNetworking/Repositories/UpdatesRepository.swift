@@ -27,6 +27,10 @@ public actor UpdatesRepository: UpdatesRepositoryProtocol {
                         let updatesClient = Barkfluff_Updates_UpdatesApi.Client(wrapping: client)
                         try await updatesClient.subscribeNewMessages(req) { response in
                             for try await event in response.messages {
+                                // Сервер шлёт пустой NewMessageEvent сразу после подписки и каждые 15 с как heartbeat.
+                                if event.chatID.isEmpty || !event.hasMessage || event.message.id <= 0 {
+                                    continue
+                                }
                                 let chatID = event.chatID
                                 let msg = event.message
 

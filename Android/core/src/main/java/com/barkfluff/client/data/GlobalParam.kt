@@ -20,16 +20,8 @@ class GlobalParam(private val context: Context) {
         context.getSharedPreferences("barkfluff_prefs", Context.MODE_PRIVATE)
     }
 
-    private val securePreferences: SharedPreferences by lazy {
-        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
-        EncryptedSharedPreferences.create(
-            "barkfluff_secure_prefs",
-            masterKeyAlias,
-            context,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }
+    private val securePreferences: SharedPreferences
+        get() = securePreferences(context)
 
     // Приложение
     var autoDownloadSettings: AutoDownloadSettings
@@ -437,6 +429,22 @@ class GlobalParam(private val context: Context) {
     }
 
     companion object {
+        // EncryptedSharedPreferences.create decrypts its keyset through Android Keystore. GlobalParam is
+        // created ad hoc in many places, so one instance per process avoids repeating that on every read.
+        @Volatile
+        private var sharedSecurePreferences: SharedPreferences? = null
+
+        private fun securePreferences(context: Context): SharedPreferences =
+            sharedSecurePreferences ?: synchronized(this) {
+                sharedSecurePreferences ?: EncryptedSharedPreferences.create(
+                    "barkfluff_secure_prefs",
+                    MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC),
+                    context.applicationContext,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                ).also { sharedSecurePreferences = it }
+            }
+
         const val KEY_AUTO_DOWNLOAD_PREFIX = "auto_download_"
         private const val KEY_AUTO_DOWNLOAD_LIMIT = "auto_download_limit_mb"
         private const val KEY_SOCKET_BEACON = "socket_beacon"

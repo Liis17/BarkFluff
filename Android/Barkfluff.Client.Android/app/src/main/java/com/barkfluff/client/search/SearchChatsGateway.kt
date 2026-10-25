@@ -9,6 +9,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.resolveOtherUserId
 import com.barkfluff.client.repository.SecretChatRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -86,5 +87,5 @@ class GrpcSearchChatsGateway @Inject constructor(
         chat.picturePreviewFileId.ifBlank { chat.pictureFileId }.ifBlank { null }
 
     private fun peer(chat: ChatSummary): Long = if (chat.isGroupChat) 0L else
-        chat.memberIds.firstOrNull { it != userId } ?: chat.memberIds.firstOrNull() ?: displays[chat.id]?.otherUserId ?: 0L
+        resolveOtherUserId(chat.memberIds, userId, displays[chat.id]?.otherUserId ?: 0L) ?: 0L
 }

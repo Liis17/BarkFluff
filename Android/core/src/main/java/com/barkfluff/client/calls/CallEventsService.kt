@@ -1,11 +1,14 @@
 package com.barkfluff.client.calls
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
 import barkfluff.calls.CallsApiOuterClass
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcClientRegistry
+import com.barkfluff.client.grpc.STABLE_STREAM_MS
 import com.barkfluff.client.grpc.TokenCoordinator
+import com.barkfluff.client.grpc.jitteredBackoff
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +16,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -97,6 +99,8 @@ class CallEventsService(
     private suspend fun streamWithReconnect() {
         var attempts = 0
         while (coroutineContext.isActive) {
+            val epoch = clientRegistry.networkEpoch.value
+            val startedAt = SystemClock.elapsedRealtime()
             try {
                 _connectionState.value = ConnectionState.CONNECTING
                 ensureCallsClient()
@@ -113,6 +117,7 @@ class CallEventsService(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                if (SystemClock.elapsedRealtime() - startedAt >= STABLE_STREAM_MS) attempts = 0
                 attempts++
                 _connectionState.value = ConnectionState.DISCONNECTED
                 Log.w(TAG, "Call events stream error (attempt $attempts): ${e.message}")
@@ -121,12 +126,15 @@ class CallEventsService(
                     tokenCoordinator.ensureValid(forceRefresh = true)
                 }
 
-                val backoff = min(
-                    BASE_BACKOFF_MS * 2.0.pow((attempts - 1).coerceAtMost(10).toDouble()),
-                    MAX_BACKOFF_MS.toDouble()
-                ).toLong()
-                delay(backoff)
-                ensureCallsClient(force = true)
+                val backoff = jitteredBackoff(
+                    min(
+                        BASE_BACKOFF_MS * 2.0.pow((attempts - 1).coerceAtMost(10).toDouble()),
+                        MAX_BACKOFF_MS.toDouble()
+                    ).toLong()
+                )
+                clientRegistry.delayUnlessNetworkChanges(backoff, epoch)
+                // После смены сети канал звонков уже пересоздан RealtimeService вместе с остальными.
+                ensureCallsClient(force = clientRegistry.networkEpoch.value == epoch)
             }
         }
     }

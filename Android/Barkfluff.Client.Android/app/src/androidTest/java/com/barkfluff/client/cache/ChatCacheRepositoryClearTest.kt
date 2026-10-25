@@ -78,7 +78,7 @@ class ChatCacheRepositoryClearTest {
         assertTrue(cache.latestMessages(scope, "chat", 10).isEmpty())
         assertTrue(cache.latestPrivateMessages(scope, "chat", 10).isEmpty())
         assertEquals(OutgoingMessageState.QUEUED, cache.outgoing(scope, "queued")?.state)
-        assertEquals(42L, cache.readyPendingChatReadRanges(scope, nowMillis = 0).single().upToMessageId)
+        assertEquals(42L, cache.readyPendingChatReadRanges(scope, nowMillis = Long.MAX_VALUE).single().upToMessageId)
         assertEquals(1, cache.readChatDrafts(scope).size)
         assertEquals(1, cache.readComposerAttachments(scope, "chat").size)
         assertEquals(1, cache.latestSecretMessages(scope, "secret-chat", 10).size)
@@ -87,6 +87,36 @@ class ChatCacheRepositoryClearTest {
         repositories += reopenedCache
         reopenedCache.saveMessages(scope, "chat", listOf(message(3)))
         assertEquals(3L, reopenedCache.latestMessages(scope, "chat", 10).single().id)
+    }
+
+    @Test
+    fun pushedMessageFillsOnlyMissingRowAndServerCopyReplacesIt() = runBlocking {
+        val server = message(1).toBuilder()
+            .setContent(barkfluff.shared.Shared.MessageContent.newBuilder().setText("server"))
+            .build()
+        val pushed = { id: Long ->
+            com.barkfluff.client.notifications.pushedMessageForCache(
+                mapOf(
+                    "message_id" to "$id", "sender_id" to "5", "content_type" to "0",
+                    "attachment_count" to "0", "message_text" to "push",
+                ),
+                currentUserId = 7,
+                receivedAtMillis = 1_000 * id,
+            )!!
+        }
+
+        cache.saveMessages(scope, "chat", listOf(server))
+        cache.saveMessageIfAbsent(scope, "chat", pushed(1))
+        cache.saveMessageIfAbsent(scope, "chat", pushed(2))
+        assertEquals("server", cache.cachedMessage(scope, "chat", 1)?.content?.text)
+        assertEquals("push", cache.cachedMessage(scope, "chat", 2)?.content?.text)
+        // Paging must not trust sparse push rows: the server fills the range instead.
+        assertEquals(listOf(1L, 2L), cache.latestMessages(scope, "chat", 10).map { it.id }.sorted())
+        assertEquals(emptyList<Long>(), cache.messagesAfter(scope, "chat", 1, 10).map { it.id })
+        assertEquals(listOf(1L), cache.messagesBefore(scope, "chat", 3, 10).map { it.id })
+
+        cache.saveMessages(scope, "chat", listOf(server.toBuilder().setId(2).build()))
+        assertEquals("server", cache.cachedMessage(scope, "chat", 2)?.content?.text)
     }
 
     @Test
@@ -264,7 +294,7 @@ class ChatCacheRepositoryClearTest {
 
         assertEquals(null, cache.outgoing(scope, "queued"))
         assertEquals(OutgoingMessageState.SENT, cache.outgoing(scope, "sent")?.state)
-        assertEquals(listOf(42L), cache.readyPendingChatReadRanges(scope, nowMillis = 0).map { it.upToMessageId })
+        assertEquals(listOf(42L), cache.readyPendingChatReadRanges(scope, nowMillis = Long.MAX_VALUE).map { it.upToMessageId })
     }
 
     private suspend fun saveComposerAttachment() {
