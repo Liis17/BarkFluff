@@ -9,6 +9,7 @@ import com.barkfluff.client.calls.CallTelecomManager
 import com.barkfluff.client.calls.IncomingCallPrefetch
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.grpc.RealtimeSideEffects
 import com.barkfluff.client.domain.gateway.UserProfileGateway
@@ -20,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
@@ -51,12 +53,17 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
     @javax.inject.Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     @javax.inject.Inject lateinit var realtimeSideEffects: RealtimeSideEffects
+    @javax.inject.Inject lateinit var chatCacheRepository: ChatCacheRepository
 
     companion object {
         private const val TAG = "BarkFluffFCM"
 
         // Сколько ждём аватар звонящего перед показом звонка
         private const val AVATAR_PREFETCH_TIMEOUT_MS = 2500L
+
+        // onMessageReceived must finish within 20 s. The timeout cancels at suspension points only, so a cold
+        // SQLCipher open can still run past it; the notification is already shown by then.
+        private const val PUSH_CACHE_WRITE_TIMEOUT_MS = 3000L
 
         // MessageAttachmentType enum values from proto
         private const val ATTACHMENT_TYPE_IMAGE = 1
@@ -133,7 +140,35 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         // Извлекаем данные
         val chatId = data["chat_id"] ?: return
         val globalParam = GlobalParam(applicationContext)
-        val scopeId = CacheScope.from(globalParam)?.id ?: return
+        val cacheScope = CacheScope.from(globalParam) ?: return
+        val cacheable = pushedMessageForCache(data, globalParam.userId, remoteMessage.sentTime)
+        try {
+            showRegularMessageNotification(data, remoteMessage, chatId, globalParam, cacheScope.id)
+        } finally {
+            // Muted chats and disabled notifications still get the row; the notification is shown first.
+            if (cacheable != null) cachePushedMessage(cacheScope, chatId, cacheable)
+        }
+    }
+
+    private fun cachePushedMessage(scope: CacheScope, chatId: String, message: barkfluff.shared.Shared.Message) {
+        // Logout may have finished while the notification was built; don't recreate a wiped cache.
+        if (CacheScope.from(GlobalParam(applicationContext))?.id != scope.id) return
+        runCatching {
+            runBlocking {
+                withTimeoutOrNull(PUSH_CACHE_WRITE_TIMEOUT_MS) {
+                    chatCacheRepository.saveMessageIfAbsent(scope, chatId, message)
+                }
+            }
+        }.onFailure { Log.w(TAG, "Unable to cache pushed message", it) }
+    }
+
+    private fun showRegularMessageNotification(
+        data: Map<String, String>,
+        remoteMessage: RemoteMessage,
+        chatId: String,
+        globalParam: GlobalParam,
+        scopeId: String,
+    ) {
         if (!globalParam.notificationsEnabled || OpenChatManager.isOpen(chatId)) return
 
         // Guard: чат замьючен пользователем — не показываем локальное уведомление.

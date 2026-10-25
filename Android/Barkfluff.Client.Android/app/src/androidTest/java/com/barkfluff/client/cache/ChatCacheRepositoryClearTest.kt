@@ -90,6 +90,36 @@ class ChatCacheRepositoryClearTest {
     }
 
     @Test
+    fun pushedMessageFillsOnlyMissingRowAndServerCopyReplacesIt() = runBlocking {
+        val server = message(1).toBuilder()
+            .setContent(barkfluff.shared.Shared.MessageContent.newBuilder().setText("server"))
+            .build()
+        val pushed = { id: Long ->
+            com.barkfluff.client.notifications.pushedMessageForCache(
+                mapOf(
+                    "message_id" to "$id", "sender_id" to "5", "content_type" to "0",
+                    "attachment_count" to "0", "message_text" to "push",
+                ),
+                currentUserId = 7,
+                receivedAtMillis = 1_000 * id,
+            )!!
+        }
+
+        cache.saveMessages(scope, "chat", listOf(server))
+        cache.saveMessageIfAbsent(scope, "chat", pushed(1))
+        cache.saveMessageIfAbsent(scope, "chat", pushed(2))
+        assertEquals("server", cache.cachedMessage(scope, "chat", 1)?.content?.text)
+        assertEquals("push", cache.cachedMessage(scope, "chat", 2)?.content?.text)
+        // Paging must not trust sparse push rows: the server fills the range instead.
+        assertEquals(listOf(1L, 2L), cache.latestMessages(scope, "chat", 10).map { it.id }.sorted())
+        assertEquals(emptyList<Long>(), cache.messagesAfter(scope, "chat", 1, 10).map { it.id })
+        assertEquals(listOf(1L), cache.messagesBefore(scope, "chat", 3, 10).map { it.id })
+
+        cache.saveMessages(scope, "chat", listOf(server.toBuilder().setId(2).build()))
+        assertEquals("server", cache.cachedMessage(scope, "chat", 2)?.content?.text)
+    }
+
+    @Test
     fun secretHistoryHandoffIsVisibleOnReturnAndRetryUsesTheSameRow() = runBlocking {
         cache.saveSecretMessage(scope, "secret-chat", "init:durable-envelope", "Peer", "first text", 123000)
         val reopened = ChatCacheRepository(context)
