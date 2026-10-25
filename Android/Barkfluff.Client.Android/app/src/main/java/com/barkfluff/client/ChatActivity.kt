@@ -59,6 +59,7 @@ import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
+import com.barkfluff.client.chat.ChatScrollDecision
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.AutoDownloadSettingsStore
@@ -472,13 +473,17 @@ class ChatActivity : AppCompatActivity() {
 
                 // Сообщения
                 val wasAtBottom = isRecyclerViewAtBottom()
-                val unreadAppeared = state.items.any { it.type == MessageType.UNREAD_SEPARATOR } &&
-                    previousItems.none { it.type == MessageType.UNREAD_SEPARATOR }
-                val grewAtTail = state.items.size > previousItems.size
-                val lastMessage = state.items.lastOrNull { it.type == MessageType.MESSAGE }
-                val ownAtTail = lastMessage?.senderId == currentUserId
 
                 if (state.items != previousItems) {
+                    // Решение принимается против закоммиченного снимка адаптера до submit:
+                    // submitList может проглотить промежуточный commit-callback, а рост
+                    // числа строк (препенд истории, структурные строки) — не добавление в хвост.
+                    val decision = ChatScrollDecision.decide(
+                        committed = messageAdapter.currentList,
+                        next = state.items,
+                        currentUserId = currentUserId,
+                        wasAtBottom = wasAtBottom,
+                    )
                     val version = ++submittedItemsVersion
                     messageAdapter.submitList(messageRowProjector.project(state.items)) {
                         if (version != submittedItemsVersion) return@submitList
@@ -489,13 +494,13 @@ class ChatActivity : AppCompatActivity() {
                         committedItemsVersion = version
                         if (applyMessageNavigation(listIsCommitted = true)) {
                             // A target has priority while its window is loading or committing.
-                        } else if (unreadAppeared) {
+                        } else if (decision.unreadAppeared) {
                             val idx = messageAdapter.currentList.indexOfFirst { it.type == MessageType.UNREAD_SEPARATOR }
                             if (idx >= 0) {
                                 (binding.messagesRecyclerView.layoutManager as LinearLayoutManager)
                                     .scrollToPositionWithOffset(idx, 0)
                             }
-                        } else if (grewAtTail && (ownAtTail || wasAtBottom)) {
+                        } else if (decision.scrollToBottom) {
                             val lastIdx = messageAdapter.itemCount - 1
                             if (lastIdx >= 0) binding.messagesRecyclerView.scrollToPosition(lastIdx)
                         }
