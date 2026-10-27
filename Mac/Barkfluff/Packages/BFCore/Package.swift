@@ -24,7 +24,7 @@ let package = Package(
         ),
         .testTarget(
             name: "BFCoreTests",
-            dependencies: ["BFCore"]
+            dependencies: ["BFCore", "BFNetworking"]
         ),
     ]
 )

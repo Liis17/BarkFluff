@@ -10,6 +10,8 @@ namespace Barkfluff.AdminPanel.Services;
 
 public class SeqService
 {
+    public const string DisabledMessage = "Seq отключён";
+
     private readonly HttpClient _httpClient;
     private readonly IOptions<SeqSettings> _settings;
     private readonly ILogger<SeqService> _logger;
@@ -19,7 +21,8 @@ public class SeqService
         _httpClient = httpClient;
         _settings = settings;
         _logger = logger;
-        _httpClient.BaseAddress = new Uri(settings.Value.ServerUrl);
+        if (IsEnabled)
+            _httpClient.BaseAddress = new Uri(settings.Value.ServerUrl);
 
         // Add API key header if configured
         if (!string.IsNullOrEmpty(settings.Value.ApiKey))
@@ -28,8 +31,13 @@ public class SeqService
         }
     }
 
+    public bool IsEnabled => _settings.Value.Enabled;
+
     public async Task<JsonElement?> GetEventsAsync(string? filter = null, int count = 50, DateTime? fromDateUtc = null, string? afterId = null, DateTime? toDateUtc = null)
     {
+        if (!IsEnabled)
+            return null;
+
         var query = $"/api/events?count={count}&render=true";
 
         if (!string.IsNullOrEmpty(filter))
@@ -64,6 +72,9 @@ public class SeqService
 
     public async Task<JsonElement?> RunSqlQueryAsync(string sqlQuery, DateTime? fromDateUtc = null, DateTime? toDateUtc = null)
     {
+        if (!IsEnabled)
+            return null;
+
         var query = $"/api/sqlquery?q={Uri.EscapeDataString(sqlQuery)}";
 
         if (fromDateUtc.HasValue)
@@ -199,6 +210,9 @@ public class SeqService
 
     public async Task<JsonElement?> GetSignalsAsync()
     {
+        if (!IsEnabled)
+            return null;
+
         try
         {
             var response = await _httpClient.GetAsync("/api/signals");
@@ -238,6 +252,9 @@ public class SeqService
         DateTime? fromDateUtc = null,
         DateTime? toDateUtc = null)
     {
+        if (!IsEnabled)
+            throw new InvalidOperationException(DisabledMessage);
+
         // Seq HTTP API использует HATEOAS-style URL discovery, поэтому путь DELETE
         // определяется не статически, а через `/api/events/resources` → `Links["DeleteInSignal"]`.
         // Обёртку и подстановку RFC 6570 templates делает официальный пакет Seq.Api.
@@ -269,6 +286,9 @@ public class SeqService
         string messageTemplate,
         IReadOnlyDictionary<string, object?> properties)
     {
+        if (!IsEnabled)
+            return;
+
         using var ms = new MemoryStream();
         await using (var writer = new Utf8JsonWriter(ms))
         {

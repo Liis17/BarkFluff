@@ -41,7 +41,7 @@ public static class PlatformServiceRegistry
         new("Minio",      "minio"),
         new("RabbitMQ",   "rabbitmq"),
         new("Redis",      "redis"),
-        new("PostgreSQL", "postgres_barkfluff"),
+        new("PostgreSQL", "postgres"),
     ];
 
     public static readonly IReadOnlyList<PlatformService> All = [.. BarkFluff, .. Infrastructure];

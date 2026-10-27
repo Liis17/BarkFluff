@@ -1,12 +1,19 @@
 package com.barkfluff.client.grpc
 
 import android.content.Context
+import android.net.Network
+import android.os.SystemClock
 import android.util.Log
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.domain.gateway.MessageGateway
 import barkfluff.onliner.OnlinerApiOuterClass
 import barkfluff.updates.UpdatesApiOuterClass
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.crypto.CryptoStoreScope
+import com.barkfluff.client.perf.PerfTrace
+import io.grpc.Status
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlin.coroutines.coroutineContext
@@ -15,6 +22,32 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.random.Random
+
+/**
+ * Updates шлёт пустой NewMessageEvent сразу после подписки и как heartbeat (keep-alive для прокси):
+ * без chat_id и сообщения. Такие события не являются сообщениями и не должны попадать в UI.
+ */
+internal fun UpdatesApiOuterClass.NewMessageEvent.isHeartbeat(): Boolean =
+    chatId.isBlank() || !hasMessage() || message.id <= 0L
+
+/** Каналы, созданные процессом (FCM, воркер) дольше этого до открытия UI, могли быть тихо закрыты NAT. */
+internal const val STALE_CHANNELS_MS = 60_000L
+
+/** Стрим, проживший столько без ошибки, считается установившимся: счётчик попыток начинается заново. */
+internal const val STABLE_STREAM_MS = 30_000L
+
+/**
+ * Решение о пересоздании каналов на resume. После ухода в фон — всегда: Android обрывает соединения
+ * фоновых приложений уже за секунды (замер на Pixel 10 Pro: после 10 с фона стримы сразу UNAVAILABLE).
+ * Не пересоздаются только каналы холодного старта, созданные меньше [STALE_CHANNELS_MS] назад.
+ */
+internal fun shouldRecreateChannelsOnResume(networkChanged: Boolean, wasPaused: Boolean, idleMs: Long): Boolean =
+    networkChanged || wasPaused || idleMs >= STALE_CHANNELS_MS
+
+/** Equal jitter: половина паузы фиксирована, половина случайна, чтобы ~20 стримов не переподключались строем. */
+internal fun jitteredBackoff(backoffMs: Long, random: Random = Random.Default): Long =
+    backoffMs / 2 + random.nextLong(backoffMs / 2 + 1)
 
 /**
  * Сервис реального времени — подписывается на обновления сообщений, прочтений и онлайн-статусов.
@@ -31,12 +64,23 @@ class RealtimeService(
     private val sideEffects: RealtimeSideEffects? = null
 ) {
 
+    data class ScopedSecretChatInvite(
+        val scopeId: String,
+        val event: UpdatesApiOuterClass.SecretChatInviteEvent,
+    )
+
+    data class ScopedSecretChatResolution(
+        val scopeId: String,
+        val event: UpdatesApiOuterClass.SecretChatInviteResolutionEvent,
+    )
+
     companion object {
         private const val TAG = "RealtimeService"
         private const val ONLINE_PING_INTERVAL_MS = 3000L
         private const val MAX_BACKOFF_MS = 30_000L
         private const val BASE_BACKOFF_MS = 2000L
         private const val TOKEN_REFRESH_AFTER_ATTEMPTS = 3
+        private const val NETWORK_CHANGE_DEBOUNCE_MS = 1000L
         private const val DEDUP_MAX_SIZE = 1000
     }
 
@@ -70,6 +114,9 @@ class RealtimeService(
     private val _allMessagesUnpinned = MutableSharedFlow<UpdatesApiOuterClass.AllMessagesUnpinnedEvent>(extraBufferCapacity = 16)
     val allMessagesUnpinned: SharedFlow<UpdatesApiOuterClass.AllMessagesUnpinnedEvent> = _allMessagesUnpinned
 
+    private val _chatHidden = MutableSharedFlow<UpdatesApiOuterClass.ChatHiddenEvent>(extraBufferCapacity = 16)
+    val chatHidden: SharedFlow<UpdatesApiOuterClass.ChatHiddenEvent> = _chatHidden
+
     // --- Приватные чаты (user-scope) ---
     private val _privateMessages = MutableSharedFlow<UpdatesApiOuterClass.NewEncryptedMessageEvent>(extraBufferCapacity = 64)
     val privateMessages: SharedFlow<UpdatesApiOuterClass.NewEncryptedMessageEvent> = _privateMessages
@@ -93,8 +140,14 @@ class RealtimeService(
     private val _secretChatInvites = MutableSharedFlow<UpdatesApiOuterClass.SecretChatInviteEvent>(extraBufferCapacity = 16)
     val secretChatInvites: SharedFlow<UpdatesApiOuterClass.SecretChatInviteEvent> = _secretChatInvites
 
+    private val _scopedSecretChatInvites = MutableSharedFlow<ScopedSecretChatInvite>(extraBufferCapacity = 16)
+    val scopedSecretChatInvites: SharedFlow<ScopedSecretChatInvite> = _scopedSecretChatInvites
+
     private val _secretChatResolutions = MutableSharedFlow<UpdatesApiOuterClass.SecretChatInviteResolutionEvent>(extraBufferCapacity = 16)
     val secretChatResolutions: SharedFlow<UpdatesApiOuterClass.SecretChatInviteResolutionEvent> = _secretChatResolutions
+
+    private val _scopedSecretChatResolutions = MutableSharedFlow<ScopedSecretChatResolution>(extraBufferCapacity = 16)
+    val scopedSecretChatResolutions: SharedFlow<ScopedSecretChatResolution> = _scopedSecretChatResolutions
 
     private val _secretMessages = MutableSharedFlow<UpdatesApiOuterClass.NewSecretMessageEvent>(extraBufferCapacity = 64)
     val secretMessages: SharedFlow<UpdatesApiOuterClass.NewSecretMessageEvent> = _secretMessages
@@ -104,11 +157,28 @@ class RealtimeService(
 
     // Internal state
     private val globalParam = GlobalParam(context)
+    @Volatile
     private var serviceScope: CoroutineScope? = null
     private val seenMessageIds = LinkedHashSet<Long>()
 
     @Volatile
     private var hasEstablishedMessagesConnection = false
+
+    /** Поколение каналов: растёт при каждом recreateAllClients из стримов, resume() и смены сети. */
+    private val clientsGeneration = AtomicInteger()
+
+    private val createdAtElapsedMs = SystemClock.elapsedRealtime()
+
+    @Volatile
+    private var wasPaused = false
+
+    @Volatile
+    private var defaultNetwork: Network? = null
+
+    /** Смена сети, после которой каналы ещё не пересозданы; выполняет отложенная job или resume(). */
+    private val networkChangePending = AtomicBoolean(false)
+
+    private var networkChangeJob: Job? = null
 
     // Online subscription state
     @Volatile
@@ -138,8 +208,12 @@ class RealtimeService(
 
         Log.i(TAG, "Resuming realtime streams")
 
-        // Пересоздаём каналы принудительно — старые могли сломаться (DNS failure после фона)
-        clientRegistry.recreateAllClients(globalParam, context)
+        val idleMs = SystemClock.elapsedRealtime() - createdAtElapsedMs
+        if (shouldRecreateChannelsOnResume(networkChangePending.getAndSet(false), wasPaused, idleMs)) {
+            // Старые каналы после фона могли сломаться (оборванные сокеты, DNS failure).
+            clientsGeneration.incrementAndGet()
+            clientRegistry.recreateAllClients(globalParam, context)
+        }
 
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         serviceScope = scope
@@ -151,6 +225,8 @@ class RealtimeService(
         scope.launch { streamWithReconnect("MessagesPinned") { collectMessagesPinned() } }
         scope.launch { streamWithReconnect("MessagesUnpinned") { collectMessagesUnpinned() } }
         scope.launch { streamWithReconnect("AllMessagesUnpinned") { collectAllMessagesUnpinned() } }
+        // Ноды до DeleteChat не знают этот RPC — UNIMPLEMENTED завершает только этот стрим.
+        scope.launch { streamWithReconnect("ChatHidden", stopOnUnimplemented = true) { collectChatHidden() } }
         scope.launch { streamWithReconnect("OnlineStatus") { collectOnlineStatus() } }
         scope.launch { streamWithReconnect("Typing") { collectTyping() } }
         // E2E приватные чаты (user-scope)
@@ -166,6 +242,8 @@ class RealtimeService(
         scope.launch { streamWithReconnect("SecretMessages") { collectSecretMessages() } }
         scope.launch { onlinePingLoop() }
         scope.launch { notificationLoop() }
+        // Сеть могла смениться, пока scope ещё не был назначен.
+        if (networkChangePending.get()) scheduleNetworkRecreate(scope)
     }
 
     /**
@@ -181,6 +259,40 @@ class RealtimeService(
         }
         serviceScope?.cancel()
         serviceScope = null
+        wasPaused = true
+    }
+
+    /**
+     * Сообщает о новой сети по умолчанию (ConnectivityManager default network callback).
+     * Первая сеть после старта процесса только запоминается. При смене сети в foreground каналы
+     * пересоздаются через ~1 с (схлопывая серию колбэков), в фоне — при следующем resume().
+     */
+    fun onDefaultNetworkChanged(network: Network) {
+        val previous = defaultNetwork
+        defaultNetwork = network
+        if (previous == network) return
+        if (previous == null) {
+            // Первая сеть процесса (в том числе после старта офлайн): пересоздавать нечего, но стримы
+            // в ожидании переподключения пробуют сразу.
+            clientRegistry.onNetworkChanged()
+            return
+        }
+        // Если pause() отменит отложенное пересоздание, его выполнит resume().
+        networkChangePending.set(true)
+        val scope = serviceScope
+        if (scope != null && scope.isActive) scheduleNetworkRecreate(scope)
+    }
+
+    private fun scheduleNetworkRecreate(scope: CoroutineScope) = synchronized(this) {
+        networkChangeJob?.cancel()
+        networkChangeJob = scope.launch {
+            delay(NETWORK_CHANGE_DEBOUNCE_MS)
+            if (!networkChangePending.getAndSet(false)) return@launch
+            Log.i(TAG, "Default network changed, recreating channels")
+            clientsGeneration.incrementAndGet()
+            clientRegistry.recreateAllClients(globalParam, context)
+            clientRegistry.onNetworkChanged()
+        }
     }
 
     /**
@@ -292,6 +404,7 @@ class RealtimeService(
         hasEstablishedMessagesConnection = true
         _connectionState.value = ConnectionState.CONNECTED
         client.subscribeNewMessages(request).collect { event ->
+            if (event.isHeartbeat()) return@collect
             val msgId = event.message.id
             // Dedup
             synchronized(seenMessageIds) {
@@ -377,6 +490,16 @@ class RealtimeService(
         }
     }
 
+    private suspend fun collectChatHidden() {
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribeChatHiddenRequest.getDefaultInstance()
+        client.subscribeChatHidden(request).collect { event ->
+            Log.d(TAG, "Chat hidden: chatId=${event.chatId}, contentWiped=${event.contentWiped}")
+            _chatHidden.emit(event)
+            sideEffects?.onChatChanged(event.chatId)
+        }
+    }
+
     private suspend fun collectPrivateMessages() {
         val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribePrivateMessagesRequest.getDefaultInstance()
@@ -442,19 +565,37 @@ class RealtimeService(
     private suspend fun collectSecretChatInvites() {
         val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeSecretChatInvitesRequest.getDefaultInstance()
+        val scopeId = awaitCryptoScopeId()
         Log.d(TAG, "Subscribing to SecretChatInvites stream (device-scope)")
         client.subscribeSecretChatInvites(request).collect { event ->
             Log.d(TAG, "Secret chat invite received: inviteId=${event.inviteId}, sender=${event.senderUserId}/${event.senderDeviceId}")
             _secretChatInvites.emit(event)
+            if (CryptoStoreScope.from(globalParam)?.scopeId == scopeId) {
+                _scopedSecretChatInvites.emit(ScopedSecretChatInvite(scopeId, event))
+            }
         }
     }
 
     private suspend fun collectSecretChatResolutions() {
         val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeSecretChatResolutionsRequest.getDefaultInstance()
+        val scopeId = awaitCryptoScopeId()
         client.subscribeSecretChatResolutions(request).collect { event ->
             Log.d(TAG, "Secret chat resolution: inviteId=${event.inviteId}, accepted=${event.accepted}")
             _secretChatResolutions.emit(event)
+            if (CryptoStoreScope.from(globalParam)?.scopeId == scopeId) {
+                _scopedSecretChatResolutions.emit(ScopedSecretChatResolution(scopeId, event))
+            }
+        }
+    }
+
+    /** Waits with backoff for a signed-in crypto scope; only real cancellation ends the stream. */
+    private suspend fun awaitCryptoScopeId(): String {
+        var waitMs = BASE_BACKOFF_MS
+        while (true) {
+            CryptoStoreScope.from(globalParam)?.scopeId?.let { return it }
+            delay(waitMs)
+            waitMs = min(waitMs * 2, MAX_BACKOFF_MS)
         }
     }
 
@@ -505,7 +646,12 @@ class RealtimeService(
                 val client = clientRegistry.onlinerClient
                 if (client != null) {
                     val request = OnlinerApiOuterClass.SetOnlineStatusRequest.getDefaultInstance()
-                    client.setOnlineStatus(request)
+                    val cookie = PerfTrace.beginOnlinePing()
+                    try {
+                        client.setOnlineStatus(request)
+                    } finally {
+                        PerfTrace.endOnlinePing(cookie)
+                    }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Online ping failed: ${e.message}")
@@ -536,10 +682,14 @@ class RealtimeService(
     private suspend fun streamWithReconnect(
         name: String,
         reportsConnectionState: Boolean = false,
+        stopOnUnimplemented: Boolean = false,
         block: suspend () -> Unit
     ) {
         var attempts = 0
         while (coroutineContext.isActive) {
+            val generation = clientsGeneration.get()
+            val epoch = clientRegistry.networkEpoch.value
+            val startedAt = SystemClock.elapsedRealtime()
             try {
                 if (reportsConnectionState && hasEstablishedMessagesConnection) {
                     _connectionState.value = ConnectionState.CONNECTING
@@ -553,6 +703,12 @@ class RealtimeService(
             } catch (e: CancellationException) {
                 throw e // shutdown requested
             } catch (e: Exception) {
+                if (stopOnUnimplemented && Status.fromThrowable(e).code == Status.Code.UNIMPLEMENTED) {
+                    Log.i(TAG, "[$name] Not supported by server, stream disabled")
+                    return
+                }
+                // Обрыв давно работавшего стрима (смена сети, keepalive) не копит попытки до refresh токена.
+                if (SystemClock.elapsedRealtime() - startedAt >= STABLE_STREAM_MS) attempts = 0
                 attempts++
                 Log.w(TAG, "[$name] Stream error (attempt $attempts): ${e.message}")
 
@@ -561,19 +717,25 @@ class RealtimeService(
                     forceRefreshToken()
                 }
 
-                val backoff = min(
-                    BASE_BACKOFF_MS * 2.0.pow((attempts - 1).coerceAtMost(10).toDouble()),
-                    MAX_BACKOFF_MS.toDouble()
-                ).toLong()
+                val backoff = jitteredBackoff(
+                    min(
+                        BASE_BACKOFF_MS * 2.0.pow((attempts - 1).coerceAtMost(10).toDouble()),
+                        MAX_BACKOFF_MS.toDouble()
+                    ).toLong()
+                )
 
                 if (reportsConnectionState && hasEstablishedMessagesConnection) {
                     _connectionState.value = ConnectionState.DISCONNECTED
                 }
                 Log.v(TAG, "[$name] Waiting ${backoff}ms before reconnect")
-                delay(backoff)
+                clientRegistry.delayUnlessNetworkChanges(backoff, epoch)
 
-                // Переинициализируем клиенты (каналы могли сломаться)
-                clientRegistry.recreateAllClients(globalParam, context)
+                // Переинициализируем клиенты (каналы могли сломаться). Пересоздание закрывает
+                // старые каналы и роняет все стримы на них — пересоздаёт только первый упавший
+                // стрим поколения, остальные просто переподключаются, иначе каскад бесконечен.
+                if (clientsGeneration.compareAndSet(generation, generation + 1)) {
+                    clientRegistry.recreateAllClients(globalParam, context)
+                }
             }
         }
     }

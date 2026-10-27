@@ -9,6 +9,7 @@ import com.barkfluff.client.calls.CallTelecomManager
 import com.barkfluff.client.calls.IncomingCallPrefetch
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.grpc.RealtimeSideEffects
 import com.barkfluff.client.domain.gateway.UserProfileGateway
@@ -20,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
@@ -51,12 +53,17 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
     @javax.inject.Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     @javax.inject.Inject lateinit var realtimeSideEffects: RealtimeSideEffects
+    @javax.inject.Inject lateinit var chatCacheRepository: ChatCacheRepository
 
     companion object {
         private const val TAG = "BarkFluffFCM"
 
         // Сколько ждём аватар звонящего перед показом звонка
         private const val AVATAR_PREFETCH_TIMEOUT_MS = 2500L
+
+        // onMessageReceived must finish within 20 s. The timeout cancels at suspension points only, so a cold
+        // SQLCipher open can still run past it; the notification is already shown by then.
+        private const val PUSH_CACHE_WRITE_TIMEOUT_MS = 3000L
 
         // MessageAttachmentType enum values from proto
         private const val ATTACHMENT_TYPE_IMAGE = 1
@@ -133,7 +140,35 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         // Извлекаем данные
         val chatId = data["chat_id"] ?: return
         val globalParam = GlobalParam(applicationContext)
-        val scopeId = CacheScope.from(globalParam)?.id ?: return
+        val cacheScope = CacheScope.from(globalParam) ?: return
+        val cacheable = pushedMessageForCache(data, globalParam.userId, remoteMessage.sentTime)
+        try {
+            showRegularMessageNotification(data, remoteMessage, chatId, globalParam, cacheScope.id)
+        } finally {
+            // Muted chats and disabled notifications still get the row; the notification is shown first.
+            if (cacheable != null) cachePushedMessage(cacheScope, chatId, cacheable)
+        }
+    }
+
+    private fun cachePushedMessage(scope: CacheScope, chatId: String, message: barkfluff.shared.Shared.Message) {
+        // Logout may have finished while the notification was built; don't recreate a wiped cache.
+        if (CacheScope.from(GlobalParam(applicationContext))?.id != scope.id) return
+        runCatching {
+            runBlocking {
+                withTimeoutOrNull(PUSH_CACHE_WRITE_TIMEOUT_MS) {
+                    chatCacheRepository.saveMessageIfAbsent(scope, chatId, message)
+                }
+            }
+        }.onFailure { Log.w(TAG, "Unable to cache pushed message", it) }
+    }
+
+    private fun showRegularMessageNotification(
+        data: Map<String, String>,
+        remoteMessage: RemoteMessage,
+        chatId: String,
+        globalParam: GlobalParam,
+        scopeId: String,
+    ) {
         if (!globalParam.notificationsEnabled || OpenChatManager.isOpen(chatId)) return
 
         // Guard: чат замьючен пользователем — не показываем локальное уведомление.
@@ -152,93 +187,57 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         val chatAvatarUrl = data["chat_avatar_url"]?.takeIf { it.isNotBlank() }
         val isGroupChat = data["is_group_chat"]?.toBoolean() ?: false
         val contentType = data["content_type"]?.toIntOrNull() ?: 0
-        val imageUrl = data["image_url"]?.takeIf { it.isNotBlank() }
         val messageId = data["message_id"]?.toLongOrNull() ?: 0
         val attachmentCount = data["attachment_count"]?.toIntOrNull() ?: 0
         val messageText = data["message_text"] ?: ""
+        val timestamp = data["sent_at"]?.toLongOrNull()?.let { if (it < 1_000_000_000_000L) it * 1_000L else it }
+            ?: remoteMessage.sentTime
+        val input = RegularNotificationInput(
+            scopeId = scopeId,
+            chatId = chatId,
+            messageId = messageId,
+            senderId = senderId,
+            senderName = senderName,
+            chatTitle = if (isGroupChat) chatTitle.orEmpty() else senderName,
+            isGroupChat = isGroupChat,
+            timestampMillis = timestamp,
+            text = messageText,
+            attachmentKind = when (contentType) {
+                ATTACHMENT_TYPE_IMAGE -> "image"
+                ATTACHMENT_TYPE_VIDEO -> "video"
+                ATTACHMENT_TYPE_GIF -> "gif"
+                ATTACHMENT_TYPE_DOCUMENT -> "document"
+                ATTACHMENT_TYPE_AUDIO -> "audio"
+                ATTACHMENT_TYPE_VOICE -> "voice"
+                ATTACHMENT_TYPE_STICKER -> "sticker"
+                else -> ""
+            },
+            attachmentCount = attachmentCount.coerceAtLeast(1),
+            senderNameIsFallback = data["sender_name"].isNullOrBlank(),
+            chatTitleIsFallback = if (isGroupChat) data["chat_title"].isNullOrBlank()
+                else data["sender_name"].isNullOrBlank(),
+            // FCM carries the existing short preview. A later realtime event can contain full text.
+            contentIsComplete = false,
+        )
 
-        // Дедупликация обрабатывается в NotificationHelper.showMessageNotification()
-        // Здесь НЕ добавляем в recentlyShownMessages, иначе showMessageNotification
-        // найдёт messageId уже в сете и пропустит показ уведомления.
+        Log.d(TAG, "onMessageReceived: chatId=$chatId, sender=$senderName, isGroup=$isGroupChat, messageId=$messageId")
+        NotificationHelper.showRegularMessageNotification(applicationContext, input)
 
-        Log.d(TAG, "onMessageReceived: chatId=$chatId, sender=$senderName, isGroup=$isGroupChat, contentType=$contentType, messageId=$messageId")
-
-        // Определяем отображаемое имя и аватар
-        val displayName = if (isGroupChat && !chatTitle.isNullOrBlank()) {
-            getString(R.string.notification_sender_in_chat, senderName, chatTitle)
-        } else {
-            senderName
-        }
-
-        val displayAvatarUrl = if (isGroupChat && !chatAvatarUrl.isNullOrBlank()) {
-            chatAvatarUrl
-        } else {
-            avatarUrl
-        }
-
-        // Формируем текст в зависимости от типа контента
-        val count = attachmentCount.coerceAtLeast(1)
-        val displayText = when (contentType) {
-            ATTACHMENT_TYPE_IMAGE -> if (messageText.isBlank()) {
-                "\uD83D\uDCF7 ${resources.getQuantityString(R.plurals.photos_count, count, count)}"
-            } else {
-                "\uD83D\uDCF7 $messageText"
-            }
-            ATTACHMENT_TYPE_VIDEO ->
-                "\uD83C\uDFAC ${resources.getQuantityString(R.plurals.videos_count, count, count)}"
-            ATTACHMENT_TYPE_GIF ->
-                "\uD83C\uDF7F ${resources.getQuantityString(R.plurals.gifs_count, count, count)}"
-            ATTACHMENT_TYPE_DOCUMENT ->
-                "\uD83D\uDCC4 ${resources.getQuantityString(R.plurals.files_count, count, count)}"
-            ATTACHMENT_TYPE_AUDIO ->
-                "\uD83C\uDFB5 ${resources.getQuantityString(R.plurals.audios_count, count, count)}"
-            ATTACHMENT_TYPE_VOICE -> getString(R.string.reply_voice)
-            ATTACHMENT_TYPE_STICKER -> getString(R.string.reply_sticker)
-            else -> messageText
-        }
-
-        // Загружаем изображения в фоне и показываем уведомление
+        // The notification is already visible with initials. Avatar work can enrich it only while
+        // the same account and chat are still eligible; attachment media is summarized as text.
         serviceScope.launch {
             try {
-                // Загружаем аватар
-                val avatarBitmap = loadBitmapFromUrl(displayAvatarUrl)
-
-                // Загружаем превью картинки если это изображение
-                val imageBitmap = if (contentType == ATTACHMENT_TYPE_IMAGE && !imageUrl.isNullOrBlank()) {
-                    loadBitmapFromUrl(imageUrl)
-                } else null
-
-                // Показываем уведомление
-                withContext(Dispatchers.Main) {
-                    NotificationHelper.showMessageNotification(
-                        context = applicationContext,
-                        senderName = displayName,
-                        messageText = displayText,
-                        avatarBitmap = avatarBitmap,
-                        chatId = chatId,
-                        messageId = messageId,
-                        imageBitmap = imageBitmap,
-                        expectedScopeId = scopeId
+                val senderBitmap = loadBitmapFromUrl(avatarUrl)
+                val chatBitmap = if (isGroupChat) loadBitmapFromUrl(chatAvatarUrl) else senderBitmap
+                val current = GlobalParam(applicationContext)
+                if (CacheScope.from(current)?.id == scopeId && current.notificationsEnabled &&
+                    chatId !in current.mutedChatIds && !OpenChatManager.isOpen(chatId)) {
+                    NotificationHelper.showRegularMessageNotification(
+                        applicationContext, input, senderBitmap, chatBitmap,
                     )
                 }
-
-                Log.d(TAG, "onMessageReceived: notification shown, hasAvatar=${avatarBitmap != null}, hasImage=${imageBitmap != null}")
             } catch (e: Exception) {
-                Log.e(TAG, "onMessageReceived: error loading images", e)
-
-                // Показываем уведомление без изображений
-                withContext(Dispatchers.Main) {
-                    NotificationHelper.showMessageNotification(
-                        context = applicationContext,
-                        senderName = displayName,
-                        messageText = displayText,
-                        avatarBitmap = null,
-                        chatId = chatId,
-                        messageId = messageId,
-                        imageBitmap = null,
-                        expectedScopeId = scopeId
-                    )
-                }
+                Log.w(TAG, "Unable to enrich message notification avatar", e)
             }
         }
     }

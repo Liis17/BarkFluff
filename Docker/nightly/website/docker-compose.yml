@@ -10,6 +10,9 @@ services:
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN}
       UsersService__Host: ${USERS_SERVICE_HOST}
       UsersService__Token: ${USERS_SERVICE_TOKEN}
+      LognaraEnable: "${WEBSERVER_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${WEBSERVER_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${WEBSERVER_CONSOLE_OUTPUT:-true}"
     networks:
       - barkfluff-network
 

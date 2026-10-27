@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Synchronization
 import BFNetworking
 
 /// Протокол сервиса аутентификации
@@ -50,4 +51,66 @@ public protocol AuthServiceProtocol: Sendable {
         accessToken: String, accessExpiresAt: Date,
         refreshToken: String, refreshExpiresAt: Date
     ) async
+}
+
+/// New challenge-based sign-in API, kept separate from the legacy registration/iOS contract.
+public protocol SignInServiceProtocol: SignInRepositoryProtocol {}
+
+public final class SignInSessionAdmissionAttempt: @unchecked Sendable, Equatable, Hashable {
+    public let id: UUID
+    private enum State { case pending, cancelled, accepted }
+    private let state = Mutex(State.pending)
+
+    public init(id: UUID = UUID()) {
+        self.id = id
+    }
+
+    public var isCancelled: Bool {
+        state.withLock { $0 == .cancelled }
+    }
+
+    /// Cancels provisional admission. Leaving login after acceptance preserves the session.
+    public func cancel() {
+        state.withLock { if $0 == .pending { $0 = .cancelled } }
+    }
+
+    public var isAccepted: Bool { state.withLock { $0 == .accepted } }
+
+    /// Called on the UI actor immediately before navigation, with no suspension in between.
+    public func accept() -> Bool {
+        state.withLock {
+            guard $0 == .pending else { return false }
+            $0 = .accepted
+            return true
+        }
+    }
+
+    public static func == (lhs: SignInSessionAdmissionAttempt, rhs: SignInSessionAdmissionAttempt) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
+
+public struct SignInSessionAdmissionReceipt: Sendable, Equatable, Hashable {
+    public let attempt: SignInSessionAdmissionAttempt
+
+    public init(attempt: SignInSessionAdmissionAttempt) {
+        self.attempt = attempt
+    }
+}
+
+/// Serializes provisional session writes and rollback shared by challenge and QR login.
+/// Use SignInNavigationCompletion to accept the receipt immediately before navigation;
+/// invalidate the attempt on every abandoned path, including after commit returns.
+public protocol SignInSessionAdmissionService: Sendable {
+    func beginSignInAttempt() async -> SignInSessionAdmissionAttempt
+    func invalidateSignInAttempt(_ attempt: SignInSessionAdmissionAttempt) async
+    func commitSignInSession(
+        _ session: SignInSessionTokens,
+        for attempt: SignInSessionAdmissionAttempt
+    ) async -> SignInSessionAdmissionReceipt?
+    func isCurrentSignInSession(_ receipt: SignInSessionAdmissionReceipt) async -> Bool
 }

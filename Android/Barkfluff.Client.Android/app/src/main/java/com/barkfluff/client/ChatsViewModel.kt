@@ -11,12 +11,14 @@ import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.grpc.RealtimeService
+import com.barkfluff.client.grpc.TokenValidity
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.ChatFolderGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.model.ChatFolder
 import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.model.UserProfile
 import com.barkfluff.client.utils.FirebaseTokenHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -52,6 +54,8 @@ data class ChatsUiState(
 
 sealed interface ChatsEvent {
     data object NavigateToLogin : ChatsEvent
+    /** Identity rejected the refresh token: wipe account crypto state before Login. */
+    data object SessionRejected : ChatsEvent
     /** Аватар/профиль могли подтянуться при первом входе — перерисовать шапку. */
     data object RefreshUserAvatar : ChatsEvent
     data class ChatLoadError(val message: String) : ChatsEvent
@@ -69,9 +73,129 @@ internal fun reconcileChatList(
     val candidates = if (isCompleteSnapshot) {
         validRemoteChats
     } else {
-        validChatSummaries(cachedChats) + validRemoteChats
+        // Сервер отдаёт страницы по убыванию активности: кешированный чат новее последнего
+        // загруженного, но отсутствующий в ответе, скрыт или удалён (DeleteChat).
+        val remoteIds = validRemoteChats.mapTo(HashSet()) { it.id }
+        val oldestLoaded = validRemoteChats.minOfOrNull { it.lastActivityAt }
+        validChatSummaries(cachedChats).filter { cached ->
+            cached.id in remoteIds || oldestLoaded == null || cached.lastActivityAt < oldestLoaded
+        } + validRemoteChats
     }
     return candidates.associateBy { it.id }.values.sortedByDescending { it.lastActivityAt }
+}
+
+internal fun resolveOtherUserId(
+    memberIds: List<Long>,
+    currentUserId: Long,
+    cachedUserId: Long = 0L,
+): Long? {
+    if (currentUserId <= 0L) return null
+    return memberIds.firstOrNull { it > 0L && it != currentUserId }
+        ?: cachedUserId.takeIf { it > 0L && it != currentUserId }
+}
+
+internal class ChatDisplayResolver(
+    private val loadUser: suspend (Long) -> Result<UserProfile>,
+    private val saveDisplay: suspend (String, CachedChatDisplay) -> Unit,
+    private val saveDisplays: suspend (Map<String, CachedChatDisplay>) -> Unit = { updates ->
+        updates.forEach { (chatId, display) -> saveDisplay(chatId, display) }
+    },
+) {
+    private val displays = linkedMapOf<String, CachedChatDisplay>()
+
+    fun loadCachedDisplays(cached: Map<String, CachedChatDisplay>, currentUserId: Long) {
+        displays.clear()
+        cached.forEach { (chatId, display) ->
+            displays[chatId] = display.copy(
+                otherUserId = resolveOtherUserId(emptyList(), currentUserId, display.otherUserId) ?: 0L,
+            )
+        }
+    }
+
+    suspend fun cacheChatList(chats: List<ChatSummary>, currentUserId: Long) {
+        val updates = linkedMapOf<String, CachedChatDisplay>()
+        chats.filterNot { it.isGroupChat }.forEach { chat ->
+            val peerId = resolveOtherUserId(
+                chat.memberIds,
+                currentUserId,
+                displays[chat.id]?.otherUserId ?: 0L,
+            ) ?: 0L
+            remember(
+                chat.id,
+                CachedChatDisplay(
+                    title = chat.title,
+                    avatarFileId = chatAvatarFileId(chat),
+                    otherUserId = peerId,
+                ),
+                currentUserId,
+            )?.let { updates[chat.id] = it }
+        }
+        if (updates.isNotEmpty()) saveDisplays(updates)
+    }
+
+    suspend fun resolve(
+        chat: ChatSummary,
+        currentUserId: Long,
+        defaultTitle: String,
+    ): ChatAdapter.ChatDisplayItem {
+        if (chat.isGroupChat) {
+            return ChatAdapter.ChatDisplayItem(
+                chatData = chat,
+                displayTitle = chat.title.ifBlank { defaultTitle },
+                displayAvatarFileId = chatAvatarFileId(chat),
+            )
+        }
+
+        val cached = displays[chat.id]
+        val otherUserId = resolveOtherUserId(chat.memberIds, currentUserId, cached?.otherUserId ?: 0L)
+        var title = chat.title.ifBlank { cached?.title.orEmpty() }
+        var avatarFileId = chatAvatarFileId(chat).ifBlank { cached?.avatarFileId.orEmpty() }
+        if (title.isBlank() && avatarFileId.isBlank() && otherUserId != null) {
+            loadUser(otherUserId).getOrNull()?.let { user ->
+                title = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
+                avatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }
+            }
+        }
+
+        remember(
+            chat.id,
+            CachedChatDisplay(title, avatarFileId.ifBlank { cached?.avatarFileId.orEmpty() }.ifBlank { null }, otherUserId ?: 0L),
+            currentUserId,
+        )?.let { saveDisplay(chat.id, it) }
+        return ChatAdapter.ChatDisplayItem(
+            chatData = chat,
+            displayTitle = title.ifBlank { defaultTitle },
+            displayAvatarFileId = avatarFileId.ifBlank { null },
+            otherUserId = otherUserId ?: 0L,
+        )
+    }
+
+    suspend fun resolveChats(
+        chats: List<ChatSummary>,
+        currentUserId: Long,
+        defaultTitle: String,
+    ): List<ChatAdapter.ChatDisplayItem> = chats.map { resolve(it, currentUserId, defaultTitle) }
+
+    private fun remember(chatId: String, candidate: CachedChatDisplay, currentUserId: Long): CachedChatDisplay? {
+        val existing = displays[chatId]
+        val display = CachedChatDisplay(
+            title = candidate.title.ifBlank { existing?.title.orEmpty() },
+            avatarFileId = candidate.avatarFileId?.takeIf { it.isNotBlank() } ?: existing?.avatarFileId,
+            otherUserId = resolveOtherUserId(emptyList(), currentUserId, candidate.otherUserId)
+                ?: resolveOtherUserId(emptyList(), currentUserId, existing?.otherUserId ?: 0L)
+                ?: 0L,
+        )
+        if (display != existing &&
+            (display.title.isNotBlank() || display.avatarFileId != null || display.otherUserId > 0L)
+        ) {
+            displays[chatId] = display
+            return display
+        }
+        return null
+    }
+
+    private fun chatAvatarFileId(chat: ChatSummary): String =
+        chat.picturePreviewFileId.ifBlank { chat.pictureFileId }
 }
 
 /**
@@ -93,7 +217,6 @@ class ChatsViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "ChatsViewModel"
-        private const val TOKEN_BUFFER_MINUTES = 5
     }
 
     private val _uiState = MutableStateFlow(ChatsUiState())
@@ -107,7 +230,21 @@ class ChatsViewModel @Inject constructor(
     private var initialized = false
     private var cacheScope: CacheScope? = null
     private var hasAppliedRemoteChats = false
-    private var cachedDisplays: Map<String, CachedChatDisplay> = emptyMap()
+    private val displayResolver = ChatDisplayResolver(
+        loadUser = userProfileGateway::user,
+        saveDisplay = { chatId, display ->
+            cacheScope?.let { scope ->
+                runCatching { chatCacheRepository.saveDisplay(scope, chatId, display) }
+                    .onFailure { Log.w(TAG, "Не удалось сохранить отображение чата", it) }
+            }
+        },
+        saveDisplays = { displays ->
+            cacheScope?.let { scope ->
+                runCatching { chatCacheRepository.saveDisplays(scope, displays) }
+                    .onFailure { Log.w(TAG, "Не удалось сохранить отображения чатов", it) }
+            }
+        },
+    )
     private var localDraftStates: Map<String, Boolean> = emptyMap()
     private var loadChatsJob: Job? = null
     private var refreshDisplayJob: Job? = null
@@ -151,7 +288,7 @@ class ChatsViewModel @Inject constructor(
                 totalChatsCount = snapshot.totalCount,
                 contentAvailable = true,
             )
-            cachedDisplays = snapshot.displays
+            displayResolver.loadCachedDisplays(snapshot.displays, globalParam.userId)
             realtimeService.changeOnlineSubscription(cachedChats.flatMap { it.memberIds }.distinct())
             applyFolderFilter()
         }
@@ -165,23 +302,11 @@ class ChatsViewModel @Inject constructor(
     private fun checkTokenAndLoadChats() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(syncStatus = ChatsSyncStatus.UPDATING)
-            val hasRefreshToken = globalParam.refreshToken != null
-            val hasAccessToken = globalParam.accessToken != null
-            val isAccessTokenExpired = isAccessTokenExpired()
-
-            when {
-                !hasRefreshToken -> {
-                    _events.tryEmit(ChatsEvent.NavigateToLogin)
-                    return@launch
-                }
-                hasRefreshToken && (!hasAccessToken || isAccessTokenExpired) -> {
-                    val refreshResult = tryRefreshToken()
-                    if (!refreshResult) {
-                        _uiState.value = _uiState.value.copy(syncStatus = ChatsSyncStatus.OFFLINE)
-                        return@launch
-                    }
-                }
+            if (globalParam.refreshToken == null) {
+                _events.tryEmit(ChatsEvent.NavigateToLogin)
+                return@launch
             }
+            if (!applyTokenValidity()) return@launch
 
             if (globalParam.pictureFileId.isBlank() && globalParam.picturePreviewFileId.isBlank()) {
                 Log.d(TAG, "checkTokenAndLoadChats: Аватар не загружен, загружаем данные пользователя")
@@ -260,9 +385,11 @@ class ChatsViewModel @Inject constructor(
                             totalCount = page.totalCount,
                             folders = foldersResult.getOrNull(),
                             replaceExisting = isCompleteSnapshot,
+                            removedChatIds = state.allChats.map { it.id } - merged.mapTo(HashSet()) { it.id },
                         )
                     }.onFailure { Log.w(TAG, "Не удалось сохранить кеш чатов", it) }
                 }
+                displayResolver.cacheChatList(remoteChats, globalParam.userId)
                 applyFolderFilter()
             } else {
                 Log.e(TAG, "Ошибка загрузки чатов", chatsResult.exceptionOrNull())
@@ -303,13 +430,7 @@ class ChatsViewModel @Inject constructor(
         if (globalParam.socketMessages.isBlank()) return
         Log.d(TAG, "reloadFromBackground: checking token and reloading chats")
         viewModelScope.launch {
-            val tokenValid = authGateway.ensureValid()
-            if (!tokenValid) {
-                Log.w(TAG, "reloadFromBackground: Token refresh failed, keeping cached chats")
-                _uiState.value = _uiState.value.copy(syncStatus = ChatsSyncStatus.OFFLINE)
-                return@launch
-            }
-            loadChats()
+            if (applyTokenValidity()) loadChats()
         }
     }
 
@@ -347,49 +468,16 @@ class ChatsViewModel @Inject constructor(
                 localDraftStates[chat.id]?.let { chat.copy(hasDraft = it) } ?: chat
             }.sortedByDescending { it.lastActivityAt }
 
-            val displayItems = filtered.map { resolveDisplayItem(it) }
+            val displayItems = displayResolver.resolveChats(
+                filtered,
+                globalParam.userId,
+                appContext.getString(R.string.chat_title_default),
+            )
             _uiState.value = _uiState.value.copy(
                 displayItems = displayItems,
                 unreadCount = totalUnread(_uiState.value.allChats),
             )
         }
-    }
-
-    private suspend fun resolveDisplayItem(chat: ChatSummary): ChatAdapter.ChatDisplayItem {
-        if (!hasAppliedRemoteChats) {
-            cachedDisplays[chat.id]?.let { display ->
-                return ChatAdapter.ChatDisplayItem(
-                    chatData = chat,
-                    displayTitle = display.title,
-                    displayAvatarFileId = display.avatarFileId,
-                    otherUserId = display.otherUserId
-                )
-            }
-        }
-        if (!chat.isGroupChat && chat.title.isBlank()) {
-            val otherUserId = chat.memberIds.firstOrNull { it != globalParam.userId }
-            if (otherUserId != null) {
-                val userResult = userProfileGateway.user(otherUserId)
-                if (userResult.isSuccess) {
-                    val user = userResult.getOrNull()!!
-                    val name = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
-                    val avatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }
-                    return ChatAdapter.ChatDisplayItem(
-                        chatData = chat,
-                        displayTitle = name,
-                        displayAvatarFileId = avatarFileId.ifBlank { null },
-                        otherUserId = otherUserId
-                    )
-                }
-            }
-        }
-
-        // Для группового чата также извлекаем fileId из URL картинки
-        return ChatAdapter.ChatDisplayItem(
-            chatData = chat,
-            displayTitle = chat.title.ifBlank { appContext.getString(R.string.chat_title_default) },
-            displayAvatarFileId = chat.pictureFileId.ifBlank { null }
-        )
     }
 
     private fun chatsInUserFolders(): Set<String> {
@@ -413,7 +501,7 @@ class ChatsViewModel @Inject constructor(
         viewModelScope.launch {
             chatCacheRepository.clearedEvents.collect {
                 hasAppliedRemoteChats = false
-                cachedDisplays = emptyMap()
+                displayResolver.loadCachedDisplays(emptyMap(), globalParam.userId)
                 _uiState.value = ChatsUiState()
             }
         }
@@ -430,6 +518,11 @@ class ChatsViewModel @Inject constructor(
         viewModelScope.launch {
             realtimeService.privateMessages.collect { event ->
                 handlePrivateMessage(event.chatId, event.message.senderId, event.message.sentAt.seconds * 1000)
+            }
+        }
+        viewModelScope.launch {
+            realtimeService.chatHidden.collect { event ->
+                handleChatHidden(event.chatId, event.contentWiped)
             }
         }
         viewModelScope.launch {
@@ -495,6 +588,25 @@ class ChatsViewModel @Inject constructor(
         }
         applyFolderFilter()
         persistChatList()
+    }
+
+    /** DeleteChat на другом устройстве: чат исчезает из списка и кеша, как в веб-клиенте. */
+    private fun handleChatHidden(chatId: String, contentWiped: Boolean) {
+        val state = _uiState.value
+        val wasListed = state.allChats.any { it.id == chatId }
+        val totalCount = if (wasListed) (state.totalChatsCount - 1).coerceAtLeast(0) else state.totalChatsCount
+        if (wasListed) {
+            _uiState.value = state.copy(
+                allChats = state.allChats.filterNot { it.id == chatId },
+                totalChatsCount = totalCount,
+            )
+            applyFolderFilter()
+        }
+        val scope = cacheScope ?: return
+        viewModelScope.launch {
+            runCatching { chatCacheRepository.removeChat(scope, chatId, totalCount, contentWiped) }
+                .onFailure { Log.w(TAG, "Не удалось удалить чат из кеша", it) }
+        }
     }
 
     private fun mirrorNewMessageInAllChats(
@@ -566,7 +678,14 @@ class ChatsViewModel @Inject constructor(
         val scope = cacheScope ?: return
         val state = _uiState.value
         viewModelScope.launch {
-            runCatching { chatCacheRepository.saveChatPage(scope, state.allChats, state.totalChatsCount) }
+            runCatching {
+                chatCacheRepository.saveChatPage(
+                    scope = scope,
+                    chats = state.allChats,
+                    totalCount = state.totalChatsCount,
+                    preserveCachedDisplayWhenEmpty = true,
+                )
+            }
                 .onFailure { Log.w(TAG, "Не удалось обновить кеш чатов", it) }
         }
     }
@@ -575,37 +694,24 @@ class ChatsViewModel @Inject constructor(
     // Токен
     // ═══════════════════════════════════════════════════════════════
 
-    private fun isAccessTokenExpired(): Boolean {
-        val accessTokenExpiration = globalParam.accessTokenExpiration
-        if (accessTokenExpiration <= 0) return true
-
-        val now = System.currentTimeMillis()
-        val bufferMillis = TOKEN_BUFFER_MINUTES * 60 * 1000L
-        return now + bufferMillis >= accessTokenExpiration
-    }
-
-    private suspend fun tryRefreshToken(): Boolean {
-        return try {
-            val identityAddress = globalParam.socketIdentity
-            if (identityAddress.isBlank()) return false
-
-            val refreshToken = globalParam.refreshToken ?: return false
-            val refreshResult = authGateway.refresh(refreshToken, globalParam.refreshTokenExpiration)
-            if (refreshResult.isSuccess) {
-                val (newAccessToken, newAccessTokenExpiration, newRefreshToken, newRefreshTokenExpiration) = refreshResult.getOrNull()!!
-                globalParam.accessToken = newAccessToken
-                globalParam.accessTokenExpiration = newAccessTokenExpiration
-                globalParam.refreshToken = newRefreshToken
-                globalParam.refreshTokenExpiration = newRefreshTokenExpiration
-                true
-            } else {
+    /**
+     * Обновляет токен через общий TokenCoordinator. Отвергнутая Identity сессия (refresh токен
+     * истёк или устройство отвязано) ведёт на логин — иначе список вечно висит на кеше,
+     * а стримы бесконечно получают 401. Недоступность Identity — только статус offline.
+     */
+    private suspend fun applyTokenValidity(): Boolean =
+        when (authGateway.tokenValidity()) {
+            TokenValidity.VALID -> true
+            TokenValidity.REJECTED -> {
+                Log.w(TAG, "Refresh token rejected, navigating to login")
+                _events.tryEmit(ChatsEvent.SessionRejected)
                 false
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка обновления токена", e)
-            false
+            TokenValidity.UNAVAILABLE -> {
+                _uiState.value = _uiState.value.copy(syncStatus = ChatsSyncStatus.OFFLINE)
+                false
+            }
         }
-    }
 
     /**
      * Отправляет Firebase токен на сервер при каждом запуске — нужно для push-уведомлений.

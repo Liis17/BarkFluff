@@ -155,6 +155,9 @@ class ChatRepository(
         return transport.markAsRead(messageIds)
     }
 
+    suspend fun markChatAsReadUpTo(chatId: String, upToMessageId: Long): Result<Boolean> =
+        transport.markChatAsReadUpTo(chatId, upToMessageId)
+
     /**
      * Редактирует существующее сообщение.
      * @param messageId ID сообщения

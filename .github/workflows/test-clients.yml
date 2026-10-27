@@ -1,0 +1,80 @@
+name: Client tests
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        description: all, windows, android or macos
+        type: string
+        default: all
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'windows' }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Run Windows tests
+        shell: pwsh
+        run: |
+          Get-ChildItem Tests -Filter *.csproj -Recurse |
+            Where-Object { (Get-Content $_.FullName -Raw).Contains('-windows') } |
+            ForEach-Object {
+              dotnet test $_.FullName -c Release --logger trx --results-directory test-results
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            }
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: windows-tests
+          path: test-results/*.trx
+
+  android:
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'android' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: Android
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v4
+      - name: Prepare SDK
+        run: |
+          chmod +x gradlew
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+          printf 'sdk.dir=%s\n' "${ANDROID_SDK_ROOT:-$ANDROID_HOME}" > local.properties
+      - name: Check UI and run JVM tests
+        run: |
+          python3 tools/check_android_ui.py
+          ./gradlew :core:testDebugUnitTest :app-v1:testNightlyDebugUnitTest --no-daemon
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: android-tests
+          path: Android/**/build/test-results/**/*.xml
+
+  macos:
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'macos' }}
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest
+      - name: Run BFNetworking tests
+        run: swift test --package-path Mac/Barkfluff/Packages/BFNetworking
+      - name: Run BFCore tests
+        run: swift test --package-path Mac/Barkfluff/Packages/BFCore

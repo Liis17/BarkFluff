@@ -15,6 +15,7 @@ import com.barkfluff.client.domain.model.AuthenticationFactor
 import com.barkfluff.client.domain.model.RegistrationRequest
 import com.barkfluff.client.domain.model.SecuritySettings
 import com.barkfluff.client.domain.model.SecuritySettingsUpdate
+import com.barkfluff.client.domain.model.SignInResolution
 import com.barkfluff.client.domain.model.SignInRequest
 import com.barkfluff.client.domain.model.OtpEnrollment
 import com.barkfluff.client.domain.model.ChatFolder
@@ -61,6 +62,7 @@ interface ServerDiscoveryGateway {
 
 interface AuthGateway {
     suspend fun ensureValid(forceRefresh: Boolean = false): Boolean
+    suspend fun tokenValidity(forceRefresh: Boolean = false): com.barkfluff.client.grpc.TokenValidity
     suspend fun refresh(refreshToken: String, currentRefreshTokenExpiration: Long = 0L): Result<com.barkfluff.client.grpc.TokenRefreshResult>
     suspend fun logout(): Result<Unit>
     fun createIdentity(address: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit>
@@ -72,6 +74,7 @@ interface AuthGateway {
  */
 interface AuthenticationChallengeGateway {
     suspend fun capabilities(): Result<AuthenticationCapabilities>
+    suspend fun resolveSignIn(login: String): Result<SignInResolution>
     suspend fun beginRegistration(request: RegistrationRequest): Result<AuthenticationChallenge>
     suspend fun beginSignIn(request: SignInRequest): Result<AuthenticationChallenge>
     suspend fun challenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge>
@@ -203,6 +206,7 @@ interface MessageGateway {
     suspend fun editMessage(messageId: Long, text: String, fileIds: List<String> = emptyList()): Result<Shared.Message>
     suspend fun deleteMessage(messageId: Long): Result<Unit>
     suspend fun markAsRead(messageIds: List<Long>): Result<Unit>
+    suspend fun markChatAsReadUpTo(chatId: String, upToMessageId: Long): Result<Boolean>
     suspend fun chatInfo(chatId: String): Result<ChatInfo>
     suspend fun pinnedMessages(chatId: String, offset: Int = 0, size: Int = 50): Result<PinnedMessagePage>
     suspend fun pinMessage(chatId: String, messageId: Long): Result<Shared.PinnedMessageInfo>
@@ -299,14 +303,14 @@ interface SecretChatGateway {
 }
 
 interface PrekeyGateway {
-    suspend fun register(
-        registrationId: Int,
-        identityPubkey: ByteArray,
-        signedPreKey: UsersApiOuterClass.SignedPreKey,
-        oneTimePreKeys: List<UsersApiOuterClass.OneTimePreKey>,
-    ): Result<Unit>
+    suspend fun register(request: UsersApiOuterClass.RegisterPrekeyBundleRequest): Result<Unit>
 
-    suspend fun replenish(prekeys: List<UsersApiOuterClass.OneTimePreKey>): Result<Int>
+    suspend fun replenish(request: UsersApiOuterClass.ReplenishOneTimePrekeysRequest):
+        Result<UsersApiOuterClass.ReplenishOneTimePrekeysResponse>
+
+    suspend fun rotate(request: UsersApiOuterClass.RotateSignedPrekeyRequest): Result<Unit>
+
+    suspend fun ownStatus(): Result<UsersApiOuterClass.GetOwnPrekeyStatusResponse>
 }
 
 /** Common fake-friendly token dependency for workers and gateways. */

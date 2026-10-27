@@ -12,6 +12,9 @@ on:
       - '.github/workflows/build-client-macos.yml'
       - '.github/scripts/send-telegram.sh'
       - '.github/scripts/client-version.sh'
+      - '.github/workflows/test-clients.yml'
+      - '.github/workflows/test-scripts.yml'
+      - '.github/tests/**'
   workflow_dispatch:
 
 permissions:
@@ -23,10 +26,19 @@ concurrency:
   queue: max
 
 jobs:
+  scripts:
+    uses: ./.github/workflows/test-scripts.yml
+
+  tests:
+    uses: ./.github/workflows/test-clients.yml
+    with:
+      platform: macos
+
   # ═══════════════════════════════════════════════════════════════
   #  Сборка DMG без подписи + загрузка на сервер
   # ═══════════════════════════════════════════════════════════════
   build:
+    needs: [tests, scripts]
     name: "🍎 macOS Client"
     runs-on: macos-latest
     defaults:

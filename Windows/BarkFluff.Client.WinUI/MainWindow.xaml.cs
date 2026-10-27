@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using H.NotifyIcon;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -240,11 +241,33 @@ public sealed partial class MainWindow : Window
                 await PersistWindowBoundsAsync(AppWindow);
             }
         }
+        catch (Exception)
+        {
+            // Window bounds persistence must not prevent authentication cleanup or exit.
+        }
         finally
         {
+            try
+            {
+                await CleanupLoginForExitAsync().WaitAsync(TimeSpan.FromSeconds(3));
+            }
+            catch (TimeoutException)
+            {
+            }
             _windowCloseReady = true;
             _windowCloseInProgress = false;
             Close();
+        }
+    }
+
+    private static async Task CleanupLoginForExitAsync()
+    {
+        try
+        {
+            await App.Services.GetRequiredService<LoginViewModel>().CleanupAsync();
+        }
+        catch (Exception)
+        {
         }
     }
 

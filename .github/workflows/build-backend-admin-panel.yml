@@ -16,8 +16,15 @@ on:
       - '.github/scripts/push-docker-image.sh'
       - 'global.json'
       - '.dockerignore'
+      - 'Docker/Lognara/**'
       - 'Shared/**'
       - 'Backend/BarkFluff.GrpcServer/**'
+      - 'Tests/BarkFluff.AdminPanel.Tests/**'
+      - '.github/workflows/test-backend.yml'
+      - 'Tests/BarkFluff.GrpcServer.Tests/**'
+      - '.github/workflows/test-scripts.yml'
+      - '.github/tests/**'
+      - 'Tests/BarkFluff.AdminPanel.Tests/Frontend/**'
   workflow_dispatch:
 
 permissions:
@@ -29,7 +36,16 @@ concurrency:
   queue: max
 
 jobs:
+  scripts:
+    uses: ./.github/workflows/test-scripts.yml
+
+  tests:
+    uses: ./.github/workflows/test-backend.yml
+    with:
+      project: BarkFluff.AdminPanel.Tests
+
   build:
+    needs: [tests, scripts]
     name: "🐳 Сборка и публикация Barkfluff.AdminPanel"
     runs-on: ubuntu-latest
     steps:

@@ -1,0 +1,84 @@
+name: Backend tests
+
+on:
+  workflow_call:
+    inputs:
+      project:
+        description: Test project name; empty runs all backend test projects
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.projects.outputs.projects }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: projects
+        env:
+          TEST_PROJECT: ${{ inputs.project }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          projects = sorted(p.as_posix() for p in Path('Tests').glob('*/*.csproj')
+                            if '-windows' not in p.read_text())
+          selected = os.environ['TEST_PROJECT']
+          if selected:
+              target = f'Tests/{selected}/{selected}.csproj'
+              if target not in projects:
+                  raise SystemExit(f'Unknown backend test project: {selected}')
+              common = 'Tests/BarkFluff.GrpcServer.Tests/BarkFluff.GrpcServer.Tests.csproj'
+              projects = sorted({target, common})
+          if not projects:
+              raise SystemExit('No backend test projects found')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'projects={json.dumps(projects)}\n')
+          PY
+
+  test:
+    name: ${{ matrix.project }}
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.discover.outputs.projects) }}
+    env:
+      DEVELOPERS_TEST_POSTGRES: Host=localhost;Port=5432;Database=developers_test;Username=postgres;Password=postgres
+      BARKFLUFF_SEARCH_POSTGRES: Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres
+      BARKFLUFF_PREKEY_POSTGRES: Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: developers_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Run tests
+        env:
+          TEST_PROJECT: ${{ matrix.project }}
+        run: dotnet test "$TEST_PROJECT" -c Release --logger trx --results-directory test-results
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: backend-${{ strategy.job-index }}
+          path: test-results/*.trx

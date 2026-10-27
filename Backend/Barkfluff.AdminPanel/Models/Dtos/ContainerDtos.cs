@@ -40,6 +40,9 @@ public class ContainerStatusDto
     /// </summary>
     public string Ports { get; set; } = string.Empty;
 
+    internal string? ComposeProject { get; set; }
+    internal string? ComposeService { get; set; }
+
     /// <summary>
     /// Время создания контейнера
     /// </summary>

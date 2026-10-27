@@ -1,4 +1,6 @@
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Users.Features.Prekeys;
+using BarkFluff.Proto.Users;
 using BarkFluff.Users.Persistence.Services;
 
 using MediatR;
@@ -13,32 +15,35 @@ public class RegisterPrekeyBundleCommandHandler(
 {
     public async Task<Unit> Handle(RegisterPrekeyBundleCommand command, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(userContext.DeviceId) || !Guid.TryParse(userContext.DeviceId, out var deviceGuid))
-        {
-            logger.LogWarning("RegisterPrekeyBundle: некорректный DeviceId {DeviceId}", userContext.DeviceId);
-            return Unit.Value;
-        }
+        var deviceGuid = PrekeyRequestContext.RequireDeviceId(userContext);
 
         var request = command.Request;
 
-        if (request.SignedPrekey == null)
-        {
-            throw new InvalidOperationException("SignedPrekey обязателен");
-        }
+        var signedPrekey = request.SignedPrekey
+            ?? throw new PrekeyException(Grpc.Core.StatusCode.InvalidArgument, "SignedPrekey обязателен");
 
         var oneTimePrekeys = request.OneTimePrekeys
             .Select(p => ((long)p.PrekeyId, p.PublicKey.ToByteArray()))
             .ToList();
+        var oneTimeKyberPrekeys = request.OneTimeKyberPrekeys
+            .Select(ToKyberInput)
+            .ToList();
+        var lastResortKyberPrekey = request.LastResortKyberPrekey == null
+            ? null
+            : ToKyberInput(request.LastResortKyberPrekey);
 
         await prekeyStorage.RegisterBundleAsync(
             deviceGuid,
             userContext.UserId,
             request.RegistrationId,
             request.IdentityPubkey.ToByteArray(),
-            request.SignedPrekey.PrekeyId,
-            request.SignedPrekey.PublicKey.ToByteArray(),
-            request.SignedPrekey.Signature.ToByteArray(),
-            oneTimePrekeys);
+            signedPrekey.PrekeyId,
+            signedPrekey.PublicKey.ToByteArray(),
+            signedPrekey.Signature.ToByteArray(),
+            oneTimePrekeys,
+            lastResortKyberPrekey,
+            oneTimeKyberPrekeys,
+            cancellationToken);
 
         logger.LogInformation(
             "Зарегистрирован prekey-bundle устройства {DeviceId} пользователя {UserId}, one-time prekeys: {Count}",
@@ -46,4 +51,7 @@ public class RegisterPrekeyBundleCommandHandler(
 
         return Unit.Value;
     }
+
+    private static KyberPrekeyInput ToKyberInput(SignedKyberPreKey prekey) =>
+        new(prekey.PrekeyId, prekey.PublicKey.ToByteArray(), prekey.Signature.ToByteArray());
 }

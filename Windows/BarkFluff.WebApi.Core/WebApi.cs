@@ -229,7 +229,23 @@ namespace BarkFluff.WebApi.Core
         public async Task<ErrorReturner> RemoveActiveSession(string deviceId, GlobalParam globalParam) => await UserManager.RemoveActiveSession(deviceId, globalParam);
         public async Task<(ErrorReturner, string?)> GetUserAvatar(GlobalParam globalParam, long userId = 0) => await UserManager.GetUserAvatar(globalParam, userId);
         public async Task<(ErrorReturner Error, UserData? Data)> GetUserData(GlobalParam globalParam, long userId = 0) => await UserManager.GetUserData(globalParam, userId);
+        public Task<(ErrorReturner Error, UserData? Data)> GetUserDataForAuthentication(GlobalParam globalParam, CancellationToken cancellationToken = default) =>
+            UserManager.GetUserDataForAuthentication(globalParam, cancellationToken);
         public async Task<(ErrorReturner Error, Proto.Identity.Token? refreshToken, Proto.Identity.Token? accessToken, bool getMeOtpCode)> Authorizations(string _email, string _username, string _password, string _otpCode, GlobalParam global) => await UserManager.Authorizations(_email, _username, _password, _otpCode, global);
+        public ErrorReturner CreatePreLoginAuthenticationClient(GlobalParam globalParam, string deviceName, string os, string appName, string appVersion, string ip) =>
+            ClientManager.CreatePreLoginAuthenticationClient(globalParam, deviceName, os, appName, appVersion, ip);
+        public Task<Proto.Identity.ResolveSignInResponse> ResolveSignIn(string login, CancellationToken cancellationToken = default) =>
+            UserManager.ResolveSignIn(login, cancellationToken);
+        public Task<Proto.Identity.AuthChallengeResponse> BeginSignIn(Proto.Identity.BeginSignInRequest request, CancellationToken cancellationToken = default) =>
+            UserManager.BeginSignIn(request, cancellationToken);
+        public Task<Proto.Identity.AuthChallengeResponse> GetAuthChallenge(Proto.Identity.AuthChallengeReference reference, CancellationToken cancellationToken = default) =>
+            UserManager.GetAuthChallenge(reference, cancellationToken);
+        public Task<Proto.Identity.CompleteAuthChallengeResponse> CompleteAuthChallenge(Proto.Identity.CompleteAuthChallengeRequest request, CancellationToken cancellationToken = default) =>
+            UserManager.CompleteAuthChallenge(request, cancellationToken);
+        public Task<Proto.Identity.AuthChallengeResponse> ResendAuthChallenge(Proto.Identity.AuthChallengeReference reference, CancellationToken cancellationToken = default) =>
+            UserManager.ResendAuthChallenge(reference, cancellationToken);
+        public Task<Proto.Identity.AuthChallengeResponse> CancelAuthChallenge(Proto.Identity.AuthChallengeReference reference, CancellationToken cancellationToken = default) =>
+            UserManager.CancelAuthChallenge(reference, cancellationToken);
         public async Task<(ErrorReturner error, List<Proto.Users.UserBadge>? badges)> GetUserBadges(GlobalParam globalParam, long userId = 0, int? limit = null) => await UserManager.GetUserBadges(globalParam, userId, limit);
         public async Task<(ErrorReturner error, Proto.Users.PrivacySettings? settings)> GetPrivacySettings(GlobalParam globalParam) => await UserManager.GetPrivacySettings(globalParam);
         public async Task<ErrorReturner> UpdatePrivacySettings(Proto.Users.PrivacySettings settings, GlobalParam globalParam) => await UserManager.UpdatePrivacySettings(settings, globalParam);
@@ -514,8 +530,10 @@ namespace BarkFluff.WebApi.Core
         public void DisposeFastAuthClient()
             => ClientManager.DisposeFastAuthClient();
 
-        public async Task<(ErrorReturner, Proto.FastAuth.GenerateFastAuthTokenResponse?)> GenerateFastAuthToken(Proto.FastAuth.TokenFormat format)
-            => await FastAuthManager.GenerateFastAuthToken(format);
+        public async Task<(ErrorReturner, Proto.FastAuth.GenerateFastAuthTokenResponse?)> GenerateFastAuthToken(
+            Proto.FastAuth.TokenFormat format,
+            CancellationToken cancellationToken = default)
+            => await FastAuthManager.GenerateFastAuthToken(format, cancellationToken);
 
         public async Task<(ErrorReturner, IAsyncEnumerable<Proto.FastAuth.FastAuthResult>?)> SubscribeFastAuthResult(string fastAuthId, CancellationToken ct)
             => await FastAuthManager.SubscribeFastAuthResult(fastAuthId, ct);

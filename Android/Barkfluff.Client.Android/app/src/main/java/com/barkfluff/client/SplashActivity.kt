@@ -2,6 +2,7 @@ package com.barkfluff.client
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
@@ -10,8 +11,13 @@ import com.barkfluff.client.domain.gateway.ServerDiscoveryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.grpc.GrpcClientRegistry
+import com.barkfluff.client.grpc.TokenValidity
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.FirebaseTokenHelper
+import com.barkfluff.client.utils.LogoutHelper
+import com.barkfluff.client.utils.SessionGate
+import com.barkfluff.client.utils.gateTokenValidity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.barkfluff.client.utils.ServerInfoRefreshResult
 import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import dagger.hilt.android.AndroidEntryPoint
@@ -59,6 +65,13 @@ class SplashActivity : AppCompatActivity() {
             if (!hasServerConfig) {
                 // Нет настроек сервера -> WelcomeActivity
                 navigateToWelcome()
+                return@launch
+            }
+
+            // Чаты из локального кеша открываются сразу; Beacon и сертификаты проверяются в фоне.
+            if (globalParam.refreshToken != null && globalParam.socketIdentity.isNotBlank()) {
+                (application as BarkFluffApplication).refreshServerInfoInBackground()
+                navigateToChats()
                 return@launch
             }
 
@@ -203,17 +216,21 @@ class SplashActivity : AppCompatActivity() {
                 if (userDataResult.isFailure) {
                     val errMsg = userDataResult.exceptionOrNull()?.message ?: ""
                     if (errMsg.contains("401") || errMsg.contains("UNAUTHENTICATED")) {
-                        val refreshed = authGateway.ensureValid(forceRefresh = true)
-                        if (!refreshed) {
-                            // Refresh тоже невалиден — на Login
-                            globalParam.clearUserData()
-                            navigateToLogin()
-                            userSettingsDeferred.cancel()
-                            return@coroutineScope false
+                        // Only a rejected refresh is destructive; an unavailable Identity keeps
+                        // the session and continues to the offline chat cache.
+                        when (val validity = authGateway.tokenValidity(forceRefresh = true)) {
+                            TokenValidity.REJECTED -> {
+                                userSettingsDeferred.cancel()
+                                handleRejectedSession(validity)
+                                return@coroutineScope false
+                            }
+                            TokenValidity.UNAVAILABLE -> Unit
+                            TokenValidity.VALID -> {
+                                // Повторяем запрос с новым токеном
+                                userDataResult = userProfileGateway.currentUser()
+                                reloadUserSettings = true
+                            }
                         }
-                        // Повторяем запрос с новым токеном
-                        userDataResult = userProfileGateway.currentUser()
-                        reloadUserSettings = true
                     }
                 }
 
@@ -256,6 +273,27 @@ class SplashActivity : AppCompatActivity() {
         navigateToChats()
     }
 
+    /** A failed cleanup journal keeps credentials; offer an explicit retry instead of a stuck Splash. */
+    private suspend fun handleRejectedSession(validity: TokenValidity) {
+        val app = applicationContext as BarkFluffApplication
+        app.realtimeService.shutdown()
+        val gate = gateTokenValidity(validity) { LogoutHelper.clearCredentials(this, app.prekeyManager) }
+        if (gate == SessionGate.LOGIN) {
+            navigateToLogin()
+            return
+        }
+        if (isFinishing || isDestroyed) return
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.error)
+            .setMessage(R.string.crypto_cleanup_failed)
+            .setCancelable(false)
+            .setPositiveButton(R.string.action_retry) { _, _ ->
+                lifecycleScope.launch { handleRejectedSession(validity) }
+            }
+            .setNegativeButton(R.string.btn_close) { _, _ -> finish() }
+            .show()
+    }
+
     private fun navigateToWelcome() {
         val intent = Intent(this, WelcomeActivity::class.java)
         startActivity(intent)
@@ -264,6 +302,23 @@ class SplashActivity : AppCompatActivity() {
 
     private fun navigateToLogin() {
         val intent = Intent(this, LoginActivity::class.java)
+        if (this.intent.hasExtra(NotificationHelper.EXTRA_KIND)) {
+            intent.action = this.intent.action
+            intent.data = this.intent.data
+            listOf(
+                NotificationHelper.EXTRA_SCOPE_ID,
+                NotificationHelper.EXTRA_KIND,
+                NotificationHelper.EXTRA_CHAT_ID,
+                NotificationHelper.EXTRA_EVENT_ID,
+                NotificationHelper.EXTRA_THREAD_ID,
+            ).forEach { key ->
+                if (this.intent.hasExtra(key)) intent.putExtra(key, this.intent.getStringExtra(key))
+            }
+            if (this.intent.hasExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT)) {
+                intent.putExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT,
+                    this.intent.getBooleanExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT, false))
+            }
+        }
         startActivity(intent)
         finish()
     }
@@ -276,16 +331,22 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun navigateToChats() {
-        // Пересоздаём каналы с актуальным токеном (interceptor читает GlobalParam динамически,
-        // но каналы могли остаться от предыдущей сессии).
-        clientRegistry.recreateAllClients(globalParam, this)
+        val expectedScope = intent.getStringExtra(NotificationHelper.EXTRA_SCOPE_ID)
+        val isNotificationRoute = intent.hasExtra(NotificationHelper.EXTRA_KIND)
+        val beforeInitScope = com.barkfluff.client.cache.CacheScope.from(globalParam)?.id
+        // Создаём недостающие каналы. Живые не пересоздаём: токен interceptor читает на каждый вызов,
+        // адрес ноды lazy-геттеры сверяют с GlobalParam, а пересоздание оборвало бы уже запущенные стримы.
+        clientRegistry.initAllClients(globalParam, this)
 
         val intent = Intent(this, MainActivity::class.java)
-        // Пробрасываем chatId из уведомления, если есть
-        val chatId = MainActivity.pendingChatId
-        if (chatId != null) {
-            intent.putExtra(NotificationHelper.EXTRA_CHAT_ID, chatId)
-            MainActivity.pendingChatId = null
+        val afterInitScope = com.barkfluff.client.cache.CacheScope.from(GlobalParam(this))?.id
+        if (isNotificationRoute && (expectedScope != beforeInitScope || expectedScope != afterInitScope)) {
+            Log.w("SplashActivity", "Forwarding notification route for a stale scope to MainActivity for rejection")
+        }
+        if (isNotificationRoute) {
+            intent.action = this.intent.action
+            intent.data = this.intent.data
+            this.intent.extras?.let(intent::putExtras)
         }
         startActivity(intent)
         finish()

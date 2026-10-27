@@ -1,4 +1,8 @@
 <resources>
+    <string name="legal_privacy_title">Datenschutz</string>
+    <string name="welcome_show_legal">Nutzungsbedingungen und Datenschutz anzeigen</string>
+    <string name="welcome_hide_legal">Nutzungsbedingungen und Datenschutz ausblenden</string>
+
     <string name="chat_draft_preview">Entwurf</string>
     <!-- App name -->
     <string name="app_name">Barkfluff</string>
@@ -76,7 +80,7 @@
     <string name="server_status_checking">Wird geprüft…</string>
     <string name="server_status_online">Online</string>
     <string name="server_status_unavailable">Nicht verfügbar</string>
-    <string name="server_response_ms">Antwort %1$d ms</string>
+    <string name="server_response_ms">%1$d ms</string>
     <string name="self_hosted_title">Eigener Server</string>
     <string name="self_hosted_description">Betreibe deinen eigenen BarkFluff-Server</string>
     <string name="btn_learn_more_server">Mehr erfahren</string>
@@ -451,6 +455,8 @@
     <string name="logout_dialog_title">Abmelden</string>
     <string name="logout_dialog_message">Möchtest du dich wirklich abmelden?</string>
     <string name="logout_dialog_confirm">Abmelden</string>
+    <string name="crypto_cleanup_failed">Die Schlüssel der geheimen Chats konnten nicht gelöscht werden. Bitte erneut versuchen.</string>
+    <string name="secret_message_history_failed">Nachricht gesendet, aber noch nicht auf diesem Gerät gespeichert. Sie erscheint beim erneuten Öffnen des Chats.</string>
 
     <!-- Account Settings -->
     <string name="account_settings_title">Konto</string>
@@ -532,6 +538,26 @@
     <string name="storage_server_storage">Server-Speicher</string>
     <string name="storage_app_cache">App-Cache</string>
     <string name="storage_clear_cache">Cache leeren</string>
+    <string name="storage_clear_failed">Löschen fehlgeschlagen</string>
+    <string name="storage_clear_option_media">Mediencache (%1$s)</string>
+    <string name="storage_clear_option_history">Chatverlauf (%1$s)</string>
+    <string name="storage_clear_option_secret">Geheime Chats (%1$s)</string>
+    <string name="storage_clear_option_outgoing">Ausgehende Warteschlange (%1$s)</string>
+    <string name="storage_clear_option_drafts">Entwürfe (%1$s)</string>
+    <string name="storage_clear_confirm">Auswahl leeren</string>
+    <string name="storage_clear_warning_irreversible">Du hast Punkte mit nicht rückgängig zu machenden Folgen ausgewählt: Ausgehende Nachrichten wurden möglicherweise bereits an den Server zugestellt; für Entwürfe wird auch die Löschung auf dem Server angefordert, die ohne Netzwerkverbindung möglicherweise fehlschlägt; geheime Chats werden nur auf diesem Gerät gespeichert und können nicht wiederhergestellt werden.</string>
+    <plurals name="storage_clear_count_messages">
+        <item quantity="one">%d Nachricht</item>
+        <item quantity="other">%d Nachrichten</item>
+    </plurals>
+    <plurals name="storage_clear_count_outgoing">
+        <item quantity="one">%d ausstehender Eintrag</item>
+        <item quantity="other">%d ausstehende Einträge</item>
+    </plurals>
+    <plurals name="storage_clear_count_drafts">
+        <item quantity="one">%d Entwurf</item>
+        <item quantity="other">%d Entwürfe</item>
+    </plurals>
 
     <!-- Devices -->
     <string name="devices_title">Geräte</string>
@@ -637,6 +663,7 @@
     <!-- Sticker empty -->
     <string name="stickers_empty">Keine Sticker</string>
     <string name="stickers_empty_subtitle">Noch keine Sticker-Pakete hinzugefügt</string>
+    <string name="stickers_load_failed">Sticker konnten nicht geladen werden</string>
 
     <!-- Message actions popup -->
     <string name="msg_action_reply">Antworten</string>
@@ -930,6 +957,11 @@
     <string name="notification_reply">Antworten</string>
     <string name="notification_reply_hint">Nachricht</string>
     <string name="notification_reply_failed">Die Antwort konnte nicht gespeichert werden. Bitte erneut versuchen.</string>
+    <string name="notification_reply_queued">Warteschlange</string>
+    <string name="notification_reply_sent">Gesendet</string>
+    <string name="notification_reply_failed_short">Fehlgeschlagen</string>
+    <string name="notification_mark_read_failed">Lesestatus konnte nicht gespeichert werden. Die Benachrichtigung bleibt erhalten.</string>
+    <string name="notification_chat_unavailable">Dieser Chat ist nicht verfügbar oder du hast keinen Zugriff mehr.</string>
     <string name="notification_hide">Ausblenden</string>
     <string name="notification_encrypted_message">Neue verschlüsselte Nachricht</string>
     <string name="notification_photo">Foto</string>
@@ -1078,7 +1110,6 @@
     <string name="register_2fa_configured">2FA eingerichtet</string>
     <string name="register_invalid_code">Ungültiger Code</string>
     <string name="register_authenticator_open_failed">Authenticator konnte nicht geöffnet werden</string>
-    <string name="register_photo_permission_denied">Berechtigung für den Fotozugriff wurde nicht erteilt</string>
     <string name="register_full_name_format">%1$s %2$s</string>
     <string name="register_username_format">@%1$s</string>
     <string name="login_2fa_title">Zwei-Faktor-Authentifizierung</string>
@@ -1102,6 +1133,10 @@
     <string name="login_empty_login">Gib deinen Benutzernamen oder deine E-Mail ein</string>
     <string name="login_invalid_email">Ungültiges E-Mail-Format</string>
     <string name="login_username_too_short">Mindestens 3 Zeichen (Buchstaben, Zahlen, . und _)</string>
+    <string name="login_flow_continue">Weiter</string>
+    <string name="login_account_not_found">Konto nicht gefunden</string>
+    <string name="login_mode_changed">Die Anmeldemethode hat sich geändert. Bitte fahre fort.</string>
+    <string name="login_server_update_required">Aktualisiere den Server dieses Knotens, um dich anzumelden.</string>
     <string name="login_password_too_short">Mindestens %1$d Zeichen</string>
     <string name="settings_error_detail">Fehler: %1$s</string>
     <string name="account_username_taken">Benutzername ist bereits vergeben</string>
@@ -1254,6 +1289,8 @@
     <string name="private_chat_decryption_failed">[Entschlüsselung nicht möglich]</string>
     <string name="storage_cache_cleared">Cache geleert</string>
     <string name="notification_unknown_sender">Unbekannter Absender</string>
+    <string name="notification_group_chat">Gruppenchat</string>
+    <string name="notification_unknown_sender_id">Nutzer %1$d</string>
     <string name="notification_sender_in_chat">%1$s in %2$s</string>
     <string name="select_server_connection_failed">Verbindung zum Knoten nicht möglich</string>
     <string name="select_server_connection_timeout">Der Knoten hat nicht rechtzeitig geantwortet. Prüfe die Adresse und versuche es erneut.</string>

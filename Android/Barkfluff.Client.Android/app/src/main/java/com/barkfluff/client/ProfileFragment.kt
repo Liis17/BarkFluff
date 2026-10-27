@@ -11,6 +11,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.calls.CallEventsService
+import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.FragmentProfileBinding
 import com.barkfluff.client.domain.gateway.AuthGateway
@@ -18,6 +19,7 @@ import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.repository.PrivateChatRepository
+import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.LogoutHelper
@@ -43,6 +45,8 @@ class ProfileFragment : Fragment() {
     @javax.inject.Inject lateinit var outgoingMessageQueue: OutgoingMessageQueue
     @javax.inject.Inject lateinit var chatCacheRepository: ChatCacheRepository
     @javax.inject.Inject lateinit var privateChatRepository: PrivateChatRepository
+    @javax.inject.Inject lateinit var prekeyManager: PrekeyManager
+    @javax.inject.Inject lateinit var secretChatRepository: SecretChatRepository
     private var previousMainBackground: Drawable? = null
     private var mainBackgroundCaptured = false
 
@@ -135,6 +139,8 @@ class ProfileFragment : Fragment() {
                             outgoingMessageQueue,
                             chatCacheRepository,
                             privateChatRepository,
+                            prekeyManager,
+                            secretChatRepository,
                         )
                     }
                 }

@@ -5,6 +5,7 @@ using BarkFluff.Settings.Persistence.Contexts;
 using BarkFluff.Shared.Identity;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 using Xunit;
 
@@ -28,6 +29,26 @@ public sealed class SettingsSetupCoordinatorTests
         Assert.All(snapshot.Groups.Single(group => group.Metadata.Id == "federation").Fields, field => Assert.False(field.Required));
         Assert.True(snapshot.Groups.Single(group => group.Metadata.Id == "federation").Fields
             .Single(field => field.Key == "Enabled").Applicable);
+        Assert.Equal("https://files.example.com", snapshot.Groups.Single(group => group.Metadata.Id == "media")
+            .Fields.Single().Metadata.Placeholder);
+    }
+
+    [Fact]
+    public async Task Fresh_snapshot_uses_node_public_domain_for_media_host_hint()
+    {
+        await using var context = CreateContext();
+        await new SettingsSeeder(context, SeedOptions()).SeedAsync();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["NODE_PUBLIC_DOMAIN"] = "node.example.net"
+            })
+            .Build();
+
+        var snapshot = await new SettingsSetupCoordinator(context, configuration: configuration).GetSnapshotAsync();
+
+        Assert.Equal("https://files2.node.example.net", snapshot.Groups.Single(group => group.Metadata.Id == "media")
+            .Fields.Single().Metadata.Placeholder);
     }
 
     [Fact]

@@ -1,15 +1,56 @@
 using BarkFluff.Messages.Domain;
+using BarkFluff.GrpcServer.Tracing;
+using System.Diagnostics;
 using BarkFluff.Messages.Persistence;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Shared.Queue.Messages;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace BarkFluff.Messages.Tests.Persistence;
 
 public class MessagesStorageOutboxRelationalTests
 {
+    [Fact]
+    public void TraceMigration_MatchesModelAndGeneratesAdditiveSqlWithoutConnecting()
+    {
+        using var context = new MessagesContext(new DbContextOptionsBuilder<MessagesContext>()
+            .UseNpgsql("Host=127.0.0.1;Database=trace_migration_validation;Username=unused;Password=unused").Options);
+        context.Database.HasPendingModelChanges().Should().BeFalse();
+        var sql = context.GetService<IMigrator>().GenerateScript("20260930171527_AddMessageSearchIndexes",
+            "20261019211114_AddOutboxTraceContext");
+        sql.Should().Contain("ADD \"TraceParent\" text").And.Contain("ADD \"TraceState\" text")
+            .And.Contain("ADD \"CorrelationId\" text").And.NotContain("DROP TABLE");
+    }
+
+    [Fact]
+    public async Task AddMessageWithOutboxAsync_PersistsTraceAlongsideMessage()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<MessagesContext>().UseSqlite(connection).Options;
+        await using var context = new MessagesContext(options);
+        await context.Database.EnsureCreatedAsync();
+        var storage = new MessagesStorage(context, new ChatsStorage(context));
+        string? parent;
+        using (var activity = new Activity("request").SetIdFormat(ActivityIdFormat.W3C).Start())
+        using (TraceContext.PushCorrelationId("business"))
+        {
+            activity.TraceStateString = "vendor=value";
+            parent = activity.Id;
+            await storage.AddMessageWithOutboxAsync(CreateMessage(Guid.NewGuid()), _ => new NewMessageEvent(), CancellationToken.None);
+        }
+        context.ChangeTracker.Clear();
+        var row = await context.MessageOutbox.SingleAsync();
+        row.TraceParent.Should().Be(parent);
+        row.TraceState.Should().Be("vendor=value");
+        row.CorrelationId.Should().Be("business");
+        (await context.Messages.SingleAsync()).Id.Should().Be(row.MessageId);
+    }
+
     [Fact]
     public async Task AddMessageWithOutboxAsync_WhenEventCreationFails_RollsBackMessage()
     {

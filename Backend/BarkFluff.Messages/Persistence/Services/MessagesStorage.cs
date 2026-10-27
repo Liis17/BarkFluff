@@ -1,13 +1,18 @@
 using BarkFluff.Messages.Domain;
+using BarkFluff.GrpcServer.Tracing;
 using BarkFluff.Messages.Persistence.Exceptions;
 using BarkFluff.Messages.Persistence.Services.Dtos;
 using BarkFluff.Shared.Queue.Messages;
+using BarkFluff.Shared.Exceptions.Messages;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 using Npgsql;
+using NpgsqlTypes;
 
 using System.Text.Json;
+using System.Diagnostics;
 
 namespace BarkFluff.Messages.Persistence.Services;
 
@@ -100,12 +105,10 @@ public class MessagesStorage
             startDate = startMessage.SentAt;
         }
 
-
-        var messages = await _context
-            .Messages
-            .AsNoTracking()
-            .OrderByDescending(m => m.SentAt)
-            .Where(x => x.ChatId == chatId && !x.IsDeleted && x.SentAt <= startDate)
+        var messages = await _context.Messages.AsNoTracking()
+            .Where(m => m.ChatId == chatId && m.SentAt <= startDate && !m.IsDeleted)
+            .OrderByDescending(message => message.SentAt)
+            .ThenByDescending(message => message.Id)
             .Take(count)
             .ToListAsync();
 
@@ -270,6 +273,9 @@ public class MessagesStorage
             EventId = queueEvent.EventId,
             MessageId = message.Id,
             Payload = JsonSerializer.SerializeToUtf8Bytes(queueEvent),
+            TraceParent = Activity.Current?.Id,
+            TraceState = Activity.Current?.TraceStateString,
+            CorrelationId = TraceContext.CorrelationId,
             CreatedAt = now,
             NextAttemptAt = now,
             Status = MessageOutboxStatus.Pending,
@@ -391,6 +397,345 @@ public class MessagesStorage
             new NpgsqlParameter("@messageIds", messageIds.ToArray()));
     }
 
+    public async Task<int> MarkMessagesAsReadWithOutboxAsync(
+        IReadOnlyCollection<long> messageIds,
+        long userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (messageIds.Count == 0) return 0;
+        var ids = messageIds.Distinct().ToArray();
+        return await ExecuteReadTransactionAsync(async transaction =>
+        {
+            var chatIds = await _context.Messages.AsNoTracking()
+                .Where(message => ids.Contains(message.Id) && !message.IsDeleted)
+                .Select(message => message.ChatId)
+                .Distinct()
+                .OrderBy(chatId => chatId)
+                .ToListAsync(cancellationToken);
+            if (_context.Database.IsNpgsql())
+                await LockChatsAsync(chatIds, transaction!, cancellationToken);
+
+            foreach (var chatId in chatIds)
+            {
+                if (!await _context.ChatMembers.AnyAsync(member => member.ChatId == chatId && member.UserId == userId,
+                        cancellationToken))
+                    throw new NoAccessToChatException();
+            }
+
+            List<long> candidates;
+            if (_context.Database.IsNpgsql())
+            {
+                candidates = await SelectLockedMessageIdsAsync(
+                    "\"Id\" = ANY(@ids) AND \"IsDeleted\" = FALSE AND @userId <> ALL(\"ReadBy\")",
+                    "ORDER BY \"ChatId\", \"Id\" FOR UPDATE",
+                    command =>
+                    {
+                        command.Parameters.Add(new NpgsqlParameter("@ids", NpgsqlDbType.Array | NpgsqlDbType.Bigint) { Value = ids });
+                        command.Parameters.AddWithValue("@userId", userId);
+                    }, transaction!, cancellationToken);
+            }
+            else
+            {
+                var messages = await _context.Messages
+                    .Where(message => ids.Contains(message.Id) && !message.IsDeleted)
+                    .ToListAsync(cancellationToken);
+                candidates = messages.Where(message => !message.ReadBy.Contains(userId))
+                    .Select(message => message.Id).ToList();
+            }
+
+            var now = DateTime.UtcNow;
+            var changed = _context.Database.IsNpgsql()
+                ? await AppendReaderAsync(candidates, userId, transaction!, cancellationToken)
+                : await MarkTrackedMessagesAsync(candidates, userId, cancellationToken);
+            await WriteReadOutboxAsync(changed, userId, now, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+            return changed.Count;
+        }, cancellationToken);
+    }
+
+    public async Task<(int ChangedCount, bool HasMore)> MarkChatMessagesAsReadUpToWithOutboxAsync(
+        Guid chatId,
+        long upToMessageId,
+        long userId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteReadTransactionAsync(async transaction =>
+        {
+            if (_context.Database.IsNpgsql())
+                await LockChatsAsync([chatId], transaction!, cancellationToken);
+            if (!await _context.ChatMembers.AnyAsync(member => member.ChatId == chatId && member.UserId == userId,
+                    cancellationToken))
+                throw new NoAccessToChatException();
+
+            List<long> candidates;
+            if (_context.Database.IsNpgsql())
+            {
+                candidates = await SelectLockedMessageIdsAsync(
+                    "\"ChatId\" = @chatId AND \"Id\" <= @upTo AND \"IsDeleted\" = FALSE AND @userId <> ALL(\"ReadBy\")",
+                    "ORDER BY \"Id\" LIMIT 101 FOR UPDATE",
+                    command =>
+                    {
+                        command.Parameters.AddWithValue("@chatId", NpgsqlDbType.Uuid, chatId);
+                        command.Parameters.AddWithValue("@upTo", upToMessageId);
+                        command.Parameters.AddWithValue("@userId", userId);
+                    }, transaction!, cancellationToken);
+            }
+            else
+            {
+                candidates = await _context.Messages
+                    .Where(message => message.ChatId == chatId && message.Id <= upToMessageId && !message.IsDeleted)
+                    .OrderBy(message => message.Id)
+                    .Select(message => new { message.Id, message.ReadBy })
+                    .Where(message => !message.ReadBy.Contains(userId))
+                    .Take(101)
+                    .Select(message => message.Id)
+                    .ToListAsync(cancellationToken);
+            }
+
+            var hasMore = candidates.Count > 100;
+            var changedIds = candidates.Take(100).ToArray();
+            var now = DateTime.UtcNow;
+            var changed = _context.Database.IsNpgsql()
+                ? await AppendReaderAsync(changedIds, userId, transaction!, cancellationToken)
+                : await MarkTrackedMessagesAsync(changedIds, userId, cancellationToken);
+            await WriteReadOutboxAsync(changed, userId, now, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+            return (changed.Count, hasMore);
+        }, cancellationToken);
+    }
+
+    private async Task<T> ExecuteReadTransactionAsync<T>(
+        Func<IDbContextTransaction?, Task<T>> operation,
+        CancellationToken cancellationToken)
+    {
+        async Task<T> RunOwnedAttemptAsync()
+        {
+            var checkpoint = CaptureReadTransactionCheckpoint();
+            try
+            {
+                await using var transaction = _context.Database.IsRelational()
+                    ? await _context.Database.BeginTransactionAsync(cancellationToken)
+                    : null;
+                var result = await operation(transaction);
+                if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+                return result;
+            }
+            catch
+            {
+                RestoreReadTransactionCheckpoint(checkpoint);
+                throw;
+            }
+        }
+
+        if (_context.Database.CurrentTransaction is { } existingTransaction)
+        {
+            var checkpoint = CaptureReadTransactionCheckpoint();
+            try
+            {
+                return await operation(existingTransaction);
+            }
+            catch
+            {
+                RestoreReadTransactionCheckpoint(checkpoint);
+                throw;
+            }
+        }
+
+        if (!_context.Database.IsRelational())
+            return await RunOwnedAttemptAsync();
+
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(RunOwnedAttemptAsync);
+    }
+
+    private ReadTransactionCheckpoint CaptureReadTransactionCheckpoint()
+    {
+        var entries = _context.ChangeTracker.Entries()
+            .ToDictionary(entry => entry.Entity, entry => new TrackedEntryCheckpoint(
+                entry.State,
+                entry.CurrentValues.Clone(),
+                entry.OriginalValues.Clone(),
+                entry.Properties.ToDictionary(property => property.Metadata.Name, property => property.IsModified)),
+                ReferenceEqualityComparer.Instance);
+        return new ReadTransactionCheckpoint(entries);
+    }
+
+    private void RestoreReadTransactionCheckpoint(ReadTransactionCheckpoint checkpoint)
+    {
+        foreach (var entry in _context.ChangeTracker.Entries().ToArray())
+        {
+            if (!checkpoint.Entries.TryGetValue(entry.Entity, out var saved))
+            {
+                entry.State = EntityState.Detached;
+                continue;
+            }
+
+            entry.State = saved.State;
+            entry.CurrentValues.SetValues(saved.CurrentValues);
+            entry.OriginalValues.SetValues(saved.OriginalValues);
+            foreach (var property in entry.Properties)
+                if (saved.ModifiedProperties.TryGetValue(property.Metadata.Name, out var wasModified))
+                    property.IsModified = wasModified;
+        }
+    }
+
+    private async Task<List<long>> SelectLockedMessageIdsAsync(
+        string predicate,
+        string orderBySuffix,
+        Action<NpgsqlCommand> configure,
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        var connection = (NpgsqlConnection)_context.Database.GetDbConnection();
+        await using var command = new NpgsqlCommand(
+            $"SELECT \"Id\" FROM \"Messages\" WHERE {predicate} {orderBySuffix}",
+            connection,
+            (NpgsqlTransaction)transaction.GetDbTransaction());
+        configure(command);
+        var ids = new List<long>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken)) ids.Add(reader.GetInt64(0));
+        return ids;
+    }
+
+    private async Task LockChatsAsync(
+        IReadOnlyCollection<Guid> chatIds,
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        if (chatIds.Count == 0) return;
+        var connection = (NpgsqlConnection)_context.Database.GetDbConnection();
+        await using var command = new NpgsqlCommand(
+            "SELECT \"Id\" FROM \"Chats\" WHERE \"Id\" = ANY(@chatIds) ORDER BY \"Id\" FOR UPDATE",
+            connection,
+            (NpgsqlTransaction)transaction.GetDbTransaction());
+        command.Parameters.Add(new NpgsqlParameter("@chatIds", NpgsqlDbType.Array | NpgsqlDbType.Uuid)
+        {
+            Value = chatIds.ToArray()
+        });
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken)) { }
+    }
+
+    private async Task<List<Message>> AppendReaderAsync(
+        IReadOnlyCollection<long> messageIds,
+        long userId,
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        if (messageIds.Count == 0) return [];
+        var connection = (NpgsqlConnection)_context.Database.GetDbConnection();
+        await using var command = new NpgsqlCommand("""
+            UPDATE "Messages"
+            SET "ReadBy" = array_append("ReadBy", @userId)
+            WHERE "Id" = ANY(@ids) AND "IsDeleted" = FALSE AND @userId <> ALL("ReadBy")
+            RETURNING "Id", "ChatId", "ReadBy", "FederatedId", "SentAt"
+            """, connection, (NpgsqlTransaction)transaction.GetDbTransaction());
+        command.Parameters.AddWithValue("@userId", userId);
+        command.Parameters.Add(new NpgsqlParameter("@ids", NpgsqlDbType.Array | NpgsqlDbType.Bigint)
+        {
+            Value = messageIds.ToArray()
+        });
+
+        var messages = new List<Message>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var readBy = reader.GetFieldValue<long[]>(2).ToList();
+            var message = new Message
+            {
+                Id = reader.GetInt64(0),
+                ChatId = reader.GetGuid(1),
+                ReadBy = readBy,
+                FederatedId = reader.IsDBNull(3) ? null : reader.GetGuid(3),
+                SentAt = reader.GetDateTime(4),
+            };
+            messages.Add(message);
+        }
+        return messages.OrderBy(message => message.ChatId).ThenBy(message => message.Id).ToList();
+    }
+
+    private async Task<List<Message>> MarkTrackedMessagesAsync(
+        IReadOnlyCollection<long> messageIds,
+        long userId,
+        CancellationToken cancellationToken)
+    {
+        if (messageIds.Count == 0) return [];
+        var messages = await _context.Messages
+            .Where(message => messageIds.Contains(message.Id) && !message.IsDeleted)
+            .ToListAsync(cancellationToken);
+        var changed = messages.Where(message => !message.ReadBy.Contains(userId)).ToList();
+        foreach (var message in changed)
+            message.ReadBy.Add(userId);
+        return changed.OrderBy(message => message.ChatId).ThenBy(message => message.Id).ToList();
+    }
+
+    private async Task WriteReadOutboxAsync(
+        IReadOnlyCollection<Message> changed,
+        long userId,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        if (changed.Count == 0) return;
+        var entries = new List<MessageOutboxEntry>();
+        foreach (var chatMessages in changed.GroupBy(message => message.ChatId))
+        {
+            var chat = await _context.Chats.AsNoTracking()
+                .Where(item => item.Id == chatMessages.Key)
+                .Select(item => new { item.IsFederated })
+                .FirstAsync(cancellationToken);
+            var members = await _context.ChatMembers.AsNoTracking()
+                .Where(member => member.ChatId == chatMessages.Key)
+                .OrderBy(member => member.UserId)
+                .ToListAsync(cancellationToken);
+            var localMembers = members.LocalUserIds();
+            var remoteParticipants = chat.IsFederated ? members.RemoteParticipants() : [];
+            var readerUuid = members.FirstOrDefault(member => member.UserId == userId)?.UserUuid;
+            var anchor = chat.IsFederated && remoteParticipants.Count > 0 && readerUuid.HasValue
+                ? await _context.Messages.AsNoTracking()
+                    .Where(message => message.ChatId == chatMessages.Key && message.FederatedId.HasValue &&
+                        message.ReadBy.Contains(userId))
+                    .OrderByDescending(message => message.SentAt)
+                    .ThenByDescending(message => message.Id)
+                    .Select(message => new { message.Id, message.FederatedId })
+                    .FirstOrDefaultAsync(cancellationToken)
+                : null;
+            var orderedMessages = chatMessages.OrderBy(message => message.SentAt).ThenBy(message => message.Id).ToList();
+
+            foreach (var (message, index) in orderedMessages.Select((message, index) => (message, index)))
+            {
+                var isFederatedAnchor = anchor is not null && index == orderedMessages.Count - 1;
+                var queueEvent = new MessageReadEvent
+                {
+                    ChatId = chatMessages.Key,
+                    MessageId = message.Id,
+                    NewReadBy = message.ReadBy.ToList(),
+                    NewReaders = [userId],
+                    ChatMembers = localMembers,
+                    IsFederated = isFederatedAnchor,
+                    ReaderUuid = isFederatedAnchor ? readerUuid : null,
+                    UpToFederatedMessageId = isFederatedAnchor ? anchor!.FederatedId : null,
+                    RemoteParticipants = isFederatedAnchor ? remoteParticipants : [],
+                    LastChangeAt = isFederatedAnchor ? new DateTimeOffset(now, TimeSpan.Zero) : null,
+                };
+                entries.Add(new MessageOutboxEntry
+                {
+                    EventId = Guid.NewGuid(),
+                    MessageId = message.Id,
+                    EventKind = MessageOutboxEventKind.ReadBy,
+                    Payload = JsonSerializer.SerializeToUtf8Bytes(queueEvent),
+                    TraceParent = Activity.Current?.Id,
+                    TraceState = Activity.Current?.TraceStateString,
+                    CorrelationId = TraceContext.CorrelationId,
+                    CreatedAt = now,
+                    NextAttemptAt = now,
+                    Status = MessageOutboxStatus.Pending,
+                });
+            }
+        }
+        await _context.MessageOutbox.AddRangeAsync(entries, cancellationToken);
+    }
+
     /// <summary>
     /// Gets attachments from a chat with pagination, filtering, and sorting.
     /// </summary>
@@ -496,4 +841,13 @@ public class MessagesStorage
 
         await _context.SaveChangesAsync();
     }
+
+    private sealed record ReadTransactionCheckpoint(
+        Dictionary<object, TrackedEntryCheckpoint> Entries);
+
+    private sealed record TrackedEntryCheckpoint(
+        EntityState State,
+        Microsoft.EntityFrameworkCore.ChangeTracking.PropertyValues CurrentValues,
+        Microsoft.EntityFrameworkCore.ChangeTracking.PropertyValues OriginalValues,
+        Dictionary<string, bool> ModifiedProperties);
 }

@@ -16,8 +16,14 @@ on:
       - '.github/scripts/push-docker-image.sh'
       - 'global.json'
       - '.dockerignore'
+      - 'Docker/Lognara/**'
       - 'Shared/**'
       - 'Backend/BarkFluff.GrpcServer/**'
+      - 'Tests/BarkFluff.Web.Tests/**'
+      - '.github/workflows/test-backend.yml'
+      - 'Tests/BarkFluff.GrpcServer.Tests/**'
+      - '.github/workflows/test-scripts.yml'
+      - '.github/tests/**'
   workflow_dispatch:
 
 permissions:
@@ -29,10 +35,19 @@ concurrency:
   queue: max
 
 jobs:
+  scripts:
+    uses: ./.github/workflows/test-scripts.yml
+
+  tests:
+    uses: ./.github/workflows/test-backend.yml
+    with:
+      project: BarkFluff.Web.Tests
+
   # ═══════════════════════════════════════════════════════════════
   #  3. dotnet publish → Docker build (Node/proto в Docker, .NET на раннере) → Push
   # ═══════════════════════════════════════════════════════════════
   build:
+    needs: [tests, scripts]
     name: "🐋 Сборка и публикация BarkFluff.Web"
     runs-on: ubuntu-latest
     steps:

@@ -137,6 +137,34 @@ public class ConfigurationStartupLoaderTests
         await ConfigurationStartupLoader.LoadAsync(client, () => Task.FromResult(new GetConfigurationResponse()), false);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Console_output_flag_controls_startup_diagnostics(bool consoleOutput)
+    {
+        var originalError = Console.Error;
+        using var capturedError = new StringWriter();
+        Console.SetError(capturedError);
+        try
+        {
+            using var client = Client(new Handler(_ => new HttpResponseMessage(HttpStatusCode.OK)));
+            await ConfigurationStartupLoader.LoadAsync(
+                client,
+                () => Task.FromResult(new GetConfigurationResponse()),
+                requireValidSettings: true,
+                consoleOutput: consoleOutput);
+
+            if (consoleOutput)
+                Assert.Contains("Settings readiness check 1/5 succeeded", capturedError.ToString());
+            else
+                Assert.Empty(capturedError.ToString());
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
     [Fact]
     public async Task Uses_real_cleartext_http2_listener()
     {

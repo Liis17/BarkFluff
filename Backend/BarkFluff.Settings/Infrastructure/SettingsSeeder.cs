@@ -23,7 +23,10 @@ public sealed record SettingsSeedOptions(
     string PostgresUsername,
     string PostgresPassword,
     string RabbitUsername,
-    string RabbitPassword)
+    string RabbitPassword,
+    string? NodePublicDomain = null,
+    string? NodeNavigatorUrl = null,
+    string? NodeS3Endpoint = null)
 {
     public static SettingsSeedOptions FromConfiguration(
         SettingsDatabaseOptions database,
@@ -40,7 +43,10 @@ public sealed record SettingsSeedOptions(
             database.Username,
             database.Password,
             rabbitUsername,
-            rabbitPassword);
+            rabbitPassword,
+            configuration["NODE_PUBLIC_DOMAIN"],
+            configuration["NODE_NAVIGATOR_URL"],
+            configuration["NODE_S3_ENDPOINT"]);
     }
 
 }
@@ -89,7 +95,10 @@ public sealed class SettingsSeeder
             jwtSecret,
             jwtIssuer,
             jwtAudience,
-            serviceName => GenerateServiceToken(jwtSecret, jwtIssuer, jwtAudience, serviceName));
+            serviceName => GenerateServiceToken(jwtSecret, jwtIssuer, jwtAudience, serviceName),
+            _options.NodePublicDomain,
+            _options.NodeNavigatorUrl,
+            _options.NodeS3Endpoint);
 
         var now = DateTime.UtcNow;
         var inserted = 0;

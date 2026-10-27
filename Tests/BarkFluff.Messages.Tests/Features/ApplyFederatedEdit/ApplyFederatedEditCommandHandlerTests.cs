@@ -150,6 +150,30 @@ public class ApplyFederatedEditCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_DelayedEditAfterReadStillWinsContentLww()
+    {
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), remoteUuid, "remote.test");
+        var federatedId = Guid.NewGuid();
+        var contentChangeAt = DateTime.UtcNow.AddMinutes(-5);
+        var delayedEditAt = DateTimeOffset.FromUnixTimeMilliseconds(
+            new DateTimeOffset(contentChangeAt.AddSeconds(1), TimeSpan.Zero).ToUnixTimeMilliseconds()).UtcDateTime;
+        var message = await _h.SeedFederatedMessage(chat.Id, federatedId, senderUuid: remoteUuid,
+            text: "original", lastChangeAt: contentChangeAt);
+        await _h.MessagesStorage.MarkChatMessagesAsReadUpToWithOutboxAsync(chat.Id, message.Id, 1);
+
+        var response = await CreateHandler().Handle(new ApplyFederatedEditCommand(
+            BuildRequest(chat.Id, federatedId, "delayed edit", "remote.test", delayedEditAt)),
+            CancellationToken.None);
+
+        response.Applied.Should().BeTrue();
+        var updated = await _h.MessagesStorage.GetByFederatedIdAsync(chat.Id, federatedId);
+        updated!.Content!.Text.Should().Be("delayed edit");
+        updated.LastChangeAt.Should().Be(delayedEditAt);
+        updated.ReadBy.Should().Contain(1);
+    }
+
+    [Fact]
     public async Task Handle_StaleEdit_IgnoredWithoutError()
     {
         var remoteUuid = Guid.NewGuid();

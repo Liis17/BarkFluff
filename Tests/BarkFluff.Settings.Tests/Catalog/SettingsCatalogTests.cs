@@ -30,12 +30,12 @@ public sealed class SettingsCatalogTests
 
         var expectedCounts = new Dictionary<ServiceId, int>
         {
-            [ServiceId.Unknown] = 20, [ServiceId.Identity] = 17, [ServiceId.Users] = 7,
-            [ServiceId.Beacon] = 10, [ServiceId.Notifications] = 5, [ServiceId.Files] = 52,
-            [ServiceId.Messages] = 6, [ServiceId.FastAuth] = 5, [ServiceId.Updates] = 2,
-            [ServiceId.Onliner] = 12, [ServiceId.CloudMessaging] = 5, [ServiceId.Web] = 2,
-            [ServiceId.Developers] = 4, [ServiceId.Calls] = 10, [ServiceId.Bots] = 13,
-            [ServiceId.Federation] = 33
+            [ServiceId.Unknown] = 23, [ServiceId.Identity] = 20, [ServiceId.Users] = 10,
+            [ServiceId.Beacon] = 13, [ServiceId.Notifications] = 8, [ServiceId.Files] = 55,
+            [ServiceId.Messages] = 9, [ServiceId.FastAuth] = 8, [ServiceId.Updates] = 5,
+            [ServiceId.Onliner] = 15, [ServiceId.CloudMessaging] = 8, [ServiceId.Web] = 5,
+            [ServiceId.Developers] = 7, [ServiceId.Calls] = 13, [ServiceId.Bots] = 16,
+            [ServiceId.Federation] = 36
         };
         Assert.Equal(expectedCounts, SettingsCatalog.All.GroupBy(entry => entry.ServiceId)
             .ToDictionary(group => group.Key, group => group.Count()));
@@ -55,7 +55,7 @@ public sealed class SettingsCatalogTests
             .ThenBy(entry => entry.Key, StringComparer.Ordinal)
             .Select(entry => $"{(int)entry.ServiceId}|{entry.Section}|{entry.Key}|{entry.StorageKey}|{entry.IsSensitive}|{entry.RequiresManualValue}"));
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot)));
-        Assert.True(hash == "17EF22B5CB3F5D20A04E33E3FE17D11C5BA9F44292E8D34C6757B384273D0255", $"Catalog fingerprint: {hash}");
+        Assert.True(hash == "2FEBA90B9FCC3319A60E5E106FCFF7B7B14A200221265FBE0AFA42A7C87E8875", $"Catalog fingerprint: {hash}");
     }
 
     [Theory]
@@ -76,5 +76,26 @@ public sealed class SettingsCatalogTests
     {
         Assert.Throws<UnknownSettingException>(() =>
             SettingsCatalog.Resolve(ServiceId.Users, "Anything", "Goes"));
+    }
+
+    [Fact]
+    public void Logging_flags_are_scoped_per_service_and_legacy_backend_is_not_active()
+    {
+        var serviceScopes = SettingsScopes.All.Where(scope => scope.ServiceId != ServiceId.Unknown).ToArray();
+        Assert.Equal(15, serviceScopes.Length);
+        var seedValues = new SettingsSeedValues("", "", "", "", "", "", "", "", _ => "");
+
+        foreach (var scope in serviceScopes)
+        {
+            Assert.Equal("false", SettingsCatalog.Resolve(scope.ServiceId, "LognaraEnable", "").DefaultFactory(seedValues));
+            Assert.Equal("true", SettingsCatalog.Resolve(scope.ServiceId, "SeqEnable", "").DefaultFactory(seedValues));
+            Assert.Equal("true", SettingsCatalog.Resolve(scope.ServiceId, "ConsoleOutput", "").DefaultFactory(seedValues));
+        }
+
+        Assert.DoesNotContain(SettingsCatalog.All, entry => entry.StorageKey == "Logging:Backend");
+        Assert.DoesNotContain(SettingsCatalog.All, entry =>
+            entry.ServiceId == ServiceId.Unknown && entry.StorageKey is "LognaraEnable" or "SeqEnable" or "ConsoleOutput");
+        Assert.True(SettingsCatalog.IsDeprecated(SettingsCatalog.Resolve(ServiceId.Unknown, "Logging:Backend")));
+        Assert.Throws<UnknownSettingException>(() => SettingsCatalog.ResolveForUpdate(ServiceId.Unknown, "Logging", "Backend"));
     }
 }

@@ -1,4 +1,6 @@
+using BarkFluff.Node;
 using BarkFluff.Shared.Identity;
+using BarkFluff.Settings.Domain;
 
 namespace BarkFluff.Settings.Catalog;
 
@@ -23,7 +25,10 @@ public sealed record SettingsSeedValues(
     string JwtSecret,
     string JwtIssuer,
     string JwtAudience,
-    Func<string, string> ServiceTokenFactory);
+    Func<string, string> ServiceTokenFactory,
+    string? NodePublicDomain = null,
+    string? NodeNavigatorUrl = null,
+    string? NodeS3Endpoint = null);
 
 public sealed class UnknownSettingException : InvalidOperationException
 {
@@ -33,6 +38,15 @@ public sealed class UnknownSettingException : InvalidOperationException
 
 public static class SettingsCatalog
 {
+    private static readonly SettingsCatalogEntry DeprecatedLoggingBackend = new(
+        ServiceId.Unknown,
+        "Logging",
+        "Backend",
+        "Logging:Backend",
+        _ => "Seq",
+        IsSensitive: false,
+        RequiresManualValue: false);
+
     private static readonly IReadOnlyDictionary<ServiceId, int> Ports = new Dictionary<ServiceId, int>
     {
         [ServiceId.Identity] = 7000, [ServiceId.Users] = 7001, [ServiceId.Beacon] = 7002,
@@ -68,6 +82,9 @@ public static class SettingsCatalog
 
     public static SettingsCatalogEntry Resolve(ServiceId serviceId, string section, string key)
     {
+        if (serviceId == ServiceId.Unknown && section == "Logging" && key == "Backend")
+            return DeprecatedLoggingBackend;
+
         return ByLegacy.TryGetValue((serviceId, section, key), out var entry)
             ? entry
             : throw new UnknownSettingException(serviceId, section, key);
@@ -75,14 +92,33 @@ public static class SettingsCatalog
 
     public static SettingsCatalogEntry Resolve(ServiceId serviceId, string storageKey)
     {
+        if (serviceId == ServiceId.Unknown && storageKey == DeprecatedLoggingBackend.StorageKey)
+            return DeprecatedLoggingBackend;
+
         return ByStorage.TryGetValue((serviceId, storageKey), out var entry)
             ? entry
             : throw new UnknownSettingException(serviceId, storageKey, string.Empty);
     }
 
+    public static bool IsDeprecated(SettingsCatalogEntry entry) =>
+        entry.ServiceId == ServiceId.Unknown && entry.StorageKey == DeprecatedLoggingBackend.StorageKey;
+
+    public static bool IsDeprecated(ServiceId serviceId, string storageKey) =>
+        serviceId == ServiceId.Unknown && storageKey == DeprecatedLoggingBackend.StorageKey;
+
+    public static SettingsCatalogEntry ResolveForUpdate(ServiceId serviceId, string section, string key)
+    {
+        var entry = Resolve(serviceId, section, key);
+        return IsDeprecated(entry)
+            ? throw new UnknownSettingException(serviceId, section, key)
+            : entry;
+    }
+
     private static IReadOnlyList<SettingsCatalogEntry> Build()
     {
         var entries = new List<SettingsCatalogEntry>();
+
+        AddLiteral(entries, ServiceId.Unknown, "Lognara", "AgentUrl", "http://127.0.0.1:7400/v1/logs");
 
         AddDefault(entries, ServiceId.Unknown, "JwtSettings", "SecretKey", v => v.JwtSecret, true);
         AddDefault(entries, ServiceId.Unknown, "JwtSettings", "Issuer", v => v.JwtIssuer);
@@ -95,6 +131,7 @@ public static class SettingsCatalog
         AddServiceClient(entries, ServiceId.Unknown, "UsersService", ServiceId.Users);
         AddServiceClient(entries, ServiceId.Unknown, "FilesService", ServiceId.Files);
         AddServiceClient(entries, ServiceId.Unknown, "IdentityService", ServiceId.Identity);
+        AddServiceClient(entries, ServiceId.Unknown, "MessagesService", ServiceId.Messages);
         AddServiceClient(entries, ServiceId.Unknown, "BotsService", ServiceId.Bots);
         AddServiceClient(entries, ServiceId.Unknown, "FederationService", ServiceId.Federation);
         AddDefault(entries, ServiceId.Unknown, "SettingsService", "Host", _ => "http://settings:7003");
@@ -118,7 +155,8 @@ public static class SettingsCatalog
         AddServiceClient(entries, ServiceId.Users, "MessagesService", ServiceId.Messages);
 
         AddServiceBase(entries, ServiceId.Beacon);
-        AddLiteral(entries, ServiceId.Beacon, "NavigatorUrl", "", "http://navigator:7010");
+        AddDefault(entries, ServiceId.Beacon, "NavigatorUrl", "", v =>
+            string.IsNullOrWhiteSpace(v.NodeNavigatorUrl) ? "http://navigator:7010" : v.NodeNavigatorUrl!);
         foreach (var key in new[] { "Name", "Description", "PublicName", "Location" }) AddManual(entries, ServiceId.Beacon, "ServerProps", key, SettingsSetupMetadata.Server(key));
         foreach (var key in new[] { "Lite", "Main", "Hard" }) AddManual(entries, ServiceId.Beacon, "ServerColor", key, SettingsSetupMetadata.Color(key));
 
@@ -132,7 +170,8 @@ public static class SettingsCatalog
         foreach (var bucket in new[] { "barkfluff-uploads", "profile-pictures", "message-documents", "message-videos", "message-images", "chat-pictures", "badge-images", "message-audio" })
         {
             var section = $"S3Buckets:{bucket}";
-            AddLiteral(entries, ServiceId.Files, section, "ServiceUrl", "http://minio:9000");
+            AddDefault(entries, ServiceId.Files, section, "ServiceUrl", v =>
+                string.IsNullOrWhiteSpace(v.NodeS3Endpoint) ? "http://minio:9000" : v.NodeS3Endpoint!);
             AddManual(entries, ServiceId.Files, section, "AccessKey", SettingsSetupMetadata.Storage(bucket, "AccessKey"));
             AddManual(entries, ServiceId.Files, section, "SecretKey", SettingsSetupMetadata.Storage(bucket, "SecretKey"));
             AddLiteral(entries, ServiceId.Files, section, "BucketName", bucket);
@@ -174,7 +213,10 @@ public static class SettingsCatalog
         AddLiteral(entries, ServiceId.Calls, "RunSettings", "Http1Port", "7026");
         AddServiceClient(entries, ServiceId.Calls, "MessagesService", ServiceId.Messages);
         AddLiteral(entries, ServiceId.Calls, "LiveKit", "Url", "ws://livekit:7880");
-        AddLiteral(entries, ServiceId.Calls, "LiveKit", "PublicUrl", "wss://calls.example.com");
+        AddDefault(entries, ServiceId.Calls, "LiveKit", "PublicUrl", v =>
+            string.IsNullOrWhiteSpace(v.NodePublicDomain)
+                ? "wss://calls.example.com"
+                : NodeSubdomains.BuildUrl("livekit", v.NodePublicDomain!, "wss"));
         AddManual(entries, ServiceId.Calls, "LiveKit", "ApiKey", SettingsSetupMetadata.Calls("ApiKey"));
         AddManual(entries, ServiceId.Calls, "LiveKit", "ApiSecret", SettingsSetupMetadata.Calls("ApiSecret"));
 
@@ -202,11 +244,19 @@ public static class SettingsCatalog
             ["S2SConnectTimeout"] = "10", ["RemoteFileIdleTimeout"] = "60",
             ["RemoteFileCircuitFailures"] = "3", ["RemoteFileCircuitOpenSeconds"] = "60"
         }) AddLiteral(entries, ServiceId.Federation, "Federation", key, value);
-        AddLiteral(entries, ServiceId.Federation, "NavigatorUrl", "", "http://navigator:7010");
+        AddDefault(entries, ServiceId.Federation, "NavigatorUrl", "", v =>
+            string.IsNullOrWhiteSpace(v.NodeNavigatorUrl) ? "http://navigator:7010" : v.NodeNavigatorUrl!);
         AddLiteral(entries, ServiceId.Federation, "Redis", "", "redis:6379");
         AddServiceClient(entries, ServiceId.Federation, "MessagesService", ServiceId.Messages);
         AddServiceClient(entries, ServiceId.Federation, "OnlinerService", ServiceId.Onliner);
         AddServiceClient(entries, ServiceId.Federation, "FilesService", ServiceId.Files);
+
+        foreach (var scope in SettingsScopes.All.Where(scope => scope.ServiceId != ServiceId.Unknown))
+        {
+            AddLiteral(entries, scope.ServiceId, "LognaraEnable", "", "false");
+            AddLiteral(entries, scope.ServiceId, "SeqEnable", "", "true");
+            AddLiteral(entries, scope.ServiceId, "ConsoleOutput", "", "true");
+        }
 
         return entries;
     }
@@ -214,7 +264,10 @@ public static class SettingsCatalog
     private static void AddServiceBase(List<SettingsCatalogEntry> entries, ServiceId serviceId, string? databaseSection = null)
     {
         AddPort(entries, serviceId);
-        AddDefault(entries, serviceId, "ExternalEndpoint", "Host", _ => $"https://{Containers[serviceId]}.example.com");
+        AddDefault(entries, serviceId, "ExternalEndpoint", "Host", v =>
+            string.IsNullOrWhiteSpace(v.NodePublicDomain)
+                ? $"https://{Containers[serviceId]}.example.com"
+                : NodeSubdomains.BuildUrl(Containers[serviceId], v.NodePublicDomain!));
         if (databaseSection is not null) AddDatabase(entries, serviceId, databaseSection);
     }
 

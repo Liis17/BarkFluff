@@ -11,6 +11,10 @@ WebApi реализует IDisposable и владеет gRPC-каналами и
 
 Фасад группирует API по нодам, identity/auth/OTP/FastAuth, профилям и устройствам, чатам/сообщениям, папкам, файлам, онлайн-статусам, звонкам, приватным чатам и секретным чатам. Message manager включает историю, отправку, правку/удаление, read receipts и закрепления; File manager отвечает за HTTP upload/download поверх gRPC-контрактов Files.
 
+WinUI identifier-first flow использует additive `ResolveSignIn`, `BeginSignIn`, `GetAuthChallenge`, `CompleteAuthChallenge`, `ResendAuthChallenge` и `CancelAuthChallenge` методы, соответствующие существующим RPC в `identity_api.proto`. Каждый unary-вызов принимает `CancellationToken` и передаёт его сгенерированному gRPC-клиенту. `CreatePreLoginAuthenticationClient` создаёт только Identity channel на отдельном `WebApi`; он сохраняет X-Device/X-Device-Id/X-OS/X-App/X-IP, JWT и exception interceptors, но не вызывает `TokenManager` и не меняет основной facade. `GetUserDataForAuthentication` загружает профиль по тому же attempt-scoped клиенту с отменяемым прямым `UsersAC.GetUserAsync`.
+
+`GenerateFastAuthToken` принимает необязательный `CancellationToken`. WinUI создаёт и подписывает FastAuth-канал на attempt-scoped `WebApi`; полученные access/refresh tokens проходят тот же profile/session commit, что и challenge login. `Authorizations` и legacy WPF-вызовы остаются отдельным существующим контрактом.
+
 TokenInvalidated сообщает о непригодном refresh token. TokenRefreshed поднимается после проактивного обновления: клиенты должны пересоздать streaming RPC. TokenManager сериализует параллельные обновления, поскольку refresh tokens ротируются. SafeCallAsync повторяет вызов после обновления access token. WebApiBase.ReadStream освобождает gRPC-вызов, но завершает перечисление при RPC/сетевых ошибках; клиент, которому нужно восстановление связи, должен повторно создать поток.
 
 ## Модели и безопасность

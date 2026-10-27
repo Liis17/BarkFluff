@@ -1,5 +1,6 @@
 using BarkFluff.Setup.Endpoints;
 using BarkFluff.Setup.Setup;
+using BarkFluff.GrpcServer;
 
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -15,6 +16,7 @@ public partial class Program
         var builder = WebApplication.CreateBuilder(args);
         var setupOptions = SetupOptions.FromConfiguration(builder.Configuration);
 
+        builder.AddBarkFluffSerilog("BarkFluff.Setup");
         builder.WebHost.ConfigureKestrel(options =>
             options.ListenAnyIP(setupOptions.Port, listen => listen.Protocols = HttpProtocols.Http1));
 

@@ -2,10 +2,6 @@ using Barkfluff.AdminPanel.Models.Dtos;
 
 using Microsoft.Extensions.Caching.Memory;
 
-using System.Diagnostics;
-using System.Text;
-using System.Text.Json;
-
 namespace Barkfluff.AdminPanel.Services;
 
 /// <summary>
@@ -19,11 +15,19 @@ public class DockerService
 
     private readonly ILogger<DockerService> _logger;
     private readonly IMemoryCache _cache;
+    private readonly IDockerCommandRunner _commands;
+    private readonly DockerContainerNameResolver _containerNames;
 
-    public DockerService(IMemoryCache cache, ILogger<DockerService> logger)
+    public DockerService(
+        IMemoryCache cache,
+        ILogger<DockerService> logger,
+        IDockerCommandRunner commands,
+        DockerContainerNameResolver containerNames)
     {
         _cache = cache;
         _logger = logger;
+        _commands = commands;
+        _containerNames = containerNames;
     }
 
     /// <summary>
@@ -31,7 +35,8 @@ public class DockerService
     /// </summary>
     private async Task<string> GetAdminPanelImageAsync()
     {
-        var image = await RunDockerCommandAsync("inspect", "--format", "{{.Config.Image}}", "admin-panel");
+        var adminPanel = await _containerNames.ResolveContainerNameAsync("admin-panel");
+        var image = await RunDockerCommandAsync("inspect", "--format", "{{.Config.Image}}", adminPanel);
         return image.Trim();
     }
 
@@ -43,7 +48,8 @@ public class DockerService
     {
         // Go template: ищем Mount с нужным Destination и возвращаем Source
         var template = "{{range .Mounts}}{{if eq .Destination \"" + destination + "\"}}{{.Source}}{{end}}{{end}}";
-        var source = await RunDockerCommandAsync("inspect", "--format", template, containerName);
+        var resolvedName = await _containerNames.ResolveContainerNameAsync(containerName);
+        var source = await RunDockerCommandAsync("inspect", "--format", template, resolvedName);
         return source.Trim();
     }
 
@@ -52,18 +58,19 @@ public class DockerService
     /// Результат кэшируется на <see cref="ContainersCacheTtl"/>; параллельные запросы
     /// на cache-miss координируются через <see cref="ContainersGate"/> (один docker ps).
     /// </summary>
-    public async Task<List<ContainerStatusDto>> GetContainersAsync()
+    public async Task<List<ContainerStatusDto>> GetContainersAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (_cache.TryGetValue(ContainersCacheKey, out List<ContainerStatusDto>? cached) && cached is not null)
             return cached;
 
-        await ContainersGate.WaitAsync();
+        await ContainersGate.WaitAsync(cancellationToken);
         try
         {
             if (_cache.TryGetValue(ContainersCacheKey, out cached) && cached is not null)
                 return cached;
 
-            var containers = await LoadContainersFromDockerAsync();
+            var containers = await LoadContainersFromDockerAsync(cancellationToken);
             _cache.Set(ContainersCacheKey, containers, ContainersCacheTtl);
             return containers;
         }
@@ -73,12 +80,11 @@ public class DockerService
         }
     }
 
-    private async Task<List<ContainerStatusDto>> LoadContainersFromDockerAsync()
+    private async Task<List<ContainerStatusDto>> LoadContainersFromDockerAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var json = await RunDockerCommandAsync("ps", "--all", "--format", "{{json .}}");
-            var containers = ParseDockerPsOutput(json);
+            var containers = (await _containerNames.GetContainersAsync(cancellationToken)).ToList();
             await PopulateImageDigestsAsync(containers);
             return containers;
         }
@@ -92,20 +98,25 @@ public class DockerService
     /// <summary>
     /// Сбросить кэш списка контейнеров. Вызывать после мутаций (start/stop/restart/pull).
     /// </summary>
-    private void InvalidateContainersCache() => _cache.Remove(ContainersCacheKey);
+    private void InvalidateContainersCache()
+    {
+        _cache.Remove(ContainersCacheKey);
+        _containerNames.Invalidate();
+    }
 
     /// <summary>
     /// Получить статус конкретного контейнера
     /// </summary>
-    public async Task<ContainerStatusDto?> GetContainerStatusAsync(string containerName)
+    public async Task<ContainerStatusDto?> GetContainerStatusAsync(string containerName, CancellationToken cancellationToken = default)
     {
         try
         {
-            var containers = await GetContainersAsync();
+            var resolvedName = await _containerNames.ResolveContainerNameAsync(containerName, cancellationToken);
+            var containers = await GetContainersAsync(cancellationToken);
             return containers.FirstOrDefault(c =>
-                c.Name == containerName ||
-                c.Name == $"/{containerName}" ||
-                c.Id.StartsWith(containerName, StringComparison.OrdinalIgnoreCase)
+                c.Name == resolvedName ||
+                c.Name == $"/{resolvedName}" ||
+                c.Id.StartsWith(resolvedName, StringComparison.OrdinalIgnoreCase)
             );
         }
         catch (Exception ex)
@@ -122,7 +133,8 @@ public class DockerService
     {
         try
         {
-            await RunDockerCommandAsync("start", containerName);
+            var resolvedName = await _containerNames.ResolveContainerNameAsync(containerName);
+            await RunDockerCommandAsync("start", resolvedName);
             InvalidateContainersCache();
 
             _logger.LogInformation("Контейнер {ContainerName} запущен", containerName);
@@ -152,7 +164,8 @@ public class DockerService
     {
         try
         {
-            await RunDockerCommandAsync("stop", "-t", "30", containerName);
+            var resolvedName = await _containerNames.ResolveContainerNameAsync(containerName);
+            await RunDockerCommandAsync("stop", "-t", "30", resolvedName);
             InvalidateContainersCache();
 
             _logger.LogInformation("Контейнер {ContainerName} остановлен", containerName);
@@ -182,7 +195,8 @@ public class DockerService
     {
         try
         {
-            await RunDockerCommandAsync("restart", "-t", "30", containerName);
+            var resolvedName = await _containerNames.ResolveContainerNameAsync(containerName);
+            await RunDockerCommandAsync("restart", "-t", "30", resolvedName);
             InvalidateContainersCache();
 
             _logger.LogInformation("Контейнер {ContainerName} перезапущен", containerName);
@@ -212,6 +226,7 @@ public class DockerService
     public async Task ComposePullAsync(string serviceName)
     {
         await RunDockerComposeCommandAsync("pull", serviceName);
+        InvalidateContainersCache();
         _logger.LogInformation("Образ для сервиса {ServiceName} успешно обновлен", serviceName);
     }
 
@@ -241,8 +256,9 @@ public class DockerService
     /// </summary>
     public async Task<(string State, string Health)> InspectStateAsync(string containerName)
     {
+        var resolvedName = await _containerNames.ResolveContainerNameAsync(containerName);
         var output = await RunDockerCommandAsync("inspect", "--format",
-            "{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}", containerName);
+            "{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}", resolvedName);
         var parts = output.Split('|');
         return (parts[0], parts.Length > 1 ? parts[1] : "none");
     }
@@ -254,7 +270,8 @@ public class DockerService
     {
         try
         {
-            return await RunDockerCommandAsync("inspect", "--format", "{{.Image}}", containerName);
+            var resolvedName = await _containerNames.ResolveContainerNameAsync(containerName);
+            return await RunDockerCommandAsync("inspect", "--format", "{{.Image}}", resolvedName);
         }
         catch
         {
@@ -269,7 +286,8 @@ public class DockerService
     {
         try
         {
-            return await RunDockerCommandAsync("inspect", "--format", "{{.Config.Image}}", containerName);
+            var resolvedName = await _containerNames.ResolveContainerNameAsync(containerName);
+            return await RunDockerCommandAsync("inspect", "--format", "{{.Config.Image}}", resolvedName);
         }
         catch
         {
@@ -283,95 +301,21 @@ public class DockerService
     public Task TagImageAsync(string imageId, string reference) =>
         RunDockerCommandAsync("tag", imageId, reference);
 
-    /// <summary>
-    /// Преобразовать имя контейнера в имя сервиса docker compose
-    /// </summary>
-    internal static string ConvertContainerNameToServiceName(string containerName)
-    {
-        // Маппинг имен контейнеров на имена сервисов
-        var containerToServiceMap = new Dictionary<string, string>
-        {
-            { "beacon", "beacon" },
-            { "settings", "settings" },
-            { "files", "files" },
-            { "identity", "identity" },
-            { "messages", "messages" },
-            { "notification", "notification" },
-            { "users", "users" },
-            { "fast-auth", "fast-auth" },
-            { "updates", "updates" },
-            { "onliner", "onliner" },
-            { "federation", "federation" },
-            { "web", "web" },
-            { "seq", "seq" },
-            { "minio", "minio" },
-            { "rabbitmq", "rabbitmq" },
-            { "redis", "redis" },
-            { "postgres_barkfluff", "postgres" },
-            { "admin-panel", "admin-panel" }
-        };
+    public Task<string> ResolveContainerNameAsync(string serviceOrContainerName, CancellationToken cancellationToken = default) =>
+        _containerNames.ResolveContainerNameAsync(serviceOrContainerName, cancellationToken);
 
-        return containerToServiceMap.GetValueOrDefault(containerName, containerName);
-    }
+    public Task<string> ResolveServiceNameAsync(string containerOrServiceName, CancellationToken cancellationToken = default) =>
+        _containerNames.ResolveServiceNameAsync(containerOrServiceName, cancellationToken);
 
-    /// <summary>
-    /// Преобразовать имя сервиса docker compose в имя контейнера (для docker inspect/restart)
-    /// </summary>
-    internal static string ConvertServiceNameToContainerName(string serviceName) => serviceName switch
-    {
-        "postgres" => "postgres_barkfluff",
-        _ => serviceName
-    };
+    public Task<string?> TryResolveComposeServiceNameAsync(string containerName, CancellationToken cancellationToken = default) =>
+        _containerNames.TryResolveComposeServiceNameAsync(containerName, cancellationToken);
 
     /// <summary>
     /// Выполнить Docker команду и вернуть результат.
     /// Использует ArgumentList чтобы каждый аргумент передавался OS буквально, без shell-интерпретации.
     /// </summary>
-    private async Task<string> RunDockerCommandAsync(params string[] args)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "docker",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8
-        };
-
-        foreach (var arg in args)
-            startInfo.ArgumentList.Add(arg);
-
-        using var process = new Process { StartInfo = startInfo };
-        var outputBuilder = new StringBuilder();
-        var errorBuilder = new StringBuilder();
-
-        process.OutputDataReceived += (sender, e) =>
-        {
-            if (e.Data != null)
-                outputBuilder.AppendLine(e.Data);
-        };
-
-        process.ErrorDataReceived += (sender, e) =>
-        {
-            if (e.Data != null)
-                errorBuilder.AppendLine(e.Data);
-        };
-
-        process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-
-        await process.WaitForExitAsync();
-
-        if (process.ExitCode != 0)
-        {
-            throw new Exception($"Docker command failed: {errorBuilder}");
-        }
-
-        return outputBuilder.ToString().Trim();
-    }
+    private Task<string> RunDockerCommandAsync(params string[] args) =>
+        _commands.RunAsync(CancellationToken.None, args);
 
     /// <summary>
     /// Выполнить Docker Compose через временный helper-контейнер.
@@ -399,32 +343,30 @@ public class DockerService
             throw new InvalidOperationException("Не удалось определить реальные host-пути Docker Compose.");
         }
 
+        var composeFiles = await GetActiveComposeFilesAsync(composeFile);
         var dockerArguments = new List<string>
         {
             "run", "--rm", "--user", "root",
             "--mount", $"type=bind,src={dockerSocket},dst=/var/run/docker.sock",
-            "--mount", $"type=bind,src={projectDirectory},dst={projectDirectory},readonly",
         };
 
-        if (!string.Equals(Path.GetDirectoryName(envFile), projectDirectory, StringComparison.Ordinal))
-        {
-            dockerArguments.Add("--mount");
-            dockerArguments.Add($"type=bind,src={envFile},dst={envFile},readonly");
-        }
+        DockerComposeInvocation.AddReadOnlyMounts(dockerArguments, composeFiles, envFile);
 
         dockerArguments.Add("--entrypoint");
         dockerArguments.Add("docker");
         dockerArguments.Add(helperImage);
-        dockerArguments.Add("compose");
-        dockerArguments.Add("--project-name");
-        dockerArguments.Add("barkfluff");
-        dockerArguments.Add("--env-file");
-        dockerArguments.Add(envFile);
-        dockerArguments.Add("-f");
-        dockerArguments.Add(composeFile);
-        dockerArguments.AddRange(args);
+        dockerArguments.AddRange(DockerComposeInvocation.CreateCommandArguments(composeFiles, envFile, args));
 
         return await RunDockerCommandAsync(dockerArguments.ToArray());
+    }
+
+    private async Task<IReadOnlyList<string>> GetActiveComposeFilesAsync(string baseComposeFile)
+    {
+        const string configFilesLabel = "com.docker.compose.project.config_files";
+        var template = "{{if .Config.Labels}}{{index .Config.Labels \"" + configFilesLabel + "\"}}{{end}}";
+        var adminPanel = await _containerNames.ResolveContainerNameAsync("admin-panel");
+        var activeFiles = await RunDockerCommandAsync("inspect", "--format", template, adminPanel);
+        return DockerComposeInvocation.ResolveFiles(baseComposeFile, activeFiles);
     }
 
     /// <summary>
@@ -440,51 +382,6 @@ public class DockerService
         {
             // Контейнер не существует — это нормально
         }
-    }
-
-    /// <summary>
-    /// Распарсить вывод docker ps --format json
-    /// </summary>
-    private List<ContainerStatusDto> ParseDockerPsOutput(string output)
-    {
-        var containers = new List<ContainerStatusDto>();
-
-        if (string.IsNullOrEmpty(output))
-            return containers;
-
-        var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (var line in lines)
-        {
-            try
-            {
-                var json = line.Trim();
-                if (string.IsNullOrEmpty(json))
-                    continue;
-
-                var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-
-                var container = new ContainerStatusDto
-                {
-                    Id = root.TryGetProperty("ID", out var id) ? id.GetString() ?? "" : "",
-                    Name = root.TryGetProperty("Names", out var names) ? names.GetString() ?? "" : "",
-                    Image = root.TryGetProperty("Image", out var image) ? image.GetString() ?? "" : "",
-                    State = root.TryGetProperty("State", out var state) ? state.GetString() ?? "" : "",
-                    Status = root.TryGetProperty("Status", out var status) ? status.GetString() ?? "" : "",
-                    Ports = root.TryGetProperty("Ports", out var ports) ? ports.GetString() ?? "none" : "none",
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                containers.Add(container);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Ошибка парсинга строки контейнера: {Line}", line);
-            }
-        }
-
-        return containers;
     }
 
     private async Task PopulateImageDigestsAsync(IEnumerable<ContainerStatusDto> containers)
@@ -524,6 +421,7 @@ public class DockerService
 
             var helperImage = await GetAdminPanelImageAsync();
             var dockerSock = await GetMountSourceAsync("admin-panel", "/var/run/docker.sock");
+            var adminPanel = await _containerNames.ResolveContainerNameAsync("admin-panel");
 
             // Удаляем старый хелпер если он ещё существует
             await TryRemoveHelperContainerAsync("admin-panel-restarter");
@@ -535,7 +433,7 @@ public class DockerService
                 "-v", $"{dockerSock}:/var/run/docker.sock",
                 "--entrypoint", "sh",
                 helperImage,
-                "-c", "sleep 2 && docker restart admin-panel"
+                "-c", $"sleep 2 && docker restart {adminPanel}"
             );
 
             _logger.LogInformation("Helper-контейнер для перезапуска запущен");
@@ -573,23 +471,26 @@ public class DockerService
             var dockerSock = await GetMountSourceAsync("admin-panel", "/var/run/docker.sock");
             var composeFile = await GetMountSourceAsync("admin-panel", "/docker-compose.yml");
             var envFile = await GetMountSourceAsync("admin-panel", "/.env");
+            var composeFiles = await GetActiveComposeFilesAsync(composeFile);
 
             // Удаляем старый хелпер если он ещё существует
             await TryRemoveHelperContainerAsync("admin-panel-updater");
 
-            // Монтируем compose и env по их РЕАЛЬНЫМ хостовым путям,
-            // чтобы относительные пути в compose-файле (./.env) разрешались корректно на хосте
-            await RunDockerCommandAsync(
+            var dockerArguments = new List<string>
+            {
                 "run", "-d", "--rm",
                 "--name", "admin-panel-updater",
                 "--user", "root",
-                "-v", $"{dockerSock}:/var/run/docker.sock",
-                "-v", $"{composeFile}:{composeFile}:ro",
-                "-v", $"{envFile}:{envFile}:ro",
-                "--entrypoint", "sh",
-                helperImage,
-                "-c", $"sleep 2 && docker compose --project-name barkfluff --env-file {envFile} -f {composeFile} pull admin-panel && docker compose --project-name barkfluff --env-file {envFile} -f {composeFile} up --force-recreate --no-deps -d admin-panel && docker image prune -f"
-            );
+                "--mount", $"type=bind,src={dockerSock},dst=/var/run/docker.sock",
+            };
+            DockerComposeInvocation.AddReadOnlyMounts(dockerArguments, composeFiles, envFile);
+            dockerArguments.AddRange(["--entrypoint", "sh", helperImage, "-c"]);
+            var pullCommand = DockerComposeInvocation.ToShellCommand(
+                DockerComposeInvocation.CreateCommandArguments(composeFiles, envFile, "pull", "admin-panel"));
+            var upCommand = DockerComposeInvocation.ToShellCommand(
+                DockerComposeInvocation.CreateCommandArguments(composeFiles, envFile, "up", "--force-recreate", "--no-deps", "-d", "admin-panel"));
+            dockerArguments.Add($"sleep 2 && docker {pullCommand} && docker {upCommand} && docker image prune -f");
+            await RunDockerCommandAsync(dockerArguments.ToArray());
 
             _logger.LogInformation("Helper-контейнер для обновления запущен");
 
