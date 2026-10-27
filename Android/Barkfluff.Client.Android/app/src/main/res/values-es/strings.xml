@@ -1,4 +1,8 @@
 <resources>
+    <string name="legal_privacy_title">Privacidad</string>
+    <string name="welcome_show_legal">Mostrar términos y privacidad</string>
+    <string name="welcome_hide_legal">Ocultar términos y privacidad</string>
+
     <string name="chat_draft_preview">Borrador</string>
     <!-- App name -->
     <string name="app_name">Barkfluff</string>
@@ -76,7 +80,7 @@
     <string name="server_status_checking">Comprobando…</string>
     <string name="server_status_online">En línea</string>
     <string name="server_status_unavailable">No disponible</string>
-    <string name="server_response_ms">Respuesta %1$d ms</string>
+    <string name="server_response_ms">%1$d ms</string>
     <string name="self_hosted_title">Tu propio servidor</string>
     <string name="self_hosted_description">Despliega tu propio servidor BarkFluff</string>
     <string name="btn_learn_more_server">Saber más</string>
@@ -451,6 +455,8 @@
     <string name="logout_dialog_title">Cerrar sesión</string>
     <string name="logout_dialog_message">¿Seguro que quieres cerrar sesión?</string>
     <string name="logout_dialog_confirm">Cerrar sesión</string>
+    <string name="crypto_cleanup_failed">No se pudieron borrar las claves de los chats secretos. Inténtalo de nuevo.</string>
+    <string name="secret_message_history_failed">Mensaje enviado, pero aún no guardado en este dispositivo. Aparecerá al volver a abrir el chat.</string>
 
     <!-- Account Settings -->
     <string name="account_settings_title">Cuenta</string>
@@ -532,6 +538,29 @@
     <string name="storage_server_storage">Almacenamiento en el servidor</string>
     <string name="storage_app_cache">Caché de la app</string>
     <string name="storage_clear_cache">Vaciar caché</string>
+    <string name="storage_clear_failed">No se pudo borrar</string>
+    <string name="storage_clear_option_media">Caché multimedia (%1$s)</string>
+    <string name="storage_clear_option_history">Historial de chats (%1$s)</string>
+    <string name="storage_clear_option_secret">Chats secretos (%1$s)</string>
+    <string name="storage_clear_option_outgoing">Cola de salida (%1$s)</string>
+    <string name="storage_clear_option_drafts">Borradores (%1$s)</string>
+    <string name="storage_clear_confirm">Borrar selección</string>
+    <string name="storage_clear_warning_irreversible">Has seleccionado elementos con efectos irreversibles: es posible que algunos mensajes salientes ya hayan llegado al servidor; también se solicitará al servidor que elimine los borradores, pero podría fallar si no hay conexión; los chats secretos solo se guardan en este dispositivo y no se pueden recuperar.</string>
+    <plurals name="storage_clear_count_messages">
+        <item quantity="one">%d mensaje</item>
+        <item quantity="many">%d mensajes</item>
+        <item quantity="other">%d mensajes</item>
+    </plurals>
+    <plurals name="storage_clear_count_outgoing">
+        <item quantity="one">%d elemento en cola</item>
+        <item quantity="many">%d elementos en cola</item>
+        <item quantity="other">%d elementos en cola</item>
+    </plurals>
+    <plurals name="storage_clear_count_drafts">
+        <item quantity="one">%d borrador</item>
+        <item quantity="many">%d borradores</item>
+        <item quantity="other">%d borradores</item>
+    </plurals>
 
     <!-- Devices -->
     <string name="devices_title">Dispositivos</string>
@@ -637,6 +666,7 @@
     <!-- Sticker empty -->
     <string name="stickers_empty">Sin stickers</string>
     <string name="stickers_empty_subtitle">Aún no se han añadido paquetes de stickers</string>
+    <string name="stickers_load_failed">No se pudieron cargar los stickers</string>
 
     <!-- Message actions popup -->
     <string name="msg_action_reply">Responder</string>
@@ -930,6 +960,11 @@
     <string name="notification_reply">Responder</string>
     <string name="notification_reply_hint">Mensaje</string>
     <string name="notification_reply_failed">No se pudo guardar la respuesta. Inténtalo de nuevo.</string>
+    <string name="notification_reply_queued">En cola</string>
+    <string name="notification_reply_sent">Enviado</string>
+    <string name="notification_reply_failed_short">Fallido</string>
+    <string name="notification_mark_read_failed">No se pudo guardar la lectura. La notificación sigue aquí.</string>
+    <string name="notification_chat_unavailable">Este chat no está disponible o ya no tienes acceso.</string>
     <string name="notification_hide">Ocultar</string>
     <string name="notification_encrypted_message">Nuevo mensaje cifrado</string>
     <string name="notification_photo">Foto</string>
@@ -1078,7 +1113,6 @@
     <string name="register_2fa_configured">2FA configurada</string>
     <string name="register_invalid_code">Código no válido</string>
     <string name="register_authenticator_open_failed">No se pudo abrir el autenticador</string>
-    <string name="register_photo_permission_denied">No se concedió el permiso para acceder a las fotos</string>
     <string name="register_full_name_format">%1$s %2$s</string>
     <string name="register_username_format">@%1$s</string>
     <string name="login_2fa_title">Autenticación de dos factores</string>
@@ -1102,6 +1136,10 @@
     <string name="login_empty_login">Introduce tu usuario o email</string>
     <string name="login_invalid_email">Formato de email no válido</string>
     <string name="login_username_too_short">Al menos 3 caracteres (letras, números, . y _)</string>
+    <string name="login_flow_continue">Continuar</string>
+    <string name="login_account_not_found">No se encontró la cuenta</string>
+    <string name="login_mode_changed">El método de acceso ha cambiado. Continúa de nuevo.</string>
+    <string name="login_server_update_required">Actualiza el servidor de este nodo para iniciar sesión.</string>
     <string name="login_password_too_short">Al menos %1$d caracteres</string>
     <string name="settings_error_detail">Error: %1$s</string>
     <string name="account_username_taken">El nombre de usuario ya está ocupado</string>
@@ -1254,6 +1292,8 @@
     <string name="private_chat_decryption_failed">[no se pudo descifrar]</string>
     <string name="storage_cache_cleared">Caché borrada</string>
     <string name="notification_unknown_sender">Remitente desconocido</string>
+    <string name="notification_group_chat">Chat grupal</string>
+    <string name="notification_unknown_sender_id">Usuario %1$d</string>
     <string name="notification_sender_in_chat">%1$s en %2$s</string>
     <string name="select_server_connection_failed">No se pudo conectar al nodo</string>
     <string name="select_server_connection_timeout">El nodo no respondió a tiempo. Comprueba la dirección e inténtalo de nuevo.</string>

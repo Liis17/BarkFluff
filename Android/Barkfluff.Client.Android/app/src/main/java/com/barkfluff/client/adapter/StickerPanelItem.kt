@@ -18,4 +18,6 @@ sealed class StickerPanelItem {
     data object Loading : StickerPanelItem()
 
     data object Empty : StickerPanelItem()
+
+    data object Error : StickerPanelItem()
 }

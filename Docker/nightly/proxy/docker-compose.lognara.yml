@@ -1,0 +1,70 @@
+x-lognara-application-environment: &lognara-application-environment
+  Lognara__AgentExecutable: /usr/local/bin/lognara-agent
+  Lognara__AgentUrl: http://127.0.0.1:7400/v1/logs
+  LOGNARA_SERVER: "${LOGNARA_SERVER:?set LOGNARA_SERVER in the Compose environment}"
+  LOGNARA_BACKEND: "${LOGNARA_BACKEND:-barkfluff}"
+  LOGNARA_ENVIRONMENT: "${LOGNARA_ENVIRONMENT:-}"
+  LOGNARA_RELAY_URL: "${LOGNARA_RELAY_URL:-http://lognara-relay:7401/v1/batches}"
+  LOGNARA_LISTEN_ADDR: 127.0.0.1:7400
+  LOGNARA_SPOOL_DIR: /var/lib/lognara-agent/spool
+
+x-lognara-capture-environment: &lognara-capture-environment
+  LOGNARA_SERVER: "${LOGNARA_SERVER:?set LOGNARA_SERVER in the Compose environment}"
+  LOGNARA_BACKEND: "${LOGNARA_BACKEND:-barkfluff}"
+  LOGNARA_ENVIRONMENT: "${LOGNARA_ENVIRONMENT:-}"
+  LOGNARA_RELAY_URL: "${LOGNARA_RELAY_URL:-http://lognara-relay:7401/v1/batches}"
+  LOGNARA_SPOOL_DIR: /var/lib/lognara-agent/spool
+
+services:
+  web:
+    init: true
+    stop_grace_period: 90s
+    environment:
+      <<: *lognara-application-environment
+      LognaraEnable: "${WEB_PROXY_LOGNARA_ENABLE:-true}"
+      SeqEnable: "${WEB_PROXY_SEQ_ENABLE:-false}"
+      ConsoleOutput: "${WEB_PROXY_CONSOLE_OUTPUT:-true}"
+      LOGNARA_SERVICE: web
+      LOGNARA_SERVICE_INSTANCE: "${WEB_PROXY_LOGNARA_SERVICE_INSTANCE:-proxy}"
+      LOGNARA_RELAY_TOKEN: "${WEB_PROXY_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-buffer-web-proxy:/app/logs
+      - lognara-agent-spool-web-proxy:/var/lib/lognara-agent/spool
+    networks:
+      - proxy-network
+      - barkfluff-network
+
+  nginx:
+    image: "${PROXY_NGINX_LOGNARA_IMAGE:-barkfluff/lognara-nginx:proxy}"
+    build:
+      context: ../../..
+      dockerfile: Docker/Lognara/Dockerfile.infrastructure
+      args:
+        BASE_IMAGE: nginx:alpine
+    entrypoint: ["/usr/local/bin/lognara-agent", "run", "--", "/docker-entrypoint.sh"]
+    command: ["nginx", "-g", "daemon off;"]
+    init: true
+    stop_grace_period: 60s
+    environment:
+      <<: *lognara-capture-environment
+      LOGNARA_SERVICE: nginx
+      LOGNARA_SERVICE_INSTANCE: proxy
+      LOGNARA_RELAY_TOKEN: "${PROXY_NGINX_LOGNARA_RELAY_TOKEN:-}"
+    volumes:
+      - lognara-agent-spool-proxy-nginx:/var/lib/lognara-agent/spool
+    networks:
+      - proxy-network
+      - barkfluff-network
+
+volumes:
+  lognara-buffer-web-proxy:
+    name: barkfluff-lognara-buffer-web-proxy
+  lognara-agent-spool-web-proxy:
+    name: barkfluff-lognara-agent-spool-web-proxy
+  lognara-agent-spool-proxy-nginx:
+    name: barkfluff-lognara-agent-spool-proxy-nginx
+
+networks:
+  barkfluff-network:
+    external: true
+    name: barkfluff-network

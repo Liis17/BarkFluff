@@ -1,0 +1,768 @@
+<ui:FluentWindow x:Class="BarkFluff.Builder.MainWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 xmlns:local="clr-namespace:BarkFluff.Builder"
+                 mc:Ignorable="d"
+                 Title="BarkFluff Builder"
+                 Width="1040" Height="920"
+                 MinWidth="760" MinHeight="620"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowBackdropType="Mica"
+                 WindowStartupLocation="CenterScreen">
+
+    <ui:FluentWindow.Resources>
+        <local:InverseBoolConverter x:Key="InverseBool" />
+        <local:AnyEmptyToBoolConverter x:Key="AnyEmpty" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,10,0,2" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style x:Key="LoggingCheckBox" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <DataTemplate x:Key="RelayTokenTemplate">
+            <ui:TextBox Text="{Binding RelayToken, UpdateSourceTrigger=PropertyChanged}"
+                        IsEnabled="{Binding LognaraEnable}"
+                        ClearButtonEnabled="False" />
+        </DataTemplate>
+    </ui:FluentWindow.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="BarkFluff Builder — генератор конфигурации ноды">
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon Symbol="Box24" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="16,8,16,8">
+            <StackPanel>
+
+                <ui:Card Margin="0,0,0,8" Padding="16">
+                    <StackPanel>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Text="Сервисы и Docker-сеть" />
+                        <TextBlock Margin="0,2,0,8"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="PostgreSQL, RabbitMQ и LiveKit входят в стек. Seq, MinIO, Lognara и режим nginx настраиваются здесь." />
+                        <UniformGrid Columns="2">
+                            <ui:ToggleSwitch x:Name="SeqToggle" Margin="0,4" Content="Seq — централизованные логи"
+                                             IsChecked="{Binding IncludeSeq}"
+                                             Click="OnIncludeSeqClick" />
+                            <ui:ToggleSwitch Margin="0,4" Content="MinIO — S3-хранилище"
+                                             IsChecked="{Binding IncludeMinio}" />
+                            <ui:ToggleSwitch x:Name="LognaraToggle" Margin="0,4" Content="Lognara — сбор логов"
+                                             IsChecked="{Binding IncludeLognara}"
+                                             Click="OnIncludeLognaraClick" />
+                        </UniformGrid>
+
+                        <UniformGrid Margin="0,4,0,0" Columns="2">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Режим nginx" />
+                                <ComboBox SelectedValuePath="Tag"
+                                          SelectedValue="{Binding NginxMode, UpdateSourceTrigger=PropertyChanged}">
+                                    <ComboBoxItem Content="Не использовать" Tag="{x:Static local:NginxMode.None}" />
+                                    <ComboBoxItem Content="В Docker Compose" Tag="{x:Static local:NginxMode.Compose}" />
+                                    <ComboBoxItem Content="Внешний контейнер" Tag="{x:Static local:NginxMode.ExternalContainer}" />
+                                    <ComboBoxItem Content="На хосте" Tag="{x:Static local:NginxMode.Host}" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Margin="8,0,0,0">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Общий Docker network" />
+                                <ui:TextBox Text="{Binding DockerNetworkName, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <ui:InfoBar Margin="0,10,0,0" Severity="Warning" IsClosable="False"
+                                    Title="Канал Dev/Release использует прежние образы"
+                                    Message="Ноде с префиксными именами нужны AdminPanel и Settings из последних изменений. Пока эти изменения не продвинуты в Dev/Release, выбранный канал загрузит старые образы, которые не поддерживают эту схему имён.">
+                            <ui:InfoBar.Style>
+                                <Style TargetType="ui:InfoBar" BasedOn="{StaticResource {x:Type ui:InfoBar}}">
+                                    <Setter Property="IsOpen" Value="False" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ImageChannel}" Value="Dev">
+                                            <Setter Property="IsOpen" Value="True" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding ImageChannel}" Value="Release">
+                                            <Setter Property="IsOpen" Value="True" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ui:InfoBar.Style>
+                        </ui:InfoBar>
+                        <ui:InfoBar Margin="0,8,0,0" Severity="Warning" IsClosable="False" IsOpen="True"
+                                    Title="Compose-проект имеет имя barkfluff"
+                                    Message="Если на хосте уже есть Compose-проект barkfluff (например, nightly-стек из каталога barkfluff), команда docker compose up --remove-orphans затронет его контейнеры. Разворачивайте стек на отдельном хосте и не смешивайте проекты." />
+                        <ui:InfoBar Margin="0,8,0,0" Severity="Warning" IsClosable="False" IsOpen="True"
+                                    Title="Не подключайте старый nightly-стек к этой Docker-сети"
+                                    Message="В одной сети Compose-имена сервисов совпадут, и запросы могут попасть в контейнеры старого стека." />
+                        <ui:InfoBar Margin="0,8,0,0" Severity="Warning" IsClosable="False"
+                                    Title="nginx отключён"
+                                    Message="Builder не создаст TLS reverse-proxy. Настройте другой ingress для внешнего доступа.">
+                            <ui:InfoBar.Style>
+                                <Style TargetType="ui:InfoBar" BasedOn="{StaticResource {x:Type ui:InfoBar}}">
+                                    <Setter Property="IsOpen" Value="False" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding NginxMode}" Value="{x:Static local:NginxMode.None}">
+                                            <Setter Property="IsOpen" Value="True" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ui:InfoBar.Style>
+                        </ui:InfoBar>
+                        <ui:InfoBar Margin="0,8,0,0" Severity="Warning" IsClosable="False"
+                                    IsOpen="{Binding IncludeSeq, Converter={StaticResource InverseBool}}"
+                                    Title="Seq отключён"
+                                    Message="Логи попадут в Seq только после его включения и выбора Seq для нужных сервисов в таблице." />
+                        <ui:InfoBar Margin="0,8,0,0" Severity="Warning" IsClosable="False"
+                                    IsOpen="{Binding IncludeMinio, Converter={StaticResource InverseBool}}"
+                                    Title="MinIO отключён"
+                                    Message="Укажите внешний S3 endpoint и credentials в настройках ноды." />
+                        <ui:InfoBar Margin="0,8,0,0" Severity="Informational" IsClosable="False"
+                                    IsOpen="{Binding IncludeLognara, Converter={StaticResource InverseBool}}"
+                                    Title="Lognara отключён"
+                                    Message="Для каждого агента Lognara потребуется relay token, выданный Lognara Core." />
+                    </StackPanel>
+                </ui:Card>
+
+                <ui:Card Margin="0,0,0,8" Padding="16">
+                    <StackPanel>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Text="Логирование приложений и инфраструктуры" />
+                        <TextBlock Margin="0,2,0,8" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="Console, Seq и Lognara настраиваются независимо для каждой строки. Переключатели Seq и Lognara выше применяются сразу ко всем строкам. Relay token заполняется после регистрации каждого включённого агента в Core." />
+                        <TextBlock Margin="0,4,0,4" FontWeight="SemiBold" Text="Приложения" />
+                        <DataGrid ItemsSource="{Binding LognaraApplications}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  HeadersVisibility="Column" RowHeaderWidth="0" MinHeight="210" MaxHeight="360">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Сервис" Binding="{Binding DisplayName}" IsReadOnly="True" Width="140" />
+                                <DataGridTemplateColumn Header="Console" Width="68">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate><CheckBox Style="{StaticResource LoggingCheckBox}" IsChecked="{Binding ConsoleOutput, UpdateSourceTrigger=PropertyChanged}" /></DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Seq" Width="56">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate><CheckBox Style="{StaticResource LoggingCheckBox}" IsChecked="{Binding SeqEnable, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding DataContext.IncludeSeq, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" /></DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Lognara" Width="72">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate><CheckBox Style="{StaticResource LoggingCheckBox}" IsChecked="{Binding LognaraEnable, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding DataContext.IncludeLognara, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" /></DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Relay token" CellTemplate="{StaticResource RelayTokenTemplate}" Width="210" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="Инфраструктурные сервисы" />
+                        <DataGrid ItemsSource="{Binding LognaraInfrastructure}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  HeadersVisibility="Column" RowHeaderWidth="0" MinHeight="150" MaxHeight="280">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Сервис" Binding="{Binding DisplayName}" IsReadOnly="True" Width="180" />
+                                <DataGridTemplateColumn Header="Console" Width="68">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate><CheckBox Style="{StaticResource LoggingCheckBox}" IsChecked="{Binding ConsoleOutput, UpdateSourceTrigger=PropertyChanged}" /></DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Seq" Width="56">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate><CheckBox Style="{StaticResource LoggingCheckBox}" IsChecked="{Binding SeqEnable, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding DataContext.IncludeSeq, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" /></DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Lognara" Width="72">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate><CheckBox Style="{StaticResource LoggingCheckBox}" IsChecked="{Binding LognaraEnable, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding DataContext.IncludeLognara, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" /></DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Relay token" CellTemplate="{StaticResource RelayTokenTemplate}" Width="210" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </ui:Card>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon Settings24}" IsExpanded="True">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="Общие настройки ноды" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       Text="Канал образов, домен и адрес Navigator" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Канал образов" />
+                            <ComboBox SelectedValuePath="Content"
+                                      SelectedValue="{Binding ImageChannel, UpdateSourceTrigger=PropertyChanged}">
+                                <ComboBoxItem Content="Nightly" />
+                                <ComboBoxItem Content="Dev" />
+                                <ComboBoxItem Content="Release" />
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="ASPNETCORE_ENVIRONMENT" />
+                            <ui:TextBox Text="{Binding AspNetCoreEnvironment, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Публичный домен ноды" />
+                            <ui:TextBox Text="{Binding PublicDomain, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="URL Navigator" />
+                            <ui:TextBox Text="{Binding NavigatorUrl, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </UniformGrid>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon Database24}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="PostgreSQL" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Пользователь, пароль и необязательный внешний порт" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Пользователь PostgreSQL" />
+                            <ui:TextBox Text="{Binding PostgresUser, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Пароль PostgreSQL" />
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <ui:TextBox x:Name="PostgresPasswordBox" Text="{Binding PostgresPassword, UpdateSourceTrigger=PropertyChanged}" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Случайно" Icon="{ui:SymbolIcon ArrowSync24}"
+                                           Tag="40" CommandParameter="{Binding ElementName=PostgresPasswordBox}" Click="OnRandom" />
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Внешний порт PostgreSQL (пусто — не публиковать)" />
+                            <ui:TextBox Text="{Binding PostgresHostPort, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </UniformGrid>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon Mail24}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="RabbitMQ" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Учётные данные брокера сообщений" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Пользователь RabbitMQ" />
+                            <ui:TextBox Text="{Binding RabbitUser, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Пароль RabbitMQ" />
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <ui:TextBox x:Name="RabbitPasswordBox" Text="{Binding RabbitPassword, UpdateSourceTrigger=PropertyChanged}" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Случайно" Icon="{ui:SymbolIcon ArrowSync24}"
+                                           Tag="40" CommandParameter="{Binding ElementName=RabbitPasswordBox}" Click="OnRandom" />
+                            </Grid>
+                        </StackPanel>
+                    </UniformGrid>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon DocumentBulletList24}"
+                                 Visibility="{Binding IncludeSeq, Converter={StaticResource BoolToVisibility}}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="Seq" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Сбор и просмотр логов" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Пароль администратора Seq" />
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <ui:TextBox x:Name="SeqAdminPasswordBox" Text="{Binding SeqAdminPassword, UpdateSourceTrigger=PropertyChanged}" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Случайно" Icon="{ui:SymbolIcon ArrowSync24}"
+                                           Tag="40" CommandParameter="{Binding ElementName=SeqAdminPasswordBox}" Click="OnRandom" />
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Внешний порт Seq" />
+                            <ui:TextBox Text="{Binding SeqHostPort, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Seq API key (если настроен)" />
+                            <ui:TextBox Text="{Binding SeqApiKey, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </UniformGrid>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon Storage24}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="MinIO и S3" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Поля меняются в зависимости от использования MinIO" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <StackPanel>
+                        <StackPanel Visibility="{Binding IncludeMinio, Converter={StaticResource BoolToVisibility}}">
+                            <UniformGrid Columns="2">
+                                <StackPanel Margin="4">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="MinIO root user" />
+                                    <ui:TextBox Text="{Binding MinioRootUser, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Margin="4">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="MinIO root password" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <ui:TextBox x:Name="MinioRootPasswordBox" Text="{Binding MinioRootPassword, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Случайно" Icon="{ui:SymbolIcon ArrowSync24}"
+                                                   Tag="40" CommandParameter="{Binding ElementName=MinioRootPasswordBox}" Click="OnRandom" />
+                                    </Grid>
+                                </StackPanel>
+                                <StackPanel Margin="4">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Внешний порт API MinIO" />
+                                    <ui:TextBox Text="{Binding MinioApiHostPort, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Margin="4">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Внешний порт MinIO Console" />
+                                    <ui:TextBox Text="{Binding MinioConsoleHostPort, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </UniformGrid>
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <StackPanel.Style>
+                                <Style TargetType="{x:Type StackPanel}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IncludeMinio}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="S3 endpoint (доступен из контейнеров ноды)" />
+                            <ui:TextBox Text="{Binding S3Endpoint, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon Key24}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="Firebase" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Учётные данные Firebase для push-уведомлений" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Firebase project ID" />
+                            <ui:TextBox Text="{Binding FirebaseProjectId, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Firebase private key ID" />
+                            <ui:TextBox Text="{Binding FirebasePrivateKeyId, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Firebase private key" />
+                            <ui:TextBox Text="{Binding FirebasePrivateKey, UpdateSourceTrigger=PropertyChanged}"
+                                        AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Firebase client email" />
+                            <ui:TextBox Text="{Binding FirebaseClientEmail, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Firebase client ID" />
+                            <ui:TextBox Text="{Binding FirebaseClientId, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </UniformGrid>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon Alert24}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="Web push" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="VAPID и параметры Web Push Firebase" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Web Push VAPID key" />
+                            <ui:TextBox Text="{Binding WebPushVapidKey, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Firebase API key" />
+                            <ui:TextBox Text="{Binding WebPushFirebaseApiKey, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Firebase auth domain" />
+                            <ui:TextBox Text="{Binding WebPushFirebaseAuthDomain, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Firebase project ID" />
+                            <ui:TextBox Text="{Binding WebPushFirebaseProjectId, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Firebase storage bucket" />
+                            <ui:TextBox Text="{Binding WebPushFirebaseStorageBucket, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Firebase messaging sender ID" />
+                            <ui:TextBox Text="{Binding WebPushFirebaseMessagingSenderId, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Firebase app ID" />
+                            <ui:TextBox Text="{Binding WebPushFirebaseAppId, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </UniformGrid>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon Chat24}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="Telegram для AdminPanel" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Бот и необязательный HTTP(S)/SOCKS5 proxy" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Telegram bot token" />
+                            <ui:TextBox Text="{Binding TelegramBotToken, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Владелец (id:username)" />
+                            <ui:TextBox Text="{Binding TelegramOwnerId, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Telegram proxy URL" />
+                            <ui:TextBox Text="{Binding TelegramProxyUrl, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Telegram proxy username" />
+                            <ui:TextBox Text="{Binding TelegramProxyUsername, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Telegram proxy password" />
+                            <ui:TextBox Text="{Binding TelegramProxyPassword, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </UniformGrid>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon Mail24}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="Почта AdminPanel" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="SMTP/IMAP и пароли внешних почтовых ящиков" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <StackPanel>
+                        <UniformGrid Columns="2">
+                            <StackPanel Margin="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="SMTP host" />
+                                <ui:TextBox Text="{Binding SmtpHost, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="SMTP port" />
+                                <ui:TextBox Text="{Binding SmtpPort, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="SMTP security" />
+                                <ComboBox SelectedValuePath="Content" SelectedValue="{Binding SmtpSecurity, UpdateSourceTrigger=PropertyChanged}">
+                                    <ComboBoxItem Content="Auto" /><ComboBoxItem Content="SslOnConnect" />
+                                    <ComboBoxItem Content="StartTls" /><ComboBoxItem Content="StartTlsWhenAvailable" />
+                                    <ComboBoxItem Content="None" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Margin="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="IMAP host" />
+                                <ui:TextBox Text="{Binding ImapHost, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="IMAP port" />
+                                <ui:TextBox Text="{Binding ImapPort, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="IMAP security" />
+                                <ComboBox SelectedValuePath="Content" SelectedValue="{Binding ImapSecurity, UpdateSourceTrigger=PropertyChanged}">
+                                    <ComboBoxItem Content="Auto" /><ComboBoxItem Content="SslOnConnect" />
+                                    <ComboBoxItem Content="StartTls" /><ComboBoxItem Content="StartTlsWhenAvailable" />
+                                    <ComboBoxItem Content="None" />
+                                </ComboBox>
+                            </StackPanel>
+                        </UniformGrid>
+                        <ui:ToggleSwitch Margin="4,8,4,4" Content="Принимать сертификаты SMTP/IMAP, даже если они недоверенные"
+                                         IsChecked="{Binding MailAcceptInvalidCertificates}" />
+                        <UniformGrid Columns="2">
+                            <StackPanel Margin="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Пароль support@ (внешний)" />
+                                <ui:TextBox Text="{Binding MailSupportPassword, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Пароль help@ (внешний)" />
+                                <ui:TextBox Text="{Binding MailHelpPassword, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Пароль noreply@ (внешний)" />
+                                <ui:TextBox Text="{Binding MailNoreplyPassword, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Пароль privacy@ (внешний)" />
+                                <ui:TextBox Text="{Binding MailPrivacyPassword, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="4">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Пароль security@ (внешний)" />
+                                <ui:TextBox Text="{Binding MailSecurityPassword, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </UniformGrid>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon Video24}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="LiveKit" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="API credentials для сервера звонков" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="LiveKit API key" />
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <ui:TextBox x:Name="LiveKitApiKeyBox" Text="{Binding LiveKitApiKey, UpdateSourceTrigger=PropertyChanged}" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Случайно" Icon="{ui:SymbolIcon ArrowSync24}"
+                                           CommandParameter="{Binding ElementName=LiveKitApiKeyBox}" Click="OnRandom" />
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="LiveKit API secret" />
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <ui:TextBox x:Name="LiveKitApiSecretBox" Text="{Binding LiveKitApiSecret, UpdateSourceTrigger=PropertyChanged}" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Случайно" Icon="{ui:SymbolIcon ArrowSync24}"
+                                           CommandParameter="{Binding ElementName=LiveKitApiSecretBox}" Click="OnRandom" />
+                            </Grid>
+                        </StackPanel>
+                    </UniformGrid>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon ShieldLock24}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="Первичная настройка ноды" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Setup endpoint и секретный токен доступа" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Внешний порт Setup" />
+                            <ui:TextBox Text="{Binding SetupHostPort, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Публичный origin Setup (необязательно)" />
+                            <ui:TextBox Text="{Binding SetupPublicOrigin, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Setup token" />
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <ui:TextBox x:Name="SetupTokenBox" Text="{Binding SetupToken, UpdateSourceTrigger=PropertyChanged}" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Случайно" Icon="{ui:SymbolIcon ArrowSync24}"
+                                           CommandParameter="{Binding ElementName=SetupTokenBox}" Click="OnRandom" />
+                            </Grid>
+                        </StackPanel>
+                    </UniformGrid>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon LockClosed24}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="nginx и сертификаты" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Конфигурация создаётся согласно режиму nginx из карточки сервисов" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <StackPanel>
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="{x:Type StackPanel}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding NginxMode}" Value="{x:Static local:NginxMode.Compose}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding NginxMode}" Value="{x:Static local:NginxMode.ExternalContainer}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding NginxMode}" Value="{x:Static local:NginxMode.Host}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <ui:ToggleSwitch Margin="4,4,4,8" Content="Домен проксируется через Cloudflare"
+                                             IsChecked="{Binding BehindCloudflare}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="{x:Type StackPanel}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding NginxMode}" Value="{x:Static local:NginxMode.None}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <ui:InfoBar Margin="0,4,0,4" Severity="Informational" IsClosable="False" IsOpen="True"
+                                        Title="Конфигурация nginx не создаётся"
+                                        Message="Выберите Compose, внешний контейнер или nginx на хосте, чтобы создать nginx/sites/*.conf." />
+                        </StackPanel>
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="{x:Type StackPanel}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding NginxMode}" Value="{x:Static local:NginxMode.Compose}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Локальный файл сертификата (будет скопирован как certs/barkfluff-crt.pem)" />
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <ui:TextBox x:Name="NginxCertificateSourceBox" IsReadOnly="True"
+                                            PlaceholderText="Выберите файл сертификата"
+                                            Text="{Binding NginxCertificateSourcePath, UpdateSourceTrigger=PropertyChanged}" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Выбрать…" Icon="{ui:SymbolIcon FolderOpen24}"
+                                           CommandParameter="{Binding ElementName=NginxCertificateSourceBox}" Click="OnPickCertificate" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Локальный файл приватного ключа (будет скопирован как certs/barkfluff-key.pem)" />
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <ui:TextBox x:Name="NginxKeySourceBox" IsReadOnly="True"
+                                            PlaceholderText="Выберите файл ключа"
+                                            Text="{Binding NginxKeySourcePath, UpdateSourceTrigger=PropertyChanged}" />
+                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Выбрать…" Icon="{ui:SymbolIcon FolderOpen24}"
+                                           CommandParameter="{Binding ElementName=NginxKeySourceBox}" Click="OnPickCertificate" />
+                            </Grid>
+                            <ui:InfoBar Margin="0,10,0,0" Severity="Warning" IsClosable="False"
+                                        Title="Нужно выбрать оба файла"
+                                        Message="Writer скопирует сертификат и ключ в папку certs рядом с конфигурацией.">
+                                <ui:InfoBar.IsOpen>
+                                    <MultiBinding Converter="{StaticResource AnyEmpty}">
+                                        <Binding Path="Text" ElementName="NginxCertificateSourceBox" />
+                                        <Binding Path="Text" ElementName="NginxKeySourceBox" />
+                                    </MultiBinding>
+                                </ui:InfoBar.IsOpen>
+                            </ui:InfoBar>
+                        </StackPanel>
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="{x:Type StackPanel}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding NginxMode}" Value="{x:Static local:NginxMode.ExternalContainer}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding NginxMode}" Value="{x:Static local:NginxMode.Host}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Путь сертификата внутри внешнего nginx" />
+                            <ui:TextBox Text="{Binding NginxCertificatePath, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Путь приватного ключа внутри внешнего nginx" />
+                            <ui:TextBox Text="{Binding NginxKeyPath, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <ui:CardExpander Margin="0,0,0,8" Icon="{ui:SymbolIcon DataBarVertical24}"
+                                 Visibility="{Binding IncludeLognara, Converter={StaticResource BoolToVisibility}}">
+                    <ui:CardExpander.Header>
+                        <StackPanel>
+                            <TextBlock FontWeight="Medium" Text="Lognara relay" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Подключение к Core и метаданные сервера" />
+                        </StackPanel>
+                    </ui:CardExpander.Header>
+                    <UniformGrid Columns="2">
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Lognara Core URL (заканчивается на /v1/batches)" />
+                            <ui:TextBox Text="{Binding LognaraCoreUrl, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Lognara Core token" />
+                            <ui:TextBox Text="{Binding LognaraCoreToken, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Имя сервера Lognara" />
+                            <ui:TextBox Text="{Binding LognaraServer, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Lognara backend" />
+                            <ui:TextBox Text="{Binding LognaraBackend, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Margin="4">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Lognara environment" />
+                            <ui:TextBox Text="{Binding LognaraEnvironment, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </UniformGrid>
+                </ui:CardExpander>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Padding="16,12"
+                Background="{DynamicResource ApplicationBackgroundBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <ui:Button Grid.Row="0" Grid.Column="0" Margin="0,0,8,0" Content="Открыть"
+                           ToolTip="Загрузить конфигурацию из выбранной папки"
+                           Icon="{ui:SymbolIcon FolderArrowUp24}" Click="OnOpen" />
+                <ui:TextBox Grid.Row="0" Grid.Column="1" x:Name="OutputPathBox"
+                            PlaceholderText="Папка для docker-compose.yml и .env"
+                            Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}" />
+                <ui:Button Grid.Row="0" Grid.Column="2" Margin="8,0,0,0" Content="Обзор…"
+                           Icon="{ui:SymbolIcon FolderOpen24}" Click="OnBrowse" />
+                <ui:Button Grid.Row="0" Grid.Column="3" Margin="8,0,0,0" Appearance="Primary"
+                           Content="Сгенерировать" Icon="{ui:SymbolIcon DocumentArrowRight24}" Click="OnGenerate" />
+
+                <WrapPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,8,0,0">
+                    <TextBlock x:Name="StatusText" TextWrapping="Wrap" />
+                    <TextBlock x:Name="NextStepsLink" Margin="8,0,0,0" Visibility="Collapsed">
+                        <Hyperlink Click="OnOpenNextSteps">Открыть NEXT_STEPS.md</Hyperlink>
+                    </TextBlock>
+                </WrapPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

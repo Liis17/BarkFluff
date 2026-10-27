@@ -39,29 +39,12 @@
             android:orientation="vertical"
             android:paddingHorizontal="16dp">
 
-            <!-- Динамический logo-tile: цвет контейнера и glyph следуют Material You. -->
-            <FrameLayout
-                android:layout_width="72dp"
-                android:layout_height="72dp"
-                android:background="@drawable/bg_login_logo"
-                android:clipToOutline="true">
-
-                <ImageView
-                    android:id="@+id/logoImage"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:contentDescription="@string/app_name"
-                    android:src="@drawable/ic_launcher_foreground"
-                    app:tint="?attr/colorPrimary" />
-
-            </FrameLayout>
-
             <!-- Hero-заголовок, left-aligned -->
             <TextView
                 android:id="@+id/titleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
+                android:layout_marginTop="48dp"
                 android:accessibilityHeading="true"
                 android:text="@string/login_welcome"
                 android:textAppearance="@style/TextAppearance.Barkfluff.Onboarding.Hero" />
@@ -209,13 +192,24 @@
                         android:imeOptions="actionNext"
                         android:includeFontPadding="false"
                         android:inputType="textEmailAddress"
-                        android:maxLength="50"
+                        android:maxLength="254"
                         android:maxLines="1"
                         android:paddingVertical="0dp"
                         android:singleLine="true"
                         android:textColor="?attr/colorOnSurface" />
 
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/changeLoginButton"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:minHeight="48dp"
+                    android:text="@string/action_change"
+                    android:textAllCaps="false"
+                    android:visibility="gone" />
 
                 <TextView
                     android:id="@+id/passwordLabel"
@@ -337,37 +331,18 @@
 
                 <com.google.android.material.progressindicator.CircularProgressIndicator
                     android:id="@+id/loginProgressBar"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
                     android:layout_gravity="center"
                     android:indeterminate="true"
                     android:visibility="gone"
                     app:indicatorColor="?attr/colorOnPrimary"
-                    app:indicatorSize="28dp"
-                    app:trackThickness="3dp" />
+                    app:indicatorSize="32dp"
+                    app:trackThickness="4dp" />
 
             </FrameLayout>
 
-            <TextView
-                android:id="@+id/loginModeLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:labelFor="@id/loginModeButton"
-                android:layout_marginStart="6dp"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="8dp"
-                android:text="@string/login_mode_title"
-                android:textAppearance="@style/TextAppearance.Barkfluff.Register.FieldLabel" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/loginModeButton"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/login_field_height"
-                android:text="@string/login_mode_password"
-                android:textAllCaps="false" />
-
-            <!-- Фиксированный ритм отделяет выбор способа входа от ссылки регистрации. -->
+            <!-- Фиксированный ритм отделяет форму входа от ссылки регистрации. -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/login_footer_gap"

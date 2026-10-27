@@ -15,17 +15,17 @@ public class FetchPrekeyBundleQueryHandler(
     {
         if (!Guid.TryParse(query.DeviceId, out var deviceGuid))
         {
-            throw new InvalidOperationException("Некорректный DeviceId");
+            throw new PrekeyException(Grpc.Core.StatusCode.InvalidArgument, "Некорректный DeviceId");
         }
 
-        var result = await prekeyStorage.FetchBundleAsync(query.UserId, deviceGuid);
+        var result = await prekeyStorage.FetchBundleAsync(query.UserId, deviceGuid, query.RequirePqxdh, cancellationToken);
 
         if (result == null)
         {
-            throw new InvalidOperationException("Bundle устройства не найден");
+            throw new PrekeyException(Grpc.Core.StatusCode.NotFound, "Bundle устройства не найден");
         }
 
-        var (bundle, prekey, remaining) = result.Value;
+        var (bundle, prekey, kyberPrekey, kyberPrekeyIsLastResort, remainingEc, remainingKyber) = result;
 
         if (prekey == null)
         {
@@ -34,10 +34,18 @@ public class FetchPrekeyBundleQueryHandler(
                 deviceGuid, query.UserId);
         }
 
+        if (kyberPrekeyIsLastResort)
+        {
+            logger.LogWarning(
+                "Kyber pool устройства {DeviceId} (user {UserId}) исчерпан — возвращён last-resort prekey",
+                deviceGuid, query.UserId);
+        }
+
         return new FetchPrekeyBundleResponse
         {
-            Bundle = bundle.ToGrpc(prekey),
-            RemainingOneTimePrekeys = remaining,
+            Bundle = bundle.ToGrpc(prekey, kyberPrekey, kyberPrekeyIsLastResort),
+            RemainingOneTimePrekeys = remainingEc,
+            RemainingOneTimeKyberPrekeys = remainingKyber,
         };
     }
 }

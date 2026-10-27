@@ -31,6 +31,7 @@ public enum Barkfluff_Identity_OtpTypeId: SwiftProtobuf.Enum, Swift.CaseIterable
 
   /// Почта
   case email // = 2
+  case telegram // = 3
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -42,6 +43,7 @@ public enum Barkfluff_Identity_OtpTypeId: SwiftProtobuf.Enum, Swift.CaseIterable
     case 0: self = .unknown
     case 1: self = .authenticator
     case 2: self = .email
+    case 3: self = .telegram
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -51,6 +53,7 @@ public enum Barkfluff_Identity_OtpTypeId: SwiftProtobuf.Enum, Swift.CaseIterable
     case .unknown: return 0
     case .authenticator: return 1
     case .email: return 2
+    case .telegram: return 3
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -60,6 +63,141 @@ public enum Barkfluff_Identity_OtpTypeId: SwiftProtobuf.Enum, Swift.CaseIterable
     .unknown,
     .authenticator,
     .email,
+    .telegram,
+  ]
+
+}
+
+public enum Barkfluff_Identity_AuthLoginMode: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case loginModeUnspecified // = 0
+  case password // = 1
+  case telegramLogin // = 2
+  case passwordSecondFactor // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .loginModeUnspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .loginModeUnspecified
+    case 1: self = .password
+    case 2: self = .telegramLogin
+    case 3: self = .passwordSecondFactor
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .loginModeUnspecified: return 0
+    case .password: return 1
+    case .telegramLogin: return 2
+    case .passwordSecondFactor: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [Barkfluff_Identity_AuthLoginMode] = [
+    .loginModeUnspecified,
+    .password,
+    .telegramLogin,
+    .passwordSecondFactor,
+  ]
+
+}
+
+public enum Barkfluff_Identity_AuthChallengeState: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case challengeUnspecified // = 0
+  case waiting // = 1
+  case approved // = 2
+  case rejected // = 3
+  case expired // = 4
+  case completed // = 5
+  case cancelled // = 6
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .challengeUnspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .challengeUnspecified
+    case 1: self = .waiting
+    case 2: self = .approved
+    case 3: self = .rejected
+    case 4: self = .expired
+    case 5: self = .completed
+    case 6: self = .cancelled
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .challengeUnspecified: return 0
+    case .waiting: return 1
+    case .approved: return 2
+    case .rejected: return 3
+    case .expired: return 4
+    case .completed: return 5
+    case .cancelled: return 6
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [Barkfluff_Identity_AuthChallengeState] = [
+    .challengeUnspecified,
+    .waiting,
+    .approved,
+    .rejected,
+    .expired,
+    .completed,
+    .cancelled,
+  ]
+
+}
+
+public enum Barkfluff_Identity_LoginNotificationChannel: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case email // = 1
+  case telegram // = 2
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .email
+    case 2: self = .telegram
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .email: return 1
+    case .telegram: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [Barkfluff_Identity_LoginNotificationChannel] = [
+    .unspecified,
+    .email,
+    .telegram,
   ]
 
 }
@@ -83,9 +221,22 @@ public struct Barkfluff_Identity_CreateSessionForUserServerRequest: Sendable {
 
   public var ipAddress: String = String()
 
+  public var attemptID: String = String()
+
+  public var expiresAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_expiresAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_expiresAt = newValue}
+  }
+  /// Returns true if `expiresAt` has been explicitly set.
+  public var hasExpiresAt: Bool {self._expiresAt != nil}
+  /// Clears the value of `expiresAt`. Subsequent reads from it will return its default value.
+  public mutating func clearExpiresAt() {self._expiresAt = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _expiresAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
 }
 
 public struct Barkfluff_Identity_CreateSessionForUserServerResponse: Sendable {
@@ -110,6 +261,8 @@ public struct Barkfluff_Identity_CreateSessionForUserServerResponse: Sendable {
   public var hasRefreshToken: Bool {self._refreshToken != nil}
   /// Clears the value of `refreshToken`. Subsequent reads from it will return its default value.
   public mutating func clearRefreshToken() {self._refreshToken = nil}
+
+  public var confirmationState: Barkfluff_Identity_AuthChallengeState = .challengeUnspecified
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -165,6 +318,64 @@ public struct Barkfluff_Identity_RemoveActiveSessionServerRequest: Sendable {
   public var userID: Int64 = 0
 
   public var deviceID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_CreateBotTokenServerRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Идентификатор бота (Users.Id)
+  public var botUserID: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_CreateBotTokenServerResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// JWT бота
+  public var token: String = String()
+
+  /// Идентификатор выпуска токена (для отзыва)
+  public var tokenID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_GetBotTokenServerRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Идентификатор бота (Users.Id)
+  public var botUserID: Int64 = 0
+
+  /// Существующий идентификатор выпуска токена
+  public var tokenID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_GetBotTokenServerResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// JWT бота с тем же token_id
+  public var token: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -369,9 +580,20 @@ public struct Barkfluff_Identity_DisableOtpVerificationRequest: Sendable {
   /// Код для отключения (при отключении email не передавать)
   public var otpCode: String = String()
 
+  public var securityProof: Barkfluff_Identity_AuthChallengeReference {
+    get {_securityProof ?? Barkfluff_Identity_AuthChallengeReference()}
+    set {_securityProof = newValue}
+  }
+  /// Returns true if `securityProof` has been explicitly set.
+  public var hasSecurityProof: Bool {self._securityProof != nil}
+  /// Clears the value of `securityProof`. Subsequent reads from it will return its default value.
+  public mutating func clearSecurityProof() {self._securityProof = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _securityProof: Barkfluff_Identity_AuthChallengeReference? = nil
 }
 
 public struct Barkfluff_Identity_DisableOtpVerificationResponse: Sendable {
@@ -392,15 +614,28 @@ public struct Barkfluff_Identity_ConfirmOtpVerificationRequest: Sendable {
   /// ОТП код
   public var otpCode: String = String()
 
+  public var securityProof: Barkfluff_Identity_AuthChallengeReference {
+    get {_securityProof ?? Barkfluff_Identity_AuthChallengeReference()}
+    set {_securityProof = newValue}
+  }
+  /// Returns true if `securityProof` has been explicitly set.
+  public var hasSecurityProof: Bool {self._securityProof != nil}
+  /// Clears the value of `securityProof`. Subsequent reads from it will return its default value.
+  public mutating func clearSecurityProof() {self._securityProof = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _securityProof: Barkfluff_Identity_AuthChallengeReference? = nil
 }
 
 public struct Barkfluff_Identity_ConfirmOtpVerificationResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
+
+  public var recoveryCodes: [String] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -415,9 +650,20 @@ public struct Barkfluff_Identity_EnableOtpVerificationRequest: Sendable {
   /// Тип 2ФА авторизации
   public var otpType: Barkfluff_Identity_OtpTypeId = .unknown
 
+  public var securityProof: Barkfluff_Identity_AuthChallengeReference {
+    get {_securityProof ?? Barkfluff_Identity_AuthChallengeReference()}
+    set {_securityProof = newValue}
+  }
+  /// Returns true if `securityProof` has been explicitly set.
+  public var hasSecurityProof: Bool {self._securityProof != nil}
+  /// Clears the value of `securityProof`. Subsequent reads from it will return its default value.
+  public mutating func clearSecurityProof() {self._securityProof = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _securityProof: Barkfluff_Identity_AuthChallengeReference? = nil
 }
 
 public struct Barkfluff_Identity_EnableOtpVerificationResponse: Sendable {
@@ -818,17 +1064,466 @@ public struct Barkfluff_Identity_LogoutResponse: Sendable {
   public init() {}
 }
 
+public struct Barkfluff_Identity_GetAuthCapabilitiesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_GetAuthCapabilitiesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var emailAvailable: Bool = false
+
+  public var telegramAvailable: Bool = false
+
+  public var telegramBotUsername: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_ResolveSignInRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var login: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_ResolveSignInResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var loginMode: Barkfluff_Identity_AuthLoginMode = .loginModeUnspecified
+
+  public var errorCode: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_AuthChallengeReference: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var secret: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_AuthChallengeResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var challenge: Barkfluff_Identity_AuthChallengeReference {
+    get {_challenge ?? Barkfluff_Identity_AuthChallengeReference()}
+    set {_challenge = newValue}
+  }
+  /// Returns true if `challenge` has been explicitly set.
+  public var hasChallenge: Bool {self._challenge != nil}
+  /// Clears the value of `challenge`. Subsequent reads from it will return its default value.
+  public mutating func clearChallenge() {self._challenge = nil}
+
+  public var state: Barkfluff_Identity_AuthChallengeState = .challengeUnspecified
+
+  public var factor: Barkfluff_Identity_OtpTypeId = .unknown
+
+  public var telegramURL: String = String()
+
+  public var expiresAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_expiresAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_expiresAt = newValue}
+  }
+  /// Returns true if `expiresAt` has been explicitly set.
+  public var hasExpiresAt: Bool {self._expiresAt != nil}
+  /// Clears the value of `expiresAt`. Subsequent reads from it will return its default value.
+  public mutating func clearExpiresAt() {self._expiresAt = nil}
+
+  public var availableFactors: [Barkfluff_Identity_OtpTypeId] = []
+
+  public var needsCode: Bool = false
+
+  public var errorCode: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _challenge: Barkfluff_Identity_AuthChallengeReference? = nil
+  fileprivate var _expiresAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+}
+
+public struct Barkfluff_Identity_BeginRegistrationRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var username: String = String()
+
+  public var password: String = String()
+
+  public var firstName: String = String()
+
+  public var lastName: String = String()
+
+  public var email: String = String()
+
+  public var confirmationMethod: Barkfluff_Identity_OtpTypeId = .unknown
+
+  public var loginMode: Barkfluff_Identity_AuthLoginMode = .loginModeUnspecified
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_BeginSignInRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var login: String = String()
+
+  public var password: String = String()
+
+  public var loginMode: Barkfluff_Identity_AuthLoginMode = .loginModeUnspecified
+
+  public var factor: Barkfluff_Identity_OtpTypeId = .unknown
+
+  public var useRecoveryCode: Bool = false
+
+  public var reportLoginModeMismatch: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_CompleteAuthChallengeRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var challenge: Barkfluff_Identity_AuthChallengeReference {
+    get {_challenge ?? Barkfluff_Identity_AuthChallengeReference()}
+    set {_challenge = newValue}
+  }
+  /// Returns true if `challenge` has been explicitly set.
+  public var hasChallenge: Bool {self._challenge != nil}
+  /// Clears the value of `challenge`. Subsequent reads from it will return its default value.
+  public mutating func clearChallenge() {self._challenge = nil}
+
+  public var code: String = String()
+
+  public var useRecoveryCode: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _challenge: Barkfluff_Identity_AuthChallengeReference? = nil
+}
+
+public struct Barkfluff_Identity_CompleteAuthChallengeResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var state: Barkfluff_Identity_AuthChallengeState = .challengeUnspecified
+
+  public var session: Barkfluff_Identity_AuthResponse {
+    get {_session ?? Barkfluff_Identity_AuthResponse()}
+    set {_session = newValue}
+  }
+  /// Returns true if `session` has been explicitly set.
+  public var hasSession: Bool {self._session != nil}
+  /// Clears the value of `session`. Subsequent reads from it will return its default value.
+  public mutating func clearSession() {self._session = nil}
+
+  public var securityProof: Barkfluff_Identity_AuthChallengeReference {
+    get {_securityProof ?? Barkfluff_Identity_AuthChallengeReference()}
+    set {_securityProof = newValue}
+  }
+  /// Returns true if `securityProof` has been explicitly set.
+  public var hasSecurityProof: Bool {self._securityProof != nil}
+  /// Clears the value of `securityProof`. Subsequent reads from it will return its default value.
+  public mutating func clearSecurityProof() {self._securityProof = nil}
+
+  public var recoveryCodes: [String] = []
+
+  public var errorCode: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _session: Barkfluff_Identity_AuthResponse? = nil
+  fileprivate var _securityProof: Barkfluff_Identity_AuthChallengeReference? = nil
+}
+
+public struct Barkfluff_Identity_GetSecuritySettingsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_GetLoginNotificationSettingsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_SetLoginNotificationChannelRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var channel: Barkfluff_Identity_LoginNotificationChannel = .unspecified
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_LoginNotificationSettingsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var channel: Barkfluff_Identity_LoginNotificationChannel = .unspecified
+
+  public var emailAvailable: Bool = false
+
+  public var telegramAvailable: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_SecuritySettingsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var loginMode: Barkfluff_Identity_AuthLoginMode = .loginModeUnspecified
+
+  public var preferredFactor: Barkfluff_Identity_OtpTypeId = .unknown
+
+  public var authenticatorEnabled: Bool = false
+
+  public var emailEnabled: Bool = false
+
+  public var telegramLinked: Bool = false
+
+  public var telegramEnabled: Bool = false
+
+  public var telegramOtpEnabled: Bool = false
+
+  public var fastAuthTelegramEnabled: Bool = false
+
+  public var telegramUsername: String = String()
+
+  public var verifiedEmail: String = String()
+
+  public var remainingRecoveryCodes: Int32 = 0
+
+  public var recoveryCodes: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_BeginReauthenticationRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var password: String = String()
+
+  public var factor: Barkfluff_Identity_OtpTypeId = .unknown
+
+  public var useRecoveryCode: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_SecurityProofRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var securityProof: Barkfluff_Identity_AuthChallengeReference {
+    get {_securityProof ?? Barkfluff_Identity_AuthChallengeReference()}
+    set {_securityProof = newValue}
+  }
+  /// Returns true if `securityProof` has been explicitly set.
+  public var hasSecurityProof: Bool {self._securityProof != nil}
+  /// Clears the value of `securityProof`. Subsequent reads from it will return its default value.
+  public mutating func clearSecurityProof() {self._securityProof = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _securityProof: Barkfluff_Identity_AuthChallengeReference? = nil
+}
+
+public struct Barkfluff_Identity_UpdateSecuritySettingsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var securityProof: Barkfluff_Identity_AuthChallengeReference {
+    get {_securityProof ?? Barkfluff_Identity_AuthChallengeReference()}
+    set {_securityProof = newValue}
+  }
+  /// Returns true if `securityProof` has been explicitly set.
+  public var hasSecurityProof: Bool {self._securityProof != nil}
+  /// Clears the value of `securityProof`. Subsequent reads from it will return its default value.
+  public mutating func clearSecurityProof() {self._securityProof = nil}
+
+  public var loginMode: Barkfluff_Identity_AuthLoginMode = .loginModeUnspecified
+
+  public var preferredFactor: Barkfluff_Identity_OtpTypeId = .unknown
+
+  public var telegramEnabled: Bool = false
+
+  public var telegramOtpEnabled: Bool = false
+
+  public var fastAuthTelegramEnabled: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _securityProof: Barkfluff_Identity_AuthChallengeReference? = nil
+}
+
+public struct Barkfluff_Identity_BeginEmailBindingRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var securityProof: Barkfluff_Identity_AuthChallengeReference {
+    get {_securityProof ?? Barkfluff_Identity_AuthChallengeReference()}
+    set {_securityProof = newValue}
+  }
+  /// Returns true if `securityProof` has been explicitly set.
+  public var hasSecurityProof: Bool {self._securityProof != nil}
+  /// Clears the value of `securityProof`. Subsequent reads from it will return its default value.
+  public mutating func clearSecurityProof() {self._securityProof = nil}
+
+  public var email: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _securityProof: Barkfluff_Identity_AuthChallengeReference? = nil
+}
+
+public struct Barkfluff_Identity_RecoveryCodesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var codes: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_BeginPasswordRecoveryRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var login: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Identity_SetRecoveredPasswordRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var securityProof: Barkfluff_Identity_AuthChallengeReference {
+    get {_securityProof ?? Barkfluff_Identity_AuthChallengeReference()}
+    set {_securityProof = newValue}
+  }
+  /// Returns true if `securityProof` has been explicitly set.
+  public var hasSecurityProof: Bool {self._securityProof != nil}
+  /// Clears the value of `securityProof`. Subsequent reads from it will return its default value.
+  public mutating func clearSecurityProof() {self._securityProof = nil}
+
+  public var password: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _securityProof: Barkfluff_Identity_AuthChallengeReference? = nil
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "barkfluff.identity"
 
 extension Barkfluff_Identity_OtpTypeId: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0Unknown\0\u{1}Authenticator\0\u{1}Email\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0Unknown\0\u{1}Authenticator\0\u{1}Email\0\u{1}Telegram\0")
+}
+
+extension Barkfluff_Identity_AuthLoginMode: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0LOGIN_MODE_UNSPECIFIED\0\u{1}PASSWORD\0\u{1}TELEGRAM_LOGIN\0\u{1}PASSWORD_SECOND_FACTOR\0")
+}
+
+extension Barkfluff_Identity_AuthChallengeState: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0CHALLENGE_UNSPECIFIED\0\u{1}WAITING\0\u{1}APPROVED\0\u{1}REJECTED\0\u{1}EXPIRED\0\u{1}COMPLETED\0\u{1}CANCELLED\0")
+}
+
+extension Barkfluff_Identity_LoginNotificationChannel: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0LOGIN_NOTIFICATION_CHANNEL_UNSPECIFIED\0\u{1}LOGIN_NOTIFICATION_CHANNEL_EMAIL\0\u{1}LOGIN_NOTIFICATION_CHANNEL_TELEGRAM\0")
 }
 
 extension Barkfluff_Identity_CreateSessionForUserServerRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CreateSessionForUserServerRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}user_id\0\u{3}device_id\0\u{3}device_name\0\u{3}operation_system\0\u{3}app_name\0\u{3}ip_address\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}user_id\0\u{3}device_id\0\u{3}device_name\0\u{3}operation_system\0\u{3}app_name\0\u{3}ip_address\0\u{3}attempt_id\0\u{3}expires_at\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -842,12 +1537,18 @@ extension Barkfluff_Identity_CreateSessionForUserServerRequest: SwiftProtobuf.Me
       case 4: try { try decoder.decodeSingularStringField(value: &self.operationSystem) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.appName) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.ipAddress) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.attemptID) }()
+      case 8: try { try decoder.decodeSingularMessageField(value: &self._expiresAt) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if self.userID != 0 {
       try visitor.visitSingularInt64Field(value: self.userID, fieldNumber: 1)
     }
@@ -866,6 +1567,12 @@ extension Barkfluff_Identity_CreateSessionForUserServerRequest: SwiftProtobuf.Me
     if !self.ipAddress.isEmpty {
       try visitor.visitSingularStringField(value: self.ipAddress, fieldNumber: 6)
     }
+    if !self.attemptID.isEmpty {
+      try visitor.visitSingularStringField(value: self.attemptID, fieldNumber: 7)
+    }
+    try { if let v = self._expiresAt {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -876,6 +1583,8 @@ extension Barkfluff_Identity_CreateSessionForUserServerRequest: SwiftProtobuf.Me
     if lhs.operationSystem != rhs.operationSystem {return false}
     if lhs.appName != rhs.appName {return false}
     if lhs.ipAddress != rhs.ipAddress {return false}
+    if lhs.attemptID != rhs.attemptID {return false}
+    if lhs._expiresAt != rhs._expiresAt {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -883,7 +1592,7 @@ extension Barkfluff_Identity_CreateSessionForUserServerRequest: SwiftProtobuf.Me
 
 extension Barkfluff_Identity_CreateSessionForUserServerResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CreateSessionForUserServerResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}access_token\0\u{3}refresh_token\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}access_token\0\u{3}refresh_token\0\u{3}confirmation_state\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -893,6 +1602,7 @@ extension Barkfluff_Identity_CreateSessionForUserServerResponse: SwiftProtobuf.M
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularMessageField(value: &self._accessToken) }()
       case 2: try { try decoder.decodeSingularMessageField(value: &self._refreshToken) }()
+      case 3: try { try decoder.decodeSingularEnumField(value: &self.confirmationState) }()
       default: break
       }
     }
@@ -909,12 +1619,16 @@ extension Barkfluff_Identity_CreateSessionForUserServerResponse: SwiftProtobuf.M
     try { if let v = self._refreshToken {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
     } }()
+    if self.confirmationState != .challengeUnspecified {
+      try visitor.visitSingularEnumField(value: self.confirmationState, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Barkfluff_Identity_CreateSessionForUserServerResponse, rhs: Barkfluff_Identity_CreateSessionForUserServerResponse) -> Bool {
     if lhs._accessToken != rhs._accessToken {return false}
     if lhs._refreshToken != rhs._refreshToken {return false}
+    if lhs.confirmationState != rhs.confirmationState {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1045,6 +1759,136 @@ extension Barkfluff_Identity_RemoveActiveSessionServerRequest: SwiftProtobuf.Mes
   public static func ==(lhs: Barkfluff_Identity_RemoveActiveSessionServerRequest, rhs: Barkfluff_Identity_RemoveActiveSessionServerRequest) -> Bool {
     if lhs.userID != rhs.userID {return false}
     if lhs.deviceID != rhs.deviceID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_CreateBotTokenServerRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CreateBotTokenServerRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_user_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.botUserID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.botUserID != 0 {
+      try visitor.visitSingularInt64Field(value: self.botUserID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_CreateBotTokenServerRequest, rhs: Barkfluff_Identity_CreateBotTokenServerRequest) -> Bool {
+    if lhs.botUserID != rhs.botUserID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_CreateBotTokenServerResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CreateBotTokenServerResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}token\0\u{3}token_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.token) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.tokenID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.token.isEmpty {
+      try visitor.visitSingularStringField(value: self.token, fieldNumber: 1)
+    }
+    if !self.tokenID.isEmpty {
+      try visitor.visitSingularStringField(value: self.tokenID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_CreateBotTokenServerResponse, rhs: Barkfluff_Identity_CreateBotTokenServerResponse) -> Bool {
+    if lhs.token != rhs.token {return false}
+    if lhs.tokenID != rhs.tokenID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_GetBotTokenServerRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetBotTokenServerRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_user_id\0\u{3}token_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.botUserID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.tokenID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.botUserID != 0 {
+      try visitor.visitSingularInt64Field(value: self.botUserID, fieldNumber: 1)
+    }
+    if !self.tokenID.isEmpty {
+      try visitor.visitSingularStringField(value: self.tokenID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_GetBotTokenServerRequest, rhs: Barkfluff_Identity_GetBotTokenServerRequest) -> Bool {
+    if lhs.botUserID != rhs.botUserID {return false}
+    if lhs.tokenID != rhs.tokenID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_GetBotTokenServerResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetBotTokenServerResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}token\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.token) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.token.isEmpty {
+      try visitor.visitSingularStringField(value: self.token, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_GetBotTokenServerResponse, rhs: Barkfluff_Identity_GetBotTokenServerResponse) -> Bool {
+    if lhs.token != rhs.token {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1394,7 +2238,7 @@ extension Barkfluff_Identity_ListOtpVerificationResponse: SwiftProtobuf.Message,
 
 extension Barkfluff_Identity_DisableOtpVerificationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DisableOtpVerificationRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}otp_type\0\u{3}otp_code\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}otp_type\0\u{3}otp_code\0\u{3}security_proof\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1404,24 +2248,33 @@ extension Barkfluff_Identity_DisableOtpVerificationRequest: SwiftProtobuf.Messag
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularEnumField(value: &self.otpType) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.otpCode) }()
+      case 3: try { try decoder.decodeSingularMessageField(value: &self._securityProof) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if self.otpType != .unknown {
       try visitor.visitSingularEnumField(value: self.otpType, fieldNumber: 1)
     }
     if !self.otpCode.isEmpty {
       try visitor.visitSingularStringField(value: self.otpCode, fieldNumber: 2)
     }
+    try { if let v = self._securityProof {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Barkfluff_Identity_DisableOtpVerificationRequest, rhs: Barkfluff_Identity_DisableOtpVerificationRequest) -> Bool {
     if lhs.otpType != rhs.otpType {return false}
     if lhs.otpCode != rhs.otpCode {return false}
+    if lhs._securityProof != rhs._securityProof {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1448,7 +2301,7 @@ extension Barkfluff_Identity_DisableOtpVerificationResponse: SwiftProtobuf.Messa
 
 extension Barkfluff_Identity_ConfirmOtpVerificationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ConfirmOtpVerificationRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}otp_code\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}otp_code\0\u{3}security_proof\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1457,20 +2310,29 @@ extension Barkfluff_Identity_ConfirmOtpVerificationRequest: SwiftProtobuf.Messag
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.otpCode) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._securityProof) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if !self.otpCode.isEmpty {
       try visitor.visitSingularStringField(value: self.otpCode, fieldNumber: 1)
     }
+    try { if let v = self._securityProof {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Barkfluff_Identity_ConfirmOtpVerificationRequest, rhs: Barkfluff_Identity_ConfirmOtpVerificationRequest) -> Bool {
     if lhs.otpCode != rhs.otpCode {return false}
+    if lhs._securityProof != rhs._securityProof {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1478,18 +2340,29 @@ extension Barkfluff_Identity_ConfirmOtpVerificationRequest: SwiftProtobuf.Messag
 
 extension Barkfluff_Identity_ConfirmOtpVerificationResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ConfirmOtpVerificationResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}recovery_codes\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    // Load everything into unknown fields
-    while try decoder.nextFieldNumber() != nil {}
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.recoveryCodes) }()
+      default: break
+      }
+    }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.recoveryCodes.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.recoveryCodes, fieldNumber: 1)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Barkfluff_Identity_ConfirmOtpVerificationResponse, rhs: Barkfluff_Identity_ConfirmOtpVerificationResponse) -> Bool {
+    if lhs.recoveryCodes != rhs.recoveryCodes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1497,7 +2370,7 @@ extension Barkfluff_Identity_ConfirmOtpVerificationResponse: SwiftProtobuf.Messa
 
 extension Barkfluff_Identity_EnableOtpVerificationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EnableOtpVerificationRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}otp_type\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}otp_type\0\u{3}security_proof\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1506,20 +2379,29 @@ extension Barkfluff_Identity_EnableOtpVerificationRequest: SwiftProtobuf.Message
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularEnumField(value: &self.otpType) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._securityProof) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if self.otpType != .unknown {
       try visitor.visitSingularEnumField(value: self.otpType, fieldNumber: 1)
     }
+    try { if let v = self._securityProof {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Barkfluff_Identity_EnableOtpVerificationRequest, rhs: Barkfluff_Identity_EnableOtpVerificationRequest) -> Bool {
     if lhs.otpType != rhs.otpType {return false}
+    if lhs._securityProof != rhs._securityProof {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2232,6 +3114,911 @@ extension Barkfluff_Identity_LogoutResponse: SwiftProtobuf.Message, SwiftProtobu
   }
 
   public static func ==(lhs: Barkfluff_Identity_LogoutResponse, rhs: Barkfluff_Identity_LogoutResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_GetAuthCapabilitiesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetAuthCapabilitiesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_GetAuthCapabilitiesRequest, rhs: Barkfluff_Identity_GetAuthCapabilitiesRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_GetAuthCapabilitiesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetAuthCapabilitiesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}email_available\0\u{3}telegram_available\0\u{3}telegram_bot_username\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.emailAvailable) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.telegramAvailable) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.telegramBotUsername) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.emailAvailable != false {
+      try visitor.visitSingularBoolField(value: self.emailAvailable, fieldNumber: 1)
+    }
+    if self.telegramAvailable != false {
+      try visitor.visitSingularBoolField(value: self.telegramAvailable, fieldNumber: 2)
+    }
+    if !self.telegramBotUsername.isEmpty {
+      try visitor.visitSingularStringField(value: self.telegramBotUsername, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_GetAuthCapabilitiesResponse, rhs: Barkfluff_Identity_GetAuthCapabilitiesResponse) -> Bool {
+    if lhs.emailAvailable != rhs.emailAvailable {return false}
+    if lhs.telegramAvailable != rhs.telegramAvailable {return false}
+    if lhs.telegramBotUsername != rhs.telegramBotUsername {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_ResolveSignInRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ResolveSignInRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}login\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.login) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.login.isEmpty {
+      try visitor.visitSingularStringField(value: self.login, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_ResolveSignInRequest, rhs: Barkfluff_Identity_ResolveSignInRequest) -> Bool {
+    if lhs.login != rhs.login {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_ResolveSignInResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ResolveSignInResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}login_mode\0\u{3}error_code\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.loginMode) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.errorCode) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.loginMode != .loginModeUnspecified {
+      try visitor.visitSingularEnumField(value: self.loginMode, fieldNumber: 1)
+    }
+    if !self.errorCode.isEmpty {
+      try visitor.visitSingularStringField(value: self.errorCode, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_ResolveSignInResponse, rhs: Barkfluff_Identity_ResolveSignInResponse) -> Bool {
+    if lhs.loginMode != rhs.loginMode {return false}
+    if lhs.errorCode != rhs.errorCode {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_AuthChallengeReference: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AuthChallengeReference"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}secret\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.secret) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.secret.isEmpty {
+      try visitor.visitSingularStringField(value: self.secret, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_AuthChallengeReference, rhs: Barkfluff_Identity_AuthChallengeReference) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.secret != rhs.secret {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_AuthChallengeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AuthChallengeResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}challenge\0\u{1}state\0\u{1}factor\0\u{3}telegram_url\0\u{3}expires_at\0\u{3}available_factors\0\u{3}needs_code\0\u{3}error_code\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._challenge) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.state) }()
+      case 3: try { try decoder.decodeSingularEnumField(value: &self.factor) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.telegramURL) }()
+      case 5: try { try decoder.decodeSingularMessageField(value: &self._expiresAt) }()
+      case 6: try { try decoder.decodeRepeatedEnumField(value: &self.availableFactors) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.needsCode) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.errorCode) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._challenge {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if self.state != .challengeUnspecified {
+      try visitor.visitSingularEnumField(value: self.state, fieldNumber: 2)
+    }
+    if self.factor != .unknown {
+      try visitor.visitSingularEnumField(value: self.factor, fieldNumber: 3)
+    }
+    if !self.telegramURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.telegramURL, fieldNumber: 4)
+    }
+    try { if let v = self._expiresAt {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+    } }()
+    if !self.availableFactors.isEmpty {
+      try visitor.visitPackedEnumField(value: self.availableFactors, fieldNumber: 6)
+    }
+    if self.needsCode != false {
+      try visitor.visitSingularBoolField(value: self.needsCode, fieldNumber: 7)
+    }
+    if !self.errorCode.isEmpty {
+      try visitor.visitSingularStringField(value: self.errorCode, fieldNumber: 8)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_AuthChallengeResponse, rhs: Barkfluff_Identity_AuthChallengeResponse) -> Bool {
+    if lhs._challenge != rhs._challenge {return false}
+    if lhs.state != rhs.state {return false}
+    if lhs.factor != rhs.factor {return false}
+    if lhs.telegramURL != rhs.telegramURL {return false}
+    if lhs._expiresAt != rhs._expiresAt {return false}
+    if lhs.availableFactors != rhs.availableFactors {return false}
+    if lhs.needsCode != rhs.needsCode {return false}
+    if lhs.errorCode != rhs.errorCode {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_BeginRegistrationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".BeginRegistrationRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}username\0\u{1}password\0\u{3}first_name\0\u{3}last_name\0\u{1}email\0\u{3}confirmation_method\0\u{3}login_mode\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.username) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.password) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.firstName) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.lastName) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.email) }()
+      case 6: try { try decoder.decodeSingularEnumField(value: &self.confirmationMethod) }()
+      case 7: try { try decoder.decodeSingularEnumField(value: &self.loginMode) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.username.isEmpty {
+      try visitor.visitSingularStringField(value: self.username, fieldNumber: 1)
+    }
+    if !self.password.isEmpty {
+      try visitor.visitSingularStringField(value: self.password, fieldNumber: 2)
+    }
+    if !self.firstName.isEmpty {
+      try visitor.visitSingularStringField(value: self.firstName, fieldNumber: 3)
+    }
+    if !self.lastName.isEmpty {
+      try visitor.visitSingularStringField(value: self.lastName, fieldNumber: 4)
+    }
+    if !self.email.isEmpty {
+      try visitor.visitSingularStringField(value: self.email, fieldNumber: 5)
+    }
+    if self.confirmationMethod != .unknown {
+      try visitor.visitSingularEnumField(value: self.confirmationMethod, fieldNumber: 6)
+    }
+    if self.loginMode != .loginModeUnspecified {
+      try visitor.visitSingularEnumField(value: self.loginMode, fieldNumber: 7)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_BeginRegistrationRequest, rhs: Barkfluff_Identity_BeginRegistrationRequest) -> Bool {
+    if lhs.username != rhs.username {return false}
+    if lhs.password != rhs.password {return false}
+    if lhs.firstName != rhs.firstName {return false}
+    if lhs.lastName != rhs.lastName {return false}
+    if lhs.email != rhs.email {return false}
+    if lhs.confirmationMethod != rhs.confirmationMethod {return false}
+    if lhs.loginMode != rhs.loginMode {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_BeginSignInRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".BeginSignInRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}login\0\u{1}password\0\u{3}login_mode\0\u{1}factor\0\u{3}use_recovery_code\0\u{3}report_login_mode_mismatch\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.login) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.password) }()
+      case 3: try { try decoder.decodeSingularEnumField(value: &self.loginMode) }()
+      case 4: try { try decoder.decodeSingularEnumField(value: &self.factor) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.useRecoveryCode) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.reportLoginModeMismatch) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.login.isEmpty {
+      try visitor.visitSingularStringField(value: self.login, fieldNumber: 1)
+    }
+    if !self.password.isEmpty {
+      try visitor.visitSingularStringField(value: self.password, fieldNumber: 2)
+    }
+    if self.loginMode != .loginModeUnspecified {
+      try visitor.visitSingularEnumField(value: self.loginMode, fieldNumber: 3)
+    }
+    if self.factor != .unknown {
+      try visitor.visitSingularEnumField(value: self.factor, fieldNumber: 4)
+    }
+    if self.useRecoveryCode != false {
+      try visitor.visitSingularBoolField(value: self.useRecoveryCode, fieldNumber: 5)
+    }
+    if self.reportLoginModeMismatch != false {
+      try visitor.visitSingularBoolField(value: self.reportLoginModeMismatch, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_BeginSignInRequest, rhs: Barkfluff_Identity_BeginSignInRequest) -> Bool {
+    if lhs.login != rhs.login {return false}
+    if lhs.password != rhs.password {return false}
+    if lhs.loginMode != rhs.loginMode {return false}
+    if lhs.factor != rhs.factor {return false}
+    if lhs.useRecoveryCode != rhs.useRecoveryCode {return false}
+    if lhs.reportLoginModeMismatch != rhs.reportLoginModeMismatch {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_CompleteAuthChallengeRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CompleteAuthChallengeRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}challenge\0\u{1}code\0\u{3}use_recovery_code\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._challenge) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.code) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.useRecoveryCode) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._challenge {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.code.isEmpty {
+      try visitor.visitSingularStringField(value: self.code, fieldNumber: 2)
+    }
+    if self.useRecoveryCode != false {
+      try visitor.visitSingularBoolField(value: self.useRecoveryCode, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_CompleteAuthChallengeRequest, rhs: Barkfluff_Identity_CompleteAuthChallengeRequest) -> Bool {
+    if lhs._challenge != rhs._challenge {return false}
+    if lhs.code != rhs.code {return false}
+    if lhs.useRecoveryCode != rhs.useRecoveryCode {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_CompleteAuthChallengeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CompleteAuthChallengeResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{1}session\0\u{3}security_proof\0\u{3}recovery_codes\0\u{3}error_code\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.state) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._session) }()
+      case 3: try { try decoder.decodeSingularMessageField(value: &self._securityProof) }()
+      case 4: try { try decoder.decodeRepeatedStringField(value: &self.recoveryCodes) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.errorCode) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.state != .challengeUnspecified {
+      try visitor.visitSingularEnumField(value: self.state, fieldNumber: 1)
+    }
+    try { if let v = self._session {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._securityProof {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    } }()
+    if !self.recoveryCodes.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.recoveryCodes, fieldNumber: 4)
+    }
+    if !self.errorCode.isEmpty {
+      try visitor.visitSingularStringField(value: self.errorCode, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_CompleteAuthChallengeResponse, rhs: Barkfluff_Identity_CompleteAuthChallengeResponse) -> Bool {
+    if lhs.state != rhs.state {return false}
+    if lhs._session != rhs._session {return false}
+    if lhs._securityProof != rhs._securityProof {return false}
+    if lhs.recoveryCodes != rhs.recoveryCodes {return false}
+    if lhs.errorCode != rhs.errorCode {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_GetSecuritySettingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetSecuritySettingsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_GetSecuritySettingsRequest, rhs: Barkfluff_Identity_GetSecuritySettingsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_GetLoginNotificationSettingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetLoginNotificationSettingsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_GetLoginNotificationSettingsRequest, rhs: Barkfluff_Identity_GetLoginNotificationSettingsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_SetLoginNotificationChannelRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SetLoginNotificationChannelRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}channel\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.channel) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.channel != .unspecified {
+      try visitor.visitSingularEnumField(value: self.channel, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_SetLoginNotificationChannelRequest, rhs: Barkfluff_Identity_SetLoginNotificationChannelRequest) -> Bool {
+    if lhs.channel != rhs.channel {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_LoginNotificationSettingsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".LoginNotificationSettingsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}channel\0\u{3}email_available\0\u{3}telegram_available\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.channel) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.emailAvailable) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.telegramAvailable) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.channel != .unspecified {
+      try visitor.visitSingularEnumField(value: self.channel, fieldNumber: 1)
+    }
+    if self.emailAvailable != false {
+      try visitor.visitSingularBoolField(value: self.emailAvailable, fieldNumber: 2)
+    }
+    if self.telegramAvailable != false {
+      try visitor.visitSingularBoolField(value: self.telegramAvailable, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_LoginNotificationSettingsResponse, rhs: Barkfluff_Identity_LoginNotificationSettingsResponse) -> Bool {
+    if lhs.channel != rhs.channel {return false}
+    if lhs.emailAvailable != rhs.emailAvailable {return false}
+    if lhs.telegramAvailable != rhs.telegramAvailable {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_SecuritySettingsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SecuritySettingsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}login_mode\0\u{3}preferred_factor\0\u{3}authenticator_enabled\0\u{3}email_enabled\0\u{3}telegram_linked\0\u{3}telegram_enabled\0\u{3}telegram_otp_enabled\0\u{3}fast_auth_telegram_enabled\0\u{3}telegram_username\0\u{3}verified_email\0\u{3}remaining_recovery_codes\0\u{3}recovery_codes\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.loginMode) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.preferredFactor) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.authenticatorEnabled) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.emailEnabled) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.telegramLinked) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.telegramEnabled) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.telegramOtpEnabled) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.fastAuthTelegramEnabled) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.telegramUsername) }()
+      case 10: try { try decoder.decodeSingularStringField(value: &self.verifiedEmail) }()
+      case 11: try { try decoder.decodeSingularInt32Field(value: &self.remainingRecoveryCodes) }()
+      case 12: try { try decoder.decodeRepeatedStringField(value: &self.recoveryCodes) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.loginMode != .loginModeUnspecified {
+      try visitor.visitSingularEnumField(value: self.loginMode, fieldNumber: 1)
+    }
+    if self.preferredFactor != .unknown {
+      try visitor.visitSingularEnumField(value: self.preferredFactor, fieldNumber: 2)
+    }
+    if self.authenticatorEnabled != false {
+      try visitor.visitSingularBoolField(value: self.authenticatorEnabled, fieldNumber: 3)
+    }
+    if self.emailEnabled != false {
+      try visitor.visitSingularBoolField(value: self.emailEnabled, fieldNumber: 4)
+    }
+    if self.telegramLinked != false {
+      try visitor.visitSingularBoolField(value: self.telegramLinked, fieldNumber: 5)
+    }
+    if self.telegramEnabled != false {
+      try visitor.visitSingularBoolField(value: self.telegramEnabled, fieldNumber: 6)
+    }
+    if self.telegramOtpEnabled != false {
+      try visitor.visitSingularBoolField(value: self.telegramOtpEnabled, fieldNumber: 7)
+    }
+    if self.fastAuthTelegramEnabled != false {
+      try visitor.visitSingularBoolField(value: self.fastAuthTelegramEnabled, fieldNumber: 8)
+    }
+    if !self.telegramUsername.isEmpty {
+      try visitor.visitSingularStringField(value: self.telegramUsername, fieldNumber: 9)
+    }
+    if !self.verifiedEmail.isEmpty {
+      try visitor.visitSingularStringField(value: self.verifiedEmail, fieldNumber: 10)
+    }
+    if self.remainingRecoveryCodes != 0 {
+      try visitor.visitSingularInt32Field(value: self.remainingRecoveryCodes, fieldNumber: 11)
+    }
+    if !self.recoveryCodes.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.recoveryCodes, fieldNumber: 12)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_SecuritySettingsResponse, rhs: Barkfluff_Identity_SecuritySettingsResponse) -> Bool {
+    if lhs.loginMode != rhs.loginMode {return false}
+    if lhs.preferredFactor != rhs.preferredFactor {return false}
+    if lhs.authenticatorEnabled != rhs.authenticatorEnabled {return false}
+    if lhs.emailEnabled != rhs.emailEnabled {return false}
+    if lhs.telegramLinked != rhs.telegramLinked {return false}
+    if lhs.telegramEnabled != rhs.telegramEnabled {return false}
+    if lhs.telegramOtpEnabled != rhs.telegramOtpEnabled {return false}
+    if lhs.fastAuthTelegramEnabled != rhs.fastAuthTelegramEnabled {return false}
+    if lhs.telegramUsername != rhs.telegramUsername {return false}
+    if lhs.verifiedEmail != rhs.verifiedEmail {return false}
+    if lhs.remainingRecoveryCodes != rhs.remainingRecoveryCodes {return false}
+    if lhs.recoveryCodes != rhs.recoveryCodes {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_BeginReauthenticationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".BeginReauthenticationRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}password\0\u{1}factor\0\u{3}use_recovery_code\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.password) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.factor) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.useRecoveryCode) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.password.isEmpty {
+      try visitor.visitSingularStringField(value: self.password, fieldNumber: 1)
+    }
+    if self.factor != .unknown {
+      try visitor.visitSingularEnumField(value: self.factor, fieldNumber: 2)
+    }
+    if self.useRecoveryCode != false {
+      try visitor.visitSingularBoolField(value: self.useRecoveryCode, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_BeginReauthenticationRequest, rhs: Barkfluff_Identity_BeginReauthenticationRequest) -> Bool {
+    if lhs.password != rhs.password {return false}
+    if lhs.factor != rhs.factor {return false}
+    if lhs.useRecoveryCode != rhs.useRecoveryCode {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_SecurityProofRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SecurityProofRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}security_proof\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._securityProof) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._securityProof {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_SecurityProofRequest, rhs: Barkfluff_Identity_SecurityProofRequest) -> Bool {
+    if lhs._securityProof != rhs._securityProof {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_UpdateSecuritySettingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UpdateSecuritySettingsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}security_proof\0\u{3}login_mode\0\u{3}preferred_factor\0\u{3}telegram_enabled\0\u{3}telegram_otp_enabled\0\u{3}fast_auth_telegram_enabled\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._securityProof) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.loginMode) }()
+      case 3: try { try decoder.decodeSingularEnumField(value: &self.preferredFactor) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.telegramEnabled) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.telegramOtpEnabled) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.fastAuthTelegramEnabled) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._securityProof {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if self.loginMode != .loginModeUnspecified {
+      try visitor.visitSingularEnumField(value: self.loginMode, fieldNumber: 2)
+    }
+    if self.preferredFactor != .unknown {
+      try visitor.visitSingularEnumField(value: self.preferredFactor, fieldNumber: 3)
+    }
+    if self.telegramEnabled != false {
+      try visitor.visitSingularBoolField(value: self.telegramEnabled, fieldNumber: 4)
+    }
+    if self.telegramOtpEnabled != false {
+      try visitor.visitSingularBoolField(value: self.telegramOtpEnabled, fieldNumber: 5)
+    }
+    if self.fastAuthTelegramEnabled != false {
+      try visitor.visitSingularBoolField(value: self.fastAuthTelegramEnabled, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_UpdateSecuritySettingsRequest, rhs: Barkfluff_Identity_UpdateSecuritySettingsRequest) -> Bool {
+    if lhs._securityProof != rhs._securityProof {return false}
+    if lhs.loginMode != rhs.loginMode {return false}
+    if lhs.preferredFactor != rhs.preferredFactor {return false}
+    if lhs.telegramEnabled != rhs.telegramEnabled {return false}
+    if lhs.telegramOtpEnabled != rhs.telegramOtpEnabled {return false}
+    if lhs.fastAuthTelegramEnabled != rhs.fastAuthTelegramEnabled {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_BeginEmailBindingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".BeginEmailBindingRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}security_proof\0\u{1}email\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._securityProof) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.email) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._securityProof {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.email.isEmpty {
+      try visitor.visitSingularStringField(value: self.email, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_BeginEmailBindingRequest, rhs: Barkfluff_Identity_BeginEmailBindingRequest) -> Bool {
+    if lhs._securityProof != rhs._securityProof {return false}
+    if lhs.email != rhs.email {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_RecoveryCodesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RecoveryCodesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}codes\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.codes) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.codes.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.codes, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_RecoveryCodesResponse, rhs: Barkfluff_Identity_RecoveryCodesResponse) -> Bool {
+    if lhs.codes != rhs.codes {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_BeginPasswordRecoveryRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".BeginPasswordRecoveryRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}login\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.login) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.login.isEmpty {
+      try visitor.visitSingularStringField(value: self.login, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_BeginPasswordRecoveryRequest, rhs: Barkfluff_Identity_BeginPasswordRecoveryRequest) -> Bool {
+    if lhs.login != rhs.login {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Identity_SetRecoveredPasswordRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SetRecoveredPasswordRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}security_proof\0\u{1}password\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._securityProof) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.password) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._securityProof {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.password.isEmpty {
+      try visitor.visitSingularStringField(value: self.password, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Identity_SetRecoveredPasswordRequest, rhs: Barkfluff_Identity_SetRecoveredPasswordRequest) -> Bool {
+    if lhs._securityProof != rhs._securityProof {return false}
+    if lhs.password != rhs.password {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

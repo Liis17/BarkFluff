@@ -56,6 +56,9 @@ class GrpcAuthGateway(
     override suspend fun ensureValid(forceRefresh: Boolean): Boolean =
         grpc.tokenCoordinator().ensureValid(forceRefresh)
 
+    override suspend fun tokenValidity(forceRefresh: Boolean): com.barkfluff.client.grpc.TokenValidity =
+        grpc.tokenCoordinator().validity(forceRefresh)
+
     override suspend fun refresh(
         refreshToken: String,
         currentRefreshTokenExpiration: Long,
@@ -80,6 +83,18 @@ class GrpcAuthenticationChallengeGateway(
             )
         }
 
+    override suspend fun resolveSignIn(login: String): Result<SignInResolution> =
+        grpc.resolveSignIn(
+            IdentityApiOuterClass.ResolveSignInRequest.newBuilder()
+                .setLogin(login)
+                .build(),
+        ).map { response ->
+            SignInResolution(
+                loginMode = response.loginMode.toResolvedDomain(),
+                errorCode = response.errorCode,
+            )
+        }
+
     override suspend fun beginRegistration(request: RegistrationRequest): Result<AuthenticationChallenge> =
         grpc.beginRegistration(
             IdentityApiOuterClass.BeginRegistrationRequest.newBuilder()
@@ -101,6 +116,7 @@ class GrpcAuthenticationChallengeGateway(
                 .setLoginMode(request.loginMode.toProto())
                 .setFactor(request.factor.toProto())
                 .setUseRecoveryCode(request.useRecoveryCode)
+                .setReportLoginModeMismatch(request.reportLoginModeMismatch)
                 .build(),
         ).map { it.toDomain() }
 
@@ -273,6 +289,13 @@ private fun IdentityApiOuterClass.AuthLoginMode.toDomain(): AuthenticationLoginM
     else -> AuthenticationLoginMode.PASSWORD
 }
 
+private fun IdentityApiOuterClass.AuthLoginMode.toResolvedDomain(): AuthenticationLoginMode? = when (this) {
+    IdentityApiOuterClass.AuthLoginMode.PASSWORD -> AuthenticationLoginMode.PASSWORD
+    IdentityApiOuterClass.AuthLoginMode.TELEGRAM_LOGIN -> AuthenticationLoginMode.TELEGRAM_LOGIN
+    IdentityApiOuterClass.AuthLoginMode.PASSWORD_SECOND_FACTOR -> AuthenticationLoginMode.PASSWORD_SECOND_FACTOR
+    else -> null
+}
+
 private fun IdentityApiOuterClass.AuthChallengeState.toDomain(): AuthenticationChallengeState = when (this) {
     IdentityApiOuterClass.AuthChallengeState.APPROVED -> AuthenticationChallengeState.APPROVED
     IdentityApiOuterClass.AuthChallengeState.REJECTED -> AuthenticationChallengeState.REJECTED
@@ -443,6 +466,8 @@ class GrpcMessageGateway(
 
     override suspend fun deleteMessage(messageId: Long): Result<Unit> = repository.deleteMessage(messageId)
     override suspend fun markAsRead(messageIds: List<Long>): Result<Unit> = repository.markAsRead(messageIds)
+    override suspend fun markChatAsReadUpTo(chatId: String, upToMessageId: Long): Result<Boolean> =
+        repository.markChatAsReadUpTo(chatId, upToMessageId)
     override suspend fun chatInfo(chatId: String): Result<ChatInfo> = repository.getChatInfo(chatId).map { value ->
         ChatInfo(
             chatId = value.chatId,
@@ -593,16 +618,19 @@ class GrpcFastAuthGateway(private val grpc: GrpcApiTransport) : FastAuthGateway 
 }
 
 class GrpcPrekeyGateway(private val grpc: GrpcApiTransport) : PrekeyGateway {
-    override suspend fun register(
-        registrationId: Int,
-        identityPubkey: ByteArray,
-        signedPreKey: barkfluff.users.UsersApiOuterClass.SignedPreKey,
-        oneTimePreKeys: List<barkfluff.users.UsersApiOuterClass.OneTimePreKey>,
-    ): Result<Unit> = grpc.registerPrekeyBundle(registrationId, identityPubkey, signedPreKey, oneTimePreKeys)
+    override suspend fun register(request: barkfluff.users.UsersApiOuterClass.RegisterPrekeyBundleRequest): Result<Unit> =
+        grpc.registerPrekeyBundle(request)
 
     override suspend fun replenish(
-        prekeys: List<barkfluff.users.UsersApiOuterClass.OneTimePreKey>,
-    ): Result<Int> = grpc.replenishOneTimePrekeys(prekeys)
+        request: barkfluff.users.UsersApiOuterClass.ReplenishOneTimePrekeysRequest,
+    ): Result<barkfluff.users.UsersApiOuterClass.ReplenishOneTimePrekeysResponse> =
+        grpc.replenishOneTimePrekeys(request)
+
+    override suspend fun rotate(request: barkfluff.users.UsersApiOuterClass.RotateSignedPrekeyRequest): Result<Unit> =
+        grpc.rotateSignedPrekey(request)
+
+    override suspend fun ownStatus(): Result<barkfluff.users.UsersApiOuterClass.GetOwnPrekeyStatusResponse> =
+        grpc.getOwnPrekeyStatus()
 }
 
 /**

@@ -69,7 +69,8 @@ data class OutgoingMessageEntity(
     val leaseOwner: String?,
     val leaseExpiresAtMillis: Long,
     val serverMessageId: Long,
-    val serverMessagePayload: ByteArray?
+    val serverMessagePayload: ByteArray?,
+    val notificationReadMessageId: Long? = null
 )
 
 @Entity(
@@ -134,11 +135,21 @@ data class OutgoingMessageRecord(
     val leaseExpiresAtMillis: Long,
     val serverMessageId: Long,
     val serverMessagePayload: ByteArray?,
-    val attachments: List<OutgoingAttachmentRecord>
+    val attachments: List<OutgoingAttachmentRecord>,
+    val notificationReadMessageId: Long? = null
 )
 
 @Dao
 interface OutgoingMessageDao {
+    @Query("SELECT COUNT(*) FROM outgoing_messages WHERE scopeId = :scopeId AND state NOT IN ('SENT','CANCEL_REQUESTED')")
+    suspend fun pendingOutgoingCount(scopeId: String): Int
+
+    @Query("DELETE FROM outgoing_attachments WHERE scopeId = :scopeId AND operationId NOT IN (SELECT operationId FROM outgoing_messages WHERE scopeId = :scopeId AND state = :sentState)")
+    suspend fun deleteNonSentAttachments(scopeId: String, sentState: String)
+
+    @Query("DELETE FROM outgoing_messages WHERE scopeId = :scopeId AND state != :sentState")
+    suspend fun deleteNonSentMessages(scopeId: String, sentState: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMessage(message: OutgoingMessageEntity)
 

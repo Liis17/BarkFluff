@@ -218,8 +218,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideChatCacheRepository(@ApplicationContext context: Context): ChatCacheRepository =
-        ChatCacheRepository(context)
+    fun provideChatCacheRepository(@ApplicationContext context: Context, secretChats: SecretChatRepository): ChatCacheRepository =
+        ChatCacheRepository(context, secretChats)
 
     @Provides
     @Singleton
@@ -243,7 +243,11 @@ object AppModule {
         userProfileGateway: UserProfileGateway,
         fileMediaGateway: FileMediaGateway,
         secretChatRepository: SecretChatRepository,
-    ): RealtimeSideEffects = RealtimeSideEffectsImpl(context, userProfileGateway, fileMediaGateway, secretChatRepository)
+        chatRepository: com.barkfluff.client.repository.ChatRepository,
+        chatCacheRepository: ChatCacheRepository,
+    ): RealtimeSideEffects = RealtimeSideEffectsImpl(
+        context, userProfileGateway, fileMediaGateway, secretChatRepository, chatRepository, chatCacheRepository,
+    )
 
     @Provides
     @Singleton
@@ -262,10 +266,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun providePrekeyManager(
-        @ApplicationContext context: Context,
-        signalStore: BarkFluffSignalStore
-    ): PrekeyManager = PrekeyManager(context, signalStore)
+    fun providePrekeyManager(signalStore: BarkFluffSignalStore): PrekeyManager =
+        PrekeyManager(signalStore)
 
     @Provides
     @Singleton
@@ -301,10 +303,9 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSecretChatRepository(
-        @ApplicationContext context: Context,
         transport: GrpcApiTransport,
         signalStore: BarkFluffSignalStore
-    ): SecretChatRepository = SecretChatRepository(context, transport, signalStore)
+    ): SecretChatRepository = SecretChatRepository(transport, signalStore)
 
     @Provides
     @Singleton

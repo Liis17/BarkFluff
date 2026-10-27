@@ -20,23 +20,26 @@ import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.auth.AuthenticationChallengeDialog
+import com.barkfluff.client.auth.AuthenticationChallengeErrorException
 import com.barkfluff.client.auth.AuthenticationChallengeViewModel
 import com.barkfluff.client.databinding.ActivityLoginBinding
 import com.barkfluff.client.domain.gateway.AuthenticationChallengeGateway
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
-import com.barkfluff.client.domain.auth.AuthenticationUiPolicy
 import com.barkfluff.client.domain.model.AuthSession
-import com.barkfluff.client.domain.model.AuthenticationCapabilities
+import com.barkfluff.client.domain.model.AuthenticationFactor
+import com.barkfluff.client.domain.model.AuthenticationErrorCodes
 import com.barkfluff.client.domain.model.AuthenticationLoginMode
 import com.barkfluff.client.domain.model.SignInRequest
 import com.barkfluff.client.grpc.GrpcClientRegistry
+import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.applySpringPress
 import com.google.android.material.color.DynamicColors
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
+import io.grpc.Status
+import io.grpc.StatusException
+import io.grpc.StatusRuntimeException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import java.util.regex.Pattern
@@ -47,6 +50,12 @@ import java.util.regex.Pattern
  */
 @AndroidEntryPoint
 class LoginActivity : AppCompatActivity() {
+
+    private enum class SignInStage {
+        IDENTIFIER,
+        PASSWORD,
+        TELEGRAM_CHALLENGE,
+    }
 
     companion object {
         private const val TAG = "LoginActivity"
@@ -73,7 +82,8 @@ class LoginActivity : AppCompatActivity() {
     private var isLoading = false
     private var identityErrorVisible = false
     private var selectedLoginMode = AuthenticationLoginMode.PASSWORD
-    private var authenticationCapabilities: AuthenticationCapabilities? = null
+    private var signInStage = SignInStage.IDENTIFIER
+    private var signInGeneration = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -105,7 +115,6 @@ class LoginActivity : AppCompatActivity() {
         initIdentityClient()
         setupClickListeners()
         setupLoginFields()
-        loadAuthenticationCapabilities()
     }
 
     override fun onResume() {
@@ -166,7 +175,7 @@ class LoginActivity : AppCompatActivity() {
             performLogin()
         }
 
-        binding.loginModeButton.setOnClickListener { showLoginModePicker() }
+        binding.changeLoginButton.setOnClickListener { changeLogin() }
 
         binding.changeServerLink.setOnClickListener {
             navigateToSelectServer()
@@ -216,8 +225,12 @@ class LoginActivity : AppCompatActivity() {
         })
 
         binding.usernameEditText.setOnEditorActionListener { _, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_NEXT || isEnterKey(event)) {
-                binding.passwordEditText.requestFocus()
+            if (actionId == EditorInfo.IME_ACTION_NEXT ||
+                actionId == EditorInfo.IME_ACTION_GO ||
+                isEnterKey(event)
+            ) {
+                if (signInStage == SignInStage.IDENTIFIER) performLogin()
+                else binding.passwordEditText.requestFocus()
                 true
             } else {
                 false
@@ -232,6 +245,8 @@ class LoginActivity : AppCompatActivity() {
                 false
             }
         }
+
+        renderSignInStage()
     }
 
     private fun isEnterKey(event: KeyEvent?): Boolean {
@@ -239,14 +254,91 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun performLogin() {
-        clearErrorIfNotIdentity()
+        if (isLoading) return
+        when (signInStage) {
+            SignInStage.IDENTIFIER -> resolveSignIn()
+            SignInStage.PASSWORD,
+            SignInStage.TELEGRAM_CHALLENGE,
+            -> beginResolvedSignIn()
+        }
+    }
 
+    private fun resolveSignIn(preserveMessage: Boolean = false) {
+        if (isLoading) return
+        if (!preserveMessage) {
+            clearErrorIfNotIdentity()
+            binding.usernameInputLayout.error = null
+        }
+
+        val login = binding.usernameEditText.text.toString().trim()
+        if (!validateLogin(login)) {
+            focusFirstInvalidField(loginValid = false, passwordValid = true)
+            return
+        }
+
+        if (binding.usernameEditText.text.toString() != login) binding.usernameEditText.setText(login)
+        hideKeyboard()
+        val generation = ++signInGeneration
+        setLoadingState(true)
+
+        lifecycleScope.launch {
+            val result = authenticationChallengeGateway.resolveSignIn(login)
+            if (generation != signInGeneration) return@launch
+
+            result.onSuccess { resolution ->
+                if (resolution.errorCode == AuthenticationErrorCodes.ACCOUNT_NOT_FOUND) {
+                    setLoadingState(false)
+                    showAccountNotFound()
+                    return@onSuccess
+                }
+                if (resolution.errorCode.isNotBlank()) {
+                    setLoadingState(false)
+                    showError(getString(R.string.auth_error))
+                    return@onSuccess
+                }
+
+                val resolvedMode = resolution.loginMode
+                if (resolvedMode == null) {
+                    setLoadingState(false)
+                    showError(getString(R.string.auth_error))
+                    return@onSuccess
+                }
+
+                selectedLoginMode = resolvedMode
+                if (preserveMessage) {
+                    signInStage = SignInStage.IDENTIFIER
+                    setLoadingState(false)
+                    binding.usernameEditText.requestFocus()
+                    return@onSuccess
+                }
+
+                binding.passwordEditText.text?.clear()
+                binding.recoveryCodeCheckBox.isChecked = false
+                if (selectedLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) {
+                    signInStage = SignInStage.TELEGRAM_CHALLENGE
+                    renderSignInStage()
+                    runSignInChallenge(generation, login, "", selectedLoginMode)
+                } else {
+                    signInStage = SignInStage.PASSWORD
+                    setLoadingState(false)
+                    focusPassword()
+                }
+            }.onFailure { failure ->
+                setLoadingState(false)
+                showError(
+                    if (failure.isUnimplementedRpc()) getString(R.string.login_server_update_required)
+                    else failure.message ?: getString(R.string.auth_error),
+                )
+            }
+        }
+    }
+
+    private fun beginResolvedSignIn() {
         if (isLoading) return
 
-        val loginInput = binding.usernameEditText.text.toString().trim()
+        val login = binding.usernameEditText.text.toString().trim()
+        val loginValid = validateLogin(login)
         val password = binding.passwordEditText.text.toString()
-
-        val loginValid = validateLogin(loginInput)
         val passwordValid = selectedLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN || validatePassword(password)
         if (!loginValid || !passwordValid) {
             focusFirstInvalidField(loginValid, passwordValid)
@@ -254,92 +346,153 @@ class LoginActivity : AppCompatActivity() {
         }
 
         hideKeyboard()
+        val generation = ++signInGeneration
         setLoadingState(true)
-
         lifecycleScope.launch {
-            val result = AuthenticationChallengeDialog(
-                this@LoginActivity,
-                authenticationChallengeGateway,
-                authenticationChallengeViewModel.controller,
-            ).run(
-                title = getString(R.string.login_2fa_title),
-                useRecoveryCode = binding.recoveryCodeCheckBox.isChecked,
-                restartWithFactor = { factor ->
-                    authenticationChallengeGateway.beginSignIn(
-                        SignInRequest(
-                            login = loginInput,
-                            password = password,
-                            loginMode = selectedLoginMode,
-                            factor = factor,
-                            useRecoveryCode = binding.recoveryCodeCheckBox.isChecked,
-                        ),
-                    )
-                },
-            ) {
-                authenticationChallengeGateway.beginSignIn(
-                    SignInRequest(
-                        login = loginInput,
-                        password = password,
-                        loginMode = selectedLoginMode,
-                        useRecoveryCode = binding.recoveryCodeCheckBox.isChecked,
-                    ),
-                )
-            }
-            setLoadingState(false)
-            result.onSuccess { completion ->
-                completion.session?.let(::handleCompletedSession)
-                    ?: showError(getString(R.string.auth_error))
-            }.onFailure { failure ->
-                if (failure !is java.util.concurrent.CancellationException) {
-                    showError(failure.message ?: getString(R.string.auth_error))
-                }
+            runSignInChallenge(generation, login, password, selectedLoginMode)
+        }
+    }
+
+    private suspend fun runSignInChallenge(
+        generation: Long,
+        login: String,
+        password: String,
+        loginMode: AuthenticationLoginMode,
+    ) {
+        val useRecoveryCode = loginMode == AuthenticationLoginMode.PASSWORD_SECOND_FACTOR &&
+            binding.recoveryCodeCheckBox.isChecked
+        val initialFactor = if (loginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) {
+            AuthenticationFactor.TELEGRAM
+        } else {
+            AuthenticationFactor.NONE
+        }
+
+        fun request(factor: AuthenticationFactor) = SignInRequest(
+            login = login,
+            password = password,
+            loginMode = loginMode,
+            factor = factor,
+            useRecoveryCode = useRecoveryCode,
+            reportLoginModeMismatch = true,
+        )
+
+        val result = AuthenticationChallengeDialog(
+            this,
+            authenticationChallengeGateway,
+            authenticationChallengeViewModel.controller,
+        ).run(
+            title = getString(R.string.login_2fa_title),
+            useRecoveryCode = useRecoveryCode,
+            restartWithFactor = { factor -> authenticationChallengeGateway.beginSignIn(request(factor)) },
+        ) {
+            authenticationChallengeGateway.beginSignIn(request(initialFactor))
+        }
+
+        if (generation != signInGeneration) return
+        setLoadingState(false)
+        result.onSuccess { completion ->
+            completion.session?.let(::handleCompletedSession)
+                ?: showError(getString(R.string.auth_error))
+        }.onFailure { failure ->
+            when {
+                failure is AuthenticationChallengeErrorException &&
+                    failure.errorCode == AuthenticationErrorCodes.ACCOUNT_NOT_FOUND ->
+                    showAccountNotFound()
+                failure is AuthenticationChallengeErrorException &&
+                    failure.errorCode == AuthenticationErrorCodes.LOGIN_MODE_DISABLED ->
+                    handleLoginModeMismatch()
+                failure is java.util.concurrent.CancellationException -> Unit
+                else -> showError(failure.message ?: getString(R.string.auth_error))
             }
         }
     }
 
-    private fun loadAuthenticationCapabilities() {
-        lifecycleScope.launch {
-            authenticationChallengeGateway.capabilities().onSuccess { capabilities ->
-                authenticationCapabilities = capabilities
-                if (!capabilities.telegramAvailable && selectedLoginMode == AuthenticationLoginMode.TELEGRAM_LOGIN) {
-                    selectedLoginMode = AuthenticationLoginMode.PASSWORD
-                }
-                renderLoginMode()
-            }
+    private fun changeLogin() {
+        resetSignInFlow(clearError = true)
+        binding.usernameEditText.requestFocus()
+        showKeyboard(binding.usernameEditText)
+    }
+
+    private fun handleLoginModeMismatch() {
+        resetSignInFlow(clearError = true)
+        showError(getString(R.string.login_mode_changed))
+        resolveSignIn(preserveMessage = true)
+    }
+
+    private fun showAccountNotFound() {
+        resetSignInFlow(clearError = true)
+        binding.usernameInputLayout.error = getString(R.string.login_account_not_found)
+        binding.usernameEditText.requestFocus()
+        showKeyboard(binding.usernameEditText)
+    }
+
+    private fun resetSignInFlow(clearError: Boolean) {
+        signInGeneration++
+        signInStage = SignInStage.IDENTIFIER
+        selectedLoginMode = AuthenticationLoginMode.PASSWORD
+        binding.passwordEditText.text?.clear()
+        binding.passwordInputLayout.error = null
+        binding.recoveryCodeCheckBox.isChecked = false
+        if (clearError) {
+            hideError()
+            binding.usernameInputLayout.error = null
         }
+        setLoadingState(false)
     }
 
-    private fun showLoginModePicker() {
-        val capabilities = authenticationCapabilities ?: return
-        val modes = AuthenticationUiPolicy.signInModes(capabilities)
-        val labels = modes.map { getString(loginModeLabel(it)) }.toTypedArray()
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.login_mode_title)
-            .setSingleChoiceItems(labels, modes.indexOf(selectedLoginMode)) { dialog, which ->
-                selectedLoginMode = modes[which]
-                binding.recoveryCodeCheckBox.isChecked = false
-                renderLoginMode()
-                dialog.dismiss()
-            }
-            .show()
-    }
+    private fun renderSignInStage() {
+        val identifierStage = signInStage == SignInStage.IDENTIFIER
+        val passwordStage = signInStage == SignInStage.PASSWORD
+        val canEditLogin = identifierStage && !isLoading
 
-    private fun renderLoginMode() {
-        val passwordRequired = selectedLoginMode != AuthenticationLoginMode.TELEGRAM_LOGIN
-        binding.loginModeButton.setText(loginModeLabel(selectedLoginMode))
-        binding.passwordLabel.visibility = if (passwordRequired) View.VISIBLE else View.GONE
-        binding.passwordInputLayout.visibility = if (passwordRequired) View.VISIBLE else View.GONE
+        binding.usernameEditText.isEnabled = !isLoading
+        binding.usernameEditText.isFocusable = canEditLogin
+        binding.usernameEditText.isFocusableInTouchMode = canEditLogin
+        binding.usernameEditText.isClickable = canEditLogin
+        binding.usernameEditText.imeOptions = if (identifierStage) EditorInfo.IME_ACTION_GO else EditorInfo.IME_ACTION_NEXT
+        binding.changeLoginButton.visibility = if (identifierStage) View.GONE else View.VISIBLE
+        binding.changeLoginButton.isEnabled = !isLoading
+        binding.passwordLabel.visibility = if (passwordStage) View.VISIBLE else View.GONE
+        binding.passwordInputLayout.visibility = if (passwordStage) View.VISIBLE else View.GONE
+        binding.passwordEditText.isEnabled = passwordStage && !isLoading
         binding.recoveryCodeCheckBox.visibility = if (
-            selectedLoginMode == AuthenticationLoginMode.PASSWORD_SECOND_FACTOR
+            passwordStage && selectedLoginMode == AuthenticationLoginMode.PASSWORD_SECOND_FACTOR
         ) View.VISIBLE else View.GONE
-        binding.forgotPasswordLink.visibility = if (passwordRequired) View.VISIBLE else View.GONE
-        if (!passwordRequired) binding.passwordInputLayout.error = null
+        binding.recoveryCodeCheckBox.isEnabled = !isLoading
+        binding.forgotPasswordLink.visibility = if (passwordStage) View.VISIBLE else View.GONE
+        binding.forgotPasswordLink.isEnabled = !isLoading
+        binding.loginButton.text = when {
+            isLoading -> ""
+            passwordStage -> getString(R.string.btn_login)
+            else -> getString(R.string.login_flow_continue)
+        }
+        binding.loginButton.icon = if (isLoading) null else getDrawable(R.drawable.ic_arrow_forward)
+        binding.loginButton.isEnabled = !isLoading
+        if (!passwordStage) binding.passwordInputLayout.error = null
     }
 
-    private fun loginModeLabel(mode: AuthenticationLoginMode): Int = when (mode) {
-        AuthenticationLoginMode.PASSWORD -> R.string.login_mode_password
-        AuthenticationLoginMode.TELEGRAM_LOGIN -> R.string.login_mode_telegram
-        AuthenticationLoginMode.PASSWORD_SECOND_FACTOR -> R.string.login_mode_password_factor
+    private fun focusPassword() {
+        binding.passwordEditText.requestFocus()
+        showKeyboard(binding.passwordEditText)
+    }
+
+    private fun showKeyboard(target: View) {
+        target.post {
+            val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.showSoftInput(target, InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
+
+    private fun Throwable.isUnimplementedRpc(): Boolean {
+        var current: Throwable? = this
+        while (current != null) {
+            when (current) {
+                is StatusException -> if (current.status.code == Status.Code.UNIMPLEMENTED) return true
+                is StatusRuntimeException -> if (current.status.code == Status.Code.UNIMPLEMENTED) return true
+            }
+            current = current.cause
+        }
+        return false
     }
 
     private fun handleCompletedSession(session: AuthSession) {
@@ -428,10 +581,9 @@ class LoginActivity : AppCompatActivity() {
 
     private fun setLoadingState(loading: Boolean) {
         isLoading = loading
-        binding.loginButton.isEnabled = !loading
         binding.retryIdentityButton.isEnabled = !loading
-        binding.loginButton.text = if (loading) "" else getString(R.string.btn_login)
         binding.loginProgressBar.visibility = if (loading) View.VISIBLE else View.GONE
+        renderSignInStage()
     }
 
     private fun showError(message: String) {
@@ -481,6 +633,11 @@ class LoginActivity : AppCompatActivity() {
 
     private fun navigateToChats() {
         val intent = Intent(this, MainActivity::class.java)
+        if (this.intent.hasExtra(NotificationHelper.EXTRA_KIND)) {
+            intent.action = this.intent.action
+            intent.data = this.intent.data
+            this.intent.extras?.let(intent::putExtras)
+        }
         startActivity(intent)
         finish()
     }

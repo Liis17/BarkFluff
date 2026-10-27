@@ -43,7 +43,17 @@ class ChatDraftJournalTest {
 
         val result = ChatDraftJournal.markSynced(second, first.generation, "old-revision")
 
-        assertEquals(second, result)
+        assertEquals(second.copy(revision = "old-revision"), result)
+    }
+
+    @Test
+    fun `sync response gives a concurrent delete tombstone the revision to remove`() {
+        val first = ChatDraftJournal.edit(null, "Draft", 0L)
+        val cleared = ChatDraftJournal.edit(first, "", 0L)
+
+        val result = ChatDraftJournal.markSynced(cleared, first.generation, "created-revision")
+
+        assertEquals(cleared.copy(revision = "created-revision"), result)
     }
 
     @Test

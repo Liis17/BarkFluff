@@ -80,11 +80,15 @@ public sealed class LoopbackS2SServer : IAsyncDisposable
 
 public sealed class StubS2SApi : FederationS2SApi.FederationS2SApiBase
 {
+    public Action<DeliverEventsRequest, ServerCallContext>? ObserveDelivery { get; set; }
     public Func<DeliverEventsRequest, DeliverEventsResponse>? OnDeliverEvents { get; set; }
     public Func<GetUserProfileRequest, GetUserProfileResponse>? OnGetUserProfile { get; set; }
 
     public override Task<DeliverEventsResponse> DeliverEvents(DeliverEventsRequest request, ServerCallContext context)
-        => Task.FromResult(OnDeliverEvents?.Invoke(request) ?? new DeliverEventsResponse());
+    {
+        ObserveDelivery?.Invoke(request, context);
+        return Task.FromResult(OnDeliverEvents?.Invoke(request) ?? new DeliverEventsResponse());
+    }
 
     public override Task<GetUserProfileResponse> GetUserProfile(GetUserProfileRequest request, ServerCallContext context)
         => Task.FromResult(OnGetUserProfile?.Invoke(request) ?? new GetUserProfileResponse { Found = false });

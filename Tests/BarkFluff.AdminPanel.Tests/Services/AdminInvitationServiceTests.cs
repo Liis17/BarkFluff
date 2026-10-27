@@ -9,6 +9,7 @@ using Xunit;
 
 namespace Barkfluff.AdminPanel.Tests.Services;
 
+[Collection("LiteDb")]
 public sealed class AdminInvitationServiceTests : IDisposable
 {
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"adminpanel-invitations-{Guid.NewGuid():N}.db");

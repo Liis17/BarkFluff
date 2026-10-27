@@ -6,6 +6,8 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.os.StrictMode
+import android.os.Trace
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -18,6 +20,8 @@ import com.barkfluff.client.calls.CallRepository
 import com.barkfluff.client.calls.CallTelecomManager
 import com.barkfluff.client.calls.CallTelecomRegistry
 import com.barkfluff.client.crypto.BarkFluffSignalStore
+import com.barkfluff.client.crypto.CryptoStoreScope
+import com.barkfluff.client.crypto.E2EBootstrap
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.crypto.PrekeyManager
@@ -26,13 +30,18 @@ import com.barkfluff.client.domain.media.AutoDownloadNetworkState
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.perf.PerfTrace
+import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
+import com.barkfluff.client.domain.gateway.ServerDiscoveryGateway
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.LocaleManager
+import com.barkfluff.client.utils.ServerInfoRefreshResult
 import com.barkfluff.client.utils.StickerCache
+import com.barkfluff.client.utils.refreshServerInfoFromBeacon
 import com.barkfluff.client.widget.WidgetRefreshWorker
 import com.google.android.material.color.DynamicColors
 import androidx.work.Constraints
@@ -50,6 +59,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 
 /**
@@ -62,6 +72,8 @@ class BarkFluffApplication : Application() {
     @Inject lateinit var clientRegistry: GrpcClientRegistry
 
     @Inject lateinit var chatCacheRepository: ChatCacheRepository
+
+    @Inject lateinit var chatRepository: ChatRepository
 
     @Inject lateinit var chatDraftRepository: ChatDraftRepository
 
@@ -85,12 +97,16 @@ class BarkFluffApplication : Application() {
 
     @Inject lateinit var autoDownloadNetworkState: AutoDownloadNetworkState
 
+    @Inject lateinit var serverDiscoveryGateway: ServerDiscoveryGateway
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var callEventsUiJob: Job? = null
+    private var secretChatEventsJob: Job? = null
     private lateinit var connectivityManager: ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             autoDownloadNetworkState.available(network)
+            realtimeService.onDefaultNetworkChanged(network)
             applicationScope.launch(Dispatchers.IO) {
                 chatDraftRepository.flushAll()
                 outgoingMessageQueue.retryAfterNetworkReturn()
@@ -133,7 +149,27 @@ class BarkFluffApplication : Application() {
     var pendingDeepLink: android.net.Uri? = null
 
     override fun onCreate() {
-        super.onCreate()
+        if (BuildConfig.DEBUG) enableStrictMode()
+        PerfTrace.beginAppToChats()
+        Trace.beginSection(PerfTrace.APPLICATION_ON_CREATE)
+        try {
+            super.onCreate()
+            onApplicationCreate()
+        } finally {
+            Trace.endSection()
+        }
+    }
+
+    private fun onApplicationCreate() {
+        applicationScope.launch(Dispatchers.IO) {
+            try {
+                prekeyManager.retryPendingCleanup()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("BarkFluffApplication", "Pending crypto cleanup failed", e)
+            }
+        }
         System.loadLibrary("sqlcipher")
         // Применяем выбранный язык приложения до создания UI.
         // Для "system" сбрасывается override → используется системная локаль.
@@ -168,10 +204,16 @@ class BarkFluffApplication : Application() {
         // pause() вызывается когда ВСЕ activity приложения уходят в фон
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
+                startSecretChatEventBridge()
                 realtimeService.resume()
                 applicationScope.launch(Dispatchers.IO) {
                     chatDraftRepository.flushAll()
                     outgoingMessageQueue.resume()
+                    val globalParam = GlobalParam(this@BarkFluffApplication)
+                    if (globalParam.userId > 0 && !globalParam.accessToken.isNullOrBlank() && globalParam.secretChatsEnabled) {
+                        E2EBootstrap.ensurePrekeyBundleRegistered(applicationContext)
+                        secretChatRepository.retryPendingOperations()
+                    }
                 }
                 startCallEventsUiBridge()
                 callEventsService.resume()
@@ -186,6 +228,57 @@ class BarkFluffApplication : Application() {
                 }
             }
         })
+    }
+
+    private fun enableStrictMode() {
+        StrictMode.setThreadPolicy(
+            StrictMode.ThreadPolicy.Builder()
+                .detectDiskReads()
+                .detectDiskWrites()
+                .detectNetwork()
+                .detectCustomSlowCalls()
+                .detectResourceMismatches()
+                .penaltyLog()
+                .build()
+        )
+        StrictMode.setVmPolicy(
+            StrictMode.VmPolicy.Builder()
+                .detectLeakedClosableObjects()
+                .detectLeakedSqlLiteObjects()
+                .detectActivityLeaks()
+                .detectLeakedRegistrationObjects()
+                .penaltyLog()
+                .build()
+        )
+    }
+
+    /**
+     * Обновляет адреса сервера через Beacon и проверяет TLS-сертификаты, не задерживая открытие чатов из кеша.
+     * Неподтверждённый сертификат и так отвергает TLS-слой каналов; если нужно решение пользователя,
+     * задача заменяется экраном проверки сертификата, как раньше делала SplashActivity.
+     */
+    private companion object {
+        const val BACKGROUND_SERVER_INFO_TIMEOUT_MS = 15_000L
+    }
+
+    fun refreshServerInfoInBackground() {
+        // IO: создание Beacon-канала и TLS-проверки не должны конкурировать с первым кадром MainActivity.
+        applicationScope.launch(Dispatchers.IO) {
+            val globalParam = GlobalParam(this@BarkFluffApplication)
+            val result = withTimeoutOrNull(BACKGROUND_SERVER_INFO_TIMEOUT_MS) {
+                refreshServerInfoFromBeacon(serverDiscoveryGateway, globalParam, applicationContext)
+            }
+            if (
+                result == ServerInfoRefreshResult.CertificateApprovalRequired ||
+                result == ServerInfoRefreshResult.CertificateRejected
+            ) {
+                startActivity(
+                    Intent(this@BarkFluffApplication, SelectServerActivity::class.java)
+                        .putExtra(SelectServerActivity.EXTRA_TRUST_REVIEW_ADDRESS, globalParam.socketBeacon)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                )
+            }
+        }
     }
 
     override fun onTerminate() {
@@ -204,6 +297,26 @@ class BarkFluffApplication : Application() {
         callEventsUiJob = applicationScope.launch {
             callEventsService.events.collect { event ->
                 handleCallEvent(event)
+            }
+        }
+    }
+
+    private fun startSecretChatEventBridge() {
+        if (secretChatEventsJob?.isActive == true) return
+        secretChatEventsJob = applicationScope.launch {
+            launch(Dispatchers.IO) {
+                realtimeService.scopedSecretChatResolutions.collect { scoped ->
+                    try {
+                        val globalParam = GlobalParam(this@BarkFluffApplication)
+                        if (!globalParam.secretChatsEnabled) return@collect
+                        if (CryptoStoreScope.from(globalParam)?.scopeId != scoped.scopeId) return@collect
+                        secretChatRepository.markInviteResolution(scoped.event.inviteId, scoped.event.accepted)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        android.util.Log.w("BarkFluffApplication", "Secret invite resolution could not be saved", e)
+                    }
+                }
             }
         }
     }

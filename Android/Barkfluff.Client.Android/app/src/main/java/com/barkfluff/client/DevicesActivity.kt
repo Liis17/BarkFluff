@@ -18,9 +18,11 @@ import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.model.SessionData
 import com.barkfluff.client.calls.CallEventsService
+import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.repository.PrivateChatRepository
+import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.utils.LogoutHelper
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -39,6 +41,8 @@ class DevicesActivity : AppCompatActivity() {
     @javax.inject.Inject lateinit var outgoingMessageQueue: OutgoingMessageQueue
     @javax.inject.Inject lateinit var chatCacheRepository: ChatCacheRepository
     @javax.inject.Inject lateinit var privateChatRepository: PrivateChatRepository
+    @javax.inject.Inject lateinit var prekeyManager: PrekeyManager
+    @javax.inject.Inject lateinit var secretChatRepository: SecretChatRepository
     private lateinit var globalParam: GlobalParam
     private lateinit var deviceAdapter: DeviceAdapter
 
@@ -300,6 +304,8 @@ class DevicesActivity : AppCompatActivity() {
                             outgoingMessageQueue,
                             chatCacheRepository,
                             privateChatRepository,
+                            prekeyManager,
+                            secretChatRepository,
                         )
                     }
                 } else {

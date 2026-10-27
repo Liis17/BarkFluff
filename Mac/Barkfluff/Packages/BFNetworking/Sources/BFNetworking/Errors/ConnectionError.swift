@@ -11,6 +11,7 @@ public enum ConnectionError: Error, LocalizedError {
     case serviceNotConfigured(ServiceKind)
     case connectionFailed(String)
     case notBootstrapped
+    case endpointChanged
 
     public var errorDescription: String? {
         switch self {
@@ -20,6 +21,8 @@ public enum ConnectionError: Error, LocalizedError {
             return "Ошибка соединения: \(reason)"
         case .notBootstrapped:
             return "Соединение не инициализировано"
+        case .endpointChanged:
+            return "Адрес сервера изменился"
         }
     }
 }

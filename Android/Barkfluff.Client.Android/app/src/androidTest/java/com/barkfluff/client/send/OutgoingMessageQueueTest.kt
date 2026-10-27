@@ -2,6 +2,7 @@ package com.barkfluff.client.send
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.work.WorkManager
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.OutgoingFailureCategory
@@ -12,9 +13,14 @@ import com.barkfluff.client.grpc.GrpcApiTransport
 import com.barkfluff.client.grpc.TokenCoordinator
 import com.barkfluff.client.grpc.TokenValidity
 import com.barkfluff.client.repository.ChatRepository
+import barkfluff.shared.Shared
+import com.google.protobuf.Timestamp
 import java.io.File
 import java.io.IOException
 import java.util.UUID
+import java.security.MessageDigest
+import io.grpc.Metadata
+import io.grpc.Status
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -93,12 +99,15 @@ class OutgoingMessageQueueTest {
         assertEquals(0L, record.replyToMessageId)
         assertEquals(null, record.draftGeneration)
         assertEquals("reply", record.text)
-        assertEquals(42L, application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).single().messageId)
+        assertEquals(42L, record.notificationReadMessageId)
+        assertEquals(42L, application.chatCacheRepository
+            .readyPendingChatReadRanges(scope(), Long.MAX_VALUE).single().upToMessageId)
 
         application.outgoingMessageQueue.cancel(operationId)
 
         assertEquals(null, application.chatCacheRepository.outgoing(scope(), operationId))
-        assertEquals(42L, application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).single().messageId)
+        assertEquals(42L, application.chatCacheRepository
+            .readyPendingChatReadRanges(scope(), Long.MAX_VALUE).single().upToMessageId)
     }
 
     @Test
@@ -110,25 +119,294 @@ class OutgoingMessageQueueTest {
         assertTrue(result.isFailure)
         assertTrue(application.chatCacheRepository.outgoingOperationIds(scope()).isEmpty())
         assertTrue(application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).isEmpty())
+        assertTrue(application.chatCacheRepository.readyPendingChatReadRanges(scope(), Long.MAX_VALUE).isEmpty())
     }
 
     @Test
     fun readRetriesIndependentlyAfterSendWasCancelled() = runBlocking {
         val operationId = enqueueReply()
         application.outgoingMessageQueue.cancel(operationId)
-        application.outgoingMessageQueue.drainPendingReads(scope(), Long.MAX_VALUE) {
+        application.outgoingMessageQueue.drainPendingChatReadRanges(
+            scope(), Long.MAX_VALUE,
+            markRange = { _, _ ->
             Result.failure(IOException("offline"))
-        }
+            },
+        )
         assertTrue(application.chatCacheRepository.outgoingOperationIds(scope()).isEmpty())
-        val pending = application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).single()
+        val pending = application.chatCacheRepository.readyPendingChatReadRanges(scope(), Long.MAX_VALUE).single()
+        assertEquals(42L, pending.upToMessageId)
         assertTrue(pending.attemptCount > 0)
         assertTrue(pending.nextAttemptAtMillis > System.currentTimeMillis())
 
-        application.outgoingMessageQueue.drainPendingReads(scope(), Long.MAX_VALUE) { ids ->
-            assertEquals(listOf(42L), ids)
-            Result.success(Unit)
+        application.outgoingMessageQueue.drainPendingChatReadRanges(
+            scope(), Long.MAX_VALUE,
+            markRange = { chatId, cutoff ->
+                assertEquals("chat", chatId)
+                assertEquals(42L, cutoff)
+                Result.success(false)
+            },
+        )
+        assertTrue(application.chatCacheRepository.readyPendingChatReadRanges(scope(), Long.MAX_VALUE).isEmpty())
+    }
+
+    @Test
+    fun rangeWorkerUsesOnlyUnimplementedForFallbackAndHonorsFiveCallBudget() = runBlocking {
+        val cache = application.chatCacheRepository
+        val scope = scope()
+        cache.enqueueChatReadRange(scope, "chat", 100)
+        var rangeCalls = 0
+        var infoCalls = 0
+        val queue = queueWith(TokenValidity.VALID)
+
+        val used = queue.drainPendingChatReadRanges(
+            scope, System.currentTimeMillis(),
+            markRange = { _, _ -> rangeCalls++; Result.success(true) },
+            getChatInfo = { infoCalls++; Result.failure(AssertionError("range API must be used")) },
+        )
+
+        assertEquals(5, used)
+        assertEquals(5, rangeCalls)
+        assertEquals(0, infoCalls)
+        assertEquals(1, cache.readyPendingChatReadRanges(scope, Long.MAX_VALUE).size)
+    }
+
+    @Test
+    fun permanentRangeRejectionRemovesOnlyTheRejectedCutoffWhenANewerOneArrives() = runBlocking {
+        val cache = application.chatCacheRepository
+        val scope = scope()
+        cache.enqueueChatReadRange(scope, "chat", 100)
+        val queue = queueWith(TokenValidity.VALID)
+
+        queue.drainPendingChatReadRanges(
+            scope,
+            System.currentTimeMillis(),
+            markRange = { chatId, _ ->
+                cache.enqueueChatReadRange(scope, chatId, 120)
+                Result.failure(permanentRangeError("604DD334-0484-4C6B-8113-354B9D2FDF2A"))
+            },
+        )
+
+        val pending = cache.readyPendingChatReadRanges(scope, Long.MAX_VALUE).single()
+        assertEquals(120L, pending.upToMessageId)
+    }
+
+    @Test
+    fun transientRangeFailureIsDeferredInsteadOfFallingBackOrBeingRemoved() = runBlocking {
+        val cache = application.chatCacheRepository
+        val scope = scope()
+        cache.enqueueChatReadRange(scope, "chat", 100)
+
+        queueWith(TokenValidity.VALID).drainPendingChatReadRanges(
+            scope,
+            System.currentTimeMillis(),
+            markRange = { _, _ -> Result.failure(IOException("offline")) },
+        )
+
+        val pending = cache.readyPendingChatReadRanges(scope, Long.MAX_VALUE).single()
+        assertEquals(100L, pending.upToMessageId)
+        assertTrue(pending.attemptCount > 0)
+        assertTrue(pending.nextAttemptAtMillis > System.currentTimeMillis())
+    }
+
+    @Test
+    fun deletedLegacyCursorResetsAndDefersTheRangeForRetry() = runBlocking {
+        val cache = application.chatCacheRepository
+        val scope = scope()
+        cache.enqueueChatReadRange(scope, "chat", 100)
+        cache.useLegacyReadRangeFallback(scope, "chat", 100)
+        cache.updatePendingChatReadRangeCursor(scope, "chat", 100, 55)
+
+        val used = queueWith(TokenValidity.VALID).drainPendingChatReadRanges(
+            scope,
+            System.currentTimeMillis(),
+            getChatInfo = { Result.success(ChatRepository.ChatInfo("chat", "Chat", "", false, 200, 50, 2, emptyList())) },
+            loadPage = { _, cursor ->
+                assertEquals(55L, cursor)
+                Result.failure(permanentRangeError("C0EEF1D9-BE99-4645-9EBD-95FF36A2BF45"))
+            },
+        )
+
+        assertEquals(2, used)
+        val pending = cache.readyPendingChatReadRanges(scope, Long.MAX_VALUE).single()
+        assertTrue(pending.legacyFallback)
+        assertEquals(0L, pending.cursorBeforeMessageId)
+        assertTrue(pending.attemptCount > 0)
+    }
+
+    @Test
+    fun legacyFallbackContinuesAfterPageCrossesFirstUnreadIdAndPersistsCursor() = runBlocking {
+        val cache = application.chatCacheRepository
+        val scope = scope()
+        cache.enqueueChatReadRange(scope, "chat", 100)
+        val queue = queueWith(TokenValidity.VALID)
+        var rangeCalls = 0
+        var pageCalls = 0
+        val markedBatches = mutableListOf<List<Long>>()
+
+        val used = queue.drainPendingChatReadRanges(
+            scope, System.currentTimeMillis(),
+            markRange = { _, _ ->
+                rangeCalls++
+                Result.failure(Status.UNIMPLEMENTED.asRuntimeException())
+            },
+            getChatInfo = { chatId ->
+                assertEquals("chat", chatId)
+                Result.success(ChatRepository.ChatInfo("chat", "Chat", "", true, 200, 50, 2, emptyList()))
+            },
+            loadPage = { _, cursor ->
+                pageCalls++
+                if (pageCalls == 1) assertEquals(0L, cursor)
+                else assertEquals(60L, cursor)
+                val page = if (cursor == 0L) {
+                    buildList {
+                        add(message(60, 6_000))
+                        repeat(49) { index -> add(message(1_000L + index, 6_100L + index * 100)) }
+                    }
+                } else {
+                    buildList {
+                        add(message(999, 0))
+                        add(message(55, 1_000))
+                        add(message(60, 2_000))
+                        repeat(47) { index -> add(message(2_000L + index, 2_100L + index * 50)) }
+                        add(message(60, 6_000))
+                    }
+                }
+                Result.success(page)
+            },
+            markExact = { ids -> markedBatches += ids; Result.success(Unit) },
+        )
+
+        assertEquals(5, used)
+        assertEquals(1, rangeCalls)
+        assertEquals(2, pageCalls)
+        assertEquals(listOf(listOf(60L)), markedBatches)
+        val pending = cache.readyPendingChatReadRanges(scope, Long.MAX_VALUE).single()
+        assertTrue(pending.legacyFallback)
+        assertEquals(60L, pending.cursorBeforeMessageId)
+        assertEquals(0, pending.attemptCount)
+
+        val resumedCalls = queue.drainPendingChatReadRanges(
+            scope, System.currentTimeMillis(),
+            markRange = { _, _ -> Result.failure(AssertionError("legacy fallback must remain selected")) },
+            getChatInfo = { Result.success(ChatRepository.ChatInfo("chat", "Chat", "", true, 200, 50, 2, emptyList())) },
+            loadPage = { _, cursor ->
+                when (cursor) {
+                    60L -> Result.success(buildList {
+                        add(message(999, 0))
+                        add(message(55, 1_000))
+                        add(message(60, 2_000))
+                        repeat(47) { index -> add(message(2_000L + index, 2_100L + index * 50)) }
+                        add(message(60, 6_000))
+                    })
+                    999L -> Result.success(emptyList())
+                    else -> throw AssertionError("Unexpected legacy cursor: $cursor")
+                }
+            },
+            markExact = { ids -> markedBatches += ids; Result.success(Unit) },
+        )
+
+        assertEquals(4, resumedCalls)
+        assertEquals(listOf(listOf(60L), listOf(55L)), markedBatches)
+        assertTrue(cache.readyPendingChatReadRanges(scope, Long.MAX_VALUE).isEmpty())
+    }
+
+    @Test
+    fun legacyDeletedCursorResetsAndRetriesInsteadOfCompleting() = runBlocking {
+        val cache = application.chatCacheRepository
+        val scope = scope()
+        cache.enqueueChatReadRange(scope, "chat", 100)
+        cache.useLegacyReadRangeFallback(scope, "chat", 100)
+        cache.updatePendingChatReadRangeCursor(scope, "chat", 100, 77)
+        val trailerKey = Metadata.Key.of("x-error-code", Metadata.ASCII_STRING_MARSHALLER)
+        val trailers = Metadata().apply {
+            put(trailerKey, "C0EEF1D9-BE99-4645-9EBD-95FF36A2BF45")
         }
-        assertTrue(application.chatCacheRepository.readyPendingReads(scope(), Long.MAX_VALUE).isEmpty())
+
+        queueWith(TokenValidity.VALID).drainPendingChatReadRanges(
+            scope, System.currentTimeMillis(),
+            getChatInfo = { Result.success(ChatRepository.ChatInfo("chat", "Chat", "", false, 100, 50, 1, emptyList())) },
+            loadPage = { _, _ -> Result.failure(Status.NOT_FOUND.asRuntimeException(trailers)) },
+        )
+
+        val pending = cache.readyPendingChatReadRanges(scope, Long.MAX_VALUE).single()
+        assertEquals(0L, pending.cursorBeforeMessageId)
+        assertEquals(1, pending.attemptCount)
+        assertTrue(pending.nextAttemptAtMillis > System.currentTimeMillis())
+    }
+
+    @Test
+    fun cancellingPendingSendsSchedulesRetainedReadWithoutAnotherWake() = runBlocking {
+        val cache = application.chatCacheRepository
+        // A future attempt cannot be consumed by a worker racing this assertion.
+        val operationId = saveQueuedText("cancel with read", notificationReadMessageId = 42L)
+        cache.retryPendingChatReadRange(scope(), "chat", 42L, 1, System.currentTimeMillis() + 3_600_000)
+
+        application.outgoingMessageQueue.cancelPendingOutgoing()
+
+        assertEquals(null, cache.outgoing(scope(), operationId))
+        assertEquals(42L, cache.readyPendingChatReadRanges(scope(), Long.MAX_VALUE).single().upToMessageId)
+        val scopeHash = MessageDigest.getInstance("SHA-256").digest(scope().id.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        val work = WorkManager.getInstance(application)
+            .getWorkInfosForUniqueWork("outgoing-retry-$scopeHash").get()
+        assertTrue("Retained reads must have scheduled work", work.any { !it.state.isFinished })
+    }
+
+    @Test
+    fun notificationReplyProcessesThroughSentWhileReadRetriesIndependentlyWithoutResending() = runBlocking {
+        val cache = application.chatCacheRepository
+        val operationId = saveQueuedText("notification reply", notificationReadMessageId = 42L)
+        var sends = 0
+        val reply = message(9001, System.currentTimeMillis())
+        val queue = queueWith(
+            TokenValidity.VALID,
+            sendMessageCall = { chatId, text, fileIds, replyToMessageId, operation ->
+                assertEquals("chat", chatId)
+                assertEquals("notification reply", text)
+                assertTrue(fileIds.isEmpty())
+                assertEquals(0L, replyToMessageId)
+                assertEquals(operationId, operation)
+                sends++
+                Result.success(reply)
+            },
+            markChatReadRangeCall = { _, _ -> Result.failure(IOException("offline")) },
+        )
+
+        queue.processReady()
+
+        val sent = cache.outgoing(scope(), operationId)!!
+        assertEquals(OutgoingMessageState.SENT, sent.state)
+        assertEquals(42L, sent.notificationReadMessageId)
+        assertEquals(1, sends)
+        val deferredRead = cache.readyPendingChatReadRanges(scope(), Long.MAX_VALUE).single()
+        assertEquals(42L, deferredRead.upToMessageId)
+        assertTrue(deferredRead.attemptCount > 0)
+        assertTrue(deferredRead.nextAttemptAtMillis > System.currentTimeMillis())
+
+        cache.retryPendingChatReadRange(scope(), "chat", 42L, 0, System.currentTimeMillis())
+        queueWith(TokenValidity.VALID,
+            sendMessageCall = { _, _, _, _, _ -> sends++; Result.success(reply) },
+            markChatReadRangeCall = { _, cutoff ->
+                assertEquals(42L, cutoff)
+                Result.success(false)
+            },
+        ).processReady()
+
+        assertEquals(1, sends)
+        assertTrue(cache.readyPendingChatReadRanges(scope(), Long.MAX_VALUE).isEmpty())
+
+        var metadataRecord = sent
+        for (state in listOf(
+            OutgoingMessageState.PREPARING,
+            OutgoingMessageState.SENDING,
+            OutgoingMessageState.FAILED,
+            OutgoingMessageState.CANCEL_REQUESTED,
+        )) {
+            cache.saveOutgoing(scope(), metadataRecord.copy(state = state))
+            metadataRecord = cache.outgoing(scope(), operationId)!!
+            assertEquals(42L, metadataRecord.notificationReadMessageId)
+            assertTrue(cache.readyPendingChatReadRanges(scope(), Long.MAX_VALUE).isEmpty())
+        }
     }
 
     private suspend fun enqueueReply() = application.outgoingMessageQueue.enqueue(
@@ -189,7 +467,7 @@ class OutgoingMessageQueueTest {
     }
 
     /** Writes a QUEUED row directly: unlike enqueue() it does not wake the real worker that could race the test. */
-    private suspend fun saveQueuedText(text: String): String {
+    private suspend fun saveQueuedText(text: String, notificationReadMessageId: Long? = null): String {
         val operationId = UUID.randomUUID().toString()
         application.chatCacheRepository.saveOutgoing(scope(), OutgoingMessageRecord(
             operationId = operationId,
@@ -213,19 +491,40 @@ class OutgoingMessageQueueTest {
             serverMessageId = 0,
             serverMessagePayload = null,
             attachments = emptyList(),
+            notificationReadMessageId = notificationReadMessageId,
         ))
         return operationId
     }
 
-    private fun queueWith(validity: TokenValidity): OutgoingMessageQueue {
+    private fun queueWith(
+        validity: TokenValidity,
+        sendMessageCall: suspend (String, String, List<String>, Long, String) -> Result<Shared.Message> =
+            { _, _, _, _, _ -> Result.failure(IOException("send callback not configured")) },
+        markChatReadRangeCall: suspend (String, Long) -> Result<Boolean> =
+            { _, _ -> Result.failure(IOException("read callback not configured")) },
+    ): OutgoingMessageQueue {
         val context = application.applicationContext
         val coordinator = object : TokenCoordinator {
             override suspend fun validity(forceRefresh: Boolean) = validity
         }
         return OutgoingMessageQueue(
-            context, application.chatCacheRepository, ChatRepository(context, GrpcApiTransport(context)), coordinator
+            context, application.chatCacheRepository, ChatRepository(context, GrpcApiTransport(context)), coordinator,
+            sendMessageCall = sendMessageCall,
+            markChatReadRangeCall = markChatReadRangeCall,
         )
     }
 
     private fun scope() = requireNotNull(CacheScope.from(globalParam))
+
+    private fun permanentRangeError(code: String) = Status.FAILED_PRECONDITION.asRuntimeException(
+        Metadata().apply { put(Metadata.Key.of("x-error-code", Metadata.ASCII_STRING_MARSHALLER), code) },
+    )
+
+    private fun message(id: Long, timestampMillis: Long) = Shared.Message.newBuilder()
+        .setId(id)
+        .setSentAt(Timestamp.newBuilder()
+            .setSeconds(timestampMillis / 1_000L)
+            .setNanos(((timestampMillis % 1_000L) * 1_000_000L).toInt())
+            .build())
+        .build()
 }

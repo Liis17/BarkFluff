@@ -4,7 +4,9 @@ using BarkFluff.Settings.Catalog;
 using BarkFluff.Settings.Domain;
 using BarkFluff.Settings.Persistence.Contexts;
 using BarkFluff.Shared.Identity;
+using BarkFluff.Node;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -64,11 +66,16 @@ public sealed class SettingsSetupCoordinator
 
     private readonly SettingsContext _context;
     private readonly MetricsCollector? _metrics;
+    private readonly string? _nodePublicDomain;
 
-    public SettingsSetupCoordinator(SettingsContext context, MetricsCollector? metrics = null)
+    public SettingsSetupCoordinator(
+        SettingsContext context,
+        MetricsCollector? metrics = null,
+        IConfiguration? configuration = null)
     {
         _context = context;
         _metrics = metrics;
+        _nodePublicDomain = configuration?["NODE_PUBLIC_DOMAIN"];
     }
 
     public Task<SetupSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default) =>
@@ -273,7 +280,7 @@ public sealed class SettingsSetupCoordinator
                 var fields = SettingsCatalog.All
                     .Where(entry => entry.Setup?.GroupId == group.Id)
                     .OrderBy(entry => entry.Setup!.Order)
-                    .Select(entry => BuildFieldSnapshot(entry, values, federationEnabled, applicable, emailEnabled, telegramEnabled))
+                    .Select(entry => BuildFieldSnapshot(entry, values, federationEnabled, applicable, emailEnabled, telegramEnabled, _nodePublicDomain))
                     .ToArray();
                 var complete = !applicable || fields.All(field =>
                     !field.Applicable || (field.Error is null && (!field.Required || field.Configured)));
@@ -284,7 +291,7 @@ public sealed class SettingsSetupCoordinator
         return new SetupSnapshot(
             completeOverall,
             false,
-            SettingsSetupMetadata.ComputeFingerprint(SettingsCatalog.All),
+            SettingsSetupMetadata.ComputeFingerprint(SettingsCatalog.All, _nodePublicDomain),
             null,
             groups);
     }
@@ -293,9 +300,10 @@ public sealed class SettingsSetupCoordinator
         SettingsCatalogEntry entry,
         IReadOnlyDictionary<(ServiceId ServiceId, string StorageKey), string> values,
         bool federationEnabled,
-        bool groupApplicable, bool emailEnabled, bool telegramEnabled)
+        bool groupApplicable, bool emailEnabled, bool telegramEnabled,
+        string? nodePublicDomain)
     {
-        var metadata = entry.Setup!;
+        var metadata = SettingsSetupMetadata.GetFieldMetadata(entry, nodePublicDomain);
         var value = values.GetValueOrDefault((entry.ServiceId, entry.StorageKey), string.Empty);
         var applicable = (metadata.Requirement is SetupRequirement.None || groupApplicable)
             && SettingsSetupMetadata.IsApplicable(metadata.Requirement, federationEnabled, emailEnabled, telegramEnabled);

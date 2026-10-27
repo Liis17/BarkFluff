@@ -534,7 +534,7 @@
         const canControl = window.BF && BF.can('docker.control');
         tbody.innerHTML = servicesData.map(svc => {
             const isRunning = svc.dockerState === 'running';
-            const containerName = getContainerNameFromServiceName(svc.name);
+            const containerName = svc.container || svc.name;
             const errBadge = (svc.errorCount || 0) > 0
                 ? `<span class="md-status md-status-error">${svc.errorCount}</span>`
                 : `<span class="md-status md-status-success">0</span>`;
@@ -673,18 +673,6 @@
         const holder = document.getElementById('adminPanelBranch');
         if (!holder) return;
         holder.innerHTML = branchSelectHtml('admin-panel', "handleBranchChange(event, 'admin-panel')");
-    }
-
-    function getContainerNameFromServiceName(name) {
-        const map = {
-            'BarkFluff.Beacon': 'beacon','BarkFluff.Settings': 'settings','BarkFluff.Files': 'files',
-            'BarkFluff.Identity': 'identity','BarkFluff.Messages': 'messages','BarkFluff.Notification': 'notification',
-            'BarkFluff.Users': 'users','BarkFluff.FastAuth': 'fast-auth','BarkFluff.Updates': 'updates',
-            'BarkFluff.Onliner': 'onliner','BarkFluff.Federation': 'federation','BarkFluff.CloudMessaging': 'cloud-messaging','BarkFluff.Web': 'web',
-            'BarkFluff.Developers': 'developers','BarkFluff.Calls': 'calls','BarkFluff.Bots': 'bots',
-            'Seq':'seq','Minio':'minio','RabbitMQ':'rabbitmq','Redis':'redis','PostgreSQL':'postgres_barkfluff'
-        };
-        return map[name] || name.toLowerCase().replace('barkfluff.','');
     }
 
     async function handleContainerAction(event, container, action) {

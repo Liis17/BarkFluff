@@ -35,6 +35,7 @@ class AccountSettingsActivity : AppCompatActivity() {
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
     @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
+    @javax.inject.Inject lateinit var authGateway: com.barkfluff.client.domain.gateway.AuthGateway
 
     companion object {
         private const val TAG = "AccountSettingsActivity"
@@ -149,11 +150,9 @@ class AccountSettingsActivity : AppCompatActivity() {
                 .setTitle(R.string.account_logout_title)
                 .setMessage(R.string.account_logout_message)
                 .setPositiveButton(R.string.account_logout_action) { _, _ ->
-                    globalParam.clearUserData()
-                    val intent = Intent(this, LoginActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    startActivity(intent)
-                    finishAffinity()
+                    lifecycleScope.launch {
+                        com.barkfluff.client.utils.LogoutHelper.performFullLogout(this@AccountSettingsActivity, authGateway)
+                    }
                 }
                 .setNegativeButton(R.string.btn_cancel, null)
                 .show()

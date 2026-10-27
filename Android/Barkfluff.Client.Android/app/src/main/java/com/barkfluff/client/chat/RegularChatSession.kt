@@ -5,13 +5,40 @@ import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.domain.gateway.MessageGateway
 
+internal class ConfirmedMessageTimeline {
+    private val messagesById = mutableMapOf<Long, Shared.Message>()
+
+    fun replace(messages: Iterable<Shared.Message>) {
+        messagesById.clear()
+        messages.forEach { messagesById[it.id] = it }
+    }
+
+    fun upsert(message: Shared.Message) {
+        messagesById[message.id] = message
+    }
+
+    fun remove(messageId: Long) {
+        messagesById.remove(messageId)
+    }
+
+    fun message(messageId: Long): Shared.Message? = messagesById[messageId]
+
+    fun messages(): List<Shared.Message> = messagesById.values.sortedWith(messageChronologicalOrder)
+}
+
 /**
  * Deep module for a regular-chat timeline. It owns cache-first reads and cursor semantics; the
  * ViewModel only turns returned protobuf messages into immutable UI rows.
  */
 class RegularChatSession(
     private val messages: MessageGateway,
-    private val cache: ChatCacheRepository,
+    private val cache: ChatCacheRepository?,
+    private val readAfterCache: suspend (CacheScope, String, Long, Int) -> List<Shared.Message> =
+        { scope, chatId, afterMessageId, limit ->
+            cache?.messagesAfter(scope, chatId, afterMessageId, limit).orEmpty()
+        },
+    private val saveMessages: suspend (CacheScope, String, List<Shared.Message>) -> Unit =
+        { scope, chatId, page -> cache?.saveMessages(scope, chatId, page) ?: Unit },
 ) {
     data class Page(
         val messages: List<Shared.Message>,
@@ -21,7 +48,7 @@ class RegularChatSession(
     )
 
     suspend fun cached(scope: CacheScope?, chatId: String, pageSize: Int = 30): List<Shared.Message> =
-        scope?.let { cache.latestMessages(it, chatId, pageSize) }.orEmpty()
+        scope?.let { cache?.latestMessages(it, chatId, pageSize) }.orEmpty()
 
     suspend fun initial(
         scope: CacheScope?,
@@ -29,7 +56,7 @@ class RegularChatSession(
         firstUnreadMessageId: Long = 0L,
         pageSize: Int = 30,
     ): Result<Page> {
-        val cached = scope?.let { cache.latestMessages(it, chatId, pageSize) }.orEmpty()
+        val cached = scope?.let { cache?.latestMessages(it, chatId, pageSize) }.orEmpty()
         if (cached.isNotEmpty()) {
             return Result.success(Page(cached, hasMoreBefore = cached.size >= pageSize, hasMoreAfter = false, fromCache = true))
         }
@@ -40,7 +67,7 @@ class RegularChatSession(
             offsetAfter = if (firstUnreadMessageId > 0L) pageSize else 0,
             count = if (firstUnreadMessageId > 0L) pageSize else pageSize,
         ).map { loaded ->
-            scope?.let { cache.saveMessages(it, chatId, loaded) }
+            scope?.let { saveMessages(it, chatId, loaded) }
             Page(
                 messages = loaded,
                 hasMoreBefore = loaded.size >= if (firstUnreadMessageId > 0L) 15 else pageSize,
@@ -57,12 +84,12 @@ class RegularChatSession(
         preferCache: Boolean = true,
     ): Result<Page> {
         if (beforeMessageId <= 0L) return Result.success(Page(emptyList(), false, false, true))
-        val cached = if (preferCache) scope?.let { cache.messagesBefore(it, chatId, beforeMessageId, pageSize) }.orEmpty() else emptyList()
+        val cached = if (preferCache) scope?.let { cache?.messagesBefore(it, chatId, beforeMessageId, pageSize) }.orEmpty() else emptyList()
         if (cached.isNotEmpty()) {
             return Result.success(Page(cached, cached.size >= pageSize, hasMoreAfter = true, fromCache = true))
         }
         return messages.loadMessages(chatId, beforeMessageId, offsetBefore = pageSize, offsetAfter = 0).map { loaded ->
-            scope?.let { cache.saveMessages(it, chatId, loaded) }
+            scope?.let { saveMessages(it, chatId, loaded) }
             Page(loaded, loaded.size >= pageSize, hasMoreAfter = true)
         }
     }
@@ -75,18 +102,50 @@ class RegularChatSession(
         preferCache: Boolean = true,
     ): Result<Page> {
         if (afterMessageId <= 0L) return Result.success(Page(emptyList(), false, false, true))
-        val cached = if (preferCache) scope?.let { cache.messagesAfter(it, chatId, afterMessageId, pageSize) }.orEmpty() else emptyList()
+        val cached = if (preferCache) scope?.let { readAfterCache(it, chatId, afterMessageId, pageSize) }.orEmpty() else emptyList()
         if (cached.isNotEmpty()) {
             return Result.success(Page(cached, hasMoreBefore = true, hasMoreAfter = cached.size >= pageSize, fromCache = true))
         }
         return messages.loadMessages(chatId, afterMessageId, offsetBefore = 0, offsetAfter = pageSize).map { loaded ->
-            scope?.let { cache.saveMessages(it, chatId, loaded) }
+            scope?.let { saveMessages(it, chatId, loaded) }
             Page(loaded, hasMoreBefore = true, hasMoreAfter = loaded.size >= pageSize)
         }
     }
 
+    suspend fun catchUpAfter(
+        scope: CacheScope?,
+        chatId: String,
+        afterMessageId: Long,
+        pageSize: Int = 30,
+        maxPages: Int = 10,
+    ): Result<Page> {
+        if (afterMessageId <= 0L) return Result.success(Page(emptyList(), false, false))
+
+        // Ограничение страниц: после долгого отсутствия в активном чате не тянем всю историю
+        // в память одним проходом — остаток догружается обычной пагинацией вниз.
+        val loaded = linkedMapOf<Long, Shared.Message>()
+        var cursor = afterMessageId
+        var hasMoreAfter = false
+        for (pageIndex in 0 until maxPages) {
+            val pageResult = after(scope, chatId, cursor, pageSize, preferCache = false)
+            if (pageResult.isFailure) return Result.failure(pageResult.exceptionOrNull()!!)
+
+            val page = pageResult.getOrThrow()
+            hasMoreAfter = page.hasMoreAfter
+            if (page.messages.isEmpty()) break
+
+            page.messages.forEach { loaded[it.id] = it }
+            val nextCursor = page.messages.maxWithOrNull(messageChronologicalOrder)?.id ?: break
+            if (nextCursor == cursor) break
+            cursor = nextCursor
+            if (!page.hasMoreAfter) break
+        }
+
+        return Result.success(Page(loaded.values.sortedWith(messageChronologicalOrder), hasMoreBefore = true, hasMoreAfter = hasMoreAfter))
+    }
+
     suspend fun cacheMessage(scope: CacheScope?, chatId: String, message: Shared.Message) {
-        scope?.let { cache.saveMessages(it, chatId, listOf(message)) }
+        scope?.let { saveMessages(it, chatId, listOf(message)) }
     }
 
     suspend fun markRead(messageIds: List<Long>): Result<Unit> =

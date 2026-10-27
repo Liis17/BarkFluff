@@ -142,6 +142,30 @@ public class ApplyFederatedDeleteCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_DelayedDeleteAfterExactReadStillWinsContentLww()
+    {
+        var remoteUuid = Guid.NewGuid();
+        var chat = await _h.SeedFederatedChat(1, Guid.NewGuid(), remoteUuid, "remote.test");
+        var federatedId = Guid.NewGuid();
+        var contentChangeAt = DateTime.UtcNow.AddMinutes(-5);
+        var delayedDeleteAt = DateTimeOffset.FromUnixTimeMilliseconds(
+            new DateTimeOffset(contentChangeAt.AddSeconds(1), TimeSpan.Zero).ToUnixTimeMilliseconds()).UtcDateTime;
+        var message = await _h.SeedFederatedMessage(chat.Id, federatedId, senderUuid: remoteUuid,
+            text: "to-delete", lastChangeAt: contentChangeAt);
+        await _h.MessagesStorage.MarkMessagesAsReadWithOutboxAsync([message.Id], 1);
+
+        var response = await CreateHandler().Handle(new ApplyFederatedDeleteCommand(
+            BuildRequest(chat.Id, federatedId, "remote.test", delayedDeleteAt)),
+            CancellationToken.None);
+
+        response.Applied.Should().BeTrue();
+        var updated = await _h.MessagesStorage.GetByFederatedIdAsync(chat.Id, federatedId);
+        updated!.IsDeleted.Should().BeTrue();
+        updated.LastChangeAt.Should().Be(delayedDeleteAt);
+        updated.ReadBy.Should().Contain(1);
+    }
+
+    [Fact]
     public async Task Handle_StaleDeleteAfterNewerEdit_Ignored()
     {
         var remoteUuid = Guid.NewGuid();

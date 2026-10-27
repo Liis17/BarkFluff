@@ -12,6 +12,7 @@ public static class LogsClearEndpoints
     {
         var group = app.MapGroup("/api/seq/clear")
             .WithTags("LogsClear")
+            .RequireSeqEnabled()
             .RequirePermission(AdminPermissions.SeqDelete);
 
         // POST /api/seq/clear/start

@@ -316,6 +316,7 @@
 <script>
     // ---- State ----
     let allLogs = [];          // нормализованные события, накопленные по страницам
+    let seqUnavailable = false;
     let services = [];
     let currentPage = 0;
     const pageSize = 50;
@@ -566,13 +567,17 @@
             hasMore = raw.length >= pageSize;
         } catch (e) {
             hasMore = false;
+            if (e.status === 503) {
+                seqUnavailable = true;
+                allLogs = [];
+            }
             if (allLogs.length === 0)
-                document.getElementById('logsTableBody').innerHTML = `<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--md-error);">Ошибка загрузки логов</td></tr>`;
+                document.getElementById('logsTableBody').innerHTML = `<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--md-error);">${seqUnavailable ? 'Seq отключён' : 'Ошибка загрузки логов'}</td></tr>`;
         } finally { loading = false; }
     }
 
     async function reload() {
-        allLogs = []; currentPage = 0; lastAfterId = null; hasMore = true; groupMetadata = null;
+        allLogs = []; currentPage = 0; lastAfterId = null; hasMore = true; groupMetadata = null; seqUnavailable = false;
         await fetchMore();
         render();
     }
@@ -581,7 +586,9 @@
         const tbody = document.getElementById('logsTableBody');
         const start = currentPage * pageSize;
         const slice = allLogs.slice(start, start + pageSize);
-        if (slice.length === 0) {
+        if (seqUnavailable) {
+            tbody.innerHTML = `<tr><td colspan="5" style="padding:48px;text-align:center;color:var(--md-on-surface-variant);">Seq отключён</td></tr>`;
+        } else if (slice.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" style="padding:48px;text-align:center;color:var(--md-on-surface-variant);">
                 <div style="display:inline-flex;flex-direction:column;align-items:center;gap:8px;">
                     <span class="msr size-48" style="opacity:.4;">inbox</span>
@@ -602,7 +609,8 @@
 
         const total = allLogs.length;
         document.getElementById('logsCount').textContent =
-            total === 0 ? 'Нет записей'
+            seqUnavailable ? 'Seq отключён'
+            : total === 0 ? 'Нет записей'
             : viewMode === 'groups'
                 ? `Группы ${start + 1}–${Math.min(start + pageSize, total)} из ${total}; событий просмотрено ${groupMetadata?.scannedEventCount || 0}${groupMetadata?.truncated ? '+' : ''}`
                 : `Показаны ${start + 1}–${Math.min(start + pageSize, total)} из ${total}${hasMore ? '+' : ''}`;

@@ -18,7 +18,7 @@ namespace BarkFluff.Messages.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
@@ -366,11 +366,19 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Property<int>("Attempts")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CorrelationId")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("EventId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("EventKind")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("LastError")
                         .HasColumnType("text");
@@ -388,15 +396,25 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<string>("TraceParent")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TraceState")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("EventId")
                         .IsUnique();
 
                     b.HasIndex("MessageId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"EventKind\" = 0");
 
                     b.HasIndex("Status", "NextAttemptAt");
+
+                    b.HasIndex("Status", "EventKind", "Id", "NextAttemptAt")
+                        .HasDatabaseName("IX_MessageOutbox_Status_EventKind_Id_NextAttemptAt");
 
                     b.ToTable("MessageOutbox", (string)null);
                 });

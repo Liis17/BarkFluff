@@ -12,12 +12,23 @@ import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.repository.ChatRepository
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.grpc.RealtimeSideEffects
 import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.widget.WidgetUpdater
 import java.util.concurrent.ConcurrentHashMap
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 /**
  * App-реализация [RealtimeSideEffects]: уведомления о новых сообщениях ([NotificationHelper]),
@@ -30,10 +41,18 @@ class RealtimeSideEffectsImpl(
     private val userProfileGateway: UserProfileGateway,
     private val fileMediaGateway: FileMediaGateway,
     private val secretChatRepository: SecretChatRepository,
+    private val chatRepository: ChatRepository,
+    private val chatCacheRepository: ChatCacheRepository,
+    private val chatInfoLookup: suspend (String) -> Result<ChatRepository.ChatInfo> = { chatId ->
+        chatRepository.getChatInfo(chatId)
+    },
 ) : RealtimeSideEffects {
 
     private val globalParam = GlobalParam(context)
     private val userInfoCache = ConcurrentHashMap<Pair<String, Long>, CachedUserInfo>()
+    private val notificationEnrichmentPermits = Semaphore(2)
+    private val notificationEnrichmentScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    internal var notificationEnrichmentFinished: ((String, String) -> Unit)? = null
 
     override fun onChatChanged(chatId: String) {
         WidgetUpdater.scheduleRefreshForChat(context, chatId)
@@ -52,73 +71,120 @@ class RealtimeSideEffectsImpl(
         if (senderId == globalParam.userId) return
 
         val chatId = event.chatId
+        val scope = CacheScope(scopeId)
         // Чат открыт — не показываем уведомление
         if (OpenChatManager.isOpen(chatId) || chatId in globalParam.mutedChatIds) return
 
-        val messageId = msg.id
-        val messageText = msg.content?.text ?: ""
-
-        // Инфо об отправителе (cache first)
-        val userKey = scopeId to senderId
-        val userInfo = userInfoCache[userKey] ?: run {
-            val result = userProfileGateway.user(senderId)
-            if (result.isFailure) {
-                Log.w(TAG, "Failed to get user data for notification: senderId=$senderId")
-                return
-            }
-            val user = result.getOrNull()!!
-            val displayName = "${user.firstName} ${user.lastName}".trim().ifEmpty { user.username }
-            val info = CachedUserInfo(
-                displayName,
-                user.profilePicturePreviewFileId,
-                user.profilePictureFileId,
-                user.profilePicturePreviewUrl,
-                user.profilePictureUrl
-            )
-            userInfoCache[userKey] = info
-            info
-        }
-
-        // Аватар (headless, без View)
-        var avatarBitmap: Bitmap? = null
-        val avatarFileId = userInfo.avatarFileId.ifBlank { userInfo.avatarFullFileId }
-        if (avatarFileId.isNotBlank()) {
-            avatarBitmap = loadBitmapByFileId(avatarFileId)
-        }
-        if (avatarBitmap == null) {
-            val directUrl = userInfo.avatarPreviewUrl.ifBlank { userInfo.avatarFullUrl }
-            if (directUrl.isNotBlank()) {
-                avatarBitmap = loadBitmapByUrl(directUrl)
-            }
-        }
-
-        // Превью вложения-изображения, если есть
-        var imageBitmap: Bitmap? = null
-        try {
-            val attachments = msg.content?.attachmentsList
-            val imageAttachment = attachments?.firstOrNull {
-                it.type == barkfluff.shared.Shared.MessageAttachmentType.IMAGE
-            }
-            if (imageAttachment != null) {
-                val previewFileId = imageAttachment.previewFileId.ifBlank { imageAttachment.fileId }
-                if (previewFileId.isNotBlank()) {
-                    imageBitmap = loadBitmapByFileId(previewFileId)
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to load image attachment for notification", e)
-        }
-
-        NotificationHelper.showMessageNotification(
-            context,
-            userInfo.displayName,
-            messageText,
-            avatarBitmap,
-            chatId,
-            messageId,
-            imageBitmap,
-            expectedScopeId = scopeId
+        val cachedChat = chatCacheRepository.readChatList(scope)?.chats?.firstOrNull { it.id == chatId }
+        if (cachedChat != null && cachedChat.chatType != barkfluff.shared.Shared.ChatType.CHAT_TYPE_REGULAR) return
+        val fallbackName = context.getString(com.barkfluff.client.R.string.notification_unknown_sender_id, senderId)
+        val group = cachedChat?.isGroupChat ?: false
+        val cachedTitle = cachedChat?.title?.takeIf(String::isNotBlank)
+        val initialTitle = cachedTitle ?: fallbackName
+        val currentBeforeInitial = GlobalParam(context)
+        if (CacheScope.from(currentBeforeInitial)?.id != scopeId || !currentBeforeInitial.notificationsEnabled ||
+            chatId in currentBeforeInitial.mutedChatIds || OpenChatManager.isOpen(chatId)) return
+        val initial = RegularNotificationInput(
+            scopeId = scopeId,
+            chatId = chatId,
+            messageId = msg.id,
+            senderId = senderId,
+            senderName = fallbackName,
+            chatTitle = initialTitle,
+            isGroupChat = group,
+            timestampMillis = msg.sentAt.seconds * 1_000L + msg.sentAt.nanos / 1_000_000L,
+            text = msg.content?.text.orEmpty(),
+            attachmentKind = notificationAttachmentKind(msg.content?.attachmentsList?.firstOrNull()?.type),
+            attachmentCount = msg.content?.attachmentsCount?.coerceAtLeast(1) ?: 1,
+            senderNameIsFallback = true,
+            chatTitleIsFallback = cachedTitle == null,
+            contentIsComplete = true,
         )
+        NotificationHelper.showRegularMessageNotification(context, initial)
+
+        notificationEnrichmentScope.launch {
+            try {
+                notificationEnrichmentPermits.withPermit {
+                    val current = GlobalParam(context)
+                    if (CacheScope.from(current)?.id != scopeId || !current.notificationsEnabled ||
+                        chatId in current.mutedChatIds || OpenChatManager.isOpen(chatId)) return@withPermit
+                    withTimeout(NOTIFICATION_ENRICHMENT_TIMEOUT_MILLIS) {
+                        enrichMessageNotification(scopeId, chatId, senderId, cachedChat, initial)
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Unable to enrich realtime message notification", e)
+            } finally {
+                notificationEnrichmentFinished?.invoke(scopeId, chatId)
+            }
+        }
+    }
+
+    private suspend fun enrichMessageNotification(
+        scopeId: String,
+        chatId: String,
+        senderId: Long,
+        cachedChat: com.barkfluff.client.domain.model.ChatSummary?,
+        initial: RegularNotificationInput,
+    ) {
+        val enrichedChat = if (cachedChat == null) chatInfoLookup(chatId).getOrNull() else null
+        val userKey = scopeId to senderId
+        val userInfo = userInfoCache[userKey] ?: userProfileGateway.user(senderId).getOrNull()?.let { user ->
+            val displayName = "${user.firstName} ${user.lastName}".trim().ifEmpty { user.username }
+            CachedUserInfo(displayName, user.profilePicturePreviewFileId, user.profilePictureFileId,
+                user.profilePicturePreviewUrl, user.profilePictureUrl).also { userInfoCache[userKey] = it }
+        }
+        val groupChat = cachedChat?.isGroupChat ?: enrichedChat?.isGroupChat ?: false
+        val title = if (groupChat) cachedChat?.title?.takeIf(String::isNotBlank)
+                ?: enrichedChat?.title?.takeIf(String::isNotBlank)
+                ?: context.getString(com.barkfluff.client.R.string.notification_group_chat)
+            else userInfo?.displayName ?: initial.chatTitle
+        val hasChatTitle = cachedChat?.title?.isNotBlank() == true || enrichedChat?.title?.isNotBlank() == true ||
+            (!groupChat && userInfo?.displayName?.isNotBlank() == true)
+        val enrichedInput = initial.copy(senderName = userInfo?.displayName ?: initial.senderName,
+            chatTitle = title.ifBlank { initial.chatTitle }, isGroupChat = groupChat,
+            senderNameIsFallback = userInfo?.displayName.isNullOrBlank(),
+            chatTitleIsFallback = !hasChatTitle)
+        val currentAfterMetadata = GlobalParam(context)
+        if (CacheScope.from(currentAfterMetadata)?.id != scopeId || !currentAfterMetadata.notificationsEnabled ||
+            chatId in currentAfterMetadata.mutedChatIds || OpenChatManager.isOpen(chatId)) return
+        NotificationHelper.showRegularMessageNotification(
+            context,
+            enrichedInput,
+        )
+
+        val senderBitmap = userInfo?.let { info ->
+            val avatarId = info.avatarFileId.ifBlank { info.avatarFullFileId }
+            (if (avatarId.isNotBlank()) loadBitmapByFileId(avatarId) else null)
+                ?: loadBitmapByUrl(info.avatarPreviewUrl.ifBlank { info.avatarFullUrl })
+        }
+        val cachedAvatarId = cachedChat?.let { it.picturePreviewFileId.ifBlank { it.pictureFileId } }
+        val chatAvatarId = if (groupChat) cachedAvatarId ?: enrichedChat?.pictureFileId.orEmpty()
+            else cachedAvatarId ?: userInfo?.avatarFileId?.ifBlank { userInfo.avatarFullFileId }.orEmpty()
+        val chatBitmap = if (chatAvatarId.isNotBlank()) loadBitmapByFileId(chatAvatarId)
+            else senderBitmap.takeUnless { groupChat }
+        val currentAfterAvatar = GlobalParam(context)
+        if (CacheScope.from(currentAfterAvatar)?.id != scopeId || !currentAfterAvatar.notificationsEnabled ||
+            chatId in currentAfterAvatar.mutedChatIds || OpenChatManager.isOpen(chatId)) return
+        NotificationHelper.showRegularMessageNotification(
+            context,
+            enrichedInput,
+            senderAvatarBitmap = senderBitmap,
+            chatAvatarBitmap = chatBitmap,
+        )
+    }
+
+    private fun notificationAttachmentKind(type: barkfluff.shared.Shared.MessageAttachmentType?): String = when (type) {
+        barkfluff.shared.Shared.MessageAttachmentType.IMAGE -> "image"
+        barkfluff.shared.Shared.MessageAttachmentType.VIDEO -> "video"
+        barkfluff.shared.Shared.MessageAttachmentType.GIF -> "gif"
+        barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT -> "document"
+        barkfluff.shared.Shared.MessageAttachmentType.AUDIO -> "audio"
+        barkfluff.shared.Shared.MessageAttachmentType.VOICE -> "voice"
+        barkfluff.shared.Shared.MessageAttachmentType.STICKER -> "sticker"
+        else -> ""
     }
 
     override suspend fun showPrivateMessageNotification(chatId: String, messageId: Long, senderUserId: Long, expectedScopeId: String?) {
@@ -134,11 +200,18 @@ class RealtimeSideEffectsImpl(
     override suspend fun showSecretMessageNotification(messageId: String, senderUserId: Long, senderDeviceId: String, expectedScopeId: String?) {
         val scopeId = expectedScopeId ?: CacheScope.from(globalParam)?.id ?: return
         if (CacheScope.from(globalParam)?.id != scopeId) return
-        if (!globalParam.notificationsEnabled || senderUserId <= 0) return
+        if (!globalParam.secretChatsEnabled || !globalParam.notificationsEnabled || senderUserId <= 0) return
         val eventId = runCatching { UUID.fromString(messageId).toString() }.getOrNull() ?: return
         val deviceId = runCatching { UUID.fromString(senderDeviceId).toString() }.getOrNull() ?: return
         if (senderUserId == globalParam.userId && deviceId.equals(globalParam.deviceId, ignoreCase = true)) return
-        val chat = secretChatRepository.findByPeer(senderUserId, deviceId)
+        val chat = try {
+            withContext(Dispatchers.IO) { secretChatRepository.findByPeer(senderUserId, deviceId) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Secret notification chat lookup failed", e)
+            null
+        }
         if (chat != null && (chat.id in globalParam.mutedChatIds || OpenChatManager.isOpen(chat.id))) return
         val threadId = "$senderUserId:$deviceId"
         NotificationHelper.showEncryptedMessageNotification(
@@ -178,6 +251,8 @@ class RealtimeSideEffectsImpl(
                 Log.w(TAG, "Coil failed to load bitmap for fileId=$fileId")
                 null
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "Failed to load bitmap for fileId=$fileId", e)
             null
@@ -195,6 +270,8 @@ class RealtimeSideEffectsImpl(
             if (imageResult is SuccessResult) {
                 (imageResult.drawable as? BitmapDrawable)?.bitmap
             } else null
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "Failed to load bitmap from URL directly", e)
             null
@@ -211,5 +288,6 @@ class RealtimeSideEffectsImpl(
 
     companion object {
         private const val TAG = "RealtimeSideEffects"
+        private const val NOTIFICATION_ENRICHMENT_TIMEOUT_MILLIS = 8_000L
     }
 }

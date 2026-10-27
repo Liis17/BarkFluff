@@ -70,7 +70,7 @@ public sealed class SettingsStorage
         string editedFrom,
         CancellationToken cancellationToken = default)
     {
-        var catalogEntry = SettingsCatalog.Resolve(serviceId, section, key);
+        var catalogEntry = SettingsCatalog.ResolveForUpdate(serviceId, section, key);
         var scope = SettingsScopes.Get(serviceId);
         await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
@@ -212,7 +212,7 @@ public sealed class SettingsStorage
         var latest = revisions.GroupBy(revision => revision.Key, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
 
-        return rows.Select(row =>
+        return rows.Where(row => !SettingsCatalog.IsDeprecated(scope.ServiceId, row.Key)).Select(row =>
         {
             var entry = SettingsCatalog.Resolve(scope.ServiceId, row.Key);
             return new StoredSetting(

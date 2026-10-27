@@ -30,6 +30,9 @@ import com.barkfluff.client.databinding.ActivityMainBinding
 import com.barkfluff.client.deeplink.DeepLinkCommand
 import com.barkfluff.client.deeplink.DeepLinkHandler
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
+import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
+import com.barkfluff.client.cache.CacheScope
+import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.grpc.GrpcClientRegistry
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.UpdateChecker
@@ -39,6 +42,11 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.shape.ShapeAppearanceModel
 import dagger.hilt.android.AndroidEntryPoint
+import io.grpc.Metadata
+import io.grpc.Status
+import io.grpc.StatusException
+import io.grpc.StatusRuntimeException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -47,6 +55,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     @javax.inject.Inject lateinit var clientRegistry: GrpcClientRegistry
     @javax.inject.Inject lateinit var userDirectoryGateway: UserDirectoryGateway
+    @javax.inject.Inject lateinit var chatDirectoryGateway: ChatDirectoryGateway
+    @javax.inject.Inject lateinit var chatCacheRepository: ChatCacheRepository
+
+    private var pendingNotificationRoute: NotificationRoute? = null
+    private var notificationRouteJob: kotlinx.coroutines.Job? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -66,23 +79,30 @@ class MainActivity : AppCompatActivity() {
         private const val TAB_CALLS = 1
         private const val TAB_PROFILE = 2
         private const val KEY_CURRENT_TAB = "current_tab"
+        private const val KEY_ROUTE_SCOPE = "notification_route_scope"
+        private const val KEY_ROUTE_KIND = "notification_route_kind"
+        private const val KEY_ROUTE_CHAT = "notification_route_chat"
+        private const val KEY_ROUTE_EVENT = "notification_route_event"
+        private const val KEY_ROUTE_THREAD = "notification_route_thread"
+        private const val KEY_ROUTE_DATA = "notification_route_data"
+        private const val KEY_ROUTE_NOTIFICATION = "notification_route_is_notification"
+        private const val KEY_ROUTE_PRIVATE_INVITE = "notification_route_private_invite"
         private const val BOTTOM_NAV_WIDE_ITEM_WIDTH_DP = 72
         private const val FLOATING_FAB_CORNER_RADIUS_DP = 22
         private const val FLOATING_FAB_PRESSED_CORNER_RADIUS_DP = 32
 
-        /**
-         * Хранит chatId для открытия после cold start (когда приложение убито
-         * и уведомление открывает MainActivity, минуя SplashActivity).
-         * SplashActivity выполнит инициализацию → вернётся в MainActivity →
-         * chatId будет прочитан из этого поля.
-         */
-        @Volatile
-        var pendingChatId: String? = null
-
-        /** Признак того, что pendingChatId — приватный чат (уведомление private_chat_invite). */
-        @Volatile
-        var pendingChatIsPrivate: Boolean = false
     }
+
+    private data class NotificationRoute(
+        val scopeId: String?,
+        val kind: String,
+        val chatId: String,
+        val eventId: String,
+        val threadId: String,
+        val dataUri: String?,
+        val isNotification: Boolean,
+        val isPrivateInvite: Boolean,
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -107,7 +127,27 @@ class MainActivity : AppCompatActivity() {
         setupBottomNavigation()
         setupCreateChatFab()
         setupChatUnreadBadge()
-        handleChatIntent(intent)
+        val restoredRoute = savedInstanceState?.getString(KEY_ROUTE_CHAT)?.let { chatId ->
+            NotificationRoute(
+                scopeId = savedInstanceState.getString(KEY_ROUTE_SCOPE),
+                kind = savedInstanceState.getString(KEY_ROUTE_KIND) ?: NotificationHelper.KIND_REGULAR,
+                chatId = chatId,
+                eventId = savedInstanceState.getString(KEY_ROUTE_EVENT).orEmpty(),
+                threadId = savedInstanceState.getString(KEY_ROUTE_THREAD) ?: chatId,
+                dataUri = savedInstanceState.getString(KEY_ROUTE_DATA),
+                isNotification = savedInstanceState.getBoolean(KEY_ROUTE_NOTIFICATION),
+                isPrivateInvite = savedInstanceState.getBoolean(KEY_ROUTE_PRIVATE_INVITE),
+            )
+        }
+        if (restoredRoute != null) {
+            clearConsumedRouteIntent()
+            pendingNotificationRoute = restoredRoute
+            notificationRouteJob = lifecycleScope.launch { navigateNotificationRoute(restoredRoute) }
+        } else if (savedInstanceState == null) {
+            handleChatIntent(intent)
+        } else {
+            clearConsumedRouteIntent()
+        }
         handlePendingDeepLink()
         checkForUpdates()
         registerPrekeyBundleIfNeeded()
@@ -127,8 +167,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun registerPrekeyBundleIfNeeded() {
-        val app = applicationContext as BarkFluffApplication
-        if (!app.prekeyManager.isRegistered) {
+        if (GlobalParam(this).secretChatsEnabled) {
             lifecycleScope.launch {
                 com.barkfluff.client.crypto.E2EBootstrap.ensurePrekeyBundleRegistered(this@MainActivity)
             }
@@ -139,6 +178,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handleChatIntent(intent)
     }
 
@@ -154,77 +194,198 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleChatIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra(NotificationHelper.EXTRA_OPEN_CHAT_LIST, false) == true) {
-            val expectedScopeId = intent.getStringExtra(NotificationHelper.EXTRA_SCOPE_ID)
-            intent.removeExtra(NotificationHelper.EXTRA_OPEN_CHAT_LIST)
-            if (expectedScopeId != null && expectedScopeId == com.barkfluff.client.cache.CacheScope.from(GlobalParam(this))?.id) {
-                pendingChatId = null
-                pendingChatIsPrivate = false
-                if (currentTabIndex != TAB_CHATS) switchTab(TAB_CHATS)
-                binding.bottomNavigation.selectedItemId = R.id.navigation_chats
-            }
+    internal fun handleChatIntent(intent: Intent?) {
+        if (intent == null) return
+        val notificationMarker = intent.hasExtra(NotificationHelper.EXTRA_KIND) ||
+            intent.hasExtra(NotificationHelper.EXTRA_OPEN_CHAT_LIST) ||
+            intent.data?.let { it.scheme == "barkfluff" && it.authority == "message-notification" } == true ||
+            (intent.action == Intent.ACTION_VIEW && intent.hasExtra("chat_id"))
+        val target = if (notificationMarker) NotificationHelper.currentTarget(this, intent) else null
+        if (notificationMarker && target == null) {
+            Log.w("MainActivity", "Rejected an unscoped or invalid notification route")
+            clearConsumedRouteIntent()
+            notificationRouteJob?.cancel()
+            pendingNotificationRoute = null
+            showNotificationRouteError()
             return
         }
-        // extra_chat_id — из нашего PendingIntent, chat_id — fallback из FCM data payload,
-        // pendingChatId — сохранённый chatId после cold start через SplashActivity
-        val chatId = intent?.getStringExtra(NotificationHelper.EXTRA_CHAT_ID)
-            ?: intent?.getStringExtra("chat_id")
-            ?: pendingChatId
-            ?: return
 
-        val isPrivateChat = intent?.getBooleanExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT, false)
-            ?.takeIf { intent.hasExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT) }
-            ?: pendingChatIsPrivate
+        val route = if (target != null) {
+            NotificationRoute(
+                scopeId = target.scopeId,
+                kind = target.kind,
+                chatId = target.chatId,
+                eventId = target.eventId,
+                threadId = target.threadId,
+                dataUri = intent.data?.toString(),
+                isNotification = true,
+                isPrivateInvite = intent.getBooleanExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT, false),
+            )
+        } else {
+            val chatId = intent.getStringExtra(NotificationHelper.EXTRA_CHAT_ID)?.takeIf(String::isNotBlank) ?: return
+            NotificationRoute(
+                scopeId = CacheScope.from(GlobalParam(this))?.id,
+                kind = NotificationHelper.KIND_REGULAR,
+                chatId = chatId,
+                eventId = "",
+                threadId = chatId,
+                dataUri = null,
+                isNotification = false,
+                isPrivateInvite = intent.getBooleanExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT, false),
+            )
+        }
 
-        // Очищаем все источники чтобы не обрабатывать повторно
-        pendingChatId = null
-        pendingChatIsPrivate = false
-        intent?.removeExtra(NotificationHelper.EXTRA_CHAT_ID)
-        intent?.removeExtra("chat_id")
-        intent?.removeExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT)
+        clearConsumedRouteIntent()
+        pendingNotificationRoute = route
+        notificationRouteJob?.cancel()
+        notificationRouteJob = lifecycleScope.launch { navigateNotificationRoute(route) }
+    }
 
-        Log.d("MainActivity", "Opening chat from notification: chatId=$chatId")
-
-        // Проверяем инициализацию gRPC клиентов
+    private suspend fun navigateNotificationRoute(route: NotificationRoute) {
+        val scopeNow = CacheScope.from(GlobalParam(this))?.id
+        if (route.isNotification && route.scopeId != scopeNow) {
+            pendingNotificationRoute = null
+            showNotificationRouteError()
+            return
+        }
+        if (route.isNotification && route.kind != NotificationHelper.KIND_REGULAR && !route.isPrivateInvite) {
+            showChatsAfterNotification()
+            pendingNotificationRoute = null
+            return
+        }
         if (clientRegistry.messagesClient == null || clientRegistry.usersClient == null) {
             val globalParam = GlobalParam(this)
-            val hasToken = globalParam.accessToken != null
-            val tokenExpiration = globalParam.accessTokenExpiration
-            val bufferMs = 5 * 60 * 1000L
-            val isExpired = System.currentTimeMillis() + bufferMs >= tokenExpiration
-
-            if (hasToken && !isExpired) {
-                // Токен валиден — инициализируем gRPC на месте
-                Log.d("MainActivity", "Token valid, initializing gRPC in-place")
-                clientRegistry.initAllClients(globalParam, this)
-            } else {
-                // Нужна авторизация через SplashActivity
-                Log.d("MainActivity", "gRPC not initialized, redirecting through SplashActivity")
-                pendingChatId = chatId
-                pendingChatIsPrivate = isPrivateChat
-                startActivity(Intent(this, SplashActivity::class.java))
+            val isExpired = System.currentTimeMillis() + 5 * 60 * 1000L >= globalParam.accessTokenExpiration
+            if (globalParam.accessToken == null || isExpired) {
+                startActivity(splashIntent(route))
                 finish()
                 return
             }
+            clientRegistry.initAllClients(globalParam, this)
         }
-
-        // Приватный чат: ChatActivity сам зарезолвит состояние инвайта через getChat (inviteState=-1)
-        if (isPrivateChat) {
-            startActivity(ChatActivity.privateChatIntent(this, chatId = chatId, title = "").apply {
-                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            })
+        if (route.isNotification && CacheScope.from(GlobalParam(this))?.id != route.scopeId) {
+            pendingNotificationRoute = null
+            showNotificationRouteError()
             return
         }
 
-        // gRPC готов — открываем ChatActivity
-        OpenChatManager.setOpenChat(chatId)
-
-        val chatIntent = Intent(this, ChatActivity::class.java).apply {
-            putExtra("chat_id", chatId)
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        if (route.isPrivateInvite) {
+            startActivity(ChatActivity.privateChatIntent(this, route.chatId, "").apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+            pendingNotificationRoute = null
+            return
         }
-        startActivity(chatIntent)
+        if (route.isNotification) {
+            val scope = CacheScope(route.scopeId ?: return)
+            val cached = chatCacheRepository.readChatList(scope)?.chats?.firstOrNull { it.id == route.chatId }
+            val freshResult = try {
+                chatDirectoryGateway.chat(route.chatId)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Result.failure(error)
+            }
+            if (CacheScope.from(GlobalParam(this))?.id != route.scopeId || pendingNotificationRoute != route) {
+                pendingNotificationRoute = null
+                showNotificationRouteError()
+                return
+            }
+            val freshChat = freshResult.getOrNull()
+            val permanentFailure = freshResult.exceptionOrNull()?.isPermanentNotificationChatFailure() == true
+            val cachedRegular = cached?.takeIf {
+                it.chatType == barkfluff.shared.Shared.ChatType.CHAT_TYPE_REGULAR
+            }
+            if (permanentFailure ||
+                freshChat?.chatType?.let { it != barkfluff.shared.Shared.ChatType.CHAT_TYPE_REGULAR } == true ||
+                (freshChat == null && cachedRegular == null)) {
+                pendingNotificationRoute = null
+                showChatsAfterNotification()
+                Toast.makeText(this, R.string.notification_chat_unavailable, Toast.LENGTH_LONG).show()
+                return
+            }
+            val chat = freshChat ?: cachedRegular ?: return
+            val title = chat.title.ifBlank { cachedRegular?.title.orEmpty() }
+            val avatarId = chat.picturePreviewFileId.ifBlank { chat.pictureFileId }
+            val otherUserId = if (chat.isGroupChat) 0L else
+                chat.memberIds.firstOrNull { it != GlobalParam(this).userId } ?: 0L
+            showChatsAfterNotification()
+            val chatIntent = Intent(this, ChatActivity::class.java).apply {
+                putExtra("chat_id", route.chatId)
+                putExtra("chat_title", title)
+                putExtra("chat_avatar_file_id", avatarId)
+                putExtra("is_group_chat", chat.isGroupChat)
+                putExtra("other_user_id", otherUserId)
+                putExtra("first_unread_message_id", chat.firstUnreadMessageId)
+                putExtra(NotificationHelper.EXTRA_SCOPE_ID, route.scopeId)
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            startActivity(chatIntent)
+            pendingNotificationRoute = null
+            return
+        }
+
+        startActivity(Intent(this, ChatActivity::class.java).apply {
+            putExtra("chat_id", route.chatId)
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        })
+        pendingNotificationRoute = null
+    }
+
+    private fun clearConsumedRouteIntent() {
+        setIntent(Intent(this, MainActivity::class.java))
+    }
+
+    private fun Throwable.isPermanentNotificationChatFailure(): Boolean {
+        val errorCodeKey = Metadata.Key.of("x-error-code", Metadata.ASCII_STRING_MARSHALLER)
+        val chain = generateSequence(this) { it.cause }.toList()
+        val errorCode = chain.firstNotNullOfOrNull { error ->
+            when (error) {
+                is StatusException -> error.trailers?.get(errorCodeKey)
+                is StatusRuntimeException -> error.trailers?.get(errorCodeKey)
+                else -> null
+            }
+        }
+        val permanentCodes = setOf(
+            "604DD334-0484-4C6B-8113-354B9D2FDF2A", // NoAccessToChat
+            "7506386A-8940-4F3B-87B8-315DD0A7AB08", // ChatNotFound
+            "D0AC27C0-3381-401D-8EF4-E35610C372AB", // ChatTypeMismatch
+        )
+        return errorCode in permanentCodes || chain.any { error ->
+            when (error) {
+                is StatusException -> error.status.code in setOf(Status.Code.NOT_FOUND, Status.Code.PERMISSION_DENIED,
+                    Status.Code.INVALID_ARGUMENT)
+                is StatusRuntimeException -> error.status.code in setOf(Status.Code.NOT_FOUND, Status.Code.PERMISSION_DENIED,
+                    Status.Code.INVALID_ARGUMENT)
+                else -> false
+            }
+        }
+    }
+
+    private fun splashIntent(route: NotificationRoute) = Intent(this, SplashActivity::class.java).apply {
+        if (route.isNotification) {
+            action = Intent.ACTION_VIEW
+            data = route.dataUri?.let(android.net.Uri::parse)
+            putExtra(NotificationHelper.EXTRA_SCOPE_ID, route.scopeId)
+            putExtra(NotificationHelper.EXTRA_KIND, route.kind)
+            putExtra(NotificationHelper.EXTRA_CHAT_ID, route.chatId)
+            putExtra(NotificationHelper.EXTRA_EVENT_ID, route.eventId)
+            putExtra(NotificationHelper.EXTRA_THREAD_ID, route.threadId)
+            putExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT, route.isPrivateInvite)
+        } else {
+            putExtra(NotificationHelper.EXTRA_CHAT_ID, route.chatId)
+            putExtra(NotificationHelper.EXTRA_IS_PRIVATE_CHAT, route.isPrivateInvite)
+        }
+    }
+
+    private fun showChatsAfterNotification() {
+        if (currentTabIndex != TAB_CHATS) switchTab(TAB_CHATS)
+        binding.bottomNavigation.selectedItemId = R.id.navigation_chats
+    }
+
+    private fun showNotificationRouteError() {
+        showChatsAfterNotification()
+        Toast.makeText(this, R.string.notification_chat_unavailable, Toast.LENGTH_LONG).show()
     }
 
     private fun handlePendingDeepLink() {
@@ -282,6 +443,16 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putInt(KEY_CURRENT_TAB, currentTabIndex)
+        pendingNotificationRoute?.let { route ->
+            outState.putString(KEY_ROUTE_SCOPE, route.scopeId)
+            outState.putString(KEY_ROUTE_KIND, route.kind)
+            outState.putString(KEY_ROUTE_CHAT, route.chatId)
+            outState.putString(KEY_ROUTE_EVENT, route.eventId)
+            outState.putString(KEY_ROUTE_THREAD, route.threadId)
+            outState.putString(KEY_ROUTE_DATA, route.dataUri)
+            outState.putBoolean(KEY_ROUTE_NOTIFICATION, route.isNotification)
+            outState.putBoolean(KEY_ROUTE_PRIVATE_INVITE, route.isPrivateInvite)
+        }
     }
 
     private fun setupBottomNavigation() {

@@ -2,6 +2,7 @@ package com.barkfluff.client.cache
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import androidx.room.Dao
 import androidx.room.ColumnInfo
 import androidx.room.Database
@@ -22,6 +23,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.model.ChatFolder
 import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.domain.model.LastMessageSummary
+import com.barkfluff.client.notifications.isPushPreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import net.zetetic.database.sqlcipher.SQLiteDatabase
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import java.io.File
 import java.security.SecureRandom
@@ -51,6 +54,17 @@ data class CachedChatDisplay(
     val otherUserId: Long
 )
 
+internal fun mergeCachedChatDisplay(previous: ChatSummary?, incoming: ChatSummary): ChatSummary =
+    previous?.let {
+        incoming.copy(
+            title = incoming.title.ifBlank { it.title },
+            picture = incoming.picture.ifBlank { it.picture },
+            pictureFileId = incoming.pictureFileId.ifBlank { it.pictureFileId },
+            picturePreviewFileId = incoming.picturePreviewFileId.ifBlank { it.picturePreviewFileId },
+            memberIds = incoming.memberIds.ifEmpty { it.memberIds },
+        )
+    } ?: incoming
+
 data class CachedChatList(
     val chats: List<ChatSummary>,
     val folders: List<ChatFolder>,
@@ -62,6 +76,13 @@ data class ChatCacheStats(
     val chatCount: Int,
     val messageCount: Int,
     val sizeBytes: Long
+)
+
+data class ClearCacheOptions(
+    val historyMessages: Int,
+    val secretMessages: Int,
+    val pendingOutgoing: Int,
+    val drafts: Int,
 )
 
 data class CachedChatDraft(
@@ -210,17 +231,35 @@ interface ChatCacheDao {
     @Query("SELECT * FROM chat_cache_meta WHERE scopeId = :scopeId")
     suspend fun meta(scopeId: String): CachedChatMetaEntity?
 
+    @Query("DELETE FROM chat_cache_meta")
+    suspend fun deleteAllMeta()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMeta(meta: CachedChatMetaEntity)
 
     @Query("SELECT * FROM cached_chats WHERE scopeId = :scopeId ORDER BY lastActivityAt DESC")
     suspend fun chats(scopeId: String): List<CachedChatEntity>
 
+    @Query("SELECT * FROM cached_chats WHERE scopeId = :scopeId AND chatId IN (:chatIds)")
+    suspend fun chatsByIds(scopeId: String, chatIds: List<String>): List<CachedChatEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertChats(chats: List<CachedChatEntity>)
 
     @Query("DELETE FROM cached_chats WHERE scopeId = :scopeId")
     suspend fun deleteChats(scopeId: String)
+
+    @Query("DELETE FROM cached_chats")
+    suspend fun deleteAllChats()
+
+    @Query("DELETE FROM cached_chats WHERE scopeId = :scopeId AND chatId = :chatId")
+    suspend fun deleteChat(scopeId: String, chatId: String)
+
+    @Query("DELETE FROM cached_messages WHERE scopeId = :scopeId AND chatId = :chatId")
+    suspend fun deleteChatMessages(scopeId: String, chatId: String)
+
+    @Query("DELETE FROM cached_private_messages WHERE scopeId = :scopeId AND chatId = :chatId")
+    suspend fun deleteChatPrivateMessages(scopeId: String, chatId: String)
 
     @Query("SELECT * FROM cached_chat_folders WHERE scopeId = :scopeId ORDER BY sortOrder")
     suspend fun folders(scopeId: String): List<CachedChatFolderEntity>
@@ -231,11 +270,20 @@ interface ChatCacheDao {
     @Query("DELETE FROM cached_chat_folders WHERE scopeId = :scopeId")
     suspend fun deleteFolders(scopeId: String)
 
+    @Query("DELETE FROM cached_chat_folders")
+    suspend fun deleteAllFolders()
+
     @Query("SELECT * FROM cached_chat_displays WHERE scopeId = :scopeId")
     suspend fun displays(scopeId: String): List<CachedChatDisplayEntity>
 
+    @Query("DELETE FROM cached_chat_displays")
+    suspend fun deleteAllDisplays()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertDisplay(display: CachedChatDisplayEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertDisplays(displays: List<CachedChatDisplayEntity>)
 
     @Query("SELECT * FROM cached_chat_drafts WHERE scopeId = :scopeId")
     suspend fun drafts(scopeId: String): List<CachedChatDraftEntity>
@@ -276,8 +324,14 @@ interface ChatCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMessages(messages: List<CachedMessageEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertMessageIfAbsent(message: CachedMessageEntity)
+
     @Query("DELETE FROM cached_messages WHERE scopeId = :scopeId AND chatId = :chatId AND messageId = :messageId")
     suspend fun deleteMessage(scopeId: String, chatId: String, messageId: Long)
+
+    @Query("DELETE FROM cached_messages")
+    suspend fun deleteAllMessages()
     @Query("SELECT * FROM cached_private_messages WHERE scopeId = :scopeId AND chatId = :chatId ORDER BY sentAtMillis DESC LIMIT :limit")
     suspend fun latestPrivateMessages(scopeId: String, chatId: String, limit: Int): List<CachedPrivateMessageEntity>
 
@@ -286,6 +340,9 @@ interface ChatCacheDao {
 
     @Query("DELETE FROM cached_private_messages WHERE scopeId = :scopeId AND chatId = :chatId AND messageId = :messageId")
     suspend fun deletePrivateMessage(scopeId: String, chatId: String, messageId: Long)
+
+    @Query("DELETE FROM cached_private_messages")
+    suspend fun deleteAllPrivateMessages()
 
     @Query("SELECT * FROM cached_secret_messages WHERE scopeId = :scopeId AND chatId = :chatId ORDER BY sentAtMillis DESC LIMIT :limit")
     suspend fun latestSecretMessages(scopeId: String, chatId: String, limit: Int): List<CachedSecretMessageEntity>
@@ -298,6 +355,9 @@ interface ChatCacheDao {
 
     @Query("SELECT COUNT(*) FROM cached_secret_messages")
     suspend fun secretMessageCount(): Int
+
+    @Query("DELETE FROM cached_secret_messages")
+    suspend fun deleteAllSecretMessages()
 
     @Query("SELECT COUNT(*) FROM cached_chats")
     suspend fun chatCount(): Int
@@ -319,18 +379,20 @@ interface ChatCacheDao {
         CachedSecretMessageEntity::class,
         OutgoingMessageEntity::class,
         OutgoingAttachmentEntity::class,
-        PendingMessageReadEntity::class
+        PendingMessageReadEntity::class,
+        PendingChatReadRangeEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class ChatCacheDatabase : RoomDatabase() {
     abstract fun cacheDao(): ChatCacheDao
     abstract fun outgoingDao(): OutgoingMessageDao
     abstract fun pendingReadDao(): PendingMessageReadDao
+    abstract fun pendingChatReadRangeDao(): PendingChatReadRangeDao
 }
 
-class ChatCacheRepository(context: Context) {
+class ChatCacheRepository(context: Context, private val secretChats: com.barkfluff.client.repository.SecretChatRepository? = null) {
 
     private val appContext = context.applicationContext
     private val databaseMutex = Mutex()
@@ -372,13 +434,26 @@ class ChatCacheRepository(context: Context) {
         totalCount: Int,
         folders: List<ChatFolder>? = null,
         replaceExisting: Boolean = false,
+        removedChatIds: Collection<String> = emptyList(),
+        preserveCachedDisplayWhenEmpty: Boolean = false,
     ) = withContext(Dispatchers.IO) {
         val db = database()
         db.withTransaction {
             val dao = db.cacheDao()
             dao.upsertMeta(CachedChatMetaEntity(scope.id, totalCount, System.currentTimeMillis()))
+            val incompleteDisplayIds = if (!preserveCachedDisplayWhenEmpty || replaceExisting) emptyList() else chats.filter { chat ->
+                !chat.isGroupChat && (
+                    chat.title.isBlank() || chat.picture.isBlank() || chat.pictureFileId.isBlank() ||
+                        chat.picturePreviewFileId.isBlank() || chat.memberIds.isEmpty()
+                    )
+            }.map { it.id }
+            val existingChats = if (incompleteDisplayIds.isEmpty()) emptyMap() else {
+                dao.chatsByIds(scope.id, incompleteDisplayIds).associate { it.chatId to it.toChatData() }
+            }
+            val mergedChats = chats.map { chat -> mergeCachedChatDisplay(existingChats[chat.id], chat) }
             if (replaceExisting) dao.deleteChats(scope.id)
-            if (chats.isNotEmpty()) dao.upsertChats(chats.map { it.toEntity(scope.id) })
+            removedChatIds.forEach { dao.deleteChat(scope.id, it) }
+            if (mergedChats.isNotEmpty()) dao.upsertChats(mergedChats.map { it.toEntity(scope.id) })
             if (folders != null) {
                 dao.deleteFolders(scope.id)
                 if (folders.isNotEmpty()) dao.upsertFolders(folders.map { it.toEntity(scope.id) })
@@ -386,11 +461,35 @@ class ChatCacheRepository(context: Context) {
         }
     }
 
+    /** DeleteChat: убирает чат из кешированного списка; при contentWiped — и его сообщения. */
+    suspend fun removeChat(scope: CacheScope, chatId: String, totalCount: Int, contentWiped: Boolean) =
+        withContext(Dispatchers.IO) {
+            val db = database()
+            db.withTransaction {
+                val dao = db.cacheDao()
+                dao.deleteChat(scope.id, chatId)
+                dao.upsertMeta(CachedChatMetaEntity(scope.id, totalCount, System.currentTimeMillis()))
+                if (contentWiped) {
+                    dao.deleteChatMessages(scope.id, chatId)
+                    dao.deleteChatPrivateMessages(scope.id, chatId)
+                }
+            }
+        }
+
     suspend fun saveDisplay(scope: CacheScope, chatId: String, display: CachedChatDisplay) =
         withContext(Dispatchers.IO) {
             database().cacheDao().upsertDisplay(
                 CachedChatDisplayEntity(scope.id, chatId, display.title, display.avatarFileId, display.otherUserId)
             )
+        }
+
+    suspend fun saveDisplays(scope: CacheScope, displays: Map<String, CachedChatDisplay>) =
+        withContext(Dispatchers.IO) {
+            if (displays.isNotEmpty()) {
+                database().cacheDao().upsertDisplays(displays.map { (chatId, display) ->
+                    CachedChatDisplayEntity(scope.id, chatId, display.title, display.avatarFileId, display.otherUserId)
+                })
+            }
         }
 
     suspend fun readChatDrafts(scope: CacheScope): List<CachedChatDraft> = withContext(Dispatchers.IO) {
@@ -458,6 +557,7 @@ class ChatCacheRepository(context: Context) {
         limit: Int
     ): List<Shared.Message> = withContext(Dispatchers.IO) {
         database().cacheDao().messagesBefore(scope.id, chatId, beforeMessageId, limit).toMessages()
+            .filterNot { it.isPushPreview() }
     }
 
     suspend fun messagesAfter(
@@ -467,6 +567,7 @@ class ChatCacheRepository(context: Context) {
         limit: Int
     ): List<Shared.Message> = withContext(Dispatchers.IO) {
         database().cacheDao().messagesAfter(scope.id, chatId, afterMessageId, limit).toMessages()
+            .filterNot { it.isPushPreview() }
     }
 
     suspend fun saveMessages(scope: CacheScope, chatId: String, messages: List<Shared.Message>) {
@@ -485,6 +586,20 @@ class ChatCacheRepository(context: Context) {
             )
         }
     }
+    /** Fills a missing row only: a message already cached from the server stays authoritative. */
+    suspend fun saveMessageIfAbsent(scope: CacheScope, chatId: String, message: Shared.Message) =
+        withContext(Dispatchers.IO) {
+            database().cacheDao().insertMessageIfAbsent(
+                CachedMessageEntity(
+                    scopeId = scope.id,
+                    chatId = chatId,
+                    messageId = message.id,
+                    sentAtMillis = message.sentAt.seconds * 1000,
+                    payload = message.toByteArray()
+                )
+            )
+        }
+
     suspend fun latestPrivateMessages(
         scope: CacheScope,
         chatId: String,
@@ -563,7 +678,6 @@ class ChatCacheRepository(context: Context) {
     suspend fun saveOutgoing(
         scope: CacheScope,
         record: OutgoingMessageRecord,
-        notificationReadMessageId: Long? = null,
         expectedScopeId: String? = null
     ) = withContext(Dispatchers.IO) {
         val db = database()
@@ -573,17 +687,44 @@ class ChatCacheRepository(context: Context) {
                     "Notification belongs to a different account"
                 }
             }
-            if (notificationReadMessageId != null) {
-                require(notificationReadMessageId > 0 && record.state == OutgoingMessageState.QUEUED)
-            }
             val dao = db.outgoingDao()
+            val existing = dao.message(scope.id, record.operationId)
+            val initialAcceptance = existing == null || existing.state == OutgoingMessageState.STAGING.name
+            if (record.notificationReadMessageId != null) {
+                require(record.notificationReadMessageId > 0)
+                if (initialAcceptance) require(record.state == OutgoingMessageState.QUEUED)
+            }
             dao.upsertMessage(record.toEntity(scope.id))
             dao.upsertAttachments(record.attachments.map { it.toEntity(scope.id, record.operationId) })
-            notificationReadMessageId?.let { messageId ->
-                db.pendingReadDao().insert(PendingMessageReadEntity(scope.id, messageId, record.chatId))
+            if (initialAcceptance) record.notificationReadMessageId?.let { messageId ->
+                db.pendingChatReadRangeDao().coalesce(scope.id, record.chatId, messageId, System.currentTimeMillis())
             }
         }
     }
+
+    suspend fun enqueueChatReadRange(scope: CacheScope, chatId: String, upToMessageId: Long) = withContext(Dispatchers.IO) {
+        require(chatId.isNotBlank() && upToMessageId > 0)
+        require(CacheScope.from(GlobalParam(appContext)) == scope) { "Notification belongs to a different account" }
+        database().pendingChatReadRangeDao().coalesce(scope.id, chatId, upToMessageId, System.currentTimeMillis())
+    }
+
+    suspend fun readyPendingChatReadRanges(scope: CacheScope, nowMillis: Long, limit: Int = 50) =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().ready(scope.id, nowMillis, limit) }
+
+    suspend fun nextPendingChatReadRangeAttempt(scope: CacheScope): Long? =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().nextWakeAt(scope.id) }
+
+    suspend fun useLegacyReadRangeFallback(scope: CacheScope, chatId: String, cutoff: Long) =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().useLegacyFallback(scope.id, chatId, cutoff) }
+
+    suspend fun updatePendingChatReadRangeCursor(scope: CacheScope, chatId: String, cutoff: Long, cursor: Long) =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().updateCursor(scope.id, chatId, cutoff, cursor) }
+
+    suspend fun retryPendingChatReadRange(scope: CacheScope, chatId: String, cutoff: Long, attempts: Int, nextAttemptAt: Long) =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().retry(scope.id, chatId, cutoff, attempts, nextAttemptAt) }
+
+    suspend fun completePendingChatReadRange(scope: CacheScope, chatId: String, completedCutoff: Long) =
+        withContext(Dispatchers.IO) { database().pendingChatReadRangeDao().completeThrough(scope.id, chatId, completedCutoff) }
 
     suspend fun readyPendingReads(scope: CacheScope, nowMillis: Long, limit: Int = 50) =
         withContext(Dispatchers.IO) { database().pendingReadDao().ready(scope.id, nowMillis, limit) }
@@ -715,6 +856,16 @@ class ChatCacheRepository(context: Context) {
             db.outgoingDao().deleteAllAttachments(scope.id)
             db.outgoingDao().deleteAllMessages(scope.id)
             db.pendingReadDao().clear(scope.id)
+            db.pendingChatReadRangeDao().clear(scope.id)
+        }
+    }
+
+    suspend fun clearOutgoingKeepReads(scope: CacheScope) = withContext(Dispatchers.IO) {
+        val db = database()
+        db.withTransaction {
+            val dao = db.outgoingDao()
+            dao.deleteNonSentAttachments(scope.id, OutgoingMessageState.SENT.name)
+            dao.deleteNonSentMessages(scope.id, OutgoingMessageState.SENT.name)
         }
     }
 
@@ -727,6 +878,43 @@ class ChatCacheRepository(context: Context) {
         )
     }
 
+    suspend fun clearOptions(): ClearCacheOptions = withContext(Dispatchers.IO) {
+        val scope = CacheScope.from(GlobalParam(appContext))
+            ?: return@withContext ClearCacheOptions(0, 0, 0, 0)
+        val db = database()
+        val dao = db.cacheDao()
+        ClearCacheOptions(
+            historyMessages = dao.messageCount() + dao.privateMessageCount(),
+            secretMessages = dao.secretMessageCount(),
+            pendingOutgoing = db.outgoingDao().pendingOutgoingCount(scope.id),
+            drafts = dao.drafts(scope.id).size,
+        )
+    }
+
+    suspend fun clearHistoryCache() {
+        withContext(Dispatchers.IO) {
+            val db = database()
+            db.withTransaction {
+                val dao = db.cacheDao()
+                dao.deleteAllMeta()
+                dao.deleteAllChats()
+                dao.deleteAllFolders()
+                dao.deleteAllDisplays()
+                dao.deleteAllMessages()
+                dao.deleteAllPrivateMessages()
+            }
+        }
+    }
+
+    suspend fun clearSecretHistory() {
+        withContext(Dispatchers.IO) {
+            val clear: suspend () -> Unit = { database().cacheDao().deleteAllSecretMessages() }
+            if (secretChats != null) secretChats.clearHistory(clear) else clear()
+        }
+    }
+
+    suspend fun compact() = vacuumBestEffort()
+
     suspend fun clearAll() {
         databaseMutex.withLock {
             withContext(Dispatchers.IO) {
@@ -738,23 +926,80 @@ class ChatCacheRepository(context: Context) {
                 // Composer previews are deliberately outside Room so they survive process death;
                 // a full cache clear/logout must remove that journal and its private bytes too.
                 File(appContext.noBackupFilesDir, "composer").deleteRecursively()
-                securePreferences.edit().remove(KEY_PASSPHRASE).apply()
+                securePreferences.edit().remove(KEY_PASSPHRASE).remove(KEY_RAW_KEY).remove(KEY_RAW_KEY_SALT).apply()
             }
         }
         _clearedEvents.tryEmit(Unit)
     }
 
+    private suspend fun vacuumBestEffort() {
+        runCatching {
+            val sqlite = database().openHelper.writableDatabase
+            sqlite.query("PRAGMA wal_checkpoint(TRUNCATE)").use { cursor ->
+                if (cursor.moveToFirst() && cursor.getInt(0) != 0) {
+                    Log.w("ChatCacheRepository", "wal_checkpoint busy")
+                }
+            }
+            sqlite.execSQL("VACUUM")
+        }.onFailure { error ->
+            Log.w("ChatCacheRepository", "Could not compact chat cache", error)
+        }
+    }
+
     private suspend fun database(): ChatCacheDatabase = databaseMutex.withLock {
-        database ?: buildDatabase().also { database = it }
+        database ?: withContext(Dispatchers.IO) { buildDatabase() }.also { database = it }
     }
 
     private fun buildDatabase(): ChatCacheDatabase {
-        val passphrase = databasePassphrase()
+        val key = databaseKey()
         return Room.databaseBuilder(appContext, ChatCacheDatabase::class.java, DATABASE_NAME)
-            .openHelperFactory(SupportOpenHelperFactory(passphrase))
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .openHelperFactory(SupportOpenHelperFactory(key))
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
     }
+
+    /**
+     * Raw key once derived from the passphrase, so connections skip PBKDF2. The file is never re-encrypted and
+     * the passphrase stays valid for older builds; until derivation succeeds the passphrase is used as before.
+     * The raw key is bound to the file salt: a file recreated by another build gets a fresh derivation.
+     */
+    private fun databaseKey(): ByteArray {
+        val salt = databaseFileSalt()
+        val saltTag = salt?.let(SqlCipherRawKey::format)
+        val storedKey = securePreferences.getString(KEY_RAW_KEY, null)
+        if (storedKey != null) {
+            if (saltTag != null && securePreferences.getString(KEY_RAW_KEY_SALT, null) == saltTag) {
+                return storedKey.toByteArray(Charsets.US_ASCII)
+            }
+            securePreferences.edit().remove(KEY_RAW_KEY).remove(KEY_RAW_KEY_SALT).apply()
+        }
+        val passphrase = databasePassphrase()
+        val rawKey = salt?.let { deriveVerifiedRawKey(passphrase, it) } ?: return passphrase
+        securePreferences.edit().putString(KEY_RAW_KEY, rawKey).putString(KEY_RAW_KEY_SALT, saltTag).apply()
+        return rawKey.toByteArray(Charsets.US_ASCII)
+    }
+
+    private fun databaseFileSalt(): ByteArray? = runCatching {
+        appContext.getDatabasePath(DATABASE_NAME).inputStream().use { input ->
+            ByteArray(SqlCipherRawKey.SALT_LENGTH).takeIf { input.read(it) == it.size }
+        }
+    }.getOrNull()
+
+    private fun deriveVerifiedRawKey(passphrase: ByteArray, salt: ByteArray): String? = runCatching {
+        val rawKey = SqlCipherRawKey.format(SqlCipherRawKey.deriveFromPassphrase(passphrase, salt))
+        // Read-only open does not touch the journal mode of the live WAL database.
+        SQLiteDatabase.openDatabase(
+            appContext.getDatabasePath(DATABASE_NAME).path,
+            rawKey.toByteArray(Charsets.US_ASCII),
+            null,
+            SQLiteDatabase.OPEN_READONLY,
+            null,
+            null
+        ).use { db -> db.rawQuery("SELECT count(*) FROM sqlite_master", null).use { it.moveToFirst() } }
+        rawKey
+    }.onFailure { error ->
+        Log.w("ChatCacheRepository", "Raw database key unavailable, keeping passphrase", error)
+    }.getOrNull()
 
     private fun databasePassphrase(): ByteArray {
         securePreferences.getString(KEY_PASSPHRASE, null)?.let {
@@ -805,7 +1050,8 @@ class ChatCacheRepository(context: Context) {
         leaseOwner = leaseOwner,
         leaseExpiresAtMillis = leaseExpiresAtMillis,
         serverMessageId = serverMessageId,
-        serverMessagePayload = serverMessagePayload
+        serverMessagePayload = serverMessagePayload,
+        notificationReadMessageId = notificationReadMessageId
     )
 
     private fun OutgoingAttachmentRecord.toEntity(scopeId: String, operationId: String) = OutgoingAttachmentEntity(
@@ -850,6 +1096,7 @@ class ChatCacheRepository(context: Context) {
         leaseExpiresAtMillis = leaseExpiresAtMillis,
         serverMessageId = serverMessageId,
         serverMessagePayload = serverMessagePayload,
+        notificationReadMessageId = notificationReadMessageId,
         attachments = attachments.map { attachment ->
             OutgoingAttachmentRecord(
                 attachmentIndex = attachment.attachmentIndex,
@@ -978,6 +1225,8 @@ class ChatCacheRepository(context: Context) {
         const val DATABASE_NAME = "offline_chat_cache.db"
         const val KEY_PREFERENCES = "offline_chat_cache_secure"
         const val KEY_PASSPHRASE = "database_passphrase"
+        const val KEY_RAW_KEY = "database_raw_key"
+        const val KEY_RAW_KEY_SALT = "database_raw_key_salt"
         const val SEPARATOR = ""
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -1058,6 +1307,23 @@ class ChatCacheRepository(context: Context) {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_pending_message_reads_scopeId_nextAttemptAtMillis " +
                         "ON pending_message_reads(scopeId, nextAttemptAtMillis)"
+                )
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE outgoing_messages ADD COLUMN notificationReadMessageId INTEGER")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS pending_chat_read_ranges (" +
+                        "scopeId TEXT NOT NULL, chatId TEXT NOT NULL, upToMessageId INTEGER NOT NULL, " +
+                        "legacyFallback INTEGER NOT NULL, cursorBeforeMessageId INTEGER NOT NULL, " +
+                        "attemptCount INTEGER NOT NULL, nextAttemptAtMillis INTEGER NOT NULL, " +
+                        "PRIMARY KEY(scopeId, chatId))"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_pending_chat_read_ranges_scopeId_nextAttemptAtMillis " +
+                        "ON pending_chat_read_ranges(scopeId, nextAttemptAtMillis)"
                 )
             }
         }

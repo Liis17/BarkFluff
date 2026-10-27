@@ -20,6 +20,7 @@ using Xunit;
 
 namespace Barkfluff.AdminPanel.Tests.Endpoints;
 
+[Collection("LiteDb")]
 public sealed class AdminsEndpointsTests : IDisposable
 {
     private const long OwnerId = 100;

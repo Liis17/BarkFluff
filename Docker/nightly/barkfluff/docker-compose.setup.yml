@@ -13,6 +13,9 @@ services:
       SETTINGS_URL: "http://settings:7003"
       SETUP_PUBLIC_ORIGIN: "${SETUP_PUBLIC_ORIGIN:-}"
       SETUP_SECRET_FILE: "/run/secrets/setup_token"
+      LognaraEnable: "${SETUP_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${SETUP_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${SETUP_CONSOLE_OUTPUT:-true}"
     secrets:
       - setup_token
     networks:
@@ -37,6 +40,9 @@ services:
       SETTINGS_SETUP_SECRET_FILE: "/run/secrets/setup_token"
       RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:?set RABBITMQ_DEFAULT_USER in .env}"
       RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:?set RABBITMQ_DEFAULT_PASS in .env}"
+      LognaraEnable: "${SETUP_SETTINGS_LOGNARA_ENABLE:-false}"
+      SeqEnable: "${SETUP_SETTINGS_SEQ_ENABLE:-true}"
+      ConsoleOutput: "${SETUP_SETTINGS_CONSOLE_OUTPUT:-true}"
     secrets:
       - setup_token
     expose:

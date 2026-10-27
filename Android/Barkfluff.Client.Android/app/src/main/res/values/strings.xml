@@ -1,4 +1,8 @@
 <resources>
+    <string name="legal_privacy_title">Конфиденциальность</string>
+    <string name="welcome_show_legal">Показать соглашение и конфиденциальность</string>
+    <string name="welcome_hide_legal">Скрыть соглашение и конфиденциальность</string>
+
     <string name="chat_draft_preview">Черновик</string>
     <!-- App name -->
     <string name="app_name">Barkfluff</string>
@@ -72,7 +76,7 @@
     <string name="server_status_checking">Проверка…</string>
     <string name="server_status_online">Онлайн</string>
     <string name="server_status_unavailable">Недоступна</string>
-    <string name="server_response_ms">Отклик %1$d мс</string>
+    <string name="server_response_ms">%1$d мс</string>
     <string name="server_custom_row_title">Своя нода</string>
     <string name="server_custom_row_subtitle">Ввести адрес вручную</string>
     <string name="server_custom_address_helper">Можно с https:// или без него. Порт обязателен, например :443.</string>
@@ -513,6 +517,8 @@
     <string name="logout_dialog_title">Выход</string>
     <string name="logout_dialog_message">Вы уверены, что хотите выйти из аккаунта?</string>
     <string name="logout_dialog_confirm">Выйти</string>
+    <string name="crypto_cleanup_failed">Не удалось очистить ключи секретных чатов. Повторите попытку.</string>
+    <string name="secret_message_history_failed">Сообщение отправлено, но не сохранено на устройстве. Оно появится при следующем открытии чата.</string>
 
     <!-- Account Settings -->
     <string name="account_settings_title">Аккаунт</string>
@@ -646,6 +652,32 @@
     <string name="storage_server_storage">Хранилище на сервере</string>
     <string name="storage_app_cache">Кеш приложения</string>
     <string name="storage_clear_cache">Очистить кеш</string>
+    <string name="storage_clear_failed">Не удалось очистить</string>
+    <string name="storage_clear_option_media">Медиа-кеш (%1$s)</string>
+    <string name="storage_clear_option_history">История чатов (%1$s)</string>
+    <string name="storage_clear_option_secret">Секретные чаты (%1$s)</string>
+    <string name="storage_clear_option_outgoing">Исходящие в очереди (%1$s)</string>
+    <string name="storage_clear_option_drafts">Черновики (%1$s)</string>
+    <string name="storage_clear_confirm">Очистить выбранное</string>
+    <string name="storage_clear_warning_irreversible">Вы выбрали пункты с необратимыми последствиями: исходящие сообщения могут уже быть доставлены серверу; для черновиков запрашивается удаление с сервера, но оно может не выполниться без сети; секретные чаты хранятся только на этом устройстве и не восстанавливаются.</string>
+    <plurals name="storage_clear_count_messages">
+        <item quantity="one">%d сообщение</item>
+        <item quantity="few">%d сообщения</item>
+        <item quantity="many">%d сообщений</item>
+        <item quantity="other">%d сообщений</item>
+    </plurals>
+    <plurals name="storage_clear_count_outgoing">
+        <item quantity="one">%d исходящее</item>
+        <item quantity="few">%d исходящих</item>
+        <item quantity="many">%d исходящих</item>
+        <item quantity="other">%d исходящих</item>
+    </plurals>
+    <plurals name="storage_clear_count_drafts">
+        <item quantity="one">%d черновик</item>
+        <item quantity="few">%d черновика</item>
+        <item quantity="many">%d черновиков</item>
+        <item quantity="other">%d черновиков</item>
+    </plurals>
     <string name="storage_used">Занято</string>
     <string name="storage_of_limit">из %1$s</string>
     <string name="storage_load_error">Не удалось загрузить</string>
@@ -768,6 +800,7 @@
     <!-- Sticker empty -->
     <string name="stickers_empty">Нет стикеров</string>
     <string name="stickers_empty_subtitle">Стикерпаки пока не добавлены</string>
+    <string name="stickers_load_failed">Не удалось загрузить стикеры</string>
 
     <!-- Message actions popup -->
     <string name="msg_action_reply">Ответить</string>
@@ -942,6 +975,11 @@
     <string name="notification_reply">Ответить</string>
     <string name="notification_reply_hint">Сообщение</string>
     <string name="notification_reply_failed">Не удалось сохранить ответ. Попробуйте ещё раз.</string>
+    <string name="notification_reply_queued">В очереди</string>
+    <string name="notification_reply_sent">Отправлено</string>
+    <string name="notification_reply_failed_short">Не отправлено</string>
+    <string name="notification_mark_read_failed">Не удалось сохранить прочтение. Уведомление оставлено.</string>
+    <string name="notification_chat_unavailable">Чат недоступен или вы больше не состоите в нём.</string>
     <string name="notification_hide">Скрыть</string>
     <string name="notification_encrypted_message">Новое зашифрованное сообщение</string>
     <string name="notification_photo">Фото</string>
@@ -1094,7 +1132,6 @@
     <string name="register_2fa_configured">2FA настроена</string>
     <string name="register_invalid_code">Неверный код</string>
     <string name="register_authenticator_open_failed">Не удалось открыть аутентификатор</string>
-    <string name="register_photo_permission_denied">Разрешение на доступ к фото не предоставлено</string>
     <string name="register_full_name_format">%1$s %2$s</string>
     <string name="register_username_format">@%1$s</string>
 
@@ -1120,6 +1157,10 @@
     <string name="login_empty_login">Введите имя пользователя или email</string>
     <string name="login_invalid_email">Некорректный формат email</string>
     <string name="login_username_too_short">Минимум 3 символа (буквы, цифры, . и _)</string>
+    <string name="login_flow_continue">Продолжить</string>
+    <string name="login_account_not_found">Аккаунт не найден</string>
+    <string name="login_mode_changed">Способ входа изменился. Продолжите ещё раз.</string>
+    <string name="login_server_update_required">Обновите сервер ноды, чтобы войти.</string>
     <string name="login_password_too_short">Минимум %1$d символов</string>
     <string name="settings_error_detail">Ошибка: %1$s</string>
     <string name="account_username_taken">Имя пользователя уже занято</string>
@@ -1294,6 +1335,8 @@
     <string name="private_chat_decryption_failed">[не удалось расшифровать]</string>
     <string name="storage_cache_cleared">Кеш очищен</string>
     <string name="notification_unknown_sender">Неизвестный отправитель</string>
+    <string name="notification_group_chat">Групповой чат</string>
+    <string name="notification_unknown_sender_id">Пользователь %1$d</string>
     <string name="notification_sender_in_chat">%1$s в %2$s</string>
     <string name="select_server_connection_failed">Не удалось подключиться к ноде</string>
     <string name="select_server_connection_timeout">Нода не ответила вовремя. Проверьте адрес и попробуйте ещё раз.</string>
