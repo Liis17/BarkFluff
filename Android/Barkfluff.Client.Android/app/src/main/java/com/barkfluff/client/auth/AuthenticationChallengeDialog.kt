@@ -176,7 +176,7 @@ class AuthenticationChallengeDialog(
                 when (challenge.state) {
                     AuthenticationChallengeState.APPROVED -> {
                         showCompletion()
-                        false
+                        !completed
                     }
                     AuthenticationChallengeState.REJECTED -> {
                         finish(Result.failure(IllegalStateException(activity.getString(R.string.auth_challenge_rejected))))
@@ -222,8 +222,9 @@ class AuthenticationChallengeDialog(
                     if (!completed) {
                         controller.resumeOrBegin { begin() }
                             .onSuccess { response ->
-                                render(response)
-                                controller.poll { update -> render(update) }
+                                if (render(response)) {
+                                    controller.poll { update -> render(update) }
+                                }
                             }
                             .onFailure { failure ->
                                 error.text = failure.message ?: activity.getString(R.string.auth_error)

@@ -15,6 +15,10 @@ import com.barkfluff.client.domain.model.SecuritySettingsUpdate
 import com.barkfluff.client.domain.model.SignInResolution
 import com.barkfluff.client.domain.model.SignInRequest
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
+import java.net.UnknownHostException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -86,6 +90,62 @@ class AuthenticationChallengeControllerTest {
         assertEquals(1, gateway.challengeCalls)
     }
 
+    @Test(timeout = 5_000)
+    fun `resume retries a temporary DNS failure and completes the same approved challenge`() = runBlocking {
+        val gateway = FakeGateway()
+        val controller = AuthenticationChallengeController(gateway, pollIntervalMillis = 0)
+        controller.begin { beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD)) }
+        gateway.challengeFailures = 1
+        gateway.currentChallenge = gateway.challenge.copy(state = AuthenticationChallengeState.APPROVED)
+        gateway.completion = gateway.completion.copy(state = AuthenticationChallengeState.COMPLETED)
+
+        val resumed = controller.resumeOrBegin { error("Must reuse the pending challenge") }.getOrThrow()
+        assertEquals(AuthenticationChallengeState.APPROVED, resumed.state)
+        assertEquals(AuthenticationChallengeState.COMPLETED, controller.complete().getOrThrow().state)
+        assertEquals(1, gateway.beginSignInCalls)
+        assertEquals(2, gateway.challengeCalls)
+        assertTrue(gateway.cancelled.isEmpty())
+    }
+
+    @Test
+    fun `background cancellation stops resume retries and retains the challenge for next resume`() = runBlocking {
+        val gateway = FakeGateway()
+        val controller = AuthenticationChallengeController(gateway, pollIntervalMillis = 60_000)
+        controller.begin { beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD)) }
+        gateway.challengeFailures = 1
+
+        val job = launch(start = CoroutineStart.UNDISPATCHED) {
+            controller.resumeOrBegin { error("Must reuse the pending challenge") }
+            error("Resume must still be waiting for connectivity")
+        }
+        assertEquals(1, gateway.challengeCalls)
+        job.cancelAndJoin()
+
+        assertTrue(controller.hasActiveChallenge)
+        assertTrue(controller.resumeOrBegin { error("Must reuse the pending challenge") }.isSuccess)
+        assertEquals(1, gateway.beginSignInCalls)
+        assertEquals(2, gateway.challengeCalls)
+        assertTrue(gateway.cancelled.isEmpty())
+    }
+
+    @Test(timeout = 5_000)
+    fun `poll retries completion after approval when completing first fails`() = runBlocking {
+        val gateway = FakeGateway()
+        val controller = AuthenticationChallengeController(gateway, pollIntervalMillis = 0)
+        controller.begin { beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD)) }
+        gateway.currentChallenge = gateway.challenge.copy(state = AuthenticationChallengeState.APPROVED)
+        gateway.completeFailures = 1
+        gateway.completion = gateway.completion.copy(state = AuthenticationChallengeState.COMPLETED)
+
+        controller.poll { update ->
+            assertEquals(AuthenticationChallengeState.APPROVED, update.state)
+            controller.complete().isFailure
+        }
+
+        assertEquals(2, gateway.completeCalls)
+        assertFalse(controller.hasActiveChallenge)
+    }
+
     @Test
     fun `terminal poll result clears the active challenge even when UI stops polling`() = runBlocking {
         val gateway = FakeGateway().apply {
@@ -103,8 +163,10 @@ class AuthenticationChallengeControllerTest {
         val reference = AuthenticationChallengeReference("challenge", "secret")
         val cancelled = mutableListOf<AuthenticationChallengeReference>()
         var completeCalls = 0
+        var completeFailures = 0
         var beginSignInCalls = 0
         var challengeCalls = 0
+        var challengeFailures = 0
         var completion = AuthenticationCompletion(
             state = AuthenticationChallengeState.WAITING,
             session = null,
@@ -135,10 +197,18 @@ class AuthenticationChallengeControllerTest {
         }
         override suspend fun challenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge> {
             challengeCalls++
+            if (challengeFailures > 0) {
+                challengeFailures--
+                return Result.failure(UnknownHostException("identity.example.test"))
+            }
             return Result.success(currentChallenge)
         }
         override suspend fun completeChallenge(reference: AuthenticationChallengeReference, code: String, useRecoveryCode: Boolean): Result<AuthenticationCompletion> {
             completeCalls++
+            if (completeFailures > 0) {
+                completeFailures--
+                return Result.failure(UnknownHostException("identity.example.test"))
+            }
             return Result.success(completion)
         }
         override suspend fun cancelChallenge(reference: AuthenticationChallengeReference): Result<AuthenticationChallenge> {
