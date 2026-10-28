@@ -5,7 +5,10 @@ import com.barkfluff.client.domain.model.AuthenticationChallenge
 import com.barkfluff.client.domain.model.AuthenticationChallengeReference
 import com.barkfluff.client.domain.model.AuthenticationChallengeState
 import com.barkfluff.client.domain.model.AuthenticationCompletion
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 
 /**
  * Keeps exactly one Identity challenge in memory and ignores responses from a cancelled/replaced
@@ -34,7 +37,21 @@ class AuthenticationChallengeController(
     /** Rejoins an in-memory challenge after a configuration change instead of issuing a duplicate one. */
     suspend fun resumeOrBegin(
         start: suspend AuthenticationChallengeGateway.() -> Result<AuthenticationChallenge>,
-    ): Result<AuthenticationChallenge> = if (hasActiveChallenge) refresh() else begin(start)
+    ): Result<AuthenticationChallenge> {
+        if (!hasActiveChallenge) return begin(start)
+        val requestGeneration = generation
+        var result = refresh()
+        // A backgrounded Android process may temporarily lose DNS/connectivity. Keep waiting
+        // for the existing challenge, just as poll() does, without issuing another Begin.
+        while (result.isFailure && hasActiveChallenge && requestGeneration == generation) {
+            (result.exceptionOrNull() as? CancellationException)?.let { throw it }
+            delay(pollIntervalMillis)
+            currentCoroutineContext().ensureActive()
+            if (!hasActiveChallenge || requestGeneration != generation) break
+            result = refresh()
+        }
+        return result
+    }
 
     suspend fun refresh(): Result<AuthenticationChallenge> = withActive { reference ->
         gateway.challenge(reference)
