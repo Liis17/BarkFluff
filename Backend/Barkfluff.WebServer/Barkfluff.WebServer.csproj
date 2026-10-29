@@ -65,6 +65,12 @@
     <Content Include="files\site-header.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="files\site-landing.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\site-landing.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="html\about.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

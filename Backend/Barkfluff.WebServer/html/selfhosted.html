@@ -2,56 +2,106 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title data-ru="Своя нода — Barkfluff" data-en="Your own node — Barkfluff">Своя нода — Barkfluff</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-ru="Self-hosted — Barkfluff" data-en="Self-hosted — Barkfluff">Self-hosted — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-  <script>
-    try {
-      var savedLang = localStorage.getItem('bf_lang');
-      document.documentElement.lang = savedLang === 'ru' || savedLang === 'en' ? savedLang : ((navigator.language || '').startsWith('ru') ? 'ru' : 'en');
-    } catch (_) { }
-  </script>
-  <link rel="stylesheet" href="/assets/site-theme.css">
-  <link rel="stylesheet" href="/assets/site-header.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site-landing.css">
   <style>
-    html[lang="ru"] .selfhosted-page [lang="en"],
-    html[lang="en"] .selfhosted-page [lang="ru"] { display: none; }
+:root{
+  --bg:#efebe5;--surface:#faf8f5;--chip:#e6dfd5;--ink:#221b17;--ink-sub:#5b5049;
+  --accent:#8c351c;--accent-ink:#ffffff;--line:#d6cdc2;--peach:#e7b8a2;
+  --display:"Outfit",system-ui,sans-serif;--body:"Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+:root:not([data-theme="light"]){
+    --bg:#141210;--surface:#272320;--chip:#322c28;--ink:#f3ece6;--ink-sub:#c4b8ae;
+    --accent:#e8a48a;--accent-ink:#141210;--line:#3d3530;--peach:#6e3f2e;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141210;--surface:#272320;--chip:#322c28;--ink:#f3ece6;--ink-sub:#c4b8ae;
+  --accent:#e8a48a;--accent-ink:#141210;--line:#3d3530;--peach:#6e3f2e;
+}
+.ph{color:var(--ink-sub);font-style:italic}
+.hero{padding:72px 0 56px}
+.hero h1{font-size:clamp(56px,8vw,112px);line-height:.94;letter-spacing:-0.04em;font-weight:800;margin-bottom:28px}
+.hero .lead{font-size:20px;line-height:1.55;color:var(--ink-sub);max-width:36em}
+.callout{background:var(--surface);border-radius:28px;padding:44px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:40px;margin-bottom:96px}
+.callout h2{font-size:36px;letter-spacing:-0.02em}
+.callout p{color:var(--ink-sub);font-size:17px}
+.steps{list-style:none;padding:0;margin:0 0 96px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.step{border-top:1px solid var(--line);padding-top:28px;display:flex;flex-direction:column;gap:14px}
+.step h3{font-size:24px}
+.step .idx{font-family:var(--display);font-weight:700;color:var(--accent);font-size:15px}
+.step p{color:var(--ink-sub)}
+.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:var(--chip);border-radius:14px;padding:18px 20px;color:var(--ink-sub)}
+.sub{margin-top:auto}
+.table{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.table span{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.sub-h{font-size:18px;font-weight:600;margin:0 0 6px}
+.foot{background:var(--ink);color:var(--bg);padding:40px 0;margin-top:120px}
+@media (max-width:980px){
+.callout{grid-template-columns:1fr;gap:18px;padding:32px}
+.steps{grid-template-columns:1fr}
+.table{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:600px){
+.hero .lead{font-size:18px}
+}
+
+.hero{padding:56px 0 40px}
+.hero .lead{margin-top:28px;display:grid;gap:12px}
+.toc{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 56px}
+.toc a{font-size:14px;border:1px solid var(--line);border-radius:999px;padding:8px 16px;text-decoration:none;color:var(--ink-sub)}
+.toc a:hover{color:var(--ink);border-color:var(--ink)}
+.callout{grid-template-columns:1fr;gap:18px;padding:32px}
+.steps{grid-template-columns:1fr}
+.sub-h{font-size:18px;font-weight:600;margin:24px 0 8px}
+figure.code{margin:8px 0 0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--chip)}
+figure.code figcaption{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);color:var(--ink-sub);font-size:12px}
+figure.code figcaption b{color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+figure.code pre{margin:0;border-radius:0;background:transparent;padding:18px;font-size:12px;line-height:1.65;color:var(--ink)}
+figure.code pre code{background:none;padding:0;font-size:inherit;white-space:pre}
+figure.code.tall pre{max-height:520px}
+.copy-btn{flex:none;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink-sub);font:inherit;font-size:11px;font-weight:600;cursor:pointer}
+.copy-btn:hover{color:var(--ink)}
   </style>
 </head>
-<body class="document-page selfhosted-page">
-  <div class="home-page">
-    <header class="home-nav">
-      <div class="home-nav-left">
-        <a href="/" class="brand-mark">
-          <span class="glyph"><img src="/favicon.ico" width="28" height="28" alt=""></span>
-          <span>barkfluff</span>
-        </a>
-        <button class="lang-btn" id="langToggle" type="button">EN</button>
-      </div>
-      <div class="home-nav-right">
-        <a href="/about" class="home-nav-link" data-ru="О проекте" data-en="About the project">О проекте</a>
-        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener" class="home-nav-link">GitHub</a>
-        <a href="/selfhosted" class="home-nav-link">Self-hosted</a>
-        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" class="home-nav-link" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
-        <a href="https://t.me/barkfluff?direct" target="_blank" rel="noopener" class="btn btn-ghost">
-          Telegram
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.04 15.2l-.4 5.66c.58 0 .83-.25 1.14-.55l2.74-2.61 5.68 4.16c1.04.57 1.78.27 2.06-.96l3.72-17.42c.33-1.53-.55-2.13-1.57-1.76L1.57 9.88c-1.5.58-1.48 1.42-.25 1.8l5.4 1.68L19.17 5.7c.59-.38 1.13-.17.69.22"/></svg>
-        </a>
+<body>
+<div class="wrap">
+    <header class="top">
+      <a class="brand" href="/">BarkFluff</a>
+      <div class="top-right">
+        <button class="lang" id="langToggle" type="button" aria-label="Language / Язык">EN</button>
+        <nav class="nav" aria-label="Основная навигация">
+          <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
+          <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+          <a href="/selfhosted">Self-hosted</a>
+          <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+          <a href="https://t.me/barkfluff?direct" target="_blank" rel="noopener">Telegram</a>
+        </nav>
       </div>
     </header>
-  </div>
-  <main>
-    <div class="hero">
-      <span class="eyebrow">Self-hosted</span>
-      <h1><span lang="ru">Своя нода Barkfluff</span><span lang="en">Run your own Barkfluff node</span></h1>
-      <p lang="ru">Barkfluff — федеративная сеть независимых серверов. Каждый может поднять свою ноду: аккаунты, сообщения и файлы остаются на вашем железе, а с пользователями других нод ваши пользователи общаются через межсерверный протокол.</p>
-      <p lang="en">Barkfluff is a federated network of independent servers. Anyone can run their own node: accounts, messages and files stay on your hardware, while your users talk to users of other nodes through the server-to-server protocol.</p>
+
+    <div class="notice" id="domainNotice" role="note">
+      <p id="domainNoticeText">BarkFluff — некоммерческий проект мессенджера с открытым исходным кодом. Мы не связаны с прежним магазином товаров для животных, который использовал barkfluff.com.</p>
+      <a id="domainNoticeLink" href="/about#domain-history">Подробнее о проекте и истории домена →</a>
+      <button id="domainNoticeClose" type="button" aria-label="Закрыть уведомление об истории домена" hidden>&times;</button>
     </div>
 
-    <nav class="toc document-nav" aria-label="Разделы руководства" data-ru="Разделы руководства" data-en="Guide sections" data-i18n-attr="aria-label">
+    <section class="hero">
+      <p class="eyebrow">Self-hosted</p>
+      <h1><span lang="ru">Своя нода Barkfluff</span><span lang="en">Run your own Barkfluff node</span></h1>
+      <div class="lead">
+        <p lang="ru">Barkfluff — федеративная сеть независимых серверов. Каждый может поднять свою ноду: аккаунты, сообщения и файлы остаются на вашем железе, а с пользователями других нод ваши пользователи общаются через межсерверный протокол.</p>
+        <p lang="en">Barkfluff is a federated network of independent servers. Anyone can run their own node: accounts, messages and files stay on your hardware, while your users talk to users of other nodes through the server-to-server protocol.</p>
+      </div>
+    </section>
+
+    <nav class="toc" aria-label="Разделы руководства / Guide sections">
       <a href="#otvetstvennost"><span lang="ru">Ответственность</span><span lang="en">Responsibility</span></a>
       <a href="#trebovaniya"><span lang="ru">Требования</span><span lang="en">Requirements</span></a>
       <a href="#dns"><span lang="ru">DNS и TLS</span><span lang="en">DNS and TLS</span></a>
@@ -63,9 +113,9 @@
       <a href="#obsluzhivanie"><span lang="ru">Обслуживание</span><span lang="en">Maintenance</span></a>
     </nav>
 
-    <section id="otvetstvennost">
-      <h2><span class="num">0</span><span lang="ru">Что вы на себя берёте</span><span lang="en">What you are taking on</span></h2>
-      <div class="callout warn">
+    <section class="callout" id="otvetstvennost">
+      <h2><span lang="ru">Что вы на себя берёте</span><span lang="en">What you are taking on</span></h2>
+      <div><div class="callout warn">
         <div lang="ru">
           <span class="tag">Прочитайте до установки</span>
           <p>Развернув ноду, вы становитесь её <strong>администратором и оператором персональных данных</strong> ваших пользователей. У вас будет технический доступ к базе данных, файловому хранилищу, резервным копиям и логам — то есть к содержимому обычных переписок. Вы отвечаете за хранение, выдачу и удаление этих данных, за модерацию и за соблюдение применимого к вам законодательства.</p>
@@ -78,12 +128,14 @@
         </div>
       </div>
       <p lang="ru">Опубликуйте на своей ноде собственные <a href="/legal/privacy-policy">политику конфиденциальности</a>, <a href="/legal/terms-of-service">условия использования</a> и <a href="/legal/account-deletion">порядок удаления аккаунта</a> — документы barkfluff.com можно взять за основу, но контакты и юрисдикция в них должны быть ваши. Что именно уходит на чужие ноды при федеративной переписке, описано на странице <a href="/legal/encryption">о шифровании</a>.</p>
-      <p lang="en">Publish your own <a href="/legal/privacy-policy">privacy policy</a>, <a href="/legal/terms-of-service">terms of service</a> and <a href="/legal/account-deletion">account deletion procedure</a> on your node — the barkfluff.com documents can be used as a starting point, but the contacts and jurisdiction in them must be yours. What exactly is sent to other nodes during federated conversations is described on the <a href="/legal/encryption">encryption</a> page.</p>
+      <p lang="en">Publish your own <a href="/legal/privacy-policy">privacy policy</a>, <a href="/legal/terms-of-service">terms of service</a> and <a href="/legal/account-deletion">account deletion procedure</a> on your node — the barkfluff.com documents can be used as a starting point, but the contacts and jurisdiction in them must be yours. What exactly is sent to other nodes during federated conversations is described on the <a href="/legal/encryption">encryption</a> page.</p></div>
     </section>
 
-    <section id="trebovaniya">
-      <h2><span class="num">1</span><span lang="ru">Требования</span><span lang="en">Requirements</span></h2>
-      <ul lang="ru">
+    <ol class="steps" style="padding:0">
+      <li class="step" id="trebovaniya">
+        <span class="idx">01</span>
+        <h3><span lang="ru">Требования</span><span lang="en">Requirements</span></h3>
+        <ul lang="ru">
         <li><strong>Linux-хост</strong> с Docker и Docker Compose v2.</li>
         <li><strong>4 ГБ ОЗУ минимум</strong>, 8 ГБ комфортно: стек — это ~16 контейнеров, PostgreSQL, RabbitMQ, Redis и Seq.</li>
         <li><strong>2 ядра CPU</strong> (параметры PostgreSQL в примере ниже подогнаны под 2 ядра / 8 ГБ).</li>
@@ -111,11 +163,11 @@
         <p>Barkfluff is under active development. Breaking database schema changes happen between releases — keep backups and don't update a production node without trying it on a test one first.</p>
         </div>
       </div>
-    </section>
-
-    <section id="dns">
-      <h2><span class="num">2</span><span lang="ru">DNS и TLS</span><span lang="en">DNS and TLS</span></h2>
-      <p lang="ru">Каждый сервис публикуется отдельным субдоменом — так устроены конфиги nginx в репозитории. Заведите A-записи (или один wildcard <code>*.example.com</code>) на IP вашей ноды:</p>
+      </li>
+      <li class="step" id="dns">
+        <span class="idx">02</span>
+        <h3><span lang="ru">DNS и TLS</span><span lang="en">DNS and TLS</span></h3>
+        <p lang="ru">Каждый сервис публикуется отдельным субдоменом — так устроены конфиги nginx в репозитории. Заведите A-записи (или один wildcard <code>*.example.com</code>) на IP вашей ноды:</p>
       <p lang="en">Each service is published on its own subdomain — that is how the nginx configs in the repository are laid out. Create A records (or a single wildcard <code>*.example.com</code>) pointing at your node's IP:</p>
       <div class="scroll-x">
       <table>
@@ -139,14 +191,14 @@
       </div>
       <p lang="ru">Для <code>federation.</code> допустим самоподписанный сертификат: чужие ноды сверяют отпечаток открытого ключа (SPKI), а не цепочку удостоверяющего центра. А вот на apex-домене сертификат обязан быть валидным для обычных браузеров — по <code>https://example.com/.well-known/barkfluff</code> с вами знакомятся ноды, которые вас ещё не знают.</p>
       <p lang="en">A self-signed certificate is acceptable for <code>federation.</code>: other nodes check the fingerprint of the public key (SPKI), not the certificate authority chain. The certificate on the apex domain, however, must be valid for ordinary browsers — nodes that don't know you yet get introduced to you through <code>https://example.com/.well-known/barkfluff</code>.</p>
-    </section>
-
-    <section id="compose">
-      <h2><span class="num">3</span>docker-compose.yml</h2>
-      <p lang="ru">Релизный стек. Отличия от dev-варианта из репозитория: образы без суффикса <code>-dev</code> и порты инфраструктуры не выставлены на хост — наружу смотрит только nginx.</p>
+      </li>
+      <li class="step" id="compose">
+        <span class="idx">03</span>
+        <h3>docker-compose.yml</h3>
+        <p lang="ru">Релизный стек. Отличия от dev-варианта из репозитория: образы без суффикса <code>-dev</code> и порты инфраструктуры не выставлены на хост — наружу смотрит только nginx.</p>
       <p lang="en">The release stack. Differences from the dev variant in the repository: images without the <code>-dev</code> suffix, and the infrastructure ports are not exposed to the host — only nginx faces outward.</p>
       <figure class="code tall">
-        <figcaption><b>docker-compose.yml</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
+        <figcaption><b>docker-compose.yml</b><button class="copy-btn" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
         <pre><code>x-common-variables: &amp;common-variables
   SETTINGS_SERVICE_URL: "${SETTINGS_SERVICE_URL}"
   ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT}"
@@ -555,14 +607,14 @@ volumes:
         <p>The <code>seq</code> (logs) and <code>minio</code> (console) web interfaces are not published externally. If you need access, add a separate nginx subdomain with authentication or go through an SSH tunnel.</p>
         </div>
       </div>
-    </section>
-
-    <section id="env">
-      <h2><span class="num">4</span>.env</h2>
-      <p lang="ru">Файл лежит рядом с <code>docker-compose.yml</code>. Здесь только то, без чего стек не поднимется: остальная конфигурация живёт в базе Settings (шаг 6).</p>
+      </li>
+      <li class="step" id="env">
+        <span class="idx">04</span>
+        <h3>.env</h3>
+        <p lang="ru">Файл лежит рядом с <code>docker-compose.yml</code>. Здесь только то, без чего стек не поднимется: остальная конфигурация живёт в базе Settings (шаг 6).</p>
       <p lang="en">The file sits next to <code>docker-compose.yml</code>. It holds only what the stack cannot start without: the rest of the configuration lives in the Settings database (step 6).</p>
       <figure class="code tall">
-        <figcaption><b>.env</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
+        <figcaption><b>.env</b><button class="copy-btn" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
         <pre><code><span lang="ru"># Имя инстанса в служебных заголовках и логах. Обычно — имя хоста.
 </span><span lang="en"># Instance name in service headers and logs. Usually the host name.
 </span>HOSTNAME=node-1
@@ -676,14 +728,14 @@ FIREBASE_CLIENT_ID=</code></pre>
           <p>Every <code>change-me</code> value must be replaced before the first launch. Changing the PostgreSQL password after startup is painful: it is already written into the connection strings inside the Settings database.</p>
         </div>
       </div>
-    </section>
-
-    <section id="zapusk">
-      <h2><span class="num">5</span><span lang="ru">Первый запуск</span><span lang="en">First run</span></h2>
-      <p lang="ru">Сначала поднимите bootstrap-compose с PostgreSQL, Settings в режиме настройки и Setup UI. Остальные сервисы запускаются только после завершения формы.</p>
+      </li>
+      <li class="step" id="zapusk">
+        <span class="idx">05</span>
+        <h3><span lang="ru">Первый запуск</span><span lang="en">First run</span></h3>
+        <p lang="ru">Сначала поднимите bootstrap-compose с PostgreSQL, Settings в режиме настройки и Setup UI. Остальные сервисы запускаются только после завершения формы.</p>
       <p lang="en">First bring up the bootstrap compose with PostgreSQL, Settings in setup mode and Setup UI. The remaining services start only after the form is completed.</p>
       <figure class="code">
-        <figcaption><b>bash</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
+        <figcaption><b>bash</b><button class="copy-btn" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
         <pre><code>docker login docker.barkfluff.com
 docker compose pull
 
@@ -700,15 +752,15 @@ docker compose ps</code></pre>
       </figure>
       <p lang="ru">Bootstrap создаёт только отсутствующие базы. Settings применяет миграции к выбранной базе и добавляет только отсутствующие ключи каталога; существующие значения не перезаписываются. После завершения форма блокируется отпечатком каталога полей.</p>
       <p lang="en">Bootstrap creates only the missing databases. Settings applies migrations to the selected database and adds only the missing catalog keys; existing values are not overwritten. Once finished, the form is locked by the field catalog fingerprint.</p>
-    </section>
-
-    <section id="settings">
-      <h2><span class="num">6</span><span lang="ru">Что заполнить в Settings</span><span lang="en">What to fill in Settings</span></h2>
-      <p lang="ru">Setup UI последовательно показывает группы полей Settings и поясняет назначение каждого значения. Сохранение группы валидирует поля на сервере, а ошибки отображаются рядом с конкретным вводом.</p>
+      </li>
+      <li class="step" id="settings">
+        <span class="idx">06</span>
+        <h3><span lang="ru">Что заполнить в Settings</span><span lang="en">What to fill in Settings</span></h3>
+        <p lang="ru">Setup UI последовательно показывает группы полей Settings и поясняет назначение каждого значения. Сохранение группы валидирует поля на сервере, а ошибки отображаются рядом с конкретным вводом.</p>
       <p lang="en">Setup UI shows the Settings field groups one after another and explains the purpose of each value. Saving a group validates the fields on the server, and errors are displayed next to the specific input.</p>
 
-      <h3 lang="ru">Обязательно: остаются пустыми после установки</h3>
-      <h3 lang="en">Required: left empty after installation</h3>
+      <h4 class="sub-h" lang="ru">Обязательно: остаются пустыми после установки</h4>
+      <h4 class="sub-h" lang="en">Required: left empty after installation</h4>
       <p lang="ru">Setup UI отмечает эти поля как обязательные — без них сервисы работать не будут.</p>
       <p lang="en">Setup UI marks these fields as required — the services will not work without them.</p>
       <div class="scroll-x">
@@ -722,8 +774,8 @@ docker compose ps</code></pre>
       </table>
       </div>
 
-      <h3 lang="ru">Поля с безопасными значениями по умолчанию</h3>
-      <h3 lang="en">Fields with safe defaults</h3>
+      <h4 class="sub-h" lang="ru">Поля с безопасными значениями по умолчанию</h4>
+      <h4 class="sub-h" lang="en">Fields with safe defaults</h4>
       <p lang="ru">Проверьте значения в Setup UI: адреса из примера нужно заменить на домены вашей ноды, а секреты MinIO и LiveKit — на собственные. Ключи S3 и LiveKit намеренно остаются пустыми до первичной настройки.</p>
       <p lang="en">Check the values in Setup UI: the example addresses must be replaced with your node's domains, and the MinIO and LiveKit secrets with your own. The S3 and LiveKit keys are intentionally left empty until the initial setup.</p>
       <div class="scroll-x">
@@ -740,8 +792,8 @@ docker compose ps</code></pre>
       </table>
       </div>
 
-      <h3 lang="ru">Settings заполняет автоматически</h3>
-      <h3 lang="en">Settings fills in automatically</h3>
+      <h4 class="sub-h" lang="ru">Settings заполняет автоматически</h4>
+      <h4 class="sub-h" lang="en">Settings fills in automatically</h4>
       <ul lang="ru">
         <li><code>JwtSettings:SecretKey</code>, <code>Issuer</code>, <code>Audience</code>, <code>ExpiryMinutes</code> — ключ генерируется при первом старте. Смена ключа разлогинит всех.</li>
         <li><code>UsersService</code>, <code>FilesService</code>, <code>MessagesService</code>, <code>IdentityService</code>, <code>OnlinerService</code>, <code>BotsService</code>, <code>FederationService</code> — внутренние адреса и токены межсервисного доступа.</li>
@@ -762,11 +814,11 @@ docker compose ps</code></pre>
         <p>Settings issues the tokens from <code>*Service:Token</code> to the services automatically. After changing operator values, restart the affected container.</p>
         </div>
       </div>
-    </section>
-
-    <section id="federaciya">
-      <h2><span class="num">7</span><span lang="ru">Федерация (по желанию)</span><span lang="en">Federation (optional)</span></h2>
-      <p lang="ru">По умолчанию федерация выключена: нода работает сама по себе, пользователи общаются только внутри неё. Чтобы связать её с остальной сетью, заполните ключи сервиса Federation:</p>
+      </li>
+      <li class="step" id="federaciya">
+        <span class="idx">07</span>
+        <h3><span lang="ru">Федерация (по желанию)</span><span lang="en">Federation (optional)</span></h3>
+        <p lang="ru">По умолчанию федерация выключена: нода работает сама по себе, пользователи общаются только внутри неё. Чтобы связать её с остальной сетью, заполните ключи сервиса Federation:</p>
       <p lang="en">Federation is off by default: the node works on its own, and users talk only within it. To connect it to the rest of the network, fill in the keys of the Federation service:</p>
       <div class="scroll-x">
       <table>
@@ -782,7 +834,7 @@ docker compose ps</code></pre>
       <p lang="ru">Отпечаток снимается с вашего сертификата:</p>
       <p lang="en">The fingerprint is taken from your certificate:</p>
       <figure class="code">
-        <figcaption><b>bash</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
+        <figcaption><b>bash</b><button class="copy-btn" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
         <pre><code>openssl x509 -in fullchain.pem -pubkey -noout \
   | openssl pkey -pubin -outform der \
   | openssl dgst -sha256 -binary \
@@ -800,25 +852,24 @@ docker compose ps</code></pre>
           <p>Federated conversation is <strong>not</strong> end-to-end encrypted: both your node and the other party's node can see the message contents and files. Deleting an account on your node does not delete the copies on other nodes. For now only direct chats can be federated — there are no group chats. Warn your users about this in your own privacy policy; a user can opt out of incoming federated chats in the privacy settings.</p>
         </div>
       </div>
-    </section>
-
-    <section id="obsluzhivanie">
-      <h2><span class="num">8</span><span lang="ru">Обслуживание</span><span lang="en">Maintenance</span></h2>
-
-      <h3 lang="ru">Логи</h3>
-      <h3 lang="en">Logs</h3>
+      </li>
+      <li class="step" id="obsluzhivanie">
+        <span class="idx">08</span>
+        <h3><span lang="ru">Обслуживание</span><span lang="en">Maintenance</span></h3>
+        <h4 class="sub-h" lang="ru">Логи</h4>
+      <h4 class="sub-h" lang="en">Logs</h4>
       <figure class="code">
-        <figcaption><b>bash</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
+        <figcaption><b>bash</b><button class="copy-btn" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
         <pre><code>docker compose logs -f messages          <span lang="ru"># один сервис</span><span lang="en"># one service</span>
 docker compose logs -f --tail=200        <span lang="ru"># всё сразу</span><span lang="en"># everything at once</span></code></pre>
       </figure>
       <p lang="ru">Структурированные логи со всех сервисов собирает Seq — искать в нём удобнее, чем в выводе Docker.</p>
       <p lang="en">Seq collects structured logs from all the services — searching there is more convenient than in the Docker output.</p>
 
-      <h3 lang="ru">Резервные копии</h3>
-      <h3 lang="en">Backups</h3>
+      <h4 class="sub-h" lang="ru">Резервные копии</h4>
+      <h4 class="sub-h" lang="en">Backups</h4>
       <figure class="code">
-        <figcaption><b>bash</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
+        <figcaption><b>bash</b><button class="copy-btn" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
         <pre><code><span lang="ru"># Все базы разом
 </span><span lang="en"># All databases at once
 </span>docker compose exec postgres pg_dumpall -U barkfluff &gt; backup-$(date +%F).sql
@@ -831,18 +882,18 @@ docker compose logs -f --tail=200        <span lang="ru"># всё сразу</sp
       <p lang="ru">Бэкапить надо и базы, и хранилище: без файлов дамп базы восстановит переписку с битыми вложениями. Проверьте, что копия разворачивается, — непроверенного бэкапа не существует.</p>
       <p lang="en">Back up both the databases and the storage: without the files, a database dump restores conversations with broken attachments. Check that the backup can be restored — an untested backup does not exist.</p>
 
-      <h3 lang="ru">Обновление</h3>
-      <h3 lang="en">Updating</h3>
+      <h4 class="sub-h" lang="ru">Обновление</h4>
+      <h4 class="sub-h" lang="en">Updating</h4>
       <figure class="code">
-        <figcaption><b>bash</b><button class="copy" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
+        <figcaption><b>bash</b><button class="copy-btn" type="button" data-ru="Копировать" data-en="Copy">Копировать</button></figcaption>
         <pre><code>docker compose pull
 docker compose up -d</code></pre>
       </figure>
       <p lang="ru">Миграции базы сервисы накатывают сами при старте. Сначала снимите бэкап. Не используйте <code>docker compose down -v</code>: эта команда удаляет именованные volumes с данными.</p>
       <p lang="en">Services apply database migrations themselves at startup. Take a backup first. Do not use <code>docker compose down -v</code>: this command deletes the named volumes that hold the data.</p>
 
-      <h3 lang="ru">Безопасность</h3>
-      <h3 lang="en">Security</h3>
+      <h4 class="sub-h" lang="ru">Безопасность</h4>
+      <h4 class="sub-h" lang="en">Security</h4>
       <ul lang="ru">
         <li>Наружу открыты только 80, 443 и медиапорты LiveKit — остальное закройте фаерволом.</li>
         <li>Пароли из <code>.env</code> и секреты Settings — это доступ ко всем перепискам ноды. Файл <code>.env</code> держите с правами <code>600</code> и вне репозитория.</li>
@@ -855,11 +906,11 @@ docker compose up -d</code></pre>
         <li>Changing <code>JwtSettings:SecretKey</code> invalidates all sessions and inter-service tokens at once — suitable as an emergency measure after a leak.</li>
         <li>The admin panel has access to the Docker socket: whoever gets the panel gets the host.</li>
       </ul>
-    </section>
-
-    <section id="podderzhka">
-      <h2><span class="num">9</span><span lang="ru">Если что-то не поднялось</span><span lang="en">If something did not start</span></h2>
-      <ul lang="ru">
+      </li>
+      <li class="step" id="podderzhka">
+        <span class="idx">09</span>
+        <h3><span lang="ru">Если что-то не поднялось</span><span lang="en">If something did not start</span></h3>
+        <ul lang="ru">
         <li>Сервис перезапускается в цикле — смотрите его логи первым делом: чаще всего он не смог достучаться до Settings либо не нашёл свою запись в конфигурации.</li>
         <li>Клиенты не видят ноду — проверьте <code>ExternalEndpoint:Host</code> и то, что nginx проксирует gRPC, а не обычный HTTP.</li>
         <li>Исходники и сборочные конфиги: <a href="https://github.com/Liis17/BarkFluff">github.com/Liis17/BarkFluff</a>, вопросы по коду — <a href="https://github.com/Liis17/BarkFluff/issues">issues</a>.</li>
@@ -871,50 +922,37 @@ docker compose up -d</code></pre>
         <li>Sources and build configs: <a href="https://github.com/Liis17/BarkFluff">github.com/Liis17/BarkFluff</a>; for questions about the code, use <a href="https://github.com/Liis17/BarkFluff/issues">issues</a>.</li>
         <li>Vulnerabilities in the code and protocol — security@barkfluff.com. The developers cannot see the data of your node's users and do not handle requests about it.</li>
       </ul>
-    </section>
+      </li>
+    </ol>
+  </div>
 
-    <footer>
-      <span>2026 Barkfluff</span>
-      <span class="footer-links">
+  <footer class="foot">
+    <div class="wrap foot-in">
+      <p class="copy">2026 Barkfluff</p>
+      <nav class="foot-nav" aria-label="Нижнее меню">
         <a href="/" data-ru="Главная" data-en="Home">Главная</a>
         <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
         <a href="/legal/terms-of-service" data-ru="Условия" data-en="Terms">Условия</a>
         <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
-      </span>
-    </footer>
-  </main>
-
+      </nav>
+    </div>
+  </footer>
   <script>
     (function () {
-      var toggle = document.getElementById('langToggle');
-      var copied = { ru: 'Скопировано', en: 'Copied' };
-      function applyLang(lang) {
-        document.documentElement.lang = lang;
-        try { localStorage.setItem('bf_lang', lang); } catch (_) { }
-        document.querySelectorAll('[data-ru]').forEach(function (el) {
-          var value = el.getAttribute('data-' + lang);
-          if (el.dataset.i18nAttr) el.setAttribute(el.dataset.i18nAttr, value);
-          else el.textContent = value;
-        });
-        toggle.textContent = lang === 'ru' ? 'EN' : 'RU';
-      }
-      toggle.addEventListener('click', function () {
-        applyLang(document.documentElement.lang === 'ru' ? 'en' : 'ru');
-      });
-      applyLang(document.documentElement.lang === 'ru' ? 'ru' : 'en');
-
-      document.querySelectorAll('.copy').forEach(function (btn) {
+      document.querySelectorAll('.copy-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var code = btn.closest('figure').querySelector('code');
           navigator.clipboard.writeText(code.innerText).then(function () {
-            var lang = document.documentElement.lang;
-            btn.textContent = copied[lang];
-            setTimeout(function () { btn.textContent = btn.getAttribute('data-' + document.documentElement.lang); }, 1500);
+            var lang = document.documentElement.lang === 'en' ? 'en' : 'ru';
+            btn.textContent = lang === 'ru' ? 'Скопировано' : 'Copied';
+            setTimeout(function () { btn.textContent = btn.getAttribute('data-' + lang); }, 1500);
           });
         });
       });
     })();
   </script>
+  <script src="/assets/site-landing.js"></script>
+  <script src="/assets/domain-notice.js" defer></script>
   <script src="/assets/cookie-notice.js" defer></script>
 </body>
 </html>

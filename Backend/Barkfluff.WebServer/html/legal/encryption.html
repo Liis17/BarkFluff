@@ -2,54 +2,102 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-ru="Шифрование — Barkfluff" data-en="Encryption — Barkfluff">Шифрование — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/site-theme.css">
-  <link rel="stylesheet" href="/assets/site-header.css">
-  <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site-landing.css">
+  <style>
+:root{
+  --bg:#efebe5;--surface:#faf8f5;--chip:#e6dfd5;--ink:#221b17;--ink-sub:#5b5049;
+  --accent:#8c351c;--accent-ink:#ffffff;--line:#d6cdc2;--peach:#e7b8a2;
+  --display:"Outfit",system-ui,sans-serif;--body:"Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+:root:not([data-theme="light"]){
+    --bg:#141210;--surface:#272320;--chip:#322c28;--ink:#f3ece6;--ink-sub:#c4b8ae;
+    --accent:#e8a48a;--accent-ink:#141210;--line:#3d3530;--peach:#6e3f2e;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141210;--surface:#272320;--chip:#322c28;--ink:#f3ece6;--ink-sub:#c4b8ae;
+  --accent:#e8a48a;--accent-ink:#141210;--line:#3d3530;--peach:#6e3f2e;
+}
+.legal-nav{display:flex;gap:10px;flex-wrap:wrap;padding:24px 0 0}
+.legal-nav a{font-size:14px;border:1px solid var(--line);border-radius:999px;padding:8px 16px;text-decoration:none}
+.legal-nav a[aria-current="page"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.hero{padding:56px 0 48px}
+.hero h1{font-size:clamp(48px,7vw,96px);line-height:.96;letter-spacing:-0.035em;font-weight:800;margin-bottom:20px}
+.meta{color:var(--ink-sub);font-size:15px}
+.sec{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:40px;border-top:1px solid var(--line);padding:36px 0}
+.sec .idx{font-family:var(--display);font-weight:700;color:var(--accent);font-size:15px;margin-bottom:6px;display:block}
+.sec h2{font-size:28px;letter-spacing:-0.01em}
+.sec p{color:var(--ink-sub);font-size:17px}
+.ph{font-style:italic;color:var(--ink-sub)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
+.grid2 span{border:1px solid var(--line);border-radius:12px;padding:12px 16px;font-size:15px;background:var(--surface)}
+.foot{background:var(--ink);color:var(--bg);padding:40px 0;margin-top:96px}
+@media (max-width:980px){
+.sec{grid-template-columns:1fr;gap:14px}
+}
+@media (max-width:600px){
+.grid2{grid-template-columns:1fr}
+}
+
+.hero{padding:56px 0 48px}
+.callout{background:var(--surface);border-radius:20px;padding:24px 28px;margin:8px 0 0;border-left:3px solid var(--accent)}
+.callout p{color:var(--ink);font-size:16px}
+  </style>
 </head>
-<body class="document-page legal-page">
-  <div class="home-page">
-    <header class="home-nav">
-      <div class="home-nav-left">
-        <a href="/" class="brand-mark">
-          <span class="glyph"><img src="/favicon.ico" width="28" height="28" alt=""></span>
-          <span>barkfluff</span>
-        </a>
-        <button class="lang-btn" id="langToggle" type="button">EN</button>
-      </div>
-      <div class="home-nav-right">
-        <a href="/about" class="home-nav-link" data-ru="О проекте" data-en="About the project">О проекте</a>
-        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener" class="home-nav-link">GitHub</a>
-        <a href="/selfhosted" class="home-nav-link">Self-hosted</a>
-        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" class="home-nav-link" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
-        <a href="https://t.me/barkfluff?direct" target="_blank" rel="noopener" class="btn btn-ghost">
-          Telegram
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.04 15.2l-.4 5.66c.58 0 .83-.25 1.14-.55l2.74-2.61 5.68 4.16c1.04.57 1.78.27 2.06-.96l3.72-17.42c.33-1.53-.55-2.13-1.57-1.76L1.57 9.88c-1.5.58-1.48 1.42-.25 1.8l5.4 1.68L19.17 5.7c.59-.38 1.13-.17.69.22"/></svg>
-        </a>
+<body>
+<div class="wrap">
+    <header class="top">
+      <a class="brand" href="/">BarkFluff</a>
+      <div class="top-right">
+        <button class="lang" id="langToggle" type="button" aria-label="Language / Язык">EN</button>
+        <nav class="nav" aria-label="Основная навигация">
+          <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
+          <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+          <a href="/selfhosted">Self-hosted</a>
+          <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+          <a href="https://t.me/barkfluff?direct" target="_blank" rel="noopener">Telegram</a>
+        </nav>
       </div>
     </header>
-  </div>
-  <main>
-    <nav class="document-nav">
+
+    <div class="notice" id="domainNotice" role="note">
+      <p id="domainNoticeText">BarkFluff — некоммерческий проект мессенджера с открытым исходным кодом. Мы не связаны с прежним магазином товаров для животных, который использовал barkfluff.com.</p>
+      <a id="domainNoticeLink" href="/about#domain-history">Подробнее о проекте и истории домена →</a>
+      <button id="domainNoticeClose" type="button" aria-label="Закрыть уведомление об истории домена" hidden>&times;</button>
+    </div>
+
+    <nav class="legal-nav" aria-label="Юридические разделы">
       <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
       <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
       <a href="/legal/account-deletion" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
-      <a href="/legal/encryption" class="active" aria-current="page" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
+      <a href="/legal/encryption" aria-current="page" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
     </nav>
-    <article data-lang="ru">
-      <h1>Техническое описание шифрования</h1>
-      <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</p>
 
-      <h2>1. Введение</h2>
-      <p>Эта страница описывает только те механизмы защиты и шифрования, которые присутствуют в текущей архитектуре Barkfluff. Она относится к программному обеспечению; конкретную конфигурацию — какие функции включены, какие ключи используются, как хранятся резервные копии — определяет администратор ноды, на которой создан ваш аккаунт.</p>
+    <section class="hero">
+      <h1><span lang="ru">Техническое описание шифрования</span><span lang="en">Encryption: technical overview</span></h1>
+      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</span></p>
+    </section>
 
-      <h2>2. Кто что видит: краткая сводка</h2>
-      <div class="scroll-x" tabindex="0"><table>
+  <section class="sec">
+    <div><span class="idx">1</span><h2><span lang="ru">Введение</span><span lang="en">Introduction</span></h2></div>
+    <div>
+      <div lang="ru"><p>Эта страница описывает только те механизмы защиты и шифрования, которые присутствуют в текущей архитектуре Barkfluff. Она относится к программному обеспечению; конкретную конфигурацию — какие функции включены, какие ключи используются, как хранятся резервные копии — определяет администратор ноды, на которой создан ваш аккаунт.</p>
+      </div>
+      <div lang="en"><p>This page describes only those protection and encryption mechanisms that exist in the current Barkfluff architecture. It concerns the software; the specific configuration — which features are enabled, which keys are used, how backups are kept — is decided by the administrator of the node where your account was created.</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">2</span><h2><span lang="ru">Кто что видит: краткая сводка</span><span lang="en">Who sees what: a short summary</span></h2></div>
+    <div>
+      <div lang="ru"><div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Тип переписки</th><th>Видит ваша нода</th><th>Видит нода собеседника</th></tr></thead>
         <tbody>
           <tr><td>Обычный чат внутри ноды</td><td>Содержимое сообщений и файлы</td><td>—</td></tr>
@@ -61,29 +109,75 @@
       <div class="callout">
         <p><strong>Сквозного шифрования в федеративных чатах нет.</strong> Private- и secret-чаты работают только между пользователями одной ноды. Если вам нужно, чтобы содержимое не было доступно серверу вообще, — используйте private- или secret-чат внутри своей ноды.</p>
       </div>
-
-      <h2>3. Передача данных и авторизация</h2>
-      <ul>
+      </div>
+      <div lang="en"><div class="scroll-x" tabindex="0"><table>
+        <thead><tr><th>Type of conversation</th><th>Your node sees</th><th>The other node sees</th></tr></thead>
+        <tbody>
+          <tr><td>Regular chat within a node</td><td>Message content and files</td><td>—</td></tr>
+          <tr><td>Private chat (passphrase)</td><td>Ciphertext and metadata only</td><td>—</td></tr>
+          <tr><td>Secret chat (device to device)</td><td>An opaque envelope only, temporarily</td><td>—</td></tr>
+          <tr><td>Federated 1-to-1 chat</td><td>Message content and files</td><td>Message content and files</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout">
+        <p><strong>There is no end-to-end encryption in federated chats.</strong> Private and secret chats work only between users of the same node. If you need the content to be unavailable to the server at all, use a private or secret chat within your own node.</p>
+      </div>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">3</span><h2><span lang="ru">Передача данных и авторизация</span><span lang="en">Data transfer and authorization</span></h2></div>
+    <div>
+      <div lang="ru"><ul>
         <li>Клиенты взаимодействуют с backend через gRPC или gRPC-Web.</li>
         <li>Внешний HTTP/gRPC-трафик проходит через HTTPS/TLS на публичном контуре.</li>
         <li>Внутренние события между сервисами передаются через RabbitMQ / MassTransit.</li>
         <li>Авторизация gRPC-запросов использует XAuth metadata, включая <code>x-auth-token</code> и device-заголовки.</li>
       </ul>
-
-      <h2>4. JWT, refresh-токены и 2FA</h2>
-      <ul>
+      </div>
+      <div lang="en"><ul>
+        <li>Clients talk to the backend via gRPC or gRPC-Web.</li>
+        <li>External HTTP/gRPC traffic goes through HTTPS/TLS on the public perimeter.</li>
+        <li>Internal events between services are delivered via RabbitMQ / MassTransit.</li>
+        <li>gRPC request authorization uses XAuth metadata, including <code>x-auth-token</code> and the device headers.</li>
+      </ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">4</span><h2><span lang="ru">JWT, refresh-токены и 2FA</span><span lang="en">JWT, refresh tokens and 2FA</span></h2></div>
+    <div>
+      <div lang="ru"><ul>
         <li>Access token — JWT, подписанный ключом из конфигурации Identity вашей ноды.</li>
         <li>Время жизни access token задается <code>JwtSettings:ExpiryMinutes</code>.</li>
         <li>Refresh token хранится в <code>Identity.RefreshTokens</code> и привязан к Device ID.</li>
         <li>Сессии можно просматривать и отзывать через <code>GetActiveSessions</code> и <code>RemoveActiveSession</code>.</li>
         <li>2FA поддерживает TOTP authenticator и email-коды.</li>
       </ul>
-
-      <h2>5. Обычные сообщения</h2>
-      <p>Обычные личные и групповые сообщения хранятся в Messages-сервисе вашей ноды. Серверная логика использует эти данные для списка чатов, истории сообщений, read receipts, редактирования, удаления, экспорта и realtime-обновлений. Администратор ноды имеет технический доступ к этой базе данных.</p>
-
-      <h2>6. Private-чаты</h2>
-      <p>Private-чаты — это 1-к-1 encrypted-чаты через passphrase внутри одной ноды.</p>
+      </div>
+      <div lang="en"><ul>
+        <li>Access token — a JWT signed with a key from your node's Identity configuration.</li>
+        <li>The access token lifetime is set by <code>JwtSettings:ExpiryMinutes</code>.</li>
+        <li>The refresh token is stored in <code>Identity.RefreshTokens</code> and bound to the Device ID.</li>
+        <li>Sessions can be listed and revoked via <code>GetActiveSessions</code> and <code>RemoveActiveSession</code>.</li>
+        <li>2FA supports a TOTP authenticator and email codes.</li>
+      </ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">5</span><h2><span lang="ru">Обычные сообщения</span><span lang="en">Regular messages</span></h2></div>
+    <div>
+      <div lang="ru"><p>Обычные личные и групповые сообщения хранятся в Messages-сервисе вашей ноды. Серверная логика использует эти данные для списка чатов, истории сообщений, read receipts, редактирования, удаления, экспорта и realtime-обновлений. Администратор ноды имеет технический доступ к этой базе данных.</p>
+      </div>
+      <div lang="en"><p>Regular private and group messages are stored in your node's Messages service. Server logic uses this data for the chat list, message history, read receipts, editing, deletion, export and realtime updates. The node administrator has technical access to this database.</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">6</span><h2><span lang="ru">Private-чаты</span><span lang="en">Private chats</span></h2></div>
+    <div>
+      <div lang="ru"><p>Private-чаты — это 1-к-1 encrypted-чаты через passphrase внутри одной ноды.</p>
       <ul>
         <li>Клиент создает соль <code>kdf_salt</code> и <code>passphrase_verifier</code>.</li>
         <li>Ключ выводится на клиенте из passphrase и соли чата.</li>
@@ -92,9 +186,23 @@
         <li>Редактирование private-сообщения заменяет ciphertext/nonce/AAD.</li>
         <li>Удаление private-сообщения помечает его удаленным и очищает ciphertext.</li>
       </ul>
-
-      <h2>7. Secret-чаты</h2>
-      <p>Secret-чаты — это 1-к-1 чаты между конкретными устройствами внутри одной ноды.</p>
+      </div>
+      <div lang="en"><p>Private chats are 1-to-1 encrypted chats via a passphrase, within a single node.</p>
+      <ul>
+        <li>The client creates the <code>kdf_salt</code> and the <code>passphrase_verifier</code>.</li>
+        <li>The key is derived on the client from the passphrase and the chat salt.</li>
+        <li>A message is sent as <code>ciphertext</code>, <code>nonce</code> and <code>associated_data</code>.</li>
+        <li>The node stores <code>EncryptedMessage</code> as an opaque blob and never receives the passphrase.</li>
+        <li>Editing a private message replaces the ciphertext/nonce/AAD.</li>
+        <li>Deleting a private message marks it as deleted and clears the ciphertext.</li>
+      </ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">7</span><h2><span lang="ru">Secret-чаты</span><span lang="en">Secret chats</span></h2></div>
+    <div>
+      <div lang="ru"><p>Secret-чаты — это 1-к-1 чаты между конкретными устройствами внутри одной ноды.</p>
       <ul>
         <li>Устройства регистрируют prekey bundle: identity key, signed prekey и one-time prekeys.</li>
         <li>Инициатор получает prekey bundle устройства собеседника через <code>FetchPrekeyBundle</code>.</li>
@@ -103,9 +211,23 @@
         <li>Envelope ретранслируется получателю и временно буферизуется с TTL 24 часа, если получатель офлайн.</li>
         <li>После <code>AckSecretMessage</code> envelope удаляется из буфера.</li>
       </ul>
-
-      <h2>8. Защита канала между нодами</h2>
-      <p>Федеративный трафик идет по отдельному защищенному каналу. Он защищает переписку от подмены и перехвата <em>в пути</em>, но не скрывает содержимое от самих нод.</p>
+      </div>
+      <div lang="en"><p>Secret chats are 1-to-1 chats between specific devices, within a single node.</p>
+      <ul>
+        <li>Devices register a prekey bundle: identity key, signed prekey and one-time prekeys.</li>
+        <li>The initiator obtains the correspondent's device prekey bundle via <code>FetchPrekeyBundle</code>.</li>
+        <li>Messages are transmitted as an opaque <code>SecretEnvelope</code>.</li>
+        <li>The node does not create a regular Chat and does not store secret chat history in the Messages DB.</li>
+        <li>The envelope is relayed to the recipient and buffered temporarily with a 24-hour TTL if the recipient is offline.</li>
+        <li>After <code>AckSecretMessage</code> the envelope is removed from the buffer.</li>
+      </ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">8</span><h2><span lang="ru">Защита канала между нодами</span><span lang="en">Protection of the inter-node channel</span></h2></div>
+    <div>
+      <div lang="ru"><p>Федеративный трафик идет по отдельному защищенному каналу. Он защищает переписку от подмены и перехвата <em>в пути</em>, но не скрывает содержимое от самих нод.</p>
       <ul>
         <li><strong>TLS с пиннингом ключа:</strong> соединение принимается, только если отпечаток публичного ключа сертификата (SPKI, SHA-256) совпадает с известным для этой ноды. Цепочка удостоверяющих центров при этом намеренно не используется; пустой список отпечатков означает отказ соединяться.</li>
         <li><strong>Подпись каждого запроса:</strong> отправитель подписывает каноническую строку из имени своей ноды, имени ноды-получателя, времени, имени вызываемого метода и хеша тела запроса.</li>
@@ -118,96 +240,8 @@
         <li><strong>Анти-SSRF:</strong> перед любым исходящим запросом имя ноды нормализуется (защита от похожих доменов), IP-литералы и приватные диапазоны отклоняются, соединение идет по уже проверенному адресу.</li>
       </ul>
       <p><strong>Чего этот канал не делает:</strong> он не мешает администратору ноды-получателя читать и хранить доставленные ему сообщения и файлы. Подпись подтверждает происхождение данных, а не добросовестность получателя.</p>
-
-      <h2>9. Файлы</h2>
-      <p>Файлы, аватары, постеры, вложения и превью обслуживаются Files-сервисом и хранятся в Minio/S3-совместимом хранилище вашей ноды. Метаданные файлов используются для скачивания, превью, экспорта и отображения в чатах.</p>
-      <p>В федеративном чате файлы не копируются на чужую ноду заранее: нода собеседника запрашивает их у вашей в момент открытия, и ваша нода перед выдачей проверяет, что запрашивающая нода действительно участвует в чате с этим вложением. Для аватаров вместо проверки чата применяются настройки приватности владельца.</p>
-
-      <h2>10. Локальное хранение клиентов</h2>
-      <div class="scroll-x" tabindex="0"><table>
-        <thead><tr><th>Клиент</th><th>Что используется</th></tr></thead>
-        <tbody>
-          <tr><td>Windows WPF</td><td><code>GlobalParam.json</code>, PIN-защита, локальные настройки клиента</td></tr>
-          <tr><td>Android</td><td><code>GlobalParam</code>, локальные настройки, Firebase token, key/prekey данные для encrypted/secret-чатов</td></tr>
-          <tr><td>macOS</td><td>Keychain для токенов и локальные настройки приложения</td></tr>
-          <tr><td>Web</td><td>gRPC-Web, cookies только для технических сценариев web-клиента и перехода с публичной страницы профиля</td></tr>
-        </tbody>
-      </table></div>
-
-      <h2>11. Push-уведомления</h2>
-      <p>CloudMessaging получает события из RabbitMQ и отправляет push-уведомления через Firebase Cloud Messaging, если администратор ноды включил эту функцию. Для secret-сообщений push не содержит текст сообщения.</p>
-
-      <h2>12. Контакты</h2>
-      <ul>
-        <li>Уязвимости в коде и вопросы протокола (разработчик): <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
-        <li>Настройки и данные вашей ноды: администратор этой ноды; для barkfluff.com — <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
-      </ul>
-    </article>
-    <article data-lang="en">
-      <h1>Encryption: technical overview</h1>
-      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</p>
-
-      <h2>1. Introduction</h2>
-      <p>This page describes only those protection and encryption mechanisms that exist in the current Barkfluff architecture. It concerns the software; the specific configuration — which features are enabled, which keys are used, how backups are kept — is decided by the administrator of the node where your account was created.</p>
-
-      <h2>2. Who sees what: a short summary</h2>
-      <div class="scroll-x" tabindex="0"><table>
-        <thead><tr><th>Type of conversation</th><th>Your node sees</th><th>The other node sees</th></tr></thead>
-        <tbody>
-          <tr><td>Regular chat within a node</td><td>Message content and files</td><td>—</td></tr>
-          <tr><td>Private chat (passphrase)</td><td>Ciphertext and metadata only</td><td>—</td></tr>
-          <tr><td>Secret chat (device to device)</td><td>An opaque envelope only, temporarily</td><td>—</td></tr>
-          <tr><td>Federated 1-to-1 chat</td><td>Message content and files</td><td>Message content and files</td></tr>
-        </tbody>
-      </table></div>
-      <div class="callout">
-        <p><strong>There is no end-to-end encryption in federated chats.</strong> Private and secret chats work only between users of the same node. If you need the content to be unavailable to the server at all, use a private or secret chat within your own node.</p>
       </div>
-
-      <h2>3. Data transfer and authorization</h2>
-      <ul>
-        <li>Clients talk to the backend via gRPC or gRPC-Web.</li>
-        <li>External HTTP/gRPC traffic goes through HTTPS/TLS on the public perimeter.</li>
-        <li>Internal events between services are delivered via RabbitMQ / MassTransit.</li>
-        <li>gRPC request authorization uses XAuth metadata, including <code>x-auth-token</code> and the device headers.</li>
-      </ul>
-
-      <h2>4. JWT, refresh tokens and 2FA</h2>
-      <ul>
-        <li>Access token — a JWT signed with a key from your node's Identity configuration.</li>
-        <li>The access token lifetime is set by <code>JwtSettings:ExpiryMinutes</code>.</li>
-        <li>The refresh token is stored in <code>Identity.RefreshTokens</code> and bound to the Device ID.</li>
-        <li>Sessions can be listed and revoked via <code>GetActiveSessions</code> and <code>RemoveActiveSession</code>.</li>
-        <li>2FA supports a TOTP authenticator and email codes.</li>
-      </ul>
-
-      <h2>5. Regular messages</h2>
-      <p>Regular private and group messages are stored in your node's Messages service. Server logic uses this data for the chat list, message history, read receipts, editing, deletion, export and realtime updates. The node administrator has technical access to this database.</p>
-
-      <h2>6. Private chats</h2>
-      <p>Private chats are 1-to-1 encrypted chats via a passphrase, within a single node.</p>
-      <ul>
-        <li>The client creates the <code>kdf_salt</code> and the <code>passphrase_verifier</code>.</li>
-        <li>The key is derived on the client from the passphrase and the chat salt.</li>
-        <li>A message is sent as <code>ciphertext</code>, <code>nonce</code> and <code>associated_data</code>.</li>
-        <li>The node stores <code>EncryptedMessage</code> as an opaque blob and never receives the passphrase.</li>
-        <li>Editing a private message replaces the ciphertext/nonce/AAD.</li>
-        <li>Deleting a private message marks it as deleted and clears the ciphertext.</li>
-      </ul>
-
-      <h2>7. Secret chats</h2>
-      <p>Secret chats are 1-to-1 chats between specific devices, within a single node.</p>
-      <ul>
-        <li>Devices register a prekey bundle: identity key, signed prekey and one-time prekeys.</li>
-        <li>The initiator obtains the correspondent's device prekey bundle via <code>FetchPrekeyBundle</code>.</li>
-        <li>Messages are transmitted as an opaque <code>SecretEnvelope</code>.</li>
-        <li>The node does not create a regular Chat and does not store secret chat history in the Messages DB.</li>
-        <li>The envelope is relayed to the recipient and buffered temporarily with a 24-hour TTL if the recipient is offline.</li>
-        <li>After <code>AckSecretMessage</code> the envelope is removed from the buffer.</li>
-      </ul>
-
-      <h2>8. Protection of the inter-node channel</h2>
-      <p>Federated traffic goes through a separate secured channel. It protects the conversation from tampering and interception <em>in transit</em>, but it does not hide the content from the nodes themselves.</p>
+      <div lang="en"><p>Federated traffic goes through a separate secured channel. It protects the conversation from tampering and interception <em>in transit</em>, but it does not hide the content from the nodes themselves.</p>
       <ul>
         <li><strong>TLS with key pinning:</strong> a connection is accepted only if the certificate's public key fingerprint (SPKI, SHA-256) matches the one known for that node. The certificate authority chain is deliberately not used; an empty fingerprint list means the connection is refused.</li>
         <li><strong>Per-request signature:</strong> the sender signs a canonical string built from its own node name, the destination node name, the timestamp, the name of the called method and a hash of the request body.</li>
@@ -220,13 +254,34 @@
         <li><strong>Anti-SSRF:</strong> before any outgoing request the node name is normalized (protection against look-alike domains), IP literals and private ranges are rejected, and the connection is made to the already validated address.</li>
       </ul>
       <p><strong>What this channel does not do:</strong> it does not prevent the receiving node's administrator from reading and storing the messages and files delivered to them. A signature proves the origin of the data, not the good faith of the recipient.</p>
-
-      <h2>9. Files</h2>
-      <p>Files, avatars, posters, attachments and previews are served by the Files service and stored in your node's Minio/S3-compatible storage. File metadata is used for downloads, previews, export and display in chats.</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">9</span><h2><span lang="ru">Файлы</span><span lang="en">Files</span></h2></div>
+    <div>
+      <div lang="ru"><p>Файлы, аватары, постеры, вложения и превью обслуживаются Files-сервисом и хранятся в Minio/S3-совместимом хранилище вашей ноды. Метаданные файлов используются для скачивания, превью, экспорта и отображения в чатах.</p>
+      <p>В федеративном чате файлы не копируются на чужую ноду заранее: нода собеседника запрашивает их у вашей в момент открытия, и ваша нода перед выдачей проверяет, что запрашивающая нода действительно участвует в чате с этим вложением. Для аватаров вместо проверки чата применяются настройки приватности владельца.</p>
+      </div>
+      <div lang="en"><p>Files, avatars, posters, attachments and previews are served by the Files service and stored in your node's Minio/S3-compatible storage. File metadata is used for downloads, previews, export and display in chats.</p>
       <p>In a federated chat, files are not copied to the other node in advance: your correspondent's node requests them from yours at the moment they are opened, and your node first verifies that the requesting node really participates in a chat containing that attachment. For avatars, the owner's privacy settings apply instead of the chat check.</p>
-
-      <h2>10. Client local storage</h2>
-      <div class="scroll-x" tabindex="0"><table>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">10</span><h2><span lang="ru">Локальное хранение клиентов</span><span lang="en">Client local storage</span></h2></div>
+    <div>
+      <div lang="ru"><div class="scroll-x" tabindex="0"><table>
+        <thead><tr><th>Клиент</th><th>Что используется</th></tr></thead>
+        <tbody>
+          <tr><td>Windows WPF</td><td><code>GlobalParam.json</code>, PIN-защита, локальные настройки клиента</td></tr>
+          <tr><td>Android</td><td><code>GlobalParam</code>, локальные настройки, Firebase token, key/prekey данные для encrypted/secret-чатов</td></tr>
+          <tr><td>macOS</td><td>Keychain для токенов и локальные настройки приложения</td></tr>
+          <tr><td>Web</td><td>gRPC-Web, cookies только для технических сценариев web-клиента и перехода с публичной страницы профиля</td></tr>
+        </tbody>
+      </table></div>
+      </div>
+      <div lang="en"><div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Client</th><th>What is used</th></tr></thead>
         <tbody>
           <tr><td>Windows WPF</td><td><code>GlobalParam.json</code>, PIN protection, local client settings</td></tr>
@@ -235,47 +290,48 @@
           <tr><td>Web</td><td>gRPC-Web, cookies only for technical web client scenarios and the transition from a public profile page</td></tr>
         </tbody>
       </table></div>
-
-      <h2>11. Push notifications</h2>
-      <p>CloudMessaging receives events from RabbitMQ and sends push notifications via Firebase Cloud Messaging, if the node administrator has enabled this feature. For secret messages the push does not contain the message text.</p>
-
-      <h2>12. Contacts</h2>
-      <ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">11</span><h2><span lang="ru">Push-уведомления</span><span lang="en">Push notifications</span></h2></div>
+    <div>
+      <div lang="ru"><p>CloudMessaging получает события из RabbitMQ и отправляет push-уведомления через Firebase Cloud Messaging, если администратор ноды включил эту функцию. Для secret-сообщений push не содержит текст сообщения.</p>
+      </div>
+      <div lang="en"><p>CloudMessaging receives events from RabbitMQ and sends push notifications via Firebase Cloud Messaging, if the node administrator has enabled this feature. For secret messages the push does not contain the message text.</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">12</span><h2><span lang="ru">Контакты</span><span lang="en">Contacts</span></h2></div>
+    <div>
+      <div lang="ru"><ul>
+        <li>Уязвимости в коде и вопросы протокола (разработчик): <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
+        <li>Настройки и данные вашей ноды: администратор этой ноды; для barkfluff.com — <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+      </ul>
+      </div>
+      <div lang="en"><ul>
         <li>Code vulnerabilities and protocol questions (developer): <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
         <li>Your node's configuration and data: that node's administrator; for barkfluff.com — <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
       </ul>
-    </article>
-    <footer>
-      <span>2026 Barkfluff</span>
-      <div class="footer-links">
-        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
-        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
-        <a href="mailto:support@barkfluff.com">support@barkfluff.com</a>
       </div>
-    </footer>
-  </main>
-  <script>
-    (function () {
-      function applyLang(lang) {
-        document.documentElement.lang = lang;
-        localStorage.setItem('bf_lang', lang);
-        document.querySelectorAll('[data-ru]').forEach(function (el) {
-          el.textContent = el.getAttribute('data-' + lang);
-        });
-        document.querySelectorAll('article[data-lang]').forEach(function (a) {
-          a.style.display = a.getAttribute('data-lang') === lang ? 'block' : 'none';
-        });
-        document.getElementById('langToggle').textContent = lang === 'ru' ? 'EN' : 'RU';
-      }
-      var saved = localStorage.getItem('bf_lang');
-      var detected = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
-      document.getElementById('langToggle').addEventListener('click', function () {
-        applyLang(document.documentElement.lang === 'ru' ? 'en' : 'ru');
-      });
-      applyLang(saved || detected);
-      requestAnimationFrame(function () { document.body.classList.add('lang-ready'); });
-    })();
-  </script>
+    </div>
+  </section>
+  </div>
+
+  <footer class="foot">
+    <div class="wrap foot-in">
+      <p class="copy">2026 Barkfluff</p>
+      <nav class="foot-nav" aria-label="Нижнее меню">
+        <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
+        <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
+        <a href="/legal/account-deletion" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
+        <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
+      </nav>
+    </div>
+  </footer>
+  <script src="/assets/site-landing.js"></script>
+  <script src="/assets/domain-notice.js" defer></script>
   <script src="/assets/cookie-notice.js" defer></script>
 </body>
 </html>
