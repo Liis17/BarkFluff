@@ -2,58 +2,114 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-ru="Удаление аккаунта — Barkfluff" data-en="Account Deletion — Barkfluff">Удаление аккаунта — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/site-theme.css">
-  <link rel="stylesheet" href="/assets/site-header.css">
-  <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site-landing.css">
+  <style>
+:root{
+  --bg:#efebe5;--surface:#faf8f5;--chip:#e6dfd5;--ink:#221b17;--ink-sub:#5b5049;
+  --accent:#8c351c;--accent-ink:#ffffff;--line:#d6cdc2;--peach:#e7b8a2;
+  --display:"Outfit",system-ui,sans-serif;--body:"Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+:root:not([data-theme="light"]){
+    --bg:#141210;--surface:#272320;--chip:#322c28;--ink:#f3ece6;--ink-sub:#c4b8ae;
+    --accent:#e8a48a;--accent-ink:#141210;--line:#3d3530;--peach:#6e3f2e;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141210;--surface:#272320;--chip:#322c28;--ink:#f3ece6;--ink-sub:#c4b8ae;
+  --accent:#e8a48a;--accent-ink:#141210;--line:#3d3530;--peach:#6e3f2e;
+}
+.legal-nav{display:flex;gap:10px;flex-wrap:wrap;padding:24px 0 0}
+.legal-nav a{font-size:14px;border:1px solid var(--line);border-radius:999px;padding:8px 16px;text-decoration:none}
+.legal-nav a[aria-current="page"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.hero{padding:56px 0 48px}
+.hero h1{font-size:clamp(48px,7vw,96px);line-height:.96;letter-spacing:-0.035em;font-weight:800;margin-bottom:20px}
+.meta{color:var(--ink-sub);font-size:15px}
+.sec{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:40px;border-top:1px solid var(--line);padding:36px 0}
+.sec .idx{font-family:var(--display);font-weight:700;color:var(--accent);font-size:15px;margin-bottom:6px;display:block}
+.sec h2{font-size:28px;letter-spacing:-0.01em}
+.sec p{color:var(--ink-sub);font-size:17px}
+.ph{font-style:italic;color:var(--ink-sub)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
+.grid2 span{border:1px solid var(--line);border-radius:12px;padding:12px 16px;font-size:15px;background:var(--surface)}
+.foot{background:var(--ink);color:var(--bg);padding:40px 0;margin-top:96px}
+@media (max-width:980px){
+.sec{grid-template-columns:1fr;gap:14px}
+}
+@media (max-width:600px){
+.grid2{grid-template-columns:1fr}
+}
+
+.hero{padding:56px 0 48px}
+.callout{background:var(--surface);border-radius:20px;padding:24px 28px;margin:8px 0 0;border-left:3px solid var(--accent)}
+.callout p{color:var(--ink);font-size:16px}
+.sec>div{min-width:0}
+.sec p+*,.sec ul+*,.sec .callout+*,.sec .scroll-x+*{margin-top:12px}
+.sec h3{font-size:20px;letter-spacing:-0.01em;margin:28px 0 12px}
+.sec h3:first-child{margin-top:0}
+  </style>
 </head>
-<body class="document-page legal-page">
-  <div class="home-page">
-    <header class="home-nav">
-      <div class="home-nav-left">
-        <a href="/" class="brand-mark">
-          <span class="glyph"><img src="/favicon.ico" width="28" height="28" alt=""></span>
-          <span>barkfluff</span>
-        </a>
-        <button class="lang-btn" id="langToggle" type="button">EN</button>
-      </div>
-      <div class="home-nav-right">
-        <a href="/about" class="home-nav-link" data-ru="О проекте" data-en="About the project">О проекте</a>
-        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener" class="home-nav-link">GitHub</a>
-        <a href="/selfhosted" class="home-nav-link">Self-hosted</a>
-        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" class="home-nav-link" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
-        <a href="https://t.me/barkfluff?direct" target="_blank" rel="noopener" class="btn btn-ghost">
-          Telegram
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.04 15.2l-.4 5.66c.58 0 .83-.25 1.14-.55l2.74-2.61 5.68 4.16c1.04.57 1.78.27 2.06-.96l3.72-17.42c.33-1.53-.55-2.13-1.57-1.76L1.57 9.88c-1.5.58-1.48 1.42-.25 1.8l5.4 1.68L19.17 5.7c.59-.38 1.13-.17.69.22"/></svg>
-        </a>
+<body>
+<div class="wrap">
+    <header class="top">
+      <a class="brand" href="/">BarkFluff</a>
+      <div class="top-right">
+        <button class="lang" id="langToggle" type="button" aria-label="Language / Язык">EN</button>
+        <nav class="nav" aria-label="Основная навигация">
+          <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
+          <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+          <a href="/selfhosted">Self-hosted</a>
+          <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+          <a href="https://t.me/barkfluff?direct" target="_blank" rel="noopener">Telegram</a>
+        </nav>
       </div>
     </header>
-  </div>
-  <main>
-    <nav class="document-nav">
+
+    <div class="notice" id="domainNotice" role="note">
+      <p id="domainNoticeText">BarkFluff — некоммерческий проект мессенджера с открытым исходным кодом. Мы не связаны с прежним магазином товаров для животных, который использовал barkfluff.com.</p>
+      <a id="domainNoticeLink" href="/about#domain-history">Подробнее о проекте и истории домена →</a>
+      <button id="domainNoticeClose" type="button" aria-label="Закрыть уведомление об истории домена" hidden>&times;</button>
+    </div>
+
+    <nav class="legal-nav" aria-label="Юридические разделы">
       <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
       <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
-      <a href="/legal/account-deletion" class="active" aria-current="page" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
+      <a href="/legal/account-deletion" aria-current="page" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
       <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
     </nav>
-    <article data-lang="ru">
-      <h1>Политика удаления аккаунта</h1>
-      <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</p>
 
-      <h2>1. Кому направлять запрос</h2>
-      <p>Barkfluff — федеративная сеть независимых нод. Ваш аккаунт принадлежит конкретной ноде, и удалить его может только администратор этой ноды. Разработчики Barkfluff не имеют доступа к данным на чужих нодах и не могут исполнить такой запрос.</p>
+    <section class="hero">
+      <h1><span lang="ru">Политика удаления аккаунта</span><span lang="en">Account Deletion Policy</span></h1>
+      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</span></p>
+    </section>
+
+  <section class="sec">
+    <div><span class="idx">1</span><h2><span lang="ru">Кому направлять запрос</span><span lang="en">Where to send the request</span></h2></div>
+    <div>
+      <div lang="ru"><p>Barkfluff — федеративная сеть независимых нод. Ваш аккаунт принадлежит конкретной ноде, и удалить его может только администратор этой ноды. Разработчики Barkfluff не имеют доступа к данным на чужих нодах и не могут исполнить такой запрос.</p>
       <div class="callout">
         <p>Если ваш аккаунт создан на ноде <strong>barkfluff.com</strong> — отправьте запрос на <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>. Если на другой ноде — ищите контакты её администратора на сайте этой ноды.</p>
       </div>
       <p>Эта страница описывает порядок для ноды barkfluff.com и то, как устроено удаление в программном обеспечении. Администратор другой ноды может установить иной порядок и сроки.</p>
-
-      <h2>2. Как запросить удаление аккаунта</h2>
-      <p>Отправьте запрос с адреса, связанного с аккаунтом, или укажите данные, которые помогут подтвердить владение аккаунтом.</p>
+      </div>
+      <div lang="en"><p>Barkfluff is a federated network of independent nodes. Your account belongs to a specific node, and only that node's administrator can delete it. The Barkfluff developers have no access to data on other people's nodes and cannot fulfil such a request.</p>
+      <div class="callout">
+        <p>If your account was created on the <strong>barkfluff.com</strong> node, send the request to <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>. If it was created on another node, look for its administrator's contacts on that node's website.</p>
+      </div>
+      <p>This page describes the procedure for the barkfluff.com node and how deletion works in the software. Another node's administrator may set a different procedure and different deadlines.</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">2</span><h2><span lang="ru">Как запросить удаление аккаунта</span><span lang="en">How to request account deletion</span></h2></div>
+    <div>
+      <div lang="ru"><p>Отправьте запрос с адреса, связанного с аккаунтом, или укажите данные, которые помогут подтвердить владение аккаунтом.</p>
       <p>В запросе укажите:</p>
       <ul>
         <li>username;</li>
@@ -62,9 +118,23 @@
         <li>дополнительные сведения для подтверждения владения аккаунтом, если доступа к email нет.</li>
       </ul>
       <p>Срок ответа на ноде barkfluff.com — до 7 рабочих дней.</p>
-
-      <h2>3. Какие данные относятся к аккаунту</h2>
-      <div class="scroll-x" tabindex="0"><table>
+      </div>
+      <div lang="en"><p>Send the request from the address associated with the account, or provide details that help confirm ownership of the account.</p>
+      <p>In the request, include:</p>
+      <ul>
+        <li>username;</li>
+        <li>the email used at registration;</li>
+        <li>a brief description of the request;</li>
+        <li>additional details to confirm account ownership if you no longer have access to the email.</li>
+      </ul>
+      <p>Response time on the barkfluff.com node: up to 7 business days.</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">3</span><h2><span lang="ru">Какие данные относятся к аккаунту</span><span lang="en">What data belongs to the account</span></h2></div>
+    <div>
+      <div lang="ru"><div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Категория</th><th>Примеры</th><th>Сервис</th></tr></thead>
         <tbody>
           <tr><td>Профиль</td><td>username, email, имя, фамилия, био, аватар, постер, настройки приватности</td><td>Users, Files</td></tr>
@@ -76,77 +146,8 @@
         </tbody>
       </table></div>
       <p>Всё перечисленное хранится на вашей ноде. Резервные копии, срок их хранения и порядок удаления из них определяет администратор ноды.</p>
-
-      <h2>4. Что происходит с сообщениями</h2>
-      <ul>
-        <li>Обычные сообщения поддерживают удаление через Messages API.</li>
-        <li>Приватные encrypted-сообщения при удалении помечаются как удалённые, а шифротекст очищается.</li>
-        <li>Секретные сообщения не сохраняются как обычная история: нода ретранслирует envelope и временно буферизует его до доставки или истечения TTL.</li>
-        <li>Если сообщение уже доставлено другому пользователю или включено в историю чата, обработка запроса учитывает целостность истории для других участников и применимые юридические обязанности.</li>
-      </ul>
-
-      <h2>5. Границы удаления в федерации</h2>
-      <div class="callout">
-        <p><strong>Удаление действует только в пределах вашей ноды.</strong> Если вы переписывались с пользователями других нод, копии ваших сообщений, вложений и профильных данных уже находятся на тех нодах. Автоматического распространения удаления по федерации сейчас нет.</p>
       </div>
-      <ul>
-        <li>Копии на чужих нодах удаляет только их администратор — обращайтесь к нему напрямую.</li>
-        <li>Ни администратор вашей ноды, ни разработчики Barkfluff не могут удалить данные на чужой ноде и не отвечают за то, как долго она их хранит.</li>
-        <li>Файлы на чужих нодах заранее не копируются: они запрашиваются у вашей ноды в момент открытия. Но собеседник мог сохранить их себе — как и сделать скриншот переписки.</li>
-        <li>Модель та же, что у электронной почты: отправленное письмо нельзя отозвать с чужого сервера.</li>
-      </ul>
-      <p>Если вы хотите ограничить будущее распространение данных — запретите входящие федеративные личные чаты в настройках приватности до отправки запроса на удаление.</p>
-
-      <h2>6. Экспорт данных перед удалением</h2>
-      <p>В Barkfluff есть gRPC-метод <code>Users.ExportData</code>. Он формирует JSON-данные:</p>
-      <ul>
-        <li><code>profile.json</code> — профиль пользователя;</li>
-        <li><code>messages.json</code> — сообщения и чаты, где пользователь является участником;</li>
-        <li><code>files.json</code> — метаданные файлов, связанных с профилем и сообщениями.</li>
-      </ul>
-      <p>Если вам нужен экспорт перед удалением, укажите это в обращении к администратору ноды. Удаление необратимо — экспортируйте важное заранее.</p>
-
-      <h2>7. Частичное удаление и отзыв доступа</h2>
-      <ul>
-        <li>Сообщения можно удалять через функции клиента, использующие Messages API.</li>
-        <li>Активные сессии можно завершать через управление устройствами.</li>
-        <li>Firebase token хранится в Users.UserDevices и используется для push-уведомлений.</li>
-        <li>Аватар и постер профиля меняются или очищаются через функции профиля и персонализации.</li>
-        <li>Входящие федеративные личные чаты можно запретить в настройках приватности, не удаляя аккаунт.</li>
-      </ul>
-
-      <h2>8. Контакты</h2>
-      <p><strong>Администратор ноды barkfluff.com</strong>:</p>
-      <ul>
-        <li>Удаление и приватность: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
-        <li>Поддержка: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
-      </ul>
-      <p>Аккаунт на другой ноде — только её администратор. Разработчик программного обеспечения запросы на удаление данных не обрабатывает.</p>
-    </article>
-    <article data-lang="en">
-      <h1>Account Deletion Policy</h1>
-      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</p>
-
-      <h2>1. Where to send the request</h2>
-      <p>Barkfluff is a federated network of independent nodes. Your account belongs to a specific node, and only that node's administrator can delete it. The Barkfluff developers have no access to data on other people's nodes and cannot fulfil such a request.</p>
-      <div class="callout">
-        <p>If your account was created on the <strong>barkfluff.com</strong> node, send the request to <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>. If it was created on another node, look for its administrator's contacts on that node's website.</p>
-      </div>
-      <p>This page describes the procedure for the barkfluff.com node and how deletion works in the software. Another node's administrator may set a different procedure and different deadlines.</p>
-
-      <h2>2. How to request account deletion</h2>
-      <p>Send the request from the address associated with the account, or provide details that help confirm ownership of the account.</p>
-      <p>In the request, include:</p>
-      <ul>
-        <li>username;</li>
-        <li>the email used at registration;</li>
-        <li>a brief description of the request;</li>
-        <li>additional details to confirm account ownership if you no longer have access to the email.</li>
-      </ul>
-      <p>Response time on the barkfluff.com node: up to 7 business days.</p>
-
-      <h2>3. What data belongs to the account</h2>
-      <div class="scroll-x" tabindex="0"><table>
+      <div lang="en"><div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Category</th><th>Examples</th><th>Service</th></tr></thead>
         <tbody>
           <tr><td>Profile</td><td>username, email, first name, last name, bio, avatar, poster, privacy settings</td><td>Users, Files</td></tr>
@@ -158,17 +159,43 @@
         </tbody>
       </table></div>
       <p>All of the above is stored on your node. Backups, their retention period and the procedure for removing data from them are determined by the node administrator.</p>
-
-      <h2>4. What happens to messages</h2>
-      <ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">4</span><h2><span lang="ru">Что происходит с сообщениями</span><span lang="en">What happens to messages</span></h2></div>
+    <div>
+      <div lang="ru"><ul>
+        <li>Обычные сообщения поддерживают удаление через Messages API.</li>
+        <li>Приватные encrypted-сообщения при удалении помечаются как удалённые, а шифротекст очищается.</li>
+        <li>Секретные сообщения не сохраняются как обычная история: нода ретранслирует envelope и временно буферизует его до доставки или истечения TTL.</li>
+        <li>Если сообщение уже доставлено другому пользователю или включено в историю чата, обработка запроса учитывает целостность истории для других участников и применимые юридические обязанности.</li>
+      </ul>
+      </div>
+      <div lang="en"><ul>
         <li>Regular messages support deletion via the Messages API.</li>
         <li>Private encrypted messages are marked as deleted on deletion, and the ciphertext is cleared.</li>
         <li>Secret messages are not stored as regular history: the node relays the envelope and buffers it temporarily until delivery or TTL expiry.</li>
         <li>If a message has already been delivered to another user or is part of a chat history, processing of the request takes into account the integrity of the history for other participants and the applicable legal obligations.</li>
       </ul>
-
-      <h2>5. Limits of deletion in a federation</h2>
-      <div class="callout">
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">5</span><h2><span lang="ru">Границы удаления в федерации</span><span lang="en">Limits of deletion in a federation</span></h2></div>
+    <div>
+      <div lang="ru"><div class="callout">
+        <p><strong>Удаление действует только в пределах вашей ноды.</strong> Если вы переписывались с пользователями других нод, копии ваших сообщений, вложений и профильных данных уже находятся на тех нодах. Автоматического распространения удаления по федерации сейчас нет.</p>
+      </div>
+      <ul>
+        <li>Копии на чужих нодах удаляет только их администратор — обращайтесь к нему напрямую.</li>
+        <li>Ни администратор вашей ноды, ни разработчики Barkfluff не могут удалить данные на чужой ноде и не отвечают за то, как долго она их хранит.</li>
+        <li>Файлы на чужих нодах заранее не копируются: они запрашиваются у вашей ноды в момент открытия. Но собеседник мог сохранить их себе — как и сделать скриншот переписки.</li>
+        <li>Модель та же, что у электронной почты: отправленное письмо нельзя отозвать с чужого сервера.</li>
+      </ul>
+      <p>Если вы хотите ограничить будущее распространение данных — запретите входящие федеративные личные чаты в настройках приватности до отправки запроса на удаление.</p>
+      </div>
+      <div lang="en"><div class="callout">
         <p><strong>Deletion applies within your node only.</strong> If you have exchanged messages with users of other nodes, copies of your messages, attachments and profile data are already on those nodes. There is currently no automatic propagation of deletion across the federation.</p>
       </div>
       <ul>
@@ -178,64 +205,85 @@
         <li>The model is the same as with email: a sent letter cannot be recalled from someone else's server.</li>
       </ul>
       <p>If you want to limit further spreading of your data, refuse incoming federated private chats in the privacy settings before sending a deletion request.</p>
-
-      <h2>6. Exporting data before deletion</h2>
-      <p>Barkfluff has a gRPC method <code>Users.ExportData</code>. It produces JSON data:</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">6</span><h2><span lang="ru">Экспорт данных перед удалением</span><span lang="en">Exporting data before deletion</span></h2></div>
+    <div>
+      <div lang="ru"><p>В Barkfluff есть gRPC-метод <code>Users.ExportData</code>. Он формирует JSON-данные:</p>
+      <ul>
+        <li><code>profile.json</code> — профиль пользователя;</li>
+        <li><code>messages.json</code> — сообщения и чаты, где пользователь является участником;</li>
+        <li><code>files.json</code> — метаданные файлов, связанных с профилем и сообщениями.</li>
+      </ul>
+      <p>Если вам нужен экспорт перед удалением, укажите это в обращении к администратору ноды. Удаление необратимо — экспортируйте важное заранее.</p>
+      </div>
+      <div lang="en"><p>Barkfluff has a gRPC method <code>Users.ExportData</code>. It produces JSON data:</p>
       <ul>
         <li><code>profile.json</code> — the user profile;</li>
         <li><code>messages.json</code> — messages and chats the user participates in;</li>
         <li><code>files.json</code> — metadata of files linked to the profile and messages.</li>
       </ul>
       <p>If you need an export before deletion, state that in your request to the node administrator. Deletion is irreversible — export what matters in advance.</p>
-
-      <h2>7. Partial deletion and access revocation</h2>
-      <ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">7</span><h2><span lang="ru">Частичное удаление и отзыв доступа</span><span lang="en">Partial deletion and access revocation</span></h2></div>
+    <div>
+      <div lang="ru"><ul>
+        <li>Сообщения можно удалять через функции клиента, использующие Messages API.</li>
+        <li>Активные сессии можно завершать через управление устройствами.</li>
+        <li>Firebase token хранится в Users.UserDevices и используется для push-уведомлений.</li>
+        <li>Аватар и постер профиля меняются или очищаются через функции профиля и персонализации.</li>
+        <li>Входящие федеративные личные чаты можно запретить в настройках приватности, не удаляя аккаунт.</li>
+      </ul>
+      </div>
+      <div lang="en"><ul>
         <li>Messages can be deleted through client features that use the Messages API.</li>
         <li>Active sessions can be terminated through device management.</li>
         <li>The Firebase token is stored in Users.UserDevices and used for push notifications.</li>
         <li>The profile avatar and poster can be changed or cleared through the profile and personalization features.</li>
         <li>Incoming federated private chats can be refused in the privacy settings without deleting the account.</li>
       </ul>
-
-      <h2>8. Contacts</h2>
-      <p><strong>Administrator of the barkfluff.com node</strong>:</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">8</span><h2><span lang="ru">Контакты</span><span lang="en">Contacts</span></h2></div>
+    <div>
+      <div lang="ru"><p><strong>Администратор ноды barkfluff.com</strong>:</p>
+      <ul>
+        <li>Удаление и приватность: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+        <li>Поддержка: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
+      </ul>
+      <p>Аккаунт на другой ноде — только её администратор. Разработчик программного обеспечения запросы на удаление данных не обрабатывает.</p>
+      </div>
+      <div lang="en"><p><strong>Administrator of the barkfluff.com node</strong>:</p>
       <ul>
         <li>Deletion and privacy: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
         <li>Support: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
       </ul>
       <p>An account on another node — only its administrator. The software developer does not process data deletion requests.</p>
-    </article>
-    <footer>
-      <span>2026 Barkfluff</span>
-      <div class="footer-links">
-        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
-        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
-        <a href="mailto:support@barkfluff.com">support@barkfluff.com</a>
       </div>
-    </footer>
-  </main>
-  <script>
-    (function () {
-      function applyLang(lang) {
-        document.documentElement.lang = lang;
-        localStorage.setItem('bf_lang', lang);
-        document.querySelectorAll('[data-ru]').forEach(function (el) {
-          el.textContent = el.getAttribute('data-' + lang);
-        });
-        document.querySelectorAll('article[data-lang]').forEach(function (a) {
-          a.style.display = a.getAttribute('data-lang') === lang ? 'block' : 'none';
-        });
-        document.getElementById('langToggle').textContent = lang === 'ru' ? 'EN' : 'RU';
-      }
-      var saved = localStorage.getItem('bf_lang');
-      var detected = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
-      document.getElementById('langToggle').addEventListener('click', function () {
-        applyLang(document.documentElement.lang === 'ru' ? 'en' : 'ru');
-      });
-      applyLang(saved || detected);
-      requestAnimationFrame(function () { document.body.classList.add('lang-ready'); });
-    })();
-  </script>
+    </div>
+  </section>
+  </div>
+
+  <footer class="foot">
+    <div class="wrap foot-in">
+      <p class="copy">2026 Barkfluff</p>
+      <nav class="foot-nav" aria-label="Нижнее меню">
+        <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
+        <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
+        <a href="/legal/account-deletion" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
+        <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
+      </nav>
+    </div>
+  </footer>
+  <script src="/assets/site-landing.js"></script>
+  <script src="/assets/domain-notice.js" defer></script>
   <script src="/assets/cookie-notice.js" defer></script>
 </body>
 </html>

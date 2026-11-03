@@ -2,67 +2,135 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-ru="Политика конфиденциальности — Barkfluff" data-en="Privacy Policy — Barkfluff">Политика конфиденциальности — Barkfluff</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/site-theme.css">
-  <link rel="stylesheet" href="/assets/site-header.css">
-  <noscript><style>body { opacity:1 !important; } article[data-lang="ru"] { display:block !important; }</style></noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site-landing.css">
+  <style>
+:root{
+  --bg:#efebe5;--surface:#faf8f5;--chip:#e6dfd5;--ink:#221b17;--ink-sub:#5b5049;
+  --accent:#8c351c;--accent-ink:#ffffff;--line:#d6cdc2;--peach:#e7b8a2;
+  --display:"Outfit",system-ui,sans-serif;--body:"Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+:root:not([data-theme="light"]){
+    --bg:#141210;--surface:#272320;--chip:#322c28;--ink:#f3ece6;--ink-sub:#c4b8ae;
+    --accent:#e8a48a;--accent-ink:#141210;--line:#3d3530;--peach:#6e3f2e;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141210;--surface:#272320;--chip:#322c28;--ink:#f3ece6;--ink-sub:#c4b8ae;
+  --accent:#e8a48a;--accent-ink:#141210;--line:#3d3530;--peach:#6e3f2e;
+}
+.legal-nav{display:flex;gap:10px;flex-wrap:wrap;padding:24px 0 0}
+.legal-nav a{font-size:14px;border:1px solid var(--line);border-radius:999px;padding:8px 16px;text-decoration:none}
+.legal-nav a[aria-current="page"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.hero{padding:56px 0 48px}
+.hero h1{font-size:clamp(48px,7vw,96px);line-height:.96;letter-spacing:-0.035em;font-weight:800;margin-bottom:20px}
+.meta{color:var(--ink-sub);font-size:15px}
+.sec{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:40px;border-top:1px solid var(--line);padding:36px 0}
+.sec .idx{font-family:var(--display);font-weight:700;color:var(--accent);font-size:15px;margin-bottom:6px;display:block}
+.sec h2{font-size:28px;letter-spacing:-0.01em}
+.sec p{color:var(--ink-sub);font-size:17px}
+.ph{font-style:italic;color:var(--ink-sub)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
+.grid2 span{border:1px solid var(--line);border-radius:12px;padding:12px 16px;font-size:15px;background:var(--surface)}
+.foot{background:var(--ink);color:var(--bg);padding:40px 0;margin-top:96px}
+@media (max-width:980px){
+.sec{grid-template-columns:1fr;gap:14px}
+}
+@media (max-width:600px){
+.grid2{grid-template-columns:1fr}
+}
+
+.hero{padding:56px 0 48px}
+.callout{background:var(--surface);border-radius:20px;padding:24px 28px;margin:8px 0 0;border-left:3px solid var(--accent)}
+.callout p{color:var(--ink);font-size:16px}
+.sec>div{min-width:0}
+.sec p+*,.sec ul+*,.sec .callout+*,.sec .scroll-x+*{margin-top:12px}
+.sec h3{font-size:20px;letter-spacing:-0.01em;margin:28px 0 12px}
+.sec h3:first-child{margin-top:0}
+  </style>
 </head>
-<body class="document-page legal-page">
-  <div class="home-page">
-    <header class="home-nav">
-      <div class="home-nav-left">
-        <a href="/" class="brand-mark">
-          <span class="glyph"><img src="/favicon.ico" width="28" height="28" alt=""></span>
-          <span>barkfluff</span>
-        </a>
-        <button class="lang-btn" id="langToggle" type="button">EN</button>
-      </div>
-      <div class="home-nav-right">
-        <a href="/about" class="home-nav-link" data-ru="О проекте" data-en="About the project">О проекте</a>
-        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener" class="home-nav-link">GitHub</a>
-        <a href="/selfhosted" class="home-nav-link">Self-hosted</a>
-        <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" class="home-nav-link" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
-        <a href="https://t.me/barkfluff?direct" target="_blank" rel="noopener" class="btn btn-ghost">
-          Telegram
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.04 15.2l-.4 5.66c.58 0 .83-.25 1.14-.55l2.74-2.61 5.68 4.16c1.04.57 1.78.27 2.06-.96l3.72-17.42c.33-1.53-.55-2.13-1.57-1.76L1.57 9.88c-1.5.58-1.48 1.42-.25 1.8l5.4 1.68L19.17 5.7c.59-.38 1.13-.17.69.22"/></svg>
-        </a>
+<body>
+<div class="wrap">
+    <header class="top">
+      <a class="brand" href="/">BarkFluff</a>
+      <div class="top-right">
+        <button class="lang" id="langToggle" type="button" aria-label="Language / Язык">EN</button>
+        <nav class="nav" aria-label="Основная навигация">
+          <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
+          <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
+          <a href="/selfhosted">Self-hosted</a>
+          <a href="https://developers.barkfluff.com" target="_blank" rel="noopener" data-ru="Разработчикам" data-en="Developers">Разработчикам</a>
+          <a href="https://t.me/barkfluff?direct" target="_blank" rel="noopener">Telegram</a>
+        </nav>
       </div>
     </header>
-  </div>
-  <main>
-    <nav class="document-nav">
-      <a href="/legal/privacy-policy" class="active" aria-current="page" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
+
+    <div class="notice" id="domainNotice" role="note">
+      <p id="domainNoticeText">BarkFluff — некоммерческий проект мессенджера с открытым исходным кодом. Мы не связаны с прежним магазином товаров для животных, который использовал barkfluff.com.</p>
+      <a id="domainNoticeLink" href="/about#domain-history">Подробнее о проекте и истории домена →</a>
+      <button id="domainNoticeClose" type="button" aria-label="Закрыть уведомление об истории домена" hidden>&times;</button>
+    </div>
+
+    <nav class="legal-nav" aria-label="Юридические разделы">
+      <a href="/legal/privacy-policy" aria-current="page" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
       <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
       <a href="/legal/account-deletion" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
       <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
     </nav>
-    <article data-lang="ru">
-      <h1>Политика конфиденциальности</h1>
-      <p><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</p>
 
-      <h2>1. Кто отвечает за ваши данные</h2>
-      <p>Barkfluff — федеративная сеть независимых серверов («нод»). Каждую ноду разворачивает и обслуживает её администратор; ноды общаются между собой, чтобы соединять пользователей разных нод.</p>
+    <section class="hero">
+      <h1><span lang="ru">Политика конфиденциальности</span><span lang="en">Privacy Policy</span></h1>
+      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</span></p>
+    </section>
+
+  <section class="sec">
+    <div><span class="idx">1</span><h2><span lang="ru">Кто отвечает за ваши данные</span><span lang="en">Who is responsible for your data</span></h2></div>
+    <div>
+      <div lang="ru"><p>Barkfluff — федеративная сеть независимых серверов («нод»). Каждую ноду разворачивает и обслуживает её администратор; ноды общаются между собой, чтобы соединять пользователей разных нод.</p>
       <div class="callout">
         <p>Оператором ваших персональных данных является <strong>администратор ноды, на которой создан ваш аккаунт</strong>. Он размещает сервисы, владеет базой данных, файловым хранилищем, резервными копиями и логами, определяет сроки хранения, отвечает на ваши запросы и отвечает за соблюдение применимого к нему законодательства.</p>
       </div>
       <p>Разработчики Barkfluff публикуют программное обеспечение и спецификацию протокола. Они <strong>не</strong> размещают чужие ноды, <strong>не</strong> имеют доступа к их данным, ключам, трафику и резервным копиям, <strong>не</strong> могут выдать, изменить или удалить данные на чужой ноде и <strong>не</strong> являются оператором ваших данных.</p>
       <p>Этот документ описывает поведение программного обеспечения в стандартной конфигурации и относится к ноде <strong>barkfluff.com</strong>. Администратор любой другой ноды публикует собственную редакцию и вправе изменить конфигурацию или исходный код — тогда действуют его условия. Если ваш аккаунт создан не на barkfluff.com, обращайтесь к администратору своей ноды.</p>
-
-      <h2>2. Что администратор ноды технически может видеть</h2>
-      <ul>
+      </div>
+      <div lang="en"><p>Barkfluff is a federated network of independent servers (“nodes”). Each node is deployed and operated by its administrator; nodes talk to each other to connect users of different nodes.</p>
+      <div class="callout">
+        <p>The controller of your personal data is <strong>the administrator of the node where your account was created</strong>. They host the services, own the database, file storage, backups and logs, decide the retention periods, answer your requests and are responsible for compliance with the law applicable to them.</p>
+      </div>
+      <p>The Barkfluff developers publish the software and the protocol specification. They do <strong>not</strong> host other people's nodes, do <strong>not</strong> have access to their data, keys, traffic or backups, <strong>cannot</strong> disclose, modify or delete data on someone else's node, and are <strong>not</strong> the controller of your data.</p>
+      <p>This document describes the behaviour of the software in its default configuration and applies to the <strong>barkfluff.com</strong> node. The administrator of any other node publishes their own version and may change the configuration or the source code — in that case their terms apply. If your account was not created on barkfluff.com, contact your own node's administrator.</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">2</span><h2><span lang="ru">Что администратор ноды технически может видеть</span><span lang="en">What the node administrator can technically see</span></h2></div>
+    <div>
+      <div lang="ru"><ul>
         <li>Обычные личные и групповые сообщения хранятся на ноде в открытом виде. Администратор ноды имеет технический доступ к базе данных, файловому хранилищу и логам и <strong>может прочитать их содержимое</strong>.</li>
         <li>Private-чаты хранят на сервере только шифротекст; ключ выводится на вашем устройстве из passphrase и на ноду не передается.</li>
         <li>Secret-чаты нода только ретранслирует между устройствами и не сохраняет как историю.</li>
         <li>Если вы не готовы доверять администратору конкретной ноды — используйте private- или secret-чаты либо разверните собственную ноду.</li>
       </ul>
-
-      <h2>3. Какие данные обрабатываются</h2>
-      <h3>3.1 Учетная запись и профиль</h3>
+      </div>
+      <div lang="en"><ul>
+        <li>Regular private and group messages are stored on the node in plaintext. The node administrator has technical access to the database, file storage and logs and <strong>can read their content</strong>.</li>
+        <li>Private chats store only ciphertext on the server; the key is derived on your device from the passphrase and is never sent to the node.</li>
+        <li>Secret chats are only relayed by the node between devices and are not kept as history.</li>
+        <li>If you are not prepared to trust a particular node's administrator, use private or secret chats, or run your own node.</li>
+      </ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">3</span><h2><span lang="ru">Какие данные обрабатываются</span><span lang="en">What data is processed</span></h2></div>
+    <div>
+      <div lang="ru"><h3>3.1 Учетная запись и профиль</h3>
       <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Данные</th><th>Где используются</th><th>Хранение</th></tr></thead>
         <tbody>
@@ -107,149 +175,8 @@
       <h3>3.5 Сайт и поддержка</h3>
       <p>WebServer отдает главную страницу, публичные страницы профилей, legal-страницы, установочные скрипты, версии клиентов и REST API публичного профиля. Сообщения из формы поддержки на сайте сохраняются в памяти процесса WebServer и пересылаются администратору ноды через Telegram Bot API, если он настроил такую пересылку.</p>
       <p>При клике «Написать в браузере» на публичной странице профиля WebServer создает краткоживущую cookie <code>bf_open_chat</code>, чтобы web-клиент открыл чат с выбранным пользователем.</p>
-
-      <h2>4. Федеративный обмен данными</h2>
-      <p>Федерация выключена по умолчанию (<code>Federation:Enabled = false</code>) — включает ее администратор ноды. Когда она включена и вы переписываетесь с пользователем другой ноды, часть данных пересекает границу вашей ноды.</p>
-      <div class="scroll-x" tabindex="0"><table>
-        <thead><tr><th>Что уходит на другую ноду</th><th>Когда</th><th>Как</th></tr></thead>
-        <tbody>
-          <tr><td>Идентификатор, username, имя и аватар профиля</td><td>Когда пользователь другой ноды находит вас или открывает вашу карточку</td><td>Запрос профиля между нодами с учетом ваших настроек приватности</td></tr>
-          <tr><td>Текст сообщений, правки, удаления, отметки о прочтении</td><td>Переписка 1-к-1 с пользователем другой ноды</td><td>Подписанные события с гарантированной доставкой и повторами</td></tr>
-          <tr><td>Файлы и вложения</td><td>Когда собеседник открывает файл</td><td>Потоковая выдача по запросу его ноды; копия заранее не создается</td></tr>
-          <tr><td>Онлайн-статус и время последней активности</td><td>Пока активен федеративный чат</td><td>Живой поток между нодами; применяются ваши настройки приватности</td></tr>
-          <tr><td>«Печатает…»</td><td>Во время набора сообщения</td><td>Разовое уведомление без сохранения</td></tr>
-        </tbody>
-      </table></div>
-      <p>Что важно понимать:</p>
-      <ul>
-        <li>Федеративные чаты — только личные 1-к-1. Групповые чаты между нодами не поддерживаются.</li>
-        <li><strong>Федеративные сообщения не защищены сквозным шифрованием.</strong> Их содержимое доступно и вашей ноде, и ноде собеседника. Private- и secret-чаты работают только внутри одной ноды.</li>
-        <li>Получившая данные нода становится <strong>самостоятельным оператором</strong> своей копии. Ни ваша нода, ни разработчики не контролируют, как долго и каким образом она эти данные хранит. Модель та же, что у электронной почты.</li>
-        <li>Удаление сообщения или аккаунта на вашей ноде <strong>не удаляет</strong> копии, уже доставленные на другие ноды. Автоматического распространения удаления по федерации сейчас нет.</li>
-        <li>Вы можете запретить входящие федеративные личные чаты настройкой приватности — тогда попытка создать с вами чат с другой ноды будет отклонена.</li>
-        <li>Администратор вашей ноды может заблокировать любую ноду целиком — обмен данными с ней прекратится.</li>
-      </ul>
-      <div class="callout">
-        <p><strong>Технические гарантии и их границы.</strong> События между нодами подписываются Ed25519, соединения используют TLS с проверкой отпечатка ключа сервера, запросы подписываются с ограниченным окном времени. Это подтверждает, <strong>от какой ноды</strong> пришли данные и что их не подменили в пути, но не дает никаких гарантий о том, как администратор той ноды обращается с полученной копией.</p>
       </div>
-
-      <h2>5. Для чего используются данные</h2>
-      <ul>
-        <li>регистрация, вход, 2FA, восстановление пароля и управление сессиями;</li>
-        <li>работа профилей, поиска пользователей, публичных страниц и настроек приватности;</li>
-        <li>доставка сообщений, файлов, read receipts, realtime-обновлений и push-уведомлений;</li>
-        <li>обмен сообщениями с пользователями других нод, когда федерация включена;</li>
-        <li>экспорт данных пользователя через <code>Users.ExportData</code>;</li>
-        <li>поддержка пользователей средствами, которые настроил администратор ноды;</li>
-        <li>логирование ошибок, метрик и событий безопасности.</li>
-      </ul>
-
-      <h2>6. Защита данных</h2>
-      <h3>6.1 Передача данных</h3>
-      <ul>
-        <li>Клиенты и микросервисы используют gRPC/HTTP/2 и HTTPS/TLS на внешнем контуре.</li>
-        <li>Авторизация gRPC-запросов использует XAuth metadata: <code>x-auth-token</code>, <code>x-device-id</code>, <code>x-device-name</code>, <code>x-ip</code>, <code>x-os</code>, <code>x-app-name</code>, <code>x-app-version</code>.</li>
-        <li>Внутренние асинхронные события проходят через RabbitMQ / MassTransit.</li>
-        <li>Трафик между нодами идет по отдельному защищенному каналу — см. страницу <a href="/legal/encryption">«Шифрование»</a>.</li>
-      </ul>
-
-      <h3>6.2 Пароли, токены и 2FA</h3>
-      <ul>
-        <li>Пароли хранятся как хеши.</li>
-        <li>Access token — JWT в заголовке <code>x-auth-token</code>; время жизни задается конфигурацией Identity на вашей ноде.</li>
-        <li>Refresh token привязан к Device ID и хранится в Identity.</li>
-        <li>2FA поддерживает TOTP authenticator и email-коды.</li>
-      </ul>
-
-      <h3>6.3 Шифрованные чаты</h3>
-      <ul>
-        <li><strong>Private-чаты:</strong> нода хранит шифротекст <code>EncryptedMessage</code>, nonce и AAD; ключ выводится на клиенте из passphrase и соли чата.</li>
-        <li><strong>Secret-чаты:</strong> нода работает с opaque envelope, привязанным к устройствам, ретранслирует его получателю и буферизует с TTL 24 часа.</li>
-        <li><strong>Обычные чаты:</strong> сообщения хранятся в Messages-сервисе вашей ноды и доступны как серверной логике, так и администратору ноды.</li>
-      </ul>
-      <p>Подробности см. на странице <a href="/legal/encryption">«Шифрование»</a>.</p>
-
-      <h2>7. Передача третьим лицам</h2>
-      <p>Персональные данные не продаются. Данные передаются внешним поставщикам только для работы функций, которые включил администратор ноды:</p>
-      <ul>
-        <li><strong>Другие ноды федерации:</strong> см. раздел 4.</li>
-        <li><strong>SMTP:</strong> email-уведомления, коды подтверждения, восстановление доступа.</li>
-        <li><strong>Firebase Cloud Messaging:</strong> push-уведомления на устройства с Firebase token.</li>
-        <li><strong>Telegram Bot API:</strong> обработка сообщений из чата поддержки на сайте.</li>
-        <li><strong>Хостинг и инфраструктура:</strong> размещение сервисов, баз данных, файлового хранилища, RabbitMQ, Redis и Seq.</li>
-      </ul>
-      <p>Конкретный набор поставщиков выбирает администратор ноды: он может отключить push, использовать другой SMTP-сервис или обойтись без Telegram.</p>
-
-      <h2>8. Права пользователя</h2>
-      <p>Запросы по вашим данным направляйте администратору вашей ноды — только он может их исполнить.</p>
-      <ul>
-        <li><strong>Доступ и экспорт:</strong> экспорт возвращает JSON-файлы <code>profile.json</code>, <code>messages.json</code> и <code>files.json</code>.</li>
-        <li><strong>Исправление:</strong> профиль, био, аватар, постер, приватность, устройства и пароль можно менять через клиентские функции, где они доступны.</li>
-        <li><strong>Удаление:</strong> см. страницу <a href="/legal/account-deletion">«Удаление аккаунта»</a>.</li>
-        <li><strong>Отзыв сессии:</strong> активную сессию можно завершить через функции управления устройствами.</li>
-        <li><strong>Ограничение федерации:</strong> входящие федеративные личные чаты можно запретить в настройках приватности.</li>
-      </ul>
-
-      <h2>9. Удаление сообщений и данных</h2>
-      <ul>
-        <li>Обычные сообщения поддерживают удаление через Messages API.</li>
-        <li>Приватные encrypted-сообщения при удалении помечаются как удаленные, а шифротекст очищается.</li>
-        <li>Секретные сообщения удаляются из временного буфера после подтверждения доставки или истечения TTL.</li>
-        <li>Удаление действует в пределах вашей ноды. Копии, уже доставленные на другую ноду, удаляет только ее администратор.</li>
-        <li>Для удаления аккаунта и данных, не покрытых клиентскими функциями, обратитесь к администратору ноды.</li>
-      </ul>
-
-      <h2>10. Cookies и локальное хранение</h2>
-      <ul>
-        <li>Нативные клиенты используют локальное хранилище для токенов, настроек и кешей.</li>
-        <li>Windows-клиент хранит <code>GlobalParam.json</code> и может защищать его PIN-кодом.</li>
-        <li>macOS-клиент использует Keychain для токенов.</li>
-        <li>Сайт использует cookie <code>barkfluff_chat_id</code> (сессия чата поддержки, 1 год), <code>bf_open_chat</code> (краткоживущий переход с публичной страницы профиля в web-клиент) и <code>bf_cookie_notice</code> (отметка о показанном уведомлении об использовании cookie, 1 год).</li>
-        <li>Web-клиент использует cookie <code>bf_theme</code> (выбранная цветовая схема, 1 год) и <code>bf_legal_accepted</code> (редакция принятых Пользовательского соглашения и Политики конфиденциальности, 1 год); токены доступа хранятся в localStorage или sessionStorage браузера.</li>
-        <li>Cookie для аналитики, рекламы и отслеживания не используются.</li>
-      </ul>
-
-      <h2>11. Дети</h2>
-      <p>Barkfluff не предназначен для пользователей младше 13 лет. Администратор ноды вправе установить более высокий возрастной порог. Если вы считаете, что ребенок младше 13 лет создал аккаунт, сообщите администратору соответствующей ноды.</p>
-
-      <h2>12. Изменения политики</h2>
-      <p>При изменении этой политики обновляется дата «Обновлено» в начале документа. Существенные изменения могут быть сообщены через приложение или email. Администратор ноды публикует изменения своей редакции самостоятельно.</p>
-
-      <h2>13. Контакты</h2>
-      <p><strong>Администратор ноды barkfluff.com</strong> — по вашим данным, экспорту, удалению, поддержке и жалобам:</p>
-      <ul>
-        <li>Данные и приватность: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
-        <li>Поддержка: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
-        <li>Юридические вопросы и жалобы на контент: <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a></li>
-      </ul>
-      <p><strong>Разработчик программного обеспечения Barkfluff</strong> — по уязвимостям в коде и вопросам протокола:</p>
-      <ul>
-        <li>Безопасность и протокол: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
-      </ul>
-      <p>Разработчик не имеет доступа к данным на чужих нодах и не может обработать запрос об их удалении или выдаче. Если ваш аккаунт создан на другой ноде, ищите контакты ее администратора на сайте этой ноды.</p>
-    </article>
-    <article data-lang="en">
-      <h1>Privacy Policy</h1>
-      <p><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</p>
-
-      <h2>1. Who is responsible for your data</h2>
-      <p>Barkfluff is a federated network of independent servers (“nodes”). Each node is deployed and operated by its administrator; nodes talk to each other to connect users of different nodes.</p>
-      <div class="callout">
-        <p>The controller of your personal data is <strong>the administrator of the node where your account was created</strong>. They host the services, own the database, file storage, backups and logs, decide the retention periods, answer your requests and are responsible for compliance with the law applicable to them.</p>
-      </div>
-      <p>The Barkfluff developers publish the software and the protocol specification. They do <strong>not</strong> host other people's nodes, do <strong>not</strong> have access to their data, keys, traffic or backups, <strong>cannot</strong> disclose, modify or delete data on someone else's node, and are <strong>not</strong> the controller of your data.</p>
-      <p>This document describes the behaviour of the software in its default configuration and applies to the <strong>barkfluff.com</strong> node. The administrator of any other node publishes their own version and may change the configuration or the source code — in that case their terms apply. If your account was not created on barkfluff.com, contact your own node's administrator.</p>
-
-      <h2>2. What the node administrator can technically see</h2>
-      <ul>
-        <li>Regular private and group messages are stored on the node in plaintext. The node administrator has technical access to the database, file storage and logs and <strong>can read their content</strong>.</li>
-        <li>Private chats store only ciphertext on the server; the key is derived on your device from the passphrase and is never sent to the node.</li>
-        <li>Secret chats are only relayed by the node between devices and are not kept as history.</li>
-        <li>If you are not prepared to trust a particular node's administrator, use private or secret chats, or run your own node.</li>
-      </ul>
-
-      <h2>3. What data is processed</h2>
-      <h3>3.1 Account and profile</h3>
+      <div lang="en"><h3>3.1 Account and profile</h3>
       <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Data</th><th>Where used</th><th>Storage</th></tr></thead>
         <tbody>
@@ -294,9 +221,37 @@
       <h3>3.5 Website and support</h3>
       <p>WebServer serves the main page, public profile pages, legal pages, install scripts, client versions and the public profile REST API. Messages from the website support form are stored in the WebServer process memory and forwarded to the node administrator via the Telegram Bot API, if they configured such forwarding.</p>
       <p>On clicking “Message in browser” on a public profile page, WebServer creates a short-lived cookie <code>bf_open_chat</code> so the web client opens a chat with the selected user.</p>
-
-      <h2>4. Federated data exchange</h2>
-      <p>Federation is disabled by default (<code>Federation:Enabled = false</code>) — the node administrator turns it on. When it is enabled and you chat with a user of another node, some data crosses your node's boundary.</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">4</span><h2><span lang="ru">Федеративный обмен данными</span><span lang="en">Federated data exchange</span></h2></div>
+    <div>
+      <div lang="ru"><p>Федерация выключена по умолчанию (<code>Federation:Enabled = false</code>) — включает ее администратор ноды. Когда она включена и вы переписываетесь с пользователем другой ноды, часть данных пересекает границу вашей ноды.</p>
+      <div class="scroll-x" tabindex="0"><table>
+        <thead><tr><th>Что уходит на другую ноду</th><th>Когда</th><th>Как</th></tr></thead>
+        <tbody>
+          <tr><td>Идентификатор, username, имя и аватар профиля</td><td>Когда пользователь другой ноды находит вас или открывает вашу карточку</td><td>Запрос профиля между нодами с учетом ваших настроек приватности</td></tr>
+          <tr><td>Текст сообщений, правки, удаления, отметки о прочтении</td><td>Переписка 1-к-1 с пользователем другой ноды</td><td>Подписанные события с гарантированной доставкой и повторами</td></tr>
+          <tr><td>Файлы и вложения</td><td>Когда собеседник открывает файл</td><td>Потоковая выдача по запросу его ноды; копия заранее не создается</td></tr>
+          <tr><td>Онлайн-статус и время последней активности</td><td>Пока активен федеративный чат</td><td>Живой поток между нодами; применяются ваши настройки приватности</td></tr>
+          <tr><td>«Печатает…»</td><td>Во время набора сообщения</td><td>Разовое уведомление без сохранения</td></tr>
+        </tbody>
+      </table></div>
+      <p>Что важно понимать:</p>
+      <ul>
+        <li>Федеративные чаты — только личные 1-к-1. Групповые чаты между нодами не поддерживаются.</li>
+        <li><strong>Федеративные сообщения не защищены сквозным шифрованием.</strong> Их содержимое доступно и вашей ноде, и ноде собеседника. Private- и secret-чаты работают только внутри одной ноды.</li>
+        <li>Получившая данные нода становится <strong>самостоятельным оператором</strong> своей копии. Ни ваша нода, ни разработчики не контролируют, как долго и каким образом она эти данные хранит. Модель та же, что у электронной почты.</li>
+        <li>Удаление сообщения или аккаунта на вашей ноде <strong>не удаляет</strong> копии, уже доставленные на другие ноды. Автоматического распространения удаления по федерации сейчас нет.</li>
+        <li>Вы можете запретить входящие федеративные личные чаты настройкой приватности — тогда попытка создать с вами чат с другой ноды будет отклонена.</li>
+        <li>Администратор вашей ноды может заблокировать любую ноду целиком — обмен данными с ней прекратится.</li>
+      </ul>
+      <div class="callout">
+        <p><strong>Технические гарантии и их границы.</strong> События между нодами подписываются Ed25519, соединения используют TLS с проверкой отпечатка ключа сервера, запросы подписываются с ограниченным окном времени. Это подтверждает, <strong>от какой ноды</strong> пришли данные и что их не подменили в пути, но не дает никаких гарантий о том, как администратор той ноды обращается с полученной копией.</p>
+      </div>
+      </div>
+      <div lang="en"><p>Federation is disabled by default (<code>Federation:Enabled = false</code>) — the node administrator turns it on. When it is enabled and you chat with a user of another node, some data crosses your node's boundary.</p>
       <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>What leaves for another node</th><th>When</th><th>How</th></tr></thead>
         <tbody>
@@ -319,9 +274,23 @@
       <div class="callout">
         <p><strong>Technical guarantees and their limits.</strong> Inter-node events are signed with Ed25519, connections use TLS with server key fingerprint verification, and requests are signed within a limited time window. This proves <strong>which node</strong> the data came from and that it was not tampered with in transit, but gives no guarantee whatsoever about how that node's administrator handles the received copy.</p>
       </div>
-
-      <h2>5. What the data is used for</h2>
-      <ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">5</span><h2><span lang="ru">Для чего используются данные</span><span lang="en">What the data is used for</span></h2></div>
+    <div>
+      <div lang="ru"><ul>
+        <li>регистрация, вход, 2FA, восстановление пароля и управление сессиями;</li>
+        <li>работа профилей, поиска пользователей, публичных страниц и настроек приватности;</li>
+        <li>доставка сообщений, файлов, read receipts, realtime-обновлений и push-уведомлений;</li>
+        <li>обмен сообщениями с пользователями других нод, когда федерация включена;</li>
+        <li>экспорт данных пользователя через <code>Users.ExportData</code>;</li>
+        <li>поддержка пользователей средствами, которые настроил администратор ноды;</li>
+        <li>логирование ошибок, метрик и событий безопасности.</li>
+      </ul>
+      </div>
+      <div lang="en"><ul>
         <li>registration, login, 2FA, password recovery and session management;</li>
         <li>profiles, user search, public pages and privacy settings;</li>
         <li>delivery of messages, files, read receipts, realtime updates and push notifications;</li>
@@ -330,9 +299,37 @@
         <li>user support through the channels configured by the node administrator;</li>
         <li>logging of errors, metrics and security events.</li>
       </ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">6</span><h2><span lang="ru">Защита данных</span><span lang="en">Data protection</span></h2></div>
+    <div>
+      <div lang="ru"><h3>6.1 Передача данных</h3>
+      <ul>
+        <li>Клиенты и микросервисы используют gRPC/HTTP/2 и HTTPS/TLS на внешнем контуре.</li>
+        <li>Авторизация gRPC-запросов использует XAuth metadata: <code>x-auth-token</code>, <code>x-device-id</code>, <code>x-device-name</code>, <code>x-ip</code>, <code>x-os</code>, <code>x-app-name</code>, <code>x-app-version</code>.</li>
+        <li>Внутренние асинхронные события проходят через RabbitMQ / MassTransit.</li>
+        <li>Трафик между нодами идет по отдельному защищенному каналу — см. страницу <a href="/legal/encryption">«Шифрование»</a>.</li>
+      </ul>
 
-      <h2>6. Data protection</h2>
-      <h3>6.1 Data transfer</h3>
+      <h3>6.2 Пароли, токены и 2FA</h3>
+      <ul>
+        <li>Пароли хранятся как хеши.</li>
+        <li>Access token — JWT в заголовке <code>x-auth-token</code>; время жизни задается конфигурацией Identity на вашей ноде.</li>
+        <li>Refresh token привязан к Device ID и хранится в Identity.</li>
+        <li>2FA поддерживает TOTP authenticator и email-коды.</li>
+      </ul>
+
+      <h3>6.3 Шифрованные чаты</h3>
+      <ul>
+        <li><strong>Private-чаты:</strong> нода хранит шифротекст <code>EncryptedMessage</code>, nonce и AAD; ключ выводится на клиенте из passphrase и соли чата.</li>
+        <li><strong>Secret-чаты:</strong> нода работает с opaque envelope, привязанным к устройствам, ретранслирует его получателю и буферизует с TTL 24 часа.</li>
+        <li><strong>Обычные чаты:</strong> сообщения хранятся в Messages-сервисе вашей ноды и доступны как серверной логике, так и администратору ноды.</li>
+      </ul>
+      <p>Подробности см. на странице <a href="/legal/encryption">«Шифрование»</a>.</p>
+      </div>
+      <div lang="en"><h3>6.1 Data transfer</h3>
       <ul>
         <li>Clients and microservices use gRPC/HTTP/2 and HTTPS/TLS on the external perimeter.</li>
         <li>gRPC request authorization uses XAuth metadata: <code>x-auth-token</code>, <code>x-device-id</code>, <code>x-device-name</code>, <code>x-ip</code>, <code>x-os</code>, <code>x-app-name</code>, <code>x-app-version</code>.</li>
@@ -355,9 +352,23 @@
         <li><strong>Regular chats:</strong> messages are stored in your node's Messages service and are accessible both to server logic and to the node administrator.</li>
       </ul>
       <p>For details, see the <a href="/legal/encryption">“Encryption”</a> page.</p>
-
-      <h2>7. Sharing with third parties</h2>
-      <p>Personal data is not sold. Data is shared with external providers only to operate the features the node administrator has enabled:</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">7</span><h2><span lang="ru">Передача третьим лицам</span><span lang="en">Sharing with third parties</span></h2></div>
+    <div>
+      <div lang="ru"><p>Персональные данные не продаются. Данные передаются внешним поставщикам только для работы функций, которые включил администратор ноды:</p>
+      <ul>
+        <li><strong>Другие ноды федерации:</strong> см. раздел 4.</li>
+        <li><strong>SMTP:</strong> email-уведомления, коды подтверждения, восстановление доступа.</li>
+        <li><strong>Firebase Cloud Messaging:</strong> push-уведомления на устройства с Firebase token.</li>
+        <li><strong>Telegram Bot API:</strong> обработка сообщений из чата поддержки на сайте.</li>
+        <li><strong>Хостинг и инфраструктура:</strong> размещение сервисов, баз данных, файлового хранилища, RabbitMQ, Redis и Seq.</li>
+      </ul>
+      <p>Конкретный набор поставщиков выбирает администратор ноды: он может отключить push, использовать другой SMTP-сервис или обойтись без Telegram.</p>
+      </div>
+      <div lang="en"><p>Personal data is not sold. Data is shared with external providers only to operate the features the node administrator has enabled:</p>
       <ul>
         <li><strong>Other federation nodes:</strong> see section 4.</li>
         <li><strong>SMTP:</strong> email notifications, confirmation codes, access recovery.</li>
@@ -366,9 +377,22 @@
         <li><strong>Hosting and infrastructure:</strong> hosting of services, databases, file storage, RabbitMQ, Redis and Seq.</li>
       </ul>
       <p>The specific set of providers is chosen by the node administrator: they may disable push, use a different SMTP service, or do without Telegram.</p>
-
-      <h2>8. User rights</h2>
-      <p>Send requests about your data to your node's administrator — only they can act on them.</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">8</span><h2><span lang="ru">Права пользователя</span><span lang="en">User rights</span></h2></div>
+    <div>
+      <div lang="ru"><p>Запросы по вашим данным направляйте администратору вашей ноды — только он может их исполнить.</p>
+      <ul>
+        <li><strong>Доступ и экспорт:</strong> экспорт возвращает JSON-файлы <code>profile.json</code>, <code>messages.json</code> и <code>files.json</code>.</li>
+        <li><strong>Исправление:</strong> профиль, био, аватар, постер, приватность, устройства и пароль можно менять через клиентские функции, где они доступны.</li>
+        <li><strong>Удаление:</strong> см. страницу <a href="/legal/account-deletion">«Удаление аккаунта»</a>.</li>
+        <li><strong>Отзыв сессии:</strong> активную сессию можно завершить через функции управления устройствами.</li>
+        <li><strong>Ограничение федерации:</strong> входящие федеративные личные чаты можно запретить в настройках приватности.</li>
+      </ul>
+      </div>
+      <div lang="en"><p>Send requests about your data to your node's administrator — only they can act on them.</p>
       <ul>
         <li><strong>Access and export:</strong> export returns the JSON files <code>profile.json</code>, <code>messages.json</code> and <code>files.json</code>.</li>
         <li><strong>Correction:</strong> profile, bio, avatar, poster, privacy, devices and password can be changed through client features where available.</li>
@@ -376,18 +400,43 @@
         <li><strong>Session revocation:</strong> an active session can be terminated via device management features.</li>
         <li><strong>Limiting federation:</strong> incoming federated private chats can be refused in the privacy settings.</li>
       </ul>
-
-      <h2>9. Deletion of messages and data</h2>
-      <ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">9</span><h2><span lang="ru">Удаление сообщений и данных</span><span lang="en">Deletion of messages and data</span></h2></div>
+    <div>
+      <div lang="ru"><ul>
+        <li>Обычные сообщения поддерживают удаление через Messages API.</li>
+        <li>Приватные encrypted-сообщения при удалении помечаются как удаленные, а шифротекст очищается.</li>
+        <li>Секретные сообщения удаляются из временного буфера после подтверждения доставки или истечения TTL.</li>
+        <li>Удаление действует в пределах вашей ноды. Копии, уже доставленные на другую ноду, удаляет только ее администратор.</li>
+        <li>Для удаления аккаунта и данных, не покрытых клиентскими функциями, обратитесь к администратору ноды.</li>
+      </ul>
+      </div>
+      <div lang="en"><ul>
         <li>Regular messages support deletion via the Messages API.</li>
         <li>Private encrypted messages are marked as deleted on deletion, and the ciphertext is cleared.</li>
         <li>Secret messages are removed from the temporary buffer after delivery confirmation or TTL expiry.</li>
         <li>Deletion applies within your node. Copies already delivered to another node can only be deleted by that node's administrator.</li>
         <li>For deletion of an account and data not covered by client features, contact the node administrator.</li>
       </ul>
-
-      <h2>10. Cookies and local storage</h2>
-      <ul>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">10</span><h2><span lang="ru">Cookies и локальное хранение</span><span lang="en">Cookies and local storage</span></h2></div>
+    <div>
+      <div lang="ru"><ul>
+        <li>Нативные клиенты используют локальное хранилище для токенов, настроек и кешей.</li>
+        <li>Windows-клиент хранит <code>GlobalParam.json</code> и может защищать его PIN-кодом.</li>
+        <li>macOS-клиент использует Keychain для токенов.</li>
+        <li>Сайт использует cookie <code>barkfluff_chat_id</code> (сессия чата поддержки, 1 год), <code>bf_open_chat</code> (краткоживущий переход с публичной страницы профиля в web-клиент) и <code>bf_cookie_notice</code> (отметка о показанном уведомлении об использовании cookie, 1 год).</li>
+        <li>Web-клиент использует cookie <code>bf_theme</code> (выбранная цветовая схема, 1 год) и <code>bf_legal_accepted</code> (редакция принятых Пользовательского соглашения и Политики конфиденциальности, 1 год); токены доступа хранятся в localStorage или sessionStorage браузера.</li>
+        <li>Cookie для аналитики, рекламы и отслеживания не используются.</li>
+      </ul>
+      </div>
+      <div lang="en"><ul>
         <li>Native clients use local storage for tokens, settings and caches.</li>
         <li>The Windows client stores <code>GlobalParam.json</code> and can protect it with a PIN.</li>
         <li>The macOS client uses the Keychain for tokens.</li>
@@ -395,15 +444,43 @@
         <li>The web client uses the cookies <code>bf_theme</code> (selected colour scheme, 1 year) and <code>bf_legal_accepted</code> (the revision of the accepted Terms of Service and Privacy Policy, 1 year); access tokens are kept in the browser's localStorage or sessionStorage.</li>
         <li>No cookies are used for analytics, advertising or tracking.</li>
       </ul>
-
-      <h2>11. Children</h2>
-      <p>Barkfluff is not intended for users under 13. A node administrator may set a higher age limit. If you believe a child under 13 has created an account, notify the administrator of the node in question.</p>
-
-      <h2>12. Policy changes</h2>
-      <p>When this policy changes, the “Updated” date at the top of the document is updated. Significant changes may be communicated via the app or email. A node administrator publishes changes to their own version themselves.</p>
-
-      <h2>13. Contacts</h2>
-      <p><strong>Administrator of the barkfluff.com node</strong> — for your data, export, deletion, support and complaints:</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">11</span><h2><span lang="ru">Дети</span><span lang="en">Children</span></h2></div>
+    <div>
+      <div lang="ru"><p>Barkfluff не предназначен для пользователей младше 13 лет. Администратор ноды вправе установить более высокий возрастной порог. Если вы считаете, что ребенок младше 13 лет создал аккаунт, сообщите администратору соответствующей ноды.</p>
+      </div>
+      <div lang="en"><p>Barkfluff is not intended for users under 13. A node administrator may set a higher age limit. If you believe a child under 13 has created an account, notify the administrator of the node in question.</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">12</span><h2><span lang="ru">Изменения политики</span><span lang="en">Policy changes</span></h2></div>
+    <div>
+      <div lang="ru"><p>При изменении этой политики обновляется дата «Обновлено» в начале документа. Существенные изменения могут быть сообщены через приложение или email. Администратор ноды публикует изменения своей редакции самостоятельно.</p>
+      </div>
+      <div lang="en"><p>When this policy changes, the “Updated” date at the top of the document is updated. Significant changes may be communicated via the app or email. A node administrator publishes changes to their own version themselves.</p>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div><span class="idx">13</span><h2><span lang="ru">Контакты</span><span lang="en">Contacts</span></h2></div>
+    <div>
+      <div lang="ru"><p><strong>Администратор ноды barkfluff.com</strong> — по вашим данным, экспорту, удалению, поддержке и жалобам:</p>
+      <ul>
+        <li>Данные и приватность: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
+        <li>Поддержка: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
+        <li>Юридические вопросы и жалобы на контент: <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a></li>
+      </ul>
+      <p><strong>Разработчик программного обеспечения Barkfluff</strong> — по уязвимостям в коде и вопросам протокола:</p>
+      <ul>
+        <li>Безопасность и протокол: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
+      </ul>
+      <p>Разработчик не имеет доступа к данным на чужих нодах и не может обработать запрос об их удалении или выдаче. Если ваш аккаунт создан на другой ноде, ищите контакты ее администратора на сайте этой ноды.</p>
+      </div>
+      <div lang="en"><p><strong>Administrator of the barkfluff.com node</strong> — for your data, export, deletion, support and complaints:</p>
       <ul>
         <li>Data and privacy: <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a></li>
         <li>Support: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
@@ -414,38 +491,24 @@
         <li>Security and protocol: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
       </ul>
       <p>The developer has no access to data on other nodes and cannot process a request to delete or disclose it. If your account was created on another node, look for its administrator's contacts on that node's website.</p>
-    </article>
-    <footer>
-      <span>2026 Barkfluff</span>
-      <div class="footer-links">
-        <a href="/about" data-ru="О проекте" data-en="About">О проекте</a>
-        <a href="https://github.com/Liis17/BarkFluff" target="_blank" rel="noopener">GitHub</a>
-        <a href="mailto:support@barkfluff.com">support@barkfluff.com</a>
       </div>
-    </footer>
-  </main>
-  <script>
-    (function () {
-      function applyLang(lang) {
-        document.documentElement.lang = lang;
-        localStorage.setItem('bf_lang', lang);
-        document.querySelectorAll('[data-ru]').forEach(function (el) {
-          el.textContent = el.getAttribute('data-' + lang);
-        });
-        document.querySelectorAll('article[data-lang]').forEach(function (a) {
-          a.style.display = a.getAttribute('data-lang') === lang ? 'block' : 'none';
-        });
-        document.getElementById('langToggle').textContent = lang === 'ru' ? 'EN' : 'RU';
-      }
-      var saved = localStorage.getItem('bf_lang');
-      var detected = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
-      document.getElementById('langToggle').addEventListener('click', function () {
-        applyLang(document.documentElement.lang === 'ru' ? 'en' : 'ru');
-      });
-      applyLang(saved || detected);
-      requestAnimationFrame(function () { document.body.classList.add('lang-ready'); });
-    })();
-  </script>
+    </div>
+  </section>
+  </div>
+
+  <footer class="foot">
+    <div class="wrap foot-in">
+      <p class="copy">2026 Barkfluff</p>
+      <nav class="foot-nav" aria-label="Нижнее меню">
+        <a href="/legal/privacy-policy" data-ru="Конфиденциальность" data-en="Privacy">Конфиденциальность</a>
+        <a href="/legal/terms-of-service" data-ru="Условия использования" data-en="Terms of Service">Условия использования</a>
+        <a href="/legal/account-deletion" data-ru="Удаление аккаунта" data-en="Account Deletion">Удаление аккаунта</a>
+        <a href="/legal/encryption" data-ru="Шифрование" data-en="Encryption">Шифрование</a>
+      </nav>
+    </div>
+  </footer>
+  <script src="/assets/site-landing.js"></script>
+  <script src="/assets/domain-notice.js" defer></script>
   <script src="/assets/cookie-notice.js" defer></script>
 </body>
 </html>
