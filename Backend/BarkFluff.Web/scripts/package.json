@@ -34,6 +34,7 @@
     "test:connection": "node test-connection.js",
     "test:presence": "node test-presence.js",
     "test:message-events": "node test-message-events.js",
+    "test:private-chat-ui": "node test-private-chat-ui.js",
     "test:send-queue": "node test-send-queue.js",
     "format": "prettier --write ../wwwroot/js/app/**/*.js *.js",
     "format:check": "prettier --check --config prettier.config.cjs ../wwwroot/js/app/app-loader.js ../wwwroot/js/app/media-viewer.js ../wwwroot/js/app/group-info.js ../wwwroot/js/app/private-chat-ui.js ../wwwroot/js/app/sticker-picker.js ../wwwroot/js/app/chat-list.js ../wwwroot/js/app/composer.js ../wwwroot/js/app/feed.js ../wwwroot/js/app/message-menu.js ../wwwroot/js/app/mark-read.js ../wwwroot/js/app/attention.js ../wwwroot/js/app/deep-link.js ../wwwroot/js/app/search.js ../wwwroot/js/app/chat-media.js ../wwwroot/js/app/chat-calls.js ../wwwroot/js/app/chat-background.js ../wwwroot/js/app/profile.js ../wwwroot/js/app/forward.js ../wwwroot/js/app/connection.js ../wwwroot/js/app/presence.js ../wwwroot/js/app/message-events.js ../wwwroot/js/app/send-queue.js app-bundle-entry.js build-app.js",
