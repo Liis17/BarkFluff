@@ -108,7 +108,7 @@
             var initial = (user.firstName || user.username || '?')[0].toUpperCase();
             var avHtml = user.profilePicturePreview
                 ? '<img src="' + u().escapeHtml(user.profilePicturePreview) + '" alt="">'
-                : initial;
+                : u().escapeHtml(initial);
             el.innerHTML = '<div class="chat-avatar">' + avHtml + '</div>' +
                 '<div class="search-result-info"><div class="user-name">' + u().escapeHtml(displayName(user)) + '</div>' +
                 '<div class="user-username">@' + u().escapeHtml(user.username || '') + '</div></div>';
