@@ -78,10 +78,15 @@
         image.src = href;
     }
 
+    // muted=true без mutedUntil означает mute навсегда.
+    function isChatMuted(chat) {
+        return !!(chat && chat.muted && (!chat.mutedUntil || chat.mutedUntil > Date.now()));
+    }
+
     function updateTitleBadge() {
         var total = 0;
         deps.getChats().forEach(function (c) {
-            total += c.countUnread || 0;
+            if (!isChatMuted(c)) total += c.countUnread || 0;
         });
         var base = baseTitle || defaultBaseTitle();
         document.title = total > 0 ? '(' + (total > 99 ? '99+' : total) + ') ' + base : base;
@@ -138,6 +143,7 @@
         init: init,
         chatTabTitle: chatTabTitle,
         updateTitleBadge: updateTitleBadge,
+        isChatMuted: isChatMuted,
         resetChatTabContext: resetChatTabContext,
         setChatTabContext: setChatTabContext,
         showNewMessageNotification: showNewMessageNotification
