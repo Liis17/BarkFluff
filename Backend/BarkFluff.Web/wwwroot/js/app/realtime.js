@@ -837,6 +837,130 @@
         }, function () { handleNoToken(); });
     }
 
+    // --- Updates: остальные user-scoped потоки приватных чатов ---
+    // Правки, удаления, read-state, приглашения и их резолюции. Жизненный цикл тот же,
+    // что у subscribePrivateMessages; состояние каждого потока хранится в его записи.
+
+    function mapPrivateMessageEvent(evt) {
+        var msg = evt.getMessage();
+        return msg ? { chatId: evt.getChatId(), message: BF.api._mapEncryptedMessage(msg) } : null;
+    }
+
+    var privateStreams = {
+        privateEdits: {
+            method: 'subscribePrivateMessageEdits',
+            request: 'SubscribePrivateMessageEditsRequest',
+            event: 'private_message_edited',
+            map: mapPrivateMessageEvent
+        },
+        privateDeletes: {
+            method: 'subscribePrivateMessageDeletes',
+            request: 'SubscribePrivateMessageDeletesRequest',
+            event: 'private_message_deleted',
+            map: function (evt) {
+                return { chatId: evt.getChatId(), messageId: evt.getMessageId() };
+            }
+        },
+        privateRead: {
+            method: 'subscribePrivateMessagesRead',
+            request: 'SubscribePrivateMessagesReadRequest',
+            event: 'private_messages_read',
+            map: function (evt) {
+                return {
+                    chatId: evt.getChatId(),
+                    userId: evt.getUserId(),
+                    lastReadMessageId: evt.getLastReadMessageId()
+                };
+            }
+        },
+        privateInvites: {
+            method: 'subscribePrivateChatInvites',
+            request: 'SubscribePrivateChatInvitesRequest',
+            event: 'private_chat_invite',
+            map: function (evt) {
+                return { chatId: evt.getChatId(), inviterUserId: evt.getInviterUserId() };
+            }
+        },
+        privateInviteResolutions: {
+            method: 'subscribePrivateChatInviteResolutions',
+            request: 'SubscribePrivateChatInviteResolutionsRequest',
+            event: 'private_chat_invite_resolution',
+            map: function (evt) {
+                return { chatId: evt.getChatId(), inviteeUserId: evt.getInviteeUserId(), accepted: evt.getAccepted() };
+            }
+        }
+    };
+    var privateStreamNames = Object.keys(privateStreams);
+    privateStreamNames.forEach(function (name) {
+        var s = privateStreams[name];
+        s.stream = null;
+        s.backoff = INITIAL_BACKOFF;
+        s.ageTimer = null;
+        s.openedAt = 0;
+        s.lastActivity = 0;
+        s.everOpened = false;
+    });
+
+    function subscribePrivateStream(name, forceRefresh) {
+        var s = privateStreams[name];
+        var generation = beginSubscription(name);
+        if (generation === null) return;
+        getStreamToken(forceRefresh).then(function (token) {
+            if (generation !== _reconnectGeneration) { finishSubscriptionStart(name, generation); return; }
+            finishSubscriptionStart(name, generation);
+            if (!token) { handleNoToken(); return; }
+            if (s.everOpened && _started) emit('resync', { source: name });
+            s.everOpened = true;
+            var meta = BF.metadata.build(token);
+            var proto = window.proto.barkfluff.updates;
+            var req = new proto[s.request]();
+
+            if (s.stream) { try { s.stream.cancel(); } catch (e) {} }
+            clearRetry(name);
+            var stream = s.stream = BF.clients.updates[s.method](req, meta);
+            s.openedAt = Date.now();
+            if (s.ageTimer) clearTimeout(s.ageTimer);
+            s.ageTimer = setTimeout(function () {
+                if (_started) subscribePrivateStream(name, false);
+            }, STREAM_MAX_AGE);
+
+            s.lastActivity = Date.now();
+
+            stream.on('data', function (evt) {
+                if (generation !== _reconnectGeneration || s.stream !== stream) return;
+                s.backoff = INITIAL_BACKOFF;
+                s.lastActivity = Date.now();
+                var data = s.map(evt);
+                if (data) emit(s.event, data);
+            });
+
+            stream.on('status', function (status) {
+                if (generation !== _reconnectGeneration || s.stream !== stream) return;
+                s.lastActivity = Date.now();
+                if (status && status.code === 0) s.backoff = INITIAL_BACKOFF;
+            });
+
+            stream.on('error', function (err) {
+                if (generation !== _reconnectGeneration || s.stream !== stream) return;
+                if (!_started) return;
+                if (isAuthError(err)) {
+                    scheduleReconnect(name, function () { subscribePrivateStream(name, true); }, 0);
+                } else {
+                    scheduleReconnect(name, function () { subscribePrivateStream(name, false); }, s.backoff);
+                    s.backoff = Math.min(s.backoff * 2, MAX_BACKOFF);
+                }
+            });
+
+            stream.on('end', function () {
+                if (generation !== _reconnectGeneration || s.stream !== stream) return;
+                if (Date.now() - s.openedAt > STABLE_STREAM_THRESHOLD) {
+                    s.backoff = INITIAL_BACKOFF;
+                }
+                if (_started) scheduleReconnect(name, function () { subscribePrivateStream(name, false); }, s.backoff);
+            });
+        }, function () { handleNoToken(); });
+    }
+
     // --- Online status ---
 
     function subscribeOnline(userIds, forceRefresh) {
@@ -1064,7 +1188,14 @@
             console.warn('[realtime] watchdog: private-messages stream silent, reconnecting');
             subscribePrivateMessages();
         }
-        if (onlineStream && (now - onlineLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+        privateStreamNames.forEach(function (name) {
+            var s = privateStreams[name];
+            if (s.stream && (now - s.lastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+                console.warn('[realtime] watchdog: ' + name + ' stream silent, reconnecting');
+                subscribePrivateStream(name);
+            }
+        });
+        if (onlineStream &&(now - onlineLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
             if (currentOnlineUserIds.length > 0) {
                 console.warn('[realtime] watchdog: online stream silent, reconnecting');
                 subscribeOnline(currentOnlineUserIds);
@@ -1105,6 +1236,9 @@
             if (!allUnpinnedStream) subscribeAllMessagesUnpinned();
             if (!chatHiddenStream) subscribeChatHidden();
             if (!privateMsgStream) subscribePrivateMessages();
+            privateStreamNames.forEach(function (name) {
+                if (!privateStreams[name].stream) subscribePrivateStream(name);
+            });
             if (currentOnlineUserIds.length > 0 && !onlineStream) subscribeOnline(currentOnlineUserIds);
             if (currentTypingChatId && !typingStream) subscribeTyping(currentTypingChatId);
         });
@@ -1144,6 +1278,7 @@
         allUnpinnedBackoff = INITIAL_BACKOFF;
         chatHiddenBackoff = INITIAL_BACKOFF;
         privateMsgBackoff = INITIAL_BACKOFF;
+        privateStreamNames.forEach(function (name) { privateStreams[name].backoff = INITIAL_BACKOFF; });
         onlineBackoff = INITIAL_BACKOFF;
         typingBackoff = INITIAL_BACKOFF;
     }
@@ -1158,6 +1293,7 @@
         subscribeAllMessagesUnpinned();
         subscribeChatHidden();
         subscribePrivateMessages();
+        privateStreamNames.forEach(function (name) { subscribePrivateStream(name); });
         if (currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds);
         if (currentTypingChatId) subscribeTyping(currentTypingChatId);
     }
@@ -1197,6 +1333,12 @@
         if (allUnpinnedAgeTimer) { clearTimeout(allUnpinnedAgeTimer); allUnpinnedAgeTimer = null; }
         if (chatHiddenAgeTimer) { clearTimeout(chatHiddenAgeTimer); chatHiddenAgeTimer = null; }
         if (privateMsgAgeTimer) { clearTimeout(privateMsgAgeTimer); privateMsgAgeTimer = null; }
+        privateStreamNames.forEach(function (name) {
+            var s = privateStreams[name];
+            if (s.stream) { try { s.stream.cancel(); } catch (e) {} s.stream = null; }
+            if (s.ageTimer) { clearTimeout(s.ageTimer); s.ageTimer = null; }
+            s.everOpened = false;
+        });
         if (onlineAgeTimer)  { clearTimeout(onlineAgeTimer);  onlineAgeTimer  = null; }
         if (typingAgeTimer)  { clearTimeout(typingAgeTimer);  typingAgeTimer  = null; }
         currentTypingChatId = null;

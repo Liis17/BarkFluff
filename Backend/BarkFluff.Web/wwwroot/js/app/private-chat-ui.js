@@ -461,6 +461,65 @@
         });
     }
 
+    function findLoadedIndex(messageId) {
+        return deps.getMessages().findIndex(function (item) {
+            return item.id === messageId;
+        });
+    }
+
+    // События ниже приходят at-least-once: обработчики идемпотентны.
+    function handleDelete(chatId, messageId) {
+        // ID шифрованных сообщений — отдельная последовательность, поэтому общий
+        // BF.messageEvents.applyDelete (composer, pinned, lastMessage обычных чатов) не подходит.
+        if (chatId !== deps.getCurrentChatId()) return;
+        var index = findLoadedIndex(messageId);
+        if (index < 0) return;
+        deps.getMessages().splice(index, 1);
+        deps.renderMessages();
+    }
+
+    function handleEdit(chatId, encryptedMessage) {
+        if (encryptedMessage.isDeleted) {
+            handleDelete(chatId, encryptedMessage.id);
+            return;
+        }
+        if (chatId !== deps.getCurrentChatId() || findLoadedIndex(encryptedMessage.id) < 0) return;
+        BF.privateChat.decryptMessage(chatId, encryptedMessage).then(function (text) {
+            if (chatId !== deps.getCurrentChatId()) return;
+            var index = findLoadedIndex(encryptedMessage.id);
+            if (index < 0) return;
+            deps.getMessages()[index] = toUiMessage(chatId, encryptedMessage, text);
+            deps.renderMessages();
+        });
+    }
+
+    function handleRead(chatId, userId) {
+        // Прочтения собеседника веб не отображает; учитываем только свои с других устройств.
+        if (userId !== deps.getMyUserId()) return;
+        var chat = deps.getChats().find(function (item) {
+            return item.id === chatId;
+        });
+        if (!chat || !chat.countUnread) return;
+        chat.countUnread = 0;
+        deps.renderChatList();
+        deps.updateTitleBadge();
+    }
+
+    function handleInviteResolution(chatId, accepted) {
+        var chat = deps.getChats().find(function (item) {
+            return item.id === chatId;
+        });
+        if (!chat) {
+            deps.loadChats(true);
+            return;
+        }
+        var state = accepted ? 1 : 2;
+        if (chat.privateInviteState === state) return;
+        chat.privateInviteState = state;
+        deps.renderChatList();
+        if (chatId === deps.getCurrentChatId()) open(chat);
+    }
+
     function init(options) {
         deps = options;
         privatePassOverlay = $('#privatePassOverlay');
@@ -494,6 +553,21 @@
             });
         BF.realtime.on('private_message', function (data) {
             handleMessage(data.chatId, data.message);
+        });
+        BF.realtime.on('private_message_edited', function (data) {
+            handleEdit(data.chatId, data.message);
+        });
+        BF.realtime.on('private_message_deleted', function (data) {
+            handleDelete(data.chatId, data.messageId);
+        });
+        BF.realtime.on('private_messages_read', function (data) {
+            handleRead(data.chatId, data.userId);
+        });
+        BF.realtime.on('private_chat_invite', function () {
+            deps.loadChats(true);
+        });
+        BF.realtime.on('private_chat_invite_resolution', function (data) {
+            handleInviteResolution(data.chatId, data.accepted);
         });
     }
 
