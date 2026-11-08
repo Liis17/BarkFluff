@@ -58,11 +58,11 @@
         return text.length > len ? text.slice(0, len) + '...' : text;
     }
 
+    // Результат безопасен и в тексте, и в значении атрибута в кавычках (src="...").
     function escapeHtml(str) {
         if (!str) return '';
-        var d = document.createElement('div');
-        d.textContent = str;
-        return d.innerHTML;
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     // --- Markdown rendering (safe) ---
@@ -81,7 +81,7 @@
     }
 
     // URL уже прошёл escapeHtml, поэтому &amp; должен остаться без повторного экранирования.
-    // Кавычки escapeHtml для текстового узла не гарантирует, а в href они закрывают атрибут.
+    // Кавычки в href закрывают атрибут; escapeHtml их уже экранирует, здесь — защита в глубину.
     function escapeHtmlAttribute(value) {
         return value.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
