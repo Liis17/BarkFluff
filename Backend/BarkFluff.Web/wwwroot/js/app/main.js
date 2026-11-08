@@ -354,6 +354,7 @@
         loadChats: loadChats,
         showNewMessageNotification: showNewMessageNotification,
         updateTitleBadge: updateTitleBadge,
+        isChatMuted: BF.attention.isChatMuted,
         appendMessageToView: appendMessageToView,
         scrollToBottom: scrollToBottom,
         renderMessages: renderMessages,

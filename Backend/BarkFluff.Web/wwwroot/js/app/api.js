@@ -127,6 +127,8 @@
             members: ch.getMembersList().map(function (m) { return { userId: m.getUserId() }; }),
             countUnread: ch.getCountUnread(),
             firstUnreadMessageId: ch.getFirstUnreadMessageId(),
+            muted: ch.getMuted(),
+            mutedUntil: tsToMs(ch.getMutedUntil()),
             // Приватные чаты (ChatType: 0=REGULAR, 1=PRIVATE, 2=SECRET)
             chatType: ch.getChatType ? ch.getChatType() : 0,
             kdfSalt: ch.getKdfSalt_asU8 ? ch.getKdfSalt_asU8() : new Uint8Array(0),
