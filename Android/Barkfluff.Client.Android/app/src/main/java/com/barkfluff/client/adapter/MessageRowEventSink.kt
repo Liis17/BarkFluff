@@ -8,6 +8,7 @@ interface MessageRowEventSink {
     fun onMessageActionRequested(bubble: View, item: MessageItem) {}
     fun onReplyQuoteClick(originalMessageId: Long) {}
     fun onSelectionToggle(messageId: Long) {}
+    fun onCancelOutgoing(operationId: String) {}
     fun senderInfo(senderId: Long): Pair<String?, String?>? = null
     fun onAttachmentAction(action: MessageAttachmentAction) {}
 }

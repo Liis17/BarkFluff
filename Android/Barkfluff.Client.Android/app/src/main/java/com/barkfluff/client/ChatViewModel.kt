@@ -15,6 +15,7 @@ import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.chat.ConfirmedMessageTimeline
 import com.barkfluff.client.chat.MessageNavigator
+import com.barkfluff.client.chat.findOutgoingEchoMatch
 import com.barkfluff.client.chat.MessageTarget
 import com.barkfluff.client.chat.MessageTargetMissingException
 import com.barkfluff.client.chat.RegularChatSession
@@ -1256,7 +1257,7 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    /** Обновляет inline-прогресс аплоада медиа на оптимистичном сообщении (0..100). */
+    /** Сохраняет общий прогресс как внутренний маркер реконсиляции исходящей строки (0..100). */
     private fun updateOptimisticUploadProgress(localId: String, progress: Int) {
         val currentList = _uiState.value.items.toMutableList()
         val idx = currentList.indexOfFirst { it.localId == localId }
@@ -1589,13 +1590,19 @@ class ChatViewModel @Inject constructor(
                         it.state != OutgoingMessageState.SENT
                 }
                 val activeIds = active.map { it.operationId }.toSet()
+                val sentIdsAwaitingEcho = snapshots.asSequence()
+                    .filter { it.state == OutgoingMessageState.SENT && it.serverMessageId > 0L }
+                    .map { it.operationId }
+                    .toSet()
+                val retainedIds = activeIds + sentIdsAwaitingEcho
                 val current = _uiState.value.items.toMutableList()
                 current.removeAll { item ->
-                    item.type == MessageType.MESSAGE && item.localId != null &&
-                        item.localId in observedOutgoingOperationIds && item.localId !in activeIds
+                    item.type == MessageType.MESSAGE && item.outgoingState != null &&
+                        item.localId != null && item.localId in observedOutgoingOperationIds &&
+                        item.localId !in retainedIds
                 }
                 active.forEach { snapshot -> upsertOutgoingBubble(current, snapshot) }
-                observedOutgoingOperationIds = activeIds
+                observedOutgoingOperationIds = retainedIds
                 submitItems(current)
 
                 snapshots.filter { it.state == OutgoingMessageState.SENT && it.draftGeneration != null }
@@ -1628,10 +1635,14 @@ class ChatViewModel @Inject constructor(
             localId = snapshot.operationId,
             outgoingState = snapshot.state,
             uploadProgress = snapshot.progress.takeIf { snapshot.state != OutgoingMessageState.FAILED },
-            localPreviewUris = snapshot.previewPaths.map { android.net.Uri.fromFile(java.io.File(it)) }
+            localPreviewUris = snapshot.attachments.mapNotNull { it.previewPath }
+                .map { android.net.Uri.fromFile(java.io.File(it)) },
+            outgoingAttachments = snapshot.attachments,
         )
         val existing = target.indexOfFirst { it.type == MessageType.MESSAGE && it.localId == snapshot.operationId }
-        if (existing >= 0) target[existing] = item else target.add(item)
+        if (existing >= 0) {
+            if (target[existing].outgoingState != null) target[existing] = item
+        } else target.add(item)
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1784,20 +1795,18 @@ class ChatViewModel @Inject constructor(
         // любом порядке — поэтому ищем плейсхолдер ДО проверки дубликата:
         //  • уже усыновлённый по messageId (SENT пришёл раньше эха) — иначе дубль-чек ниже
         //    отбросил бы эхо, и плейсхолдер остался бы с пустыми вложениями (пустой bubble);
-        //  • либо ещё SENDING с совпадающим контентом (эхо раньше ответа sendMessage).
-        // Для медиа вложения у плейсхолдера пустые (есть только localPreviewUris), поэтому
-        // размер вложений не сверяем, если идёт upload.
+        //  • либо outgoing-строка с совпадающим текстом и количеством вложений (эхо без ID).
+        // Durable outgoingAttachments сохраняет и документы/голосовые без previewPath.
         if (msg.senderId == currentUserId) {
-            val optIdx = currentList.indexOfFirst {
-                it.type == MessageType.MESSAGE && it.localId != null && (
-                    it.localId == msg.clientOperationId ||
-                        it.messageId == msg.id ||
-                        (it.readStatus == ReadStatus.SENDING &&
-                            it.text == (msg.content?.text ?: "") &&
-                            (it.uploadProgress != null || it.localPreviewUris.isNotEmpty() ||
-                                it.attachments.size == (msg.content?.attachmentsList?.size ?: 0)))
-                    )
-            }
+            val optIdx = findOutgoingEchoMatch(
+                rows = currentList,
+                senderId = msg.senderId,
+                currentUserId = currentUserId,
+                messageId = msg.id,
+                clientOperationId = msg.clientOperationId,
+                text = msg.content?.text.orEmpty(),
+                attachmentCount = msg.content?.attachmentsCount ?: 0,
+            )
             if (optIdx >= 0) {
                 if (deferLiveTail) {
                     messageNavigator.deferLiveMessage()

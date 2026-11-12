@@ -35,6 +35,9 @@ import com.barkfluff.client.voice.VoicePlaybackSpeed
 import com.barkfluff.client.utils.AudioWaveformExtractor
 import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.cache.OutgoingMessageState
+import com.barkfluff.client.cache.OutgoingAttachmentKind
+import com.barkfluff.client.send.OutgoingAttachmentUi
+import com.barkfluff.client.send.OutgoingAttachmentUploadState
 import com.barkfluff.client.utils.ImageLoadHelper
 import com.barkfluff.client.utils.AvatarLoader
 import barkfluff.shared.Shared
@@ -118,6 +121,9 @@ class MessageAdapter(
          * не нужен.
          */
         const val PAYLOAD_SENDER_INFO = "sender_info"
+
+        /** Only outgoing upload indicators/status changed; media views stay bound and keep previews. */
+        const val PAYLOAD_OUTGOING_PROGRESS = 1 shl 0
 
         /** «Хвостик» последнего пузыря в серии. */
         private const val BUBBLE_TAIL_CORNER_DP = 8f
@@ -238,13 +244,35 @@ class MessageAdapter(
         position: Int,
         payloads: MutableList<Any>
     ) {
-        // Незнакомый payload или пустой список — обычный полный бинд.
-        if (payloads.isEmpty() || payloads.any { it != PAYLOAD_SENDER_INFO }) {
+        if (payloads.isEmpty()) {
             super.onBindViewHolder(holder, position, payloads)
             return
         }
-        if (holder is ReceivedMessageViewHolder) {
-            holder.bindSenderInfo(getItem(position))
+
+        var flags = 0
+        var senderInfoChanged = false
+        var isKnownPayload = true
+        payloads.forEach { payload ->
+            when (payload) {
+                PAYLOAD_SENDER_INFO -> senderInfoChanged = true
+                is Int -> {
+                    if (payload and PAYLOAD_OUTGOING_PROGRESS.inv() != 0) isKnownPayload = false
+                    flags = flags or payload
+                }
+                else -> isKnownPayload = false
+            }
+        }
+        if (!isKnownPayload || (flags == 0 && !senderInfoChanged)) {
+            super.onBindViewHolder(holder, position, payloads)
+            return
+        }
+
+        val item = getItem(position)
+        if (senderInfoChanged && holder is ReceivedMessageViewHolder) {
+            holder.bindSenderInfo(item)
+        }
+        if (flags and PAYLOAD_OUTGOING_PROGRESS != 0 && holder is SentMessageViewHolder) {
+            holder.bindOutgoingProgress(item)
         }
     }
 
@@ -469,11 +497,30 @@ class MessageAdapter(
 
                 applyDeliveryStatusIcon(binding.readStatusImageView, item.readStatus)
 
+                val hasOutgoingMedia = item.outgoingAttachments.any { it.isOutgoingMedia() }
                 val showMediaTimeOverlay = item.text.isBlank() &&
-                    (item.localPreviewUris.isNotEmpty() || displayedAttachments.isPureMedia())
+                    (hasOutgoingMedia || item.localPreviewUris.isNotEmpty() || displayedAttachments.isPureMedia())
                 binding.timeStatusLayout.visibility = if (showMediaTimeOverlay) View.GONE else View.VISIBLE
 
-                if (item.localPreviewUris.isNotEmpty()) {
+                if (item.outgoingAttachments.isNotEmpty()) {
+                    val mediaWidthPx = if (hasOutgoingMedia) calcMediaWidthPx(binding.root.context) else 0
+                    binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
+                        it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
+                    }
+                    binding.attachmentsContainer.removeAllViews()
+                    val (outgoingView, mediaGrid) = buildOutgoingAttachments(
+                        binding.attachmentsContainer,
+                        item.outgoingAttachments,
+                        item,
+                        mediaWidthPx,
+                        bubbleCorners,
+                        roundMediaTop,
+                        roundMediaBottom,
+                    )
+                    binding.attachmentsContainer.addView(outgoingView)
+                    if (showMediaTimeOverlay && mediaGrid != null) bindMediaTimeOverlay(mediaGrid, item)
+                    binding.attachmentsContainer.visibility = View.VISIBLE
+                } else if (item.localPreviewUris.isNotEmpty()) {
                     // Оптимистичное сообщение: вложения ещё не на сервере — рендерим локальные превью.
                     val mediaWidthPx = calcMediaWidthPx(binding.root.context)
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
@@ -522,26 +569,15 @@ class MessageAdapter(
                     binding.attachmentsContainer.removeAllViews()
                 }
 
-                // Inline upload progress overlay (M3 Expressive feedback) — рендерится
-                // поверх attachmentsContainer пока активен upload.
-                val progress = item.uploadProgress
-                if (progress != null) {
-                    binding.uploadProgressOverlay.visibility = View.VISIBLE
-                    binding.uploadProgressBar.progress = progress
-                    binding.uploadProgressLabel.text = binding.root.context.getString(
-                        R.string.message_upload_progress,
-                        progress
-                    )
-                    binding.uploadProgressOverlay.layoutParams = binding.uploadProgressOverlay.layoutParams.also {
-                        it.width = if (binding.attachmentsContainer.visibility == View.VISIBLE)
-                            binding.attachmentsContainer.layoutParams.width
-                        else ViewGroup.LayoutParams.MATCH_PARENT
-                        it.height = ViewGroup.LayoutParams.MATCH_PARENT
-                    }
-                } else {
-                    binding.uploadProgressOverlay.visibility = View.GONE
-                }
             }
+        }
+
+        fun bindOutgoingProgress(item: MessageItem) {
+            applyDeliveryStatusIcon(binding.readStatusImageView, item.readStatus)
+            binding.attachmentsContainer.findViewById<ImageView>(R.id.mediaReadStatusImageView)?.let {
+                applyDeliveryStatusIcon(it, item.readStatus, useLightTint = true)
+            }
+            updateOutgoingUploadViews(binding.attachmentsContainer, item)
         }
     }
 
@@ -1192,6 +1228,256 @@ class MessageAdapter(
             column.addView(row)
         }
         return column
+    }
+
+    private fun OutgoingAttachmentUi.isOutgoingMedia(): Boolean = when (kind) {
+        OutgoingAttachmentKind.RAW_IMAGE,
+        OutgoingAttachmentKind.EDITED_IMAGE,
+        OutgoingAttachmentKind.VIDEO,
+        OutgoingAttachmentKind.STICKER -> true
+        else -> false
+    }
+
+    private fun OutgoingAttachmentUi.isOutgoingAudio(): Boolean =
+        kind == OutgoingAttachmentKind.VOICE || mimeType.startsWith("audio/", ignoreCase = true)
+
+    private fun buildOutgoingAttachments(
+        container: ViewGroup,
+        attachments: List<OutgoingAttachmentUi>,
+        item: MessageItem,
+        mediaWidthPx: Int,
+        bubbleCorners: FloatArray,
+        roundMediaTop: Boolean,
+        roundMediaBottom: Boolean,
+    ): Pair<View, android.widget.FrameLayout?> {
+        val context = container.context
+        val ordered = attachments.sortedBy { it.index }
+        val media = ordered.filter { it.isOutgoingMedia() }
+        val other = ordered.filterNot { it.isOutgoingMedia() }
+        val wrapper = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                if (mediaWidthPx > 0) ViewGroup.LayoutParams.MATCH_PARENT else ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        var mediaGrid: android.widget.FrameLayout? = null
+        if (media.isNotEmpty() && mediaWidthPx > 0) {
+            mediaGrid = buildOutgoingMediaGrid(
+                context = context,
+                attachments = media,
+                item = item,
+                maxWidth = mediaWidthPx,
+                bubbleCorners = bubbleCorners,
+                roundTop = roundMediaTop,
+                roundBottom = roundMediaBottom && other.isEmpty(),
+            )
+            wrapper.addView(mediaGrid)
+        }
+        other.forEach { attachment ->
+            val row = if (attachment.isOutgoingAudio()) {
+                buildOutgoingAudioRow(container, attachment, item)
+            } else {
+                buildOutgoingDocumentRow(container, attachment, item)
+            }
+            wrapper.addView(row)
+        }
+        return wrapper to mediaGrid
+    }
+
+    private fun buildOutgoingMediaGrid(
+        context: Context,
+        attachments: List<OutgoingAttachmentUi>,
+        item: MessageItem,
+        maxWidth: Int,
+        bubbleCorners: FloatArray,
+        roundTop: Boolean,
+        roundBottom: Boolean,
+    ): android.widget.FrameLayout {
+        val dm = context.resources.displayMetrics
+        val spacingPx = (2 * dm.density + 0.5f).toInt()
+        val capped = attachments.take(10)
+        val layout = determineLayout(capped.size)
+        val grid = android.widget.FrameLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(maxWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        val column = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                maxWidth,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+        }
+
+        var itemIndex = 0
+        for ((rowIdx, itemsInRow) in layout.withIndex()) {
+            val cellWidth = (maxWidth - spacingPx * (itemsInRow - 1)) / itemsInRow
+            val rowAttachments = capped.subList(itemIndex, (itemIndex + itemsInRow).coerceAtMost(capped.size))
+            val rowRatios = if (capped.size == 1) {
+                rowAttachments.mapNotNull { outgoingMediaRatio(context, it) }
+            } else {
+                emptyList()
+            }
+            val avgRatio = if (rowRatios.isNotEmpty()) rowRatios.average().toFloat() else 1f
+            val cellHeight = (cellWidth / avgRatio).toInt().coerceIn(cellWidth / 3, cellWidth * 2)
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(maxWidth, cellHeight).apply {
+                    if (rowIdx > 0) topMargin = spacingPx
+                }
+            }
+            for (col in 0 until itemsInRow) {
+                if (itemIndex >= capped.size) break
+                val attachment = capped[itemIndex]
+                val cell = LayoutInflater.from(context)
+                    .inflate(R.layout.item_attachment_media_cell, row, false)
+                cell.layoutParams = LinearLayout.LayoutParams(cellWidth, cellHeight).apply {
+                    if (col > 0) marginStart = spacingPx
+                }
+                val corners = mediaCellCorners(
+                    bubbleCorners, roundTop, roundBottom,
+                    isTopRow = rowIdx == 0,
+                    isBottomRow = rowIdx == layout.lastIndex,
+                    isLeftCol = col == 0,
+                    isRightCol = col == itemsInRow - 1,
+                )
+                applyMediaCellCorners(cell, corners)
+                cell.tag = attachment
+                val thumbnail = cell.findViewById<ImageView>(R.id.thumbnailImage)
+                thumbnail.setImageResource(R.drawable.ic_image_placeholder)
+                val localFile = File(attachment.previewPath ?: attachment.stagedPath)
+                if (localFile.isFile) {
+                    thumbnail.load(localFile) {
+                        crossfade(150)
+                        error(R.drawable.ic_image_placeholder)
+                    }
+                }
+                renderOutgoingAttachmentIndicator(cell, attachment, item)
+                row.addView(cell)
+                itemIndex++
+            }
+            column.addView(row)
+        }
+        grid.addView(column)
+        return grid
+    }
+
+    private fun outgoingMediaRatio(context: Context, attachment: OutgoingAttachmentUi): Float? {
+        val uri = Uri.fromFile(File(attachment.previewPath ?: attachment.stagedPath))
+        val dimensions = if (attachment.kind == OutgoingAttachmentKind.VIDEO) {
+            getVideoDimensions(uri, context)
+        } else {
+            ImageCompressor.getImageDimensions(uri, context)
+        }
+        return dimensions?.takeIf { it.first > 0 && it.second > 0 }
+            ?.let { (width, height) -> width.toFloat() / height.toFloat() }
+    }
+
+    private fun buildOutgoingAudioRow(
+        container: ViewGroup,
+        attachment: OutgoingAttachmentUi,
+        item: MessageItem,
+    ): View {
+        val binding = ItemAttachmentAudioBinding.inflate(LayoutInflater.from(container.context), container, false)
+        binding.root.tag = attachment
+        binding.fileNameText.text = attachment.fileName.ifBlank { container.context.getString(R.string.attachment_file) }
+        binding.fileNameText.visibility = View.VISIBLE
+        binding.voiceWaveform.visibility = View.GONE
+        binding.voiceSpeed.visibility = View.GONE
+        binding.durationText.text = formatFileSize(container.context, attachment.sizeBytes)
+        binding.downloadButton.visibility = View.GONE
+        binding.downloadProgressBar.visibility = View.GONE
+        binding.audioSeekBar.visibility = View.GONE
+        binding.playPauseButton.isEnabled = false
+        binding.playPauseButton.alpha = 0.6f
+        binding.outgoingUploadProgress.setIndicatorColor(resolveOnPrimaryContainerColor(container.context))
+        renderOutgoingAttachmentIndicator(binding.root, attachment, item)
+        return binding.root
+    }
+
+    private fun buildOutgoingDocumentRow(
+        container: ViewGroup,
+        attachment: OutgoingAttachmentUi,
+        item: MessageItem,
+    ): View {
+        val binding = ItemAttachmentDocumentBinding.inflate(LayoutInflater.from(container.context), container, false)
+        binding.root.tag = attachment
+        binding.docFileName.text = attachment.fileName.ifBlank { container.context.getString(R.string.attachment_file) }
+        binding.docFileSize.text = formatFileSize(container.context, attachment.sizeBytes)
+        binding.docDownloadButton.visibility = View.GONE
+        binding.docOpenButton.visibility = View.GONE
+        binding.docDownloadProgress.visibility = View.GONE
+        binding.outgoingUploadProgress.setIndicatorColor(resolveOnPrimaryContainerColor(container.context))
+        renderOutgoingAttachmentIndicator(binding.root, attachment, item)
+        return binding.root
+    }
+
+    private fun updateOutgoingUploadViews(root: View, item: MessageItem) {
+        val boundAttachment = root.tag as? OutgoingAttachmentUi
+        if (boundAttachment != null) {
+            val attachment = item.outgoingAttachments.firstOrNull { it.index == boundAttachment.index }
+                ?: boundAttachment
+            updateOutgoingAttachmentMetadata(root, boundAttachment, attachment)
+            root.tag = attachment
+            renderOutgoingAttachmentIndicator(root, attachment, item)
+        }
+        if (root is ViewGroup) {
+            for (index in 0 until root.childCount) updateOutgoingUploadViews(root.getChildAt(index), item)
+        }
+    }
+
+    private fun updateOutgoingAttachmentMetadata(
+        root: View,
+        old: OutgoingAttachmentUi,
+        new: OutgoingAttachmentUi,
+    ) {
+        if (old.fileName == new.fileName && old.sizeBytes == new.sizeBytes) return
+        val fileName = new.fileName.ifBlank { root.context.getString(R.string.attachment_file) }
+        root.findViewById<android.widget.TextView>(R.id.docFileName)?.text = fileName
+        root.findViewById<android.widget.TextView>(R.id.fileNameText)?.text = fileName
+        val size = formatFileSize(root.context, new.sizeBytes)
+        root.findViewById<android.widget.TextView>(R.id.docFileSize)?.text = size
+        root.findViewById<android.widget.TextView>(R.id.durationText)?.text = size
+    }
+
+    private fun renderOutgoingAttachmentIndicator(
+        root: View,
+        attachment: OutgoingAttachmentUi,
+        item: MessageItem,
+    ) {
+        val context = root.context
+        val progress = root.findViewById<com.google.android.material.progressindicator.CircularProgressIndicator>(
+            R.id.outgoingUploadProgress,
+        )
+        val mediaIndicator = root.findViewById<View>(R.id.outgoingUploadIndicator)
+        val cancelButton = root.findViewById<View>(R.id.outgoingCancelButton)
+        val showProgress = item.outgoingState != OutgoingMessageState.FAILED &&
+            attachment.uploadState != OutgoingAttachmentUploadState.DONE
+        mediaIndicator?.visibility = if (showProgress) View.VISIBLE else View.GONE
+        if (mediaIndicator == null) progress?.visibility = if (showProgress) View.VISIBLE else View.GONE
+        progress?.let {
+            it.isIndeterminate = attachment.uploadState != OutgoingAttachmentUploadState.UPLOADING
+            if (!it.isIndeterminate) it.progress = attachment.progress
+            if (mediaIndicator == null) it.contentDescription = context.getString(
+                R.string.message_upload_progress,
+                attachment.progress,
+            )
+        }
+        cancelButton?.let { button ->
+            button.visibility = if (showProgress && !item.localId.isNullOrBlank()) View.VISIBLE else View.GONE
+            button.contentDescription = context.getString(R.string.btn_cancel)
+            button.setOnClickListener {
+                item.localId?.takeIf(String::isNotBlank)?.let { operationId ->
+                    eventSink?.onCancelOutgoing(operationId)
+                }
+            }
+        }
+        root.findViewById<View>(R.id.mediaDownloadIcon)?.visibility = View.GONE
+        root.findViewById<View>(R.id.mediaDownloadProgress)?.visibility = View.GONE
+        root.findViewById<View>(R.id.videoOverlay)?.visibility = if (attachment.kind == OutgoingAttachmentKind.VIDEO) View.VISIBLE else View.GONE
+        root.findViewById<ImageView>(R.id.playIcon)?.visibility = if (
+            attachment.kind == OutgoingAttachmentKind.VIDEO && attachment.uploadState == OutgoingAttachmentUploadState.DONE
+        ) View.VISIBLE else View.GONE
     }
 
     /**
@@ -1913,11 +2199,26 @@ class MessageAdapter(
             if (oldItem.type == MessageType.FOOTER || newItem.type == MessageType.FOOTER) return false
             if (oldItem.type != newItem.type) return false
             if (oldItem.type == MessageType.UNREAD_SEPARATOR) return true
+            if (!oldItem.localId.isNullOrBlank() && oldItem.localId == newItem.localId) return true
             return oldItem.messageId == newItem.messageId
         }
         override fun areContentsTheSame(oldItem: MessageItem, newItem: MessageItem) =
             if (oldItem.type == MessageType.FOOTER && newItem.type == MessageType.FOOTER) true
             else oldItem == newItem
+
+        override fun getChangePayload(oldItem: MessageItem, newItem: MessageItem): Any? {
+            val progressChanged = oldItem.uploadProgress != newItem.uploadProgress ||
+                oldItem.outgoingState != newItem.outgoingState ||
+                oldItem.outgoingAttachments != newItem.outgoingAttachments ||
+                oldItem.readStatus != newItem.readStatus
+            if (!progressChanged) return null
+            return oldItem.copy(
+                uploadProgress = newItem.uploadProgress,
+                outgoingState = newItem.outgoingState,
+                outgoingAttachments = newItem.outgoingAttachments,
+                readStatus = newItem.readStatus,
+            ).takeIf { it == newItem }?.let { PAYLOAD_OUTGOING_PROGRESS }
+        }
     }
 }
 

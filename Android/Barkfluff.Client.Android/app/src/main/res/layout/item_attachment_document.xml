@@ -12,14 +12,30 @@
     android:minWidth="200dp">
 
     <!-- Иконка файла -->
-    <ImageView
-        android:id="@+id/docFileIcon"
-        android:layout_width="32dp"
-          android:layout_height="32dp"
-          android:src="@drawable/ic_file"
-          android:contentDescription="@null"
-          android:importantForAccessibility="no"
-          app:tint="?attr/colorPrimary" />
+    <FrameLayout
+        android:layout_width="48dp"
+        android:layout_height="48dp">
+
+        <ImageView
+            android:id="@+id/docFileIcon"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_file"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            app:tint="?attr/colorPrimary" />
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/outgoingUploadProgress"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:indicatorSize="44dp"
+            app:trackThickness="3dp" />
+    </FrameLayout>
 
     <!-- Имя файла + размер + прогресс -->
     <LinearLayout

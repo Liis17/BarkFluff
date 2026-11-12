@@ -60,39 +60,6 @@
                     tools:visibility="visible"
                     tools:layout_height="120dp" />
 
-                <!-- Inline upload progress overlay: появляется поверх attachmentsContainer
-                     при загрузке медиа (M3 Expressive feedback). Управляется uploadProgress
-                     в MessageItem. -->
-                <FrameLayout
-                    android:id="@+id/uploadProgressOverlay"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@color/scrim_overlay"
-                    android:visibility="gone"
-                    tools:visibility="gone">
-
-                    <com.google.android.material.progressindicator.CircularProgressIndicator
-                        android:id="@+id/uploadProgressBar"
-                        android:layout_width="56dp"
-                        android:layout_height="56dp"
-                        android:layout_gravity="center"
-                        android:indeterminate="false"
-                        app:indicatorColor="?attr/colorOnPrimary"
-                        app:indicatorSize="56dp"
-                        app:trackColor="?attr/colorOnPrimary"
-                        app:trackThickness="4dp" />
-
-                    <TextView
-                        android:id="@+id/uploadProgressLabel"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:textAppearance="?attr/textAppearanceLabelMedium"
-                        android:textColor="?attr/colorOnPrimary"
-                        tools:text="42%" />
-
-                </FrameLayout>
-
                 <!-- Markdown-текст и таблицы сообщения -->
                 <LinearLayout
                     android:id="@+id/messageMarkdownContainer"

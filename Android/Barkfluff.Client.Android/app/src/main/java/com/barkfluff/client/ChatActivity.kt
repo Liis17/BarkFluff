@@ -1222,6 +1222,10 @@ class ChatActivity : AppCompatActivity() {
                     toggleSelection(messageId)
                 }
 
+                override fun onCancelOutgoing(operationId: String) {
+                    viewModel.dispatch(ChatIntent.CancelOutgoing(operationId))
+                }
+
                 override fun senderInfo(senderId: Long): Pair<String?, String?>? =
                     groupMemberInfoCache[senderId]
 
