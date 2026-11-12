@@ -17,6 +17,7 @@ import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -46,6 +47,7 @@ class CreateGroupChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityCreateGroupChatBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applyImeInsetsToBottomPadding()
 
         adapter = GroupMemberPickerAdapter(::toggleUser)
         binding.usersRecyclerView.layoutManager = LinearLayoutManager(this)

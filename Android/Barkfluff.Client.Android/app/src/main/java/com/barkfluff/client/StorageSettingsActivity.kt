@@ -30,6 +30,7 @@ import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.drafts.ComposerAttachmentStore
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.configureImeInsets
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.appcompat.app.AlertDialog
@@ -192,7 +193,9 @@ class StorageSettingsActivity : AppCompatActivity() {
             .setPositiveButton(R.string.btn_save, null)
             .setNegativeButton(R.string.btn_cancel, null)
             .create()
+        dialog.configureImeInsets()
         dialog.setOnShowListener {
+            dialog.configureImeInsets()
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val size = input.autoDownloadLimitInput.text?.toString()?.trim()?.toIntOrNull()
                 if (size == null || size !in 1..512) {

@@ -113,6 +113,7 @@
             android:name=".SelectServerActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />
 
         <activity
@@ -168,12 +169,14 @@
             android:name=".UserProfileActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />
 
         <activity
             android:name=".GroupInfoActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />
 
         <activity
@@ -392,7 +395,8 @@
             android:name=".widget.WidgetConfigureActivity"
             android:exported="true"
             android:theme="@style/Theme.BarkfluffClientAndroid"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>

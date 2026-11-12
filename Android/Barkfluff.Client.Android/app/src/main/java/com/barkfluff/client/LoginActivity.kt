@@ -100,9 +100,10 @@ class LoginActivity : AppCompatActivity() {
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
         ViewCompat.setOnApplyWindowInsetsListener(binding.contentPanel) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             v.updatePadding(
                 top = systemBars.top + LOGIN_TOP_PADDING_DP.dpToPx(),
-                bottom = systemBars.bottom + LOGIN_BOTTOM_PADDING_DP.dpToPx()
+                bottom = maxOf(systemBars.bottom, ime.bottom) + LOGIN_BOTTOM_PADDING_DP.dpToPx()
             )
             insets
         }

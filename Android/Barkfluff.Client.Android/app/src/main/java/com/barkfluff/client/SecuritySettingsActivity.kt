@@ -27,6 +27,7 @@ import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import com.barkfluff.client.utils.showImeAware
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -178,7 +179,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             .setNegativeButton(R.string.btn_cancel) { _, _ ->
                 restoreSwitch(AuthenticationFactor.AUTHENTICATOR, false)
             }
-            .show()
+            .showImeAware()
     }
 
     private fun showEmailEnrollment(proof: AuthenticationChallengeReference) {
@@ -193,7 +194,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             .setNegativeButton(R.string.btn_cancel) { _, _ ->
                 restoreSwitch(AuthenticationFactor.EMAIL, false)
             }
-            .show()
+            .showImeAware()
     }
 
     private fun confirmationCodeInput(): Pair<TextInputLayout, TextInputEditText> {
@@ -272,7 +273,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton(R.string.btn_cancel, null)
-            .show()
+            .showImeAware()
     }
 
     private fun showLoginPolicyPicker() {
@@ -363,7 +364,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton(R.string.btn_cancel, null)
-            .show()
+            .showImeAware()
     }
 
     private fun restoreSwitch(factor: AuthenticationFactor, value: Boolean) {

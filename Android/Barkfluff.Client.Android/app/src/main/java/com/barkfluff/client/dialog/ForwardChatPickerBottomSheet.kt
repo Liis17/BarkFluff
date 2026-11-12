@@ -15,6 +15,8 @@ import com.barkfluff.client.databinding.BottomSheetForwardChatsBinding
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
+import com.barkfluff.client.utils.configureImeInsets
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -56,7 +58,9 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = super.onCreateDialog(savedInstanceState) as BottomSheetDialog
+        dialog.configureImeInsets()
         dialog.setOnShowListener {
+            dialog.configureImeInsets()
             val sheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
             sheet?.let {
                 BottomSheetBehavior.from(it).apply {
@@ -79,6 +83,7 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        binding.root.applyImeInsetsToBottomPadding()
 
         messageIds = arguments?.getLongArray(ARG_MESSAGE_IDS) ?: longArrayOf()
         if (messageIds.isEmpty()) {

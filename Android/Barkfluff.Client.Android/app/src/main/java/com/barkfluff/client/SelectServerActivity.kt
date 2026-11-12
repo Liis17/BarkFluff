@@ -25,6 +25,7 @@ import com.barkfluff.client.security.TlsCertificateProbe
 import com.barkfluff.client.security.TlsTrustStore
 import com.barkfluff.client.utils.TlsEndpointSecurityException
 import com.barkfluff.client.utils.TlsServerCertificatePreflight
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
 import com.barkfluff.client.utils.applyServerInfo
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -79,6 +80,7 @@ class SelectServerActivity : AppCompatActivity() {
 
         binding = ActivitySelectServerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applyImeInsetsToBottomPadding()
         applyAdaptiveContentWidth()
         updateCustomServerAccessibility(expanded = false)
 
