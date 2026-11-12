@@ -47,6 +47,16 @@
                 android:padding="8dp"
                 android:visibility="gone" />
 
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/outgoingUploadProgress"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center"
+                android:indeterminate="true"
+                android:visibility="gone"
+                app:indicatorSize="44dp"
+                app:trackThickness="3dp" />
+
         </FrameLayout>
 
         <!-- Имя файла и длительность -->
@@ -93,6 +103,16 @@
                 tools:text="3:45" />
 
         </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/audioMenuButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_more_vert"
+            android:contentDescription="@string/cd_more_menu"
+            android:scaleType="center"
+            app:tint="?attr/colorOnSurfaceVariant" />
 
     </LinearLayout>
 

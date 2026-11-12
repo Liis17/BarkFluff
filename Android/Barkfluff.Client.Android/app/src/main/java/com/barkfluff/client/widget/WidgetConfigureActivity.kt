@@ -21,6 +21,7 @@ import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -73,6 +74,7 @@ class WidgetConfigureActivity : AppCompatActivity() {
 
         binding = ActivityWidgetConfigureBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applyImeInsetsToBottomPadding()
 
         appWidgetId = intent.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,

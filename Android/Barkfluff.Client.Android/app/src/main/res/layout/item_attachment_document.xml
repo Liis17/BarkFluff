@@ -12,14 +12,30 @@
     android:minWidth="200dp">
 
     <!-- Иконка файла -->
-    <ImageView
-        android:id="@+id/docFileIcon"
-        android:layout_width="32dp"
-          android:layout_height="32dp"
-          android:src="@drawable/ic_file"
-          android:contentDescription="@null"
-          android:importantForAccessibility="no"
-          app:tint="?attr/colorPrimary" />
+    <FrameLayout
+        android:layout_width="48dp"
+        android:layout_height="48dp">
+
+        <ImageView
+            android:id="@+id/docFileIcon"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_file"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            app:tint="?attr/colorPrimary" />
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/outgoingUploadProgress"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:indicatorSize="44dp"
+            app:trackThickness="3dp" />
+    </FrameLayout>
 
     <!-- Имя файла + размер + прогресс -->
     <LinearLayout
@@ -65,7 +81,7 @@
     <!-- Контейнер для кнопок — 48dp touch target (M3 / WCAG минимум).
          Визуальный размер иконки сохраняется 24dp через scaleType=center. -->
     <FrameLayout
-        android:layout_width="48dp"
+        android:layout_width="96dp"
         android:layout_height="48dp">
 
         <!-- Кнопка скачать -->
@@ -89,6 +105,17 @@
             android:contentDescription="@string/cd_open_file"
             android:scaleType="center"
             android:visibility="gone"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+        <ImageButton
+            android:id="@+id/docMenuButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_more_vert"
+            android:contentDescription="@string/cd_more_menu"
+            android:scaleType="center"
             app:tint="?attr/colorOnSurfaceVariant" />
 
     </FrameLayout>

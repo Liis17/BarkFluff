@@ -1,6 +1,7 @@
 package com.barkfluff.client
 
 import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.model.LastMessageSummary
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -46,6 +47,21 @@ class ChatListIntegrityTest {
         )
     }
 
+    @Test
+    fun equalActivityUsesMessageIdThenChatIdForStableOrder() {
+        val lowerMessage = chat(id = "00000000-0000-0000-0000-000000000003", title = "low", lastActivityAt = 10L)
+            .copy(lastMessage = message(id = 4L, sentAt = 10L))
+        val higherMessage = chat(id = "00000000-0000-0000-0000-000000000004", title = "high", lastActivityAt = 10L)
+            .copy(lastMessage = message(id = 8L, sentAt = 10L))
+        val sameMessageEarlierId = chat(id = "00000000-0000-0000-0000-000000000001", title = "first", lastActivityAt = 10L)
+            .copy(lastMessage = message(id = 8L, sentAt = 10L))
+
+        assertEquals(
+            listOf(sameMessageEarlierId, higherMessage, lowerMessage),
+            sortChatSummaries(listOf(lowerMessage, higherMessage, sameMessageEarlierId)),
+        )
+    }
+
     private fun chat(id: String, title: String, lastActivityAt: Long) = ChatSummary(
         id = id,
         title = title,
@@ -56,5 +72,13 @@ class ChatListIntegrityTest {
         countUnread = 0L,
         firstUnreadMessageId = 0L,
         lastActivityAt = lastActivityAt,
+    )
+
+    private fun message(id: Long, sentAt: Long) = LastMessageSummary(
+        id = id,
+        senderId = 2L,
+        text = "message-$id",
+        sentAt = sentAt,
+        readBy = listOf(2L),
     )
 }

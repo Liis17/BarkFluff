@@ -31,6 +31,7 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.PathInterpolator
@@ -97,6 +98,7 @@ import com.barkfluff.client.utils.MessageTimeSpacingDecoration
 import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.barkfluff.client.utils.applySpringPress
 import com.barkfluff.client.view.MessageActionsOverlay
+import com.barkfluff.client.view.M3ContextMenu
 import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
 import androidx.activity.OnBackPressedCallback
@@ -179,6 +181,8 @@ class ChatActivity : AppCompatActivity() {
     // Индикатор набора текста ("печатает...") — подписка и heartbeat принадлежат ViewModel.
     private var suppressTypingInput = false
     private var renderedTypingUserIds: Set<Long> = emptySet()
+    private var selectionGestureController: MessageSelectionTouchController? = null
+    private var renderedSelectionCount = -1
     private val pendingTypingNameFetches = mutableSetOf<Long>()
     private var lastStatusText: CharSequence? = null
     private var lastIndicatorVisible = false
@@ -284,6 +288,7 @@ class ChatActivity : AppCompatActivity() {
         private const val CLIP_LABEL = "BarkFluff message"
         private const val CLIP_LABEL_MULTIPLE = "BarkFluff messages"
         private const val LOAD_MESSAGES_DELAY_MS = 500L
+        private const val AUTO_SCROLL_FRAME_MS = 16L
         private const val VOICE_DOT_BLINK_DURATION_MS = 700L
         private const val VOICE_TIMER_TICK_MS = 200L
         private const val HEADER_MORPH_DURATION_MS = 280L
@@ -515,6 +520,9 @@ class ChatActivity : AppCompatActivity() {
                 binding.loadingProgress.visibility = if (state.isLoading) View.VISIBLE else View.GONE
 
                 // Reply / Edit
+                if (previousState?.selection != state.selection) {
+                    renderSelectionState(previousState?.selection, state.selection, animate = previousState != null)
+                }
                 if (previousState?.pendingReply != state.pendingReply) {
                     renderPendingReply(state.pendingReply)
                 }
@@ -765,9 +773,28 @@ class ChatActivity : AppCompatActivity() {
                 binding.sendButton.height + sendBaseMargin
             )
             val inputRowBandPx = maxOf(inputRowBandBasePx, inputContentHeight)
-            binding.messagesRecyclerView.updatePadding(
-                bottom = recyclerBasePaddingBottom + inputRowBandPx + lastBottomInset
-            )
+            val recycler = binding.messagesRecyclerView
+            val newBottom = recyclerBasePaddingBottom + inputRowBandPx + lastBottomInset
+            val delta = newBottom - recycler.paddingBottom
+            if (delta == 0) return
+            // Смена нижнего отступа (клавиатура, многострочный ввод) сама не удерживает сообщения
+            // над композером: запоминаем расстояние от нижней видимой строки до края контента
+            // и восстанавливаем его после раскладки. У самого низа просто докручиваем до конца.
+            val wasAtBottom = !recycler.canScrollVertically(1)
+            val layoutManager = recycler.layoutManager as? LinearLayoutManager
+            val anchorPosition = layoutManager?.findLastVisibleItemPosition() ?: RecyclerView.NO_POSITION
+            val gapBefore = layoutManager?.findViewByPosition(anchorPosition)
+                ?.let { recycler.height - recycler.paddingBottom - it.bottom }
+            recycler.updatePadding(bottom = newBottom)
+            recycler.doOnNextLayout {
+                if (wasAtBottom) {
+                    if (delta > 0) recycler.scrollBy(0, Int.MAX_VALUE / 2)
+                } else if (gapBefore != null) {
+                    val anchor = layoutManager?.findViewByPosition(anchorPosition) ?: return@doOnNextLayout
+                    val gapAfter = recycler.height - recycler.paddingBottom - anchor.bottom
+                    recycler.scrollBy(0, gapBefore - gapAfter)
+                }
+            }
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.chatRootLayout) { _, insets ->
@@ -782,7 +809,8 @@ class ChatActivity : AppCompatActivity() {
             binding.selectionToolbar.updatePadding(top = selectionBasePaddingTop + bars.top)
             // Recyclerview остаётся edge-to-edge снизу — фон/обои ленты уходят под панель
             // ввода и жестовую навигацию, а контент просто не долистывается ниже paddingBottom.
-            binding.messagesRecyclerView.updatePadding(top = recyclerBasePaddingTop)
+            // Верхний отступ здесь не трогаем: его ведёт слушатель шапки ниже, а сброс на каждом
+            // проходе insets заставлял ленту прыгать на высоту шапки и терять позицию.
             updateRecyclerBottomPadding()
 
             binding.sendButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = sendBaseMargin + bottomInset }
@@ -1222,6 +1250,12 @@ class ChatActivity : AppCompatActivity() {
                     toggleSelection(messageId)
                 }
 
+                override fun isSelectionActive(): Boolean = viewModel.state.value.selection.isActive
+
+                override fun onCancelOutgoing(operationId: String) {
+                    viewModel.dispatch(ChatIntent.CancelOutgoing(operationId))
+                }
+
                 override fun senderInfo(senderId: Long): Pair<String?, String?>? =
                     groupMemberInfoCache[senderId]
 
@@ -1241,6 +1275,9 @@ class ChatActivity : AppCompatActivity() {
             }
             adapter = messageAdapter
             itemAnimator = MessageItemAnimator()
+            val selectionTouchController = MessageSelectionTouchController()
+            selectionGestureController = selectionTouchController
+            addOnItemTouchListener(selectionTouchController)
             addItemDecoration(
                 MessageTimeSpacingDecoration(
                     smallSpacingPx = (2 * resources.displayMetrics.density).toInt(),  // 2dp
@@ -2563,23 +2600,36 @@ class ChatActivity : AppCompatActivity() {
             if (imageAtts.isNotEmpty()) {
                 add(MessageActionsOverlay.Action(
                     MessageActionId.SAVE_IMAGES, R.drawable.ic_action_save,
-                    getString(if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images)
+                    getString(if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images),
+                    dividerBefore = hasText,
                 ))
             }
             if (docAtts.isNotEmpty()) {
-                add(MessageActionsOverlay.Action(MessageActionId.SAVE_DOCS, R.drawable.ic_action_download, getString(R.string.msg_action_save_to_downloads)))
+                add(MessageActionsOverlay.Action(
+                    MessageActionId.SAVE_DOCS, R.drawable.ic_action_download,
+                    getString(R.string.msg_action_save_to_downloads), dividerBefore = imageAtts.isEmpty() && hasText,
+                ))
             }
             if (isOwnMessage) {
-                add(MessageActionsOverlay.Action(MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit)))
+                add(MessageActionsOverlay.Action(
+                    MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit),
+                    dividerBefore = imageAtts.isNotEmpty() || docAtts.isNotEmpty(),
+                ))
                 add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.ic_action_delete, getString(R.string.msg_action_delete), danger = true))
             }
-            add(MessageActionsOverlay.Action(MessageActionId.FORWARD, R.drawable.ic_action_forward, getString(R.string.msg_action_forward)))
+            add(MessageActionsOverlay.Action(
+                MessageActionId.FORWARD, R.drawable.ic_action_forward, getString(R.string.msg_action_forward),
+                dividerBefore = isOwnMessage,
+            ))
             add(MessageActionsOverlay.Action(
                 MessageActionId.PIN,
                 if (isPinned) R.drawable.ic_action_unpin else R.drawable.ic_action_pin,
                 getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
             ))
-            add(MessageActionsOverlay.Action(MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties)))
+            add(MessageActionsOverlay.Action(
+                MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties),
+                dividerBefore = true,
+            ))
             add(MessageActionsOverlay.Action(MessageActionId.SELECT, R.drawable.ic_action_select, getString(R.string.msg_action_select)))
         }
 
@@ -2674,39 +2724,385 @@ class ChatActivity : AppCompatActivity() {
     private fun enterSelectionMode(item: MessageItem) {
         viewModel.dispatch(ChatIntent.ClearSelection)
         viewModel.dispatch(ChatIntent.ToggleSelection(item.messageId))
-        updateSelectionToolbar()
-        // INVISIBLE, не GONE: pinnedMessageBar и e2eBanner привязаны к нижнему краю
-        // chatHeaderBar constraint-цепочкой — GONE обнулил бы её высоту, и они уехали
-        // бы под статус-бар. selectionToolbar просто перекрывает её сверху.
-        binding.chatHeaderBar.visibility = View.INVISIBLE
-        binding.selectionToolbar.visibility = View.VISIBLE
-        backCallback.isEnabled = true
     }
 
     private fun exitSelectionMode() {
         viewModel.dispatch(ChatIntent.ClearSelection)
-        binding.selectionToolbar.visibility = View.GONE
-        binding.chatHeaderBar.visibility = View.VISIBLE
-        backCallback.isEnabled = messageActionsOverlay.isShowing ||
-            binding.stickerPreviewOverlay.visibility == View.VISIBLE ||
-            inputPanelState == InputPanelState.STICKER_PANEL
     }
 
     private fun toggleSelection(messageId: Long) {
         if (!viewModel.state.value.selection.isActive) return
         viewModel.dispatch(ChatIntent.ToggleSelection(messageId))
-        if (!viewModel.state.value.selection.isActive) {
-            exitSelectionMode()
-        } else {
-            updateSelectionToolbar()
+    }
+
+    private fun renderSelectionState(previous: SelectionState?, current: SelectionState, animate: Boolean) {
+        if (previous == null || previous.isActive != current.isActive) {
+            if (current.isActive) showSelectionToolbar(animate) else hideSelectionToolbar(animate)
+        }
+        if (previous == null || previous.selectedMessageIds != current.selectedMessageIds) {
+            updateSelectionToolbar(current.selectedMessageIds.size, animate = animate && previous != null)
+        }
+        if (::backCallback.isInitialized) {
+            backCallback.isEnabled = current.isActive || messageActionsOverlay.isShowing ||
+                binding.stickerPreviewOverlay.visibility == View.VISIBLE ||
+                inputPanelState == InputPanelState.STICKER_PANEL
         }
     }
 
-    private fun updateSelectionToolbar() {
-        binding.selectionCountText.text = getString(
-            R.string.create_group_members_count,
-            viewModel.state.value.selection.selectedMessageIds.size
-        )
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun showSelectionToolbar(animate: Boolean) {
+        // INVISIBLE, не GONE: другие панели привязаны к высоте шапки и должны остаться на месте.
+        binding.chatHeaderBar.visibility = View.INVISIBLE
+        val toolbar = binding.selectionToolbar
+        toolbar.animate().cancel()
+        toolbar.visibility = View.VISIBLE
+        if (!animate || !ValueAnimator.areAnimatorsEnabled()) {
+            toolbar.alpha = 1f
+            toolbar.translationY = 0f
+            return
+        }
+        toolbar.alpha = 0f
+        toolbar.translationY = -dp(10).toFloat()
+        toolbar.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(190L)
+            .setInterpolator(PathInterpolator(0.2f, 0f, 0f, 1f))
+            .start()
+    }
+
+    private fun hideSelectionToolbar(animate: Boolean) {
+        val toolbar = binding.selectionToolbar
+        toolbar.animate().cancel()
+        binding.chatHeaderBar.animate().cancel()
+        binding.chatHeaderBar.visibility = View.VISIBLE
+        if (!animate || !ValueAnimator.areAnimatorsEnabled()) {
+            toolbar.visibility = View.GONE
+            toolbar.alpha = 1f
+            toolbar.translationY = 0f
+            binding.chatHeaderBar.alpha = 1f
+            binding.chatHeaderBar.translationY = 0f
+            renderedSelectionCount = -1
+            return
+        }
+        binding.chatHeaderBar.alpha = 0f
+        binding.chatHeaderBar.translationY = -dp(6).toFloat()
+        binding.chatHeaderBar.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(170L)
+            .setInterpolator(PathInterpolator(0.2f, 0f, 0f, 1f))
+            .start()
+        toolbar.animate()
+            .alpha(0f)
+            .translationY(-dp(8).toFloat())
+            .setDuration(140L)
+            .withEndAction {
+                toolbar.visibility = View.GONE
+                toolbar.alpha = 1f
+                toolbar.translationY = 0f
+                renderedSelectionCount = -1
+            }
+            .start()
+    }
+
+    private fun updateSelectionToolbar(count: Int, animate: Boolean) {
+        if (count == renderedSelectionCount && binding.selectionCountText.text.isNotEmpty()) return
+        renderedSelectionCount = count
+        val text = getString(R.string.create_group_members_count, count)
+        val counter = binding.selectionCountText
+        counter.animate().cancel()
+        if (!animate || !ValueAnimator.areAnimatorsEnabled()) {
+            counter.text = text
+            counter.alpha = 1f
+            counter.translationY = 0f
+            return
+        }
+        counter.animate()
+            .alpha(0f)
+            .translationY(-dp(4).toFloat())
+            .setDuration(80L)
+            .withEndAction {
+                counter.text = text
+                counter.translationY = dp(4).toFloat()
+                counter.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(120L)
+                    .setInterpolator(PathInterpolator(0.2f, 0f, 0f, 1f))
+                    .start()
+            }
+            .start()
+    }
+
+    private fun beginLongPressSelection(messageId: Long) {
+        val selection = viewModel.state.value.selection
+        if (!selection.isActive || messageId !in selection.selectedMessageIds) {
+            viewModel.dispatch(ChatIntent.ToggleSelection(messageId))
+        }
+    }
+
+    private inner class MessageSelectionTouchController : RecyclerView.OnItemTouchListener {
+        private val recycler = binding.messagesRecyclerView
+        private val touchSlop = ViewConfiguration.get(recycler.context).scaledTouchSlop.toFloat()
+        private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+        private var tracking = false
+        private var capturedSelectionTap = false
+        private var longPressTriggered = false
+        private var moved = false
+        private var activePointerId = MotionEvent.INVALID_POINTER_ID
+        private var candidateMessageId = 0L
+        private var rangeAnchorId = 0L
+        private var lastRangeMessageId = 0L
+        private var rangeSelect = true
+        private var autoScrollScheduled = false
+        private var selectionBeforeGesture: Set<Long> = emptySet()
+        private var downX = 0f
+        private var downY = 0f
+        private var pointerX = 0f
+        private var pointerY = 0f
+
+        private val longPressRunnable = Runnable {
+            if (!tracking || moved || candidateMessageId <= 0L) return@Runnable
+            longPressTriggered = true
+            rangeAnchorId = candidateMessageId
+            beginLongPressSelection(candidateMessageId)
+            rangeSelect = candidateMessageId in viewModel.state.value.selection.selectedMessageIds
+            lastRangeMessageId = candidateMessageId
+            recycler.requestDisallowInterceptTouchEvent(false)
+            val position = messageAdapter.currentList.indexOfFirst { it.messageId == candidateMessageId }
+            recycler.findViewHolderForAdapterPosition(position)?.itemView?.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                ?: recycler.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            scheduleAutoScroll()
+        }
+
+        private val autoScrollRunnable = object : Runnable {
+            override fun run() {
+                autoScrollScheduled = false
+                if (!tracking || !longPressTriggered) return
+                val viewportTop = recycler.paddingTop.toFloat()
+                val viewportBottom = (recycler.height - recycler.paddingBottom).toFloat()
+                val edgeSize = dp(64).toFloat()
+                val maxSpeed = dp(8).coerceAtLeast(1)
+                val dy = when {
+                    pointerY < viewportTop + edgeSize -> {
+                        val fraction = ((viewportTop + edgeSize - pointerY) / edgeSize).coerceIn(0f, 1f)
+                        -(maxSpeed * fraction).toInt().coerceAtLeast(1)
+                    }
+                    pointerY > viewportBottom - edgeSize -> {
+                        val fraction = ((pointerY - (viewportBottom - edgeSize)) / edgeSize).coerceIn(0f, 1f)
+                        (maxSpeed * fraction).toInt().coerceAtLeast(1)
+                    }
+                    else -> 0
+                }
+                if (dy == 0) return
+                recycler.scrollBy(0, dy)
+                applyRangeAtPointer()
+                scheduleAutoScroll()
+            }
+        }
+
+        override fun onInterceptTouchEvent(rv: RecyclerView, event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    startTracking(event)
+                    return capturedSelectionTap
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (!tracking) return false
+                    updatePointer(event) ?: return longPressTriggered || capturedSelectionTap
+                    if (!longPressTriggered && distanceFromDown() > touchSlop) {
+                        moved = true
+                        recycler.removeCallbacks(longPressRunnable)
+                    }
+                    return longPressTriggered || capturedSelectionTap
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    recycler.removeCallbacks(longPressRunnable)
+                    if (longPressTriggered || capturedSelectionTap) return true
+                    finishTracking()
+                }
+            }
+            return longPressTriggered || capturedSelectionTap
+        }
+
+        override fun onTouchEvent(rv: RecyclerView, event: MotionEvent) {
+            if (!tracking) return
+            when (event.actionMasked) {
+                MotionEvent.ACTION_MOVE -> {
+                    val previousY = pointerY
+                    if (updatePointer(event) == null) return
+                    if (longPressTriggered) {
+                        applyRangeAtPointer()
+                        scheduleAutoScroll()
+                    } else if (capturedSelectionTap) {
+                        if (distanceFromDown() > touchSlop) {
+                            moved = true
+                            recycler.removeCallbacks(longPressRunnable)
+                            recycler.scrollBy(0, (previousY - pointerY).toInt())
+                        }
+                    }
+                }
+                MotionEvent.ACTION_UP -> {
+                    updatePointer(event)
+                    recycler.removeCallbacks(longPressRunnable)
+                    stopAutoScroll()
+                    when {
+                        longPressTriggered -> applyRangeAtPointer()
+                        capturedSelectionTap && !moved && candidateMessageId > 0L -> toggleSelection(candidateMessageId)
+                    }
+                    finishTracking()
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    recycler.removeCallbacks(longPressRunnable)
+                    stopAutoScroll()
+                    if (longPressTriggered) {
+                        viewModel.dispatch(ChatIntent.SetSelection(selectionBeforeGesture))
+                    }
+                    finishTracking()
+                }
+                MotionEvent.ACTION_POINTER_UP -> {
+                    if (event.getPointerId(event.actionIndex) == activePointerId) switchActivePointer(event)
+                }
+            }
+        }
+
+        override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
+            if (disallowIntercept && tracking && !capturedSelectionTap && !longPressTriggered) {
+                recycler.removeCallbacks(longPressRunnable)
+            }
+        }
+
+        fun dispose() {
+            recycler.removeCallbacks(longPressRunnable)
+            stopAutoScroll()
+            finishTracking()
+        }
+
+        private fun startTracking(event: MotionEvent) {
+            finishTracking()
+            activePointerId = event.getPointerId(0)
+            downX = event.x
+            downY = event.y
+            pointerX = downX
+            pointerY = downY
+            candidateMessageId = messageIdUnderPointer(pointerX, pointerY)
+            selectionBeforeGesture = viewModel.state.value.selection.selectedMessageIds.toSet()
+            capturedSelectionTap = viewModel.state.value.selection.isActive && candidateMessageId > 0L
+            tracking = candidateMessageId > 0L
+            if (tracking) recycler.postDelayed(longPressRunnable, longPressTimeout)
+        }
+
+        private fun updatePointer(event: MotionEvent): Int? {
+            val index = event.findPointerIndex(activePointerId)
+            if (index < 0) return null
+            pointerX = event.getX(index)
+            pointerY = event.getY(index)
+            return index
+        }
+
+        private fun distanceFromDown(): Float {
+            val dx = pointerX - downX
+            val dy = pointerY - downY
+            return kotlin.math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+        }
+
+        private fun messageIdUnderPointer(x: Float, y: Float): Long {
+            val child = recycler.findChildViewUnder(x, y) ?: return 0L
+            val position = recycler.getChildAdapterPosition(child)
+            val item = messageAdapter.currentList.getOrNull(position) ?: return 0L
+            return item.messageId.takeIf { item.type == MessageType.MESSAGE && it > 0L } ?: 0L
+        }
+
+        private fun nearestMessageIdAtPointer(x: Float, y: Float): Long {
+            val directId = messageIdUnderPointer(x, y)
+            if (directId > 0L) return directId
+            val layoutManager = recycler.layoutManager as? LinearLayoutManager ?: return 0L
+            val first = layoutManager.findFirstVisibleItemPosition().coerceAtLeast(0)
+            val last = layoutManager.findLastVisibleItemPosition().coerceAtLeast(first)
+            var nearestId = 0L
+            var nearestDistance = Float.MAX_VALUE
+            for (position in first..last) {
+                val item = messageAdapter.getMessageAt(position) ?: continue
+                if (item.messageId <= 0L) continue
+                val row = layoutManager.findViewByPosition(position) ?: continue
+                val distance = when {
+                    y < row.top -> row.top - y
+                    y > row.bottom -> y - row.bottom
+                    else -> 0f
+                }
+                if (distance < nearestDistance) {
+                    nearestId = item.messageId
+                    nearestDistance = distance
+                }
+            }
+            return nearestId
+        }
+
+        private fun applyRangeAtPointer() {
+            if (rangeAnchorId <= 0L) return
+            val targetId = nearestMessageIdAtPointer(pointerX, pointerY)
+            if (targetId <= 0L || targetId == lastRangeMessageId) return
+            val orderedIds = messageAdapter.currentList.asSequence()
+                .filter { it.type == MessageType.MESSAGE && it.messageId > 0L }
+                .map { it.messageId }
+                .toList()
+            if (rangeAnchorId !in orderedIds || targetId !in orderedIds) return
+            viewModel.dispatch(ChatIntent.SelectRange(
+                orderedMessageIds = orderedIds,
+                startMessageId = rangeAnchorId,
+                endMessageId = targetId,
+                selected = rangeSelect,
+                baseSelection = selectionBeforeGesture,
+            ))
+            lastRangeMessageId = targetId
+        }
+
+        private fun scheduleAutoScroll() {
+            val nearEdge = pointerY < recycler.paddingTop + dp(64) ||
+                pointerY > recycler.height - recycler.paddingBottom - dp(64)
+            if (!nearEdge) {
+                stopAutoScroll()
+            } else if (!autoScrollScheduled) {
+                autoScrollScheduled = true
+                recycler.postDelayed(autoScrollRunnable, AUTO_SCROLL_FRAME_MS)
+            }
+        }
+
+        private fun stopAutoScroll() {
+            recycler.removeCallbacks(autoScrollRunnable)
+            autoScrollScheduled = false
+        }
+
+        private fun switchActivePointer(event: MotionEvent) {
+            val replacement = if (event.actionIndex == 0) 1 else 0
+            if (replacement >= event.pointerCount) {
+                if (longPressTriggered) {
+                    viewModel.dispatch(ChatIntent.SetSelection(selectionBeforeGesture))
+                }
+                finishTracking()
+                return
+            }
+            activePointerId = event.getPointerId(replacement)
+            downX = event.getX(replacement)
+            downY = event.getY(replacement)
+            pointerX = downX
+            pointerY = downY
+        }
+
+        private fun finishTracking() {
+            recycler.removeCallbacks(longPressRunnable)
+            stopAutoScroll()
+            tracking = false
+            capturedSelectionTap = false
+            longPressTriggered = false
+            moved = false
+            activePointerId = MotionEvent.INVALID_POINTER_ID
+            candidateMessageId = 0L
+            rangeAnchorId = 0L
+            lastRangeMessageId = 0L
+        }
     }
 
     /** Сообщения из выбранных ID в порядке их следования в текущем списке чата. */
@@ -2846,18 +3242,17 @@ class ChatActivity : AppCompatActivity() {
 
     /** Контекстное меню чата (кнопка «три точки»): переключение уведомлений. */
     private fun showChatMenu(anchor: View) {
-        val popup = android.widget.PopupMenu(this, anchor)
         val muteTitle = if (isChatMuted) getString(R.string.chat_menu_unmute) else getString(R.string.chat_menu_mute)
-        val muteItem = popup.menu.add(muteTitle)
-        popup.setOnMenuItemClickListener { item ->
-            if (item === muteItem) {
-                toggleChatMute()
-                true
-            } else {
-                false
-            }
-        }
-        popup.show()
+        M3ContextMenu.show(
+            anchor = anchor,
+            items = listOf(M3ContextMenu.Item(
+                id = 1,
+                title = muteTitle,
+                icon = if (isChatMuted) R.drawable.ic_notifications else R.drawable.ic_notifications_off,
+            )),
+            alignEnd = true,
+            onItemSelected = { toggleChatMute() },
+        )
     }
 
     private fun toggleChatMute() {
@@ -3044,6 +3439,11 @@ class ChatActivity : AppCompatActivity() {
             PerfTrace.endChatOpen()
             chatOpenTraceEnded = true
         }
+        selectionGestureController?.let { controller ->
+            binding.messagesRecyclerView.removeOnItemTouchListener(controller)
+            controller.dispose()
+        }
+        selectionGestureController = null
         binding.messagesRecyclerView.adapter = null
         super.onDestroy()
         // Сбрасываем открытый чат

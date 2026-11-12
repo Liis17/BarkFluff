@@ -15,6 +15,7 @@ import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.chat.ConfirmedMessageTimeline
 import com.barkfluff.client.chat.MessageNavigator
+import com.barkfluff.client.chat.findOutgoingEchoMatch
 import com.barkfluff.client.chat.MessageTarget
 import com.barkfluff.client.chat.MessageTargetMissingException
 import com.barkfluff.client.chat.RegularChatSession
@@ -198,6 +199,14 @@ sealed interface ChatIntent {
     data object ClearEdit : ChatIntent
     data class SaveDraft(val text: String, val immediate: Boolean = false) : ChatIntent
     data class ToggleSelection(val messageId: Long) : ChatIntent
+    data class SetSelection(val messageIds: Set<Long>) : ChatIntent
+    data class SelectRange(
+        val orderedMessageIds: List<Long>,
+        val startMessageId: Long,
+        val endMessageId: Long,
+        val selected: Boolean = true,
+        val baseSelection: Set<Long>? = null,
+    ) : ChatIntent
     data object ClearSelection : ChatIntent
     data class TogglePin(val item: MessageItem) : ChatIntent
     data class Delete(val messageId: Long) : ChatIntent
@@ -360,6 +369,8 @@ class ChatViewModel @Inject constructor(
             ChatIntent.ClearEdit -> clearPendingEdit()
             is ChatIntent.SaveDraft -> saveDraft(intent.text, intent.immediate)
             is ChatIntent.ToggleSelection -> toggleSelection(intent.messageId)
+            is ChatIntent.SetSelection -> setSelection(intent.messageIds)
+            is ChatIntent.SelectRange -> selectRange(intent)
             ChatIntent.ClearSelection -> clearSelection()
             is ChatIntent.TogglePin -> togglePinForMessage(intent.item)
             is ChatIntent.Delete -> deleteMessage(intent.messageId)
@@ -1256,7 +1267,7 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    /** Обновляет inline-прогресс аплоада медиа на оптимистичном сообщении (0..100). */
+    /** Сохраняет общий прогресс как внутренний маркер реконсиляции исходящей строки (0..100). */
     private fun updateOptimisticUploadProgress(localId: String, progress: Int) {
         val currentList = _uiState.value.items.toMutableList()
         val idx = currentList.indexOfFirst { it.localId == localId }
@@ -1338,17 +1349,34 @@ class ChatViewModel @Inject constructor(
     }
 
     fun toggleSelection(messageId: Long) {
-        val state = _uiState.value
-        val selection = selectionReducer.toggle(state.selection, messageId)
-        _uiState.value = state.copy(selection = selection)
-        savedStateHandle[KEY_SELECTED_MESSAGE_IDS] = selection.selectedMessageIds.toLongArray()
-        submitItems(state.items)
+        publishSelection(selectionReducer.toggle(_uiState.value.selection, messageId))
     }
 
     fun clearSelection() {
+        publishSelection(selectionReducer.clear())
+    }
+
+    private fun setSelection(messageIds: Set<Long>) {
+        publishSelection(selectionReducer.setSelection(messageIds))
+    }
+
+    private fun selectRange(intent: ChatIntent.SelectRange) {
+        publishSelection(
+            selectionReducer.selectRange(
+                state = intent.baseSelection?.let(selectionReducer::setSelection) ?: _uiState.value.selection,
+                orderedMessageIds = intent.orderedMessageIds,
+                startMessageId = intent.startMessageId,
+                endMessageId = intent.endMessageId,
+                selected = intent.selected,
+            )
+        )
+    }
+
+    private fun publishSelection(selection: SelectionState) {
         val state = _uiState.value
-        _uiState.value = state.copy(selection = selectionReducer.clear())
-        savedStateHandle[KEY_SELECTED_MESSAGE_IDS] = LongArray(0)
+        if (selection == state.selection) return
+        _uiState.value = state.copy(selection = selection)
+        savedStateHandle[KEY_SELECTED_MESSAGE_IDS] = selection.selectedMessageIds.toLongArray()
         submitItems(state.items)
     }
 
@@ -1589,13 +1617,19 @@ class ChatViewModel @Inject constructor(
                         it.state != OutgoingMessageState.SENT
                 }
                 val activeIds = active.map { it.operationId }.toSet()
+                val sentIdsAwaitingEcho = snapshots.asSequence()
+                    .filter { it.state == OutgoingMessageState.SENT && it.serverMessageId > 0L }
+                    .map { it.operationId }
+                    .toSet()
+                val retainedIds = activeIds + sentIdsAwaitingEcho
                 val current = _uiState.value.items.toMutableList()
                 current.removeAll { item ->
-                    item.type == MessageType.MESSAGE && item.localId != null &&
-                        item.localId in observedOutgoingOperationIds && item.localId !in activeIds
+                    item.type == MessageType.MESSAGE && item.outgoingState != null &&
+                        item.localId != null && item.localId in observedOutgoingOperationIds &&
+                        item.localId !in retainedIds
                 }
                 active.forEach { snapshot -> upsertOutgoingBubble(current, snapshot) }
-                observedOutgoingOperationIds = activeIds
+                observedOutgoingOperationIds = retainedIds
                 submitItems(current)
 
                 snapshots.filter { it.state == OutgoingMessageState.SENT && it.draftGeneration != null }
@@ -1628,10 +1662,14 @@ class ChatViewModel @Inject constructor(
             localId = snapshot.operationId,
             outgoingState = snapshot.state,
             uploadProgress = snapshot.progress.takeIf { snapshot.state != OutgoingMessageState.FAILED },
-            localPreviewUris = snapshot.previewPaths.map { android.net.Uri.fromFile(java.io.File(it)) }
+            localPreviewUris = snapshot.attachments.mapNotNull { it.previewPath }
+                .map { android.net.Uri.fromFile(java.io.File(it)) },
+            outgoingAttachments = snapshot.attachments,
         )
         val existing = target.indexOfFirst { it.type == MessageType.MESSAGE && it.localId == snapshot.operationId }
-        if (existing >= 0) target[existing] = item else target.add(item)
+        if (existing >= 0) {
+            if (target[existing].outgoingState != null) target[existing] = item
+        } else target.add(item)
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1784,20 +1822,18 @@ class ChatViewModel @Inject constructor(
         // любом порядке — поэтому ищем плейсхолдер ДО проверки дубликата:
         //  • уже усыновлённый по messageId (SENT пришёл раньше эха) — иначе дубль-чек ниже
         //    отбросил бы эхо, и плейсхолдер остался бы с пустыми вложениями (пустой bubble);
-        //  • либо ещё SENDING с совпадающим контентом (эхо раньше ответа sendMessage).
-        // Для медиа вложения у плейсхолдера пустые (есть только localPreviewUris), поэтому
-        // размер вложений не сверяем, если идёт upload.
+        //  • либо outgoing-строка с совпадающим текстом и количеством вложений (эхо без ID).
+        // Durable outgoingAttachments сохраняет и документы/голосовые без previewPath.
         if (msg.senderId == currentUserId) {
-            val optIdx = currentList.indexOfFirst {
-                it.type == MessageType.MESSAGE && it.localId != null && (
-                    it.localId == msg.clientOperationId ||
-                        it.messageId == msg.id ||
-                        (it.readStatus == ReadStatus.SENDING &&
-                            it.text == (msg.content?.text ?: "") &&
-                            (it.uploadProgress != null || it.localPreviewUris.isNotEmpty() ||
-                                it.attachments.size == (msg.content?.attachmentsList?.size ?: 0)))
-                    )
-            }
+            val optIdx = findOutgoingEchoMatch(
+                rows = currentList,
+                senderId = msg.senderId,
+                currentUserId = currentUserId,
+                messageId = msg.id,
+                clientOperationId = msg.clientOperationId,
+                text = msg.content?.text.orEmpty(),
+                attachmentCount = msg.content?.attachmentsCount ?: 0,
+            )
             if (optIdx >= 0) {
                 if (deferLiveTail) {
                     messageNavigator.deferLiveMessage()

@@ -42,6 +42,8 @@ import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.OnlineTimeFormatter
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
+import com.barkfluff.client.utils.showImeAware
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
@@ -141,6 +143,7 @@ class GroupInfoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityGroupInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applyImeInsetsToBottomPadding()
 
         globalParam = GlobalParam(this)
 
@@ -596,7 +599,7 @@ class GroupInfoActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton(R.string.btn_cancel, null)
-            .show()
+            .showImeAware()
     }
 
     private fun startUCrop(uri: Uri) {

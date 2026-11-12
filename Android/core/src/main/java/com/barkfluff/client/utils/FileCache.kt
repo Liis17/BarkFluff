@@ -45,6 +45,19 @@ object FileCache {
         return file
     }
 
+    /** Помещает уже имеющийся локальный файл в кеш под fileId, чтобы не скачивать его с сервера. */
+    fun adopt(fileId: String, source: File): File? {
+        if (!::cacheDir.isInitialized || fileId.isBlank() || !source.isFile) return null
+        val target = File(cacheDir, sanitize(fileId))
+        if (target.exists()) return target
+        return runCatching {
+            // Жёсткая ссылка не дублирует крупные видео; на другом томе откатываемся к копии.
+            runCatching { java.nio.file.Files.createLink(target.toPath(), source.toPath()) }
+                .getOrElse { source.copyTo(target, overwrite = true) }
+            target
+        }.getOrNull()
+    }
+
     fun deleteFile(fileId: String): Boolean {
         if (!::cacheDir.isInitialized) return false
         val file = File(cacheDir, sanitize(fileId))

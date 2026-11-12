@@ -23,6 +23,7 @@ import com.barkfluff.client.search.BarkFluffSearchTheme
 import com.barkfluff.client.search.SearchScreen
 import com.barkfluff.client.search.SearchUser
 import com.barkfluff.client.search.SearchViewModel
+import com.barkfluff.client.utils.showImeAware
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -184,7 +185,7 @@ class SearchActivity : AppCompatActivity() {
                 }
                 createPrivateChat(userData, passphrase, remember.isChecked)
             }
-            .show()
+            .showImeAware()
     }
 
     private fun createPrivateChat(

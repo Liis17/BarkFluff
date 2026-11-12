@@ -37,12 +37,11 @@
         android:paddingBottom="24dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-    <com.google.android.material.progressindicator.CircularProgressIndicator
+    <com.google.android.material.loadingindicator.LoadingIndicator
         android:id="@+id/loadingIndicator"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_gravity="center"
-        android:indeterminate="true"
         android:visibility="gone"
         app:indicatorColor="?attr/colorPrimary" />
 

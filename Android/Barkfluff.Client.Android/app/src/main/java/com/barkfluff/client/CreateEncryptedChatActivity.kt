@@ -11,6 +11,7 @@ import com.barkfluff.client.databinding.ActivityCreateEncryptedChatBinding
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -36,6 +37,7 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityCreateEncryptedChatBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applyImeInsetsToBottomPadding()
 
         binding.toolbar.setNavigationOnClickListener { finish() }
         type = when (intent.getStringExtra(EXTRA_INITIAL_TYPE)) {

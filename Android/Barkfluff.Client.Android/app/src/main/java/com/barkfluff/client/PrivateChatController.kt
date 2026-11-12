@@ -18,6 +18,7 @@ import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.repository.PrivateChatRepository
+import com.barkfluff.client.utils.showImeAware
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
@@ -155,7 +156,7 @@ class PrivateChatController(
                 }
             }
             .setNegativeButton(R.string.btn_cancel, null)
-            .show()
+            .showImeAware()
     }
 
     private fun declineInvite() {
@@ -267,7 +268,7 @@ class PrivateChatController(
                 }
             }
             .setNegativeButton(R.string.btn_cancel) { _, _ -> activity.finish() }
-            .show()
+            .showImeAware()
     }
 
     private fun loadCachedHistory() {

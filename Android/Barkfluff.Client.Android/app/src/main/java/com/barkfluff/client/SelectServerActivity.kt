@@ -25,6 +25,7 @@ import com.barkfluff.client.security.TlsCertificateProbe
 import com.barkfluff.client.security.TlsTrustStore
 import com.barkfluff.client.utils.TlsEndpointSecurityException
 import com.barkfluff.client.utils.TlsServerCertificatePreflight
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
 import com.barkfluff.client.utils.applyServerInfo
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -79,6 +80,16 @@ class SelectServerActivity : AppCompatActivity() {
 
         binding = ActivitySelectServerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applyImeInsetsToBottomPadding()
+        // При открытой клавиатуре плавающая карточка перекрывала бы поле адреса и кнопку подключения.
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.infoPanel) { panel, insets ->
+            panel.visibility = if (insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())) {
+                android.view.View.GONE
+            } else {
+                android.view.View.VISIBLE
+            }
+            insets
+        }
         applyAdaptiveContentWidth()
         updateCustomServerAccessibility(expanded = false)
 

@@ -17,6 +17,7 @@ import com.barkfluff.client.domain.model.AuthenticationChallengeState
 import com.barkfluff.client.domain.model.AuthenticationCompletion
 import com.barkfluff.client.domain.model.AuthenticationErrorCodes
 import com.barkfluff.client.domain.model.AuthenticationFactor
+import com.barkfluff.client.utils.configureImeInsets
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
@@ -91,6 +92,8 @@ class AuthenticationChallengeDialog(
             .setNegativeButton(R.string.btn_cancel, null)
             .setPositiveButton(R.string.btn_confirm, null)
             .create()
+        dialog.configureImeInsets()
+        dialog.setOnShowListener { dialog.configureImeInsets() }
 
         fun finish(result: Result<AuthenticationCompletion>) {
             if (completed) return

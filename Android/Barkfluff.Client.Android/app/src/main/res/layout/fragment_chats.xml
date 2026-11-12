@@ -225,11 +225,10 @@
     </LinearLayout>
 
     <!-- Индикатор загрузки -->
-    <com.google.android.material.progressindicator.CircularProgressIndicator
+    <com.google.android.material.loadingindicator.LoadingIndicator
         android:id="@+id/loadingIndicator"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:indeterminate="true"
         android:visibility="visible"
         app:indicatorColor="?attr/colorPrimary"
         app:indicatorSize="40dp"

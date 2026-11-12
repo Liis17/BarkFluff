@@ -25,6 +25,7 @@ import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.utils.LogoutHelper
+import com.barkfluff.client.utils.showImeAware
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
@@ -253,7 +254,7 @@ class DevicesActivity : AppCompatActivity() {
             }
         }
         builder.setNegativeButton(R.string.btn_cancel, null)
-        builder.show()
+        builder.showImeAware()
     }
 
     private fun renameDevice(deviceId: String, customName: String) {

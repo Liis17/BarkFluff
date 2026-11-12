@@ -100,11 +100,17 @@ class LoginActivity : AppCompatActivity() {
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
         ViewCompat.setOnApplyWindowInsetsListener(binding.contentPanel) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             v.updatePadding(
                 top = systemBars.top + LOGIN_TOP_PADDING_DP.dpToPx(),
-                bottom = systemBars.bottom + LOGIN_BOTTOM_PADDING_DP.dpToPx()
+                bottom = maxOf(systemBars.bottom, ime.bottom) + LOGIN_BOTTOM_PADDING_DP.dpToPx()
             )
+            keepLoginButtonAboveKeyboard()
             insets
+        }
+        // Шаг пароля появляется уже при открытой клавиатуре: высота формы меняется без новых insets.
+        binding.contentPanel.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+            if (bottom - top != oldBottom - oldTop) keepLoginButtonAboveKeyboard()
         }
 
         // Загружаем внешний IP-адрес асинхронно
@@ -474,6 +480,24 @@ class LoginActivity : AppCompatActivity() {
     private fun focusPassword() {
         binding.passwordEditText.requestFocus()
         showKeyboard(binding.passwordEditText)
+    }
+
+    /** При открытой клавиатуре прокручивает форму так, чтобы кнопка входа была видна. */
+    private fun keepLoginButtonAboveKeyboard() {
+        val panel = binding.contentPanel
+        panel.post {
+            val insets = ViewCompat.getRootWindowInsets(panel) ?: return@post
+            if (!insets.isVisible(WindowInsetsCompat.Type.ime())) return@post
+            val scroll = panel.parent as? androidx.core.widget.NestedScrollView ?: return@post
+            val button = binding.loginButton
+            if (!button.isShown) return@post
+            val rect = android.graphics.Rect(0, 0, button.width, button.height)
+            scroll.offsetDescendantRectToMyCoords(button, rect)
+            // rect — в координатах содержимого ScrollView (с учётом текущей прокрутки).
+            val visibleBottom = scroll.height - panel.paddingBottom
+            val overflow = rect.bottom - visibleBottom
+            if (overflow > 0) scroll.smoothScrollBy(0, overflow)
+        }
     }
 
     private fun showKeyboard(target: View) {

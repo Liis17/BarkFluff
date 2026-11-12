@@ -34,6 +34,7 @@ import com.barkfluff.client.grpc.TokenValidity
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.repository.ChatRepository.UploadHttpException
 import com.barkfluff.client.utils.ImageCompressor
+import com.barkfluff.client.utils.ImageLoadHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -75,6 +76,7 @@ data class OutgoingMessageSnapshot(
     val state: OutgoingMessageState,
     val progress: Int,
     val previewPaths: List<String>,
+    val attachments: List<OutgoingAttachmentUi>,
     val failureCategory: OutgoingFailureCategory?,
     val serverMessageId: Long
 )
@@ -116,6 +118,7 @@ class OutgoingMessageQueue(
 
     private val appContext = context.applicationContext
     private val workManager by lazy { WorkManager.getInstance(appContext) }
+    private val inMemoryUploadProgress = ConcurrentHashMap<OperationId, LiveAttachmentProgress>()
 
     suspend fun enqueue(request: SendJob): List<OperationId> {
         require(request.chatId.isNotBlank()) { "Chat id is required" }
@@ -197,6 +200,7 @@ class OutgoingMessageQueue(
         val scope = requireScope()
         val record = cache.outgoing(scope, operationId) ?: return
         if (record.state != OutgoingMessageState.FAILED) return
+        inMemoryUploadProgress.remove(operationId)
         cache.saveOutgoing(scope, record.copy(
             state = OutgoingMessageState.QUEUED,
             progress = 0,
@@ -217,6 +221,7 @@ class OutgoingMessageQueue(
     suspend fun cancel(operationId: OperationId) {
         val scope = currentScopeOrNull() ?: return
         val record = cache.outgoing(scope, operationId) ?: return
+        inMemoryUploadProgress.remove(operationId)
         cancellationRequests[operationId] = System.currentTimeMillis()
         cache.saveOutgoing(scope, record.copy(state = OutgoingMessageState.CANCEL_REQUESTED))
         cache.deleteOutgoing(scope, operationId)
@@ -237,6 +242,7 @@ class OutgoingMessageQueue(
 
     suspend fun cancelAllForCurrentScope() {
         val scope = currentScopeOrNull() ?: return
+        inMemoryUploadProgress.clear()
         val now = System.currentTimeMillis()
         cache.outgoingOperationIds(scope).forEach { operationId ->
             cancellationRequests[operationId] = now
@@ -248,6 +254,7 @@ class OutgoingMessageQueue(
 
     suspend fun cancelPendingOutgoing() {
         val scope = currentScopeOrNull() ?: return
+        inMemoryUploadProgress.clear()
         val operationIds = cache.outgoingOperationIds(scope)
         val records = operationIds.mapNotNull { cache.outgoing(scope, it) }
         val now = System.currentTimeMillis()
@@ -639,6 +646,10 @@ class OutgoingMessageQueue(
                     uploadTarget = uploadUrl,
                     onProgress = { attachmentProgress ->
                         val rounded = attachmentProgress.coerceIn(0, 100) / 5 * 5
+                        inMemoryUploadProgress[record.operationId] = LiveAttachmentProgress(
+                            attachment.attachmentIndex,
+                            rounded,
+                        )
                         if (rounded != lastPersistedProgress) {
                             lastPersistedProgress = rounded
                             // HttpURLConnection invokes this callback synchronously. Persisting only
@@ -652,6 +663,16 @@ class OutgoingMessageQueue(
                         }
                     }
                 ).getOrElse { throw it }
+                // Отправленный файл сразу становится кешем этого fileId: после подтверждения
+                // сообщение не скачивает его с сервера заново.
+                runCatching {
+                    ImageLoadHelper.seedSentAttachment(
+                        appContext, finalId, file,
+                        isVideo = attachment.kind == OutgoingAttachmentKind.VIDEO,
+                        decodePreview = attachment.kind == OutgoingAttachmentKind.VIDEO ||
+                            type == UploadFileType.MESSAGE_ATTACHMENT_IMAGE,
+                    )
+                }.onFailure { if (it is CancellationException) throw it }
                 attachment = attachment.copy(
                     reservedFileId = uploadUrl.fileId,
                     finalFileId = finalId
@@ -659,12 +680,14 @@ class OutgoingMessageQueue(
                 record = (cache.outgoing(scope, record.operationId) ?: return).withAttachment(index, attachment)
                     .copy(progress = completedProgress(record.withAttachment(index, attachment)))
                 cache.saveOutgoing(scope, record)
+                inMemoryUploadProgress.remove(record.operationId)
             }
 
             record = cache.outgoing(scope, record.operationId) ?: return
             ensureNotCancelled(record.operationId)
             record = leased(OutgoingMessageState.SENDING).copy(progress = 100)
             cache.saveOutgoing(scope, record)
+            inMemoryUploadProgress.remove(record.operationId)
             onForeground(snapshotOf(record))
             val fileIds = record.existingFileIds + record.attachments.sortedBy { it.attachmentIndex }
                 .mapNotNull { it.finalFileId?.takeIf(String::isNotBlank) }
@@ -693,9 +716,11 @@ class OutgoingMessageQueue(
             }
             operationDirectory(scope, record.operationId).deleteRecursively()
         } catch (e: CancellationException) {
+            inMemoryUploadProgress.remove(initial.operationId)
             if (cancellationRequests.containsKey(initial.operationId)) return
             throw e
         } catch (e: Throwable) {
+            inMemoryUploadProgress.remove(initial.operationId)
             val latest = cache.outgoing(scope, initial.operationId) ?: return
             val permanent = classifyPermanent(e)
             if (permanent != null) {
@@ -998,7 +1023,8 @@ class OutgoingMessageQueue(
         draftGeneration = record.draftGeneration,
         state = record.state,
         progress = record.progress,
-        previewPaths = record.attachments.mapNotNull { it.previewPath },
+        previewPaths = record.attachments.sortedBy { it.attachmentIndex }.mapNotNull { it.previewPath },
+        attachments = buildOutgoingAttachmentUi(record, inMemoryUploadProgress[record.operationId]),
         failureCategory = record.failureCategory,
         serverMessageId = record.serverMessageId
     )

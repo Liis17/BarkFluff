@@ -119,12 +119,11 @@
     </com.google.android.material.floatingtoolbar.FloatingToolbarLayout>
 
     <!-- Прогресс загрузки (центр) -->
-    <com.google.android.material.progressindicator.CircularProgressIndicator
+    <com.google.android.material.loadingindicator.LoadingIndicator
         android:id="@+id/loadingProgress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:indeterminate="true"
         android:visibility="gone"
         app:indicatorColor="@android:color/white"
         app:indicatorSize="56dp" />

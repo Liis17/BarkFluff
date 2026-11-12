@@ -38,6 +38,7 @@ import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.OnlineTimeFormatter
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
@@ -109,6 +110,7 @@ class UserProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityUserProfileBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applyImeInsetsToBottomPadding()
 
         globalParam = GlobalParam(this)
 

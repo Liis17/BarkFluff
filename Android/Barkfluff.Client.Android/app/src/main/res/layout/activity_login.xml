@@ -329,16 +329,16 @@
                     app:iconPadding="10dp"
                     app:iconTint="?attr/colorOnPrimary" />
 
-                <com.google.android.material.progressindicator.CircularProgressIndicator
+                <com.google.android.material.loadingindicator.LoadingIndicator
                     android:id="@+id/loginProgressBar"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_gravity="center"
-                    android:indeterminate="true"
                     android:visibility="gone"
                     app:indicatorColor="?attr/colorOnPrimary"
                     app:indicatorSize="32dp"
-                    app:trackThickness="4dp" />
+                    app:containerWidth="40dp"
+                    app:containerHeight="40dp" />
 
             </FrameLayout>
 

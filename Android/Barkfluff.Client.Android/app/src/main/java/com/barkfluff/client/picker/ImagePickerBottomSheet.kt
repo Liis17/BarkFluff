@@ -11,7 +11,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,6 +25,9 @@ import com.barkfluff.client.editor.MediaEditCache
 import com.barkfluff.client.editor.MediaEditorActivity
 import com.barkfluff.client.editor.VideoEditCache
 import com.barkfluff.client.editor.VideoEditorActivity
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
+import com.barkfluff.client.utils.configureImeInsets
+import com.barkfluff.client.view.M3ContextMenu
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.Dispatchers
@@ -166,6 +168,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         setupButtons()
         setupAnimation()
         updateSelectionUI()
+        binding.root.applyImeInsetsToBottomPadding()
 
         checkPermissionsAndLoad()
     }
@@ -173,6 +176,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
     override fun onStart() {
         super.onStart()
         val dialog = dialog as? com.google.android.material.bottomsheet.BottomSheetDialog ?: return
+        dialog.configureImeInsets()
         val bottomSheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet) ?: return
 
         // Фулскрин
@@ -484,28 +488,35 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun showOptionsMenu() {
-        val popup = PopupMenu(requireContext(), binding.menuButton)
-        popup.menuInflater.inflate(R.menu.image_picker_menu, popup.menu)
-
-        popup.menu.findItem(R.id.action_send_as_file)?.isChecked = sendAsFile
-        popup.menu.findItem(R.id.action_send_separately)?.isChecked = sendSeparately
-
-        popup.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
+        M3ContextMenu.show(
+            anchor = binding.menuButton,
+            items = listOf(
+                M3ContextMenu.Item(
+                    id = R.id.action_send_as_file,
+                    title = getString(R.string.send_as_file),
+                    icon = R.drawable.ic_action_save,
+                    checked = sendAsFile,
+                ),
+                M3ContextMenu.Item(
+                    id = R.id.action_send_separately,
+                    title = getString(R.string.send_separately),
+                    icon = R.drawable.ic_action_forward,
+                    checked = sendSeparately,
+                ),
+            ),
+            alignEnd = true,
+            onItemSelected = { item ->
+                when (item.id) {
                 R.id.action_send_as_file -> {
                     sendAsFile = !sendAsFile
-                    menuItem.isChecked = sendAsFile
-                    true
                 }
                 R.id.action_send_separately -> {
                     sendSeparately = !sendSeparately
-                    menuItem.isChecked = sendSeparately
-                    true
                 }
-                else -> false
+                else -> Unit
             }
-        }
-        popup.show()
+            },
+        )
     }
 
     private fun sendSelected() {
