@@ -1,7 +1,6 @@
 package com.barkfluff.client.search
 
 import barkfluff.shared.Shared
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,19 +12,15 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -34,8 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,7 +63,7 @@ fun ChatSearchScreen(
         focusRequester.requestFocus()
         keyboard?.show()
     }
-    Surface(Modifier.fillMaxSize().imePadding(), color = MaterialTheme.colorScheme.background) {
+    Surface(Modifier.fillMaxSize().imePadding(), color = searchBackgroundColor()) {
         Column(Modifier.fillMaxSize()) {
             SearchHeader(
                 query = messages.query,
@@ -79,12 +74,11 @@ fun ChatSearchScreen(
                 onClear = { onQueryChanged("") },
                 onBack = onBack,
             )
-            TabRow(selectedTabIndex = messages.tab.ordinal) {
-                SearchTab.entries.forEach { tab ->
-                    Tab(selected = messages.tab == tab, onClick = { onTabChanged(tab) },
-                        text = { Text(stringResource(if (tab == SearchTab.Chats) R.string.search_tab_chats else R.string.search_tab_messages)) })
-                }
-            }
+            SearchTabs(
+                selected = messages.tab,
+                labels = SearchTab.entries.map { stringResource(if (it == SearchTab.Chats) R.string.search_tab_chats else R.string.search_tab_messages) },
+                onSelect = onTabChanged,
+            )
             if (messages.tab == SearchTab.Messages) {
                 MessageSearchContent(messages, onMessageRetry, onLoadMore,
                     onAuthorFilter = { keyboard?.hide(); onAuthorFilter() },
@@ -99,7 +93,7 @@ fun ChatSearchScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    if (state.isRefreshing) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    if (state.isRefreshing) MorphLoadingIndicator(size = 28.dp)
                     Text(
                         stringResource(if (state.isRefreshing) R.string.search_chats_updating else R.string.search_chats_cached),
                         modifier = Modifier.weight(1f),
@@ -110,23 +104,26 @@ fun ChatSearchScreen(
                 }
             }
             if (messages.tab == SearchTab.Chats) Box(Modifier.weight(1f).fillMaxWidth().navigationBarsPadding()) {
-                when (state.phase) {
-                    SearchPhase.Idle, SearchPhase.TooShort -> SearchMessageState(
-                        R.drawable.ic_search, stringResource(R.string.search_chats_prompt), stringResource(R.string.search_chats_description),
-                    )
-                    SearchPhase.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                    SearchPhase.Empty -> SearchMessageState(
-                        R.drawable.ic_search, stringResource(R.string.search_nothing_found), stringResource(R.string.search_try_different),
-                    )
-                    SearchPhase.Error -> SearchErrorState(onRetry)
-                    SearchPhase.Results -> LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(state.chats, key = { it.chat.id }) { chat ->
-                            ChatSearchResult(chat, { onChatClick(chat) }, getAvatarUrl)
+                SearchPhaseTransition(state.phase) { phase ->
+                    when (phase) {
+                        SearchPhase.Idle, SearchPhase.TooShort -> SearchMessageState(
+                            R.drawable.ic_search, stringResource(R.string.search_chats_prompt), stringResource(R.string.search_chats_description),
+                        )
+                        SearchPhase.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            MorphLoadingIndicator(size = 56.dp)
+                        }
+                        SearchPhase.Empty -> SearchMessageState(
+                            R.drawable.ic_search, stringResource(R.string.search_nothing_found), stringResource(R.string.search_try_different),
+                        )
+                        SearchPhase.Error -> SearchErrorState(onRetry)
+                        SearchPhase.Results -> LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            itemsIndexed(state.chats, key = { _, chat -> chat.chat.id }) { index, chat ->
+                                ChatSearchResult(chat, index, state.chats.size, { onChatClick(chat) }, getAvatarUrl, Modifier.animateItem())
+                            }
                         }
                     }
                 }
@@ -136,21 +133,33 @@ fun ChatSearchScreen(
 }
 
 @Composable
-private fun ChatSearchResult(chat: SearchChat, onClick: () -> Unit, getAvatarUrl: suspend (String) -> String?) {
+private fun ChatSearchResult(
+    chat: SearchChat,
+    index: Int,
+    count: Int,
+    onClick: () -> Unit,
+    getAvatarUrl: suspend (String) -> String?,
+    modifier: Modifier = Modifier,
+) {
     val title = chat.title.ifBlank { stringResource(R.string.chat_title_default) }
-    val kind = when (chat.chat.chatType) {
-        Shared.ChatType.CHAT_TYPE_PRIVATE -> R.string.search_chat_private
-        Shared.ChatType.CHAT_TYPE_SECRET -> R.string.search_chat_secret
-        else -> if (chat.chat.isGroupChat) R.string.search_chat_group else R.string.search_chat_direct
+    val (kind, kindIcon) = when (chat.chat.chatType) {
+        Shared.ChatType.CHAT_TYPE_PRIVATE -> R.string.search_chat_private to R.drawable.ic_lock
+        Shared.ChatType.CHAT_TYPE_SECRET -> R.string.search_chat_secret to R.drawable.ic_lock
+        else -> if (chat.chat.isGroupChat) R.string.search_chat_group to R.drawable.ic_group
+        else R.string.search_chat_direct to R.drawable.ic_person
     }
-    Surface(
-        modifier = Modifier.fillMaxWidth().widthIn(max = 720.dp).clickable(role = Role.Button, onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
+    SearchGroupedItem(index = index, count = count, onClick = onClick, modifier = modifier) {
         ListItem(
-            headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            supportingContent = { Text(stringResource(kind)) },
+            headlineContent = {
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            },
+            supportingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(painterResource(kindIcon), contentDescription = null, modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(kind), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
             leadingContent = {
                 Box(Modifier.clearAndSetSemantics { }) {
                     SearchAvatar(chat.avatarFileId, title, chat.otherUserId, getAvatarUrl)

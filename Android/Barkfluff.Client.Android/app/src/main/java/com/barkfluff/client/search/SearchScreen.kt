@@ -2,7 +2,21 @@ package com.barkfluff.client.search
 
 import android.app.Activity
 import android.os.Build
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import com.google.android.material.loadingindicator.LoadingIndicator
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,11 +32,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -97,7 +109,7 @@ fun SearchScreen(
         modifier = Modifier
             .fillMaxSize()
             .imePadding(),
-        color = MaterialTheme.colorScheme.background
+        color = searchBackgroundColor()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             SearchHeader(
@@ -120,14 +132,17 @@ fun SearchScreen(
                     .fillMaxWidth()
                     .navigationBarsPadding()
             ) {
-                SearchPhaseContent(
-                    isPrivateMode = isPrivateMode,
-                    uiState = uiState,
-                    isActionInProgress = isActionInProgress,
-                    onRetry = onRetry,
-                    onUserClick = onUserClick,
-                    getAvatarUrl = getAvatarUrl
-                )
+                SearchPhaseTransition(uiState.phase) { phase ->
+                    SearchPhaseContent(
+                        phase = phase,
+                        isPrivateMode = isPrivateMode,
+                        uiState = uiState,
+                        isActionInProgress = isActionInProgress,
+                        onRetry = onRetry,
+                        onUserClick = onUserClick,
+                        getAvatarUrl = getAvatarUrl
+                    )
+                }
             }
         }
     }
@@ -156,29 +171,12 @@ internal fun SearchHeader(
         baseContainerColor
     }
 
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier
-                .size(48.dp)
-                .semantics {
-                    contentDescription = backDescription
-                    role = Role.Button
-                }
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_arrow_back),
-                contentDescription = null,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
         DockedSearchBar(
             query = query,
             onQueryChange = onQueryChanged,
@@ -190,18 +188,28 @@ internal fun SearchHeader(
             active = false,
             onActiveChange = {},
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
                 .heightIn(min = 56.dp)
                 .focusRequester(focusRequester)
                 .onFocusChanged { isFocused = it.isFocused },
             enabled = true,
             placeholder = { Text(text = placeholder) },
             leadingIcon = {
-                Icon(
-                    painter = painterResource(R.drawable.ic_search),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
-                )
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .semantics {
+                            contentDescription = backDescription
+                            role = Role.Button
+                        }
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_arrow_back),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             },
             trailingIcon = if (query.isNotEmpty()) {
                 {
@@ -238,6 +246,7 @@ internal fun SearchHeader(
 
 @Composable
 private fun SearchPhaseContent(
+    phase: SearchPhase,
     isPrivateMode: Boolean,
     uiState: SearchUiState,
     isActionInProgress: Boolean,
@@ -245,7 +254,7 @@ private fun SearchPhaseContent(
     onUserClick: (SearchUser) -> Unit,
     getAvatarUrl: suspend (String) -> String?
 ) {
-    when (uiState.phase) {
+    when (phase) {
         SearchPhase.Idle -> SearchMessageState(
             icon = R.drawable.ic_search,
             title = if (isPrivateMode) {
@@ -295,87 +304,168 @@ private fun SearchResults(
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        items(
+        itemsIndexed(
             items = users,
-            key = { it.userData.userId }
-        ) { user ->
-            SearchResultItem(
-                user = user,
-                isActionInProgress = isActionInProgress,
+            key = { _, user -> user.userData.userId }
+        ) { index, user ->
+            val accessibilityText = listOf(user.displayFullName, user.displayUsername)
+                .filter { it.isNotBlank() }
+                .joinToString(", ")
+            SearchGroupedItem(
+                index = index,
+                count = users.size,
+                enabled = !isActionInProgress,
                 onClick = { onUserClick(user) },
-                getAvatarUrl = getAvatarUrl,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 720.dp)
-            )
+                    .animateItem()
+                    .semantics { contentDescription = accessibilityText }
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            text = user.displayFullName,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    supportingContent = if (user.displayUsername.isBlank()) null else {
+                        {
+                            Text(
+                                text = user.displayUsername,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
+                    leadingContent = {
+                        SearchAvatar(
+                            fileId = user.displayAvatarFileId,
+                            displayName = user.displayFullName,
+                            userId = user.userData.userId,
+                            getAvatarUrl = getAvatarUrl
+                        )
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                )
+            }
         }
     }
 }
 
+/** Фон экранов поиска совпадает с фоном списка чатов, откуда они открываются. */
 @Composable
-private fun SearchResultItem(
-    user: SearchUser,
-    isActionInProgress: Boolean,
-    onClick: () -> Unit,
-    getAvatarUrl: suspend (String) -> String?,
-    modifier: Modifier = Modifier
-) {
-    val shape = RoundedCornerShape(20.dp)
-    val accessibilityText = listOf(user.displayFullName, user.displayUsername)
-        .filter { it.isNotBlank() }
-        .joinToString(", ")
+internal fun searchBackgroundColor(): Color = colorResource(R.color.profile_settings_background)
 
+/** Плавная смена состояний поиска: подсказка, загрузка, результаты, ошибка. */
+@Composable
+internal fun SearchPhaseTransition(phase: SearchPhase, content: @Composable (SearchPhase) -> Unit) {
+    AnimatedContent(
+        targetState = phase,
+        transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(120)) },
+        modifier = Modifier.fillMaxSize(),
+        label = "searchPhase"
+    ) { target -> content(target) }
+}
+
+/**
+ * Строка результата как часть общего блока: у крайних строк большие скругления, у соседних —
+ * малые, как в списке непрочитанных чатов.
+ */
+@Composable
+internal fun SearchGroupedItem(
+    index: Int,
+    count: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    val outer = 24.dp
+    val inner = 6.dp
     Surface(
+        onClick = onClick,
+        enabled = enabled,
         modifier = modifier
-            .heightIn(min = 72.dp)
-            .clip(shape = shape)
-            .clickable(
-                enabled = !isActionInProgress,
-                role = Role.Button,
-                onClick = onClick
-            )
-            .semantics {
-                contentDescription = accessibilityText
-                role = Role.Button
-            },
-        shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp
+            .fillMaxWidth()
+            .widthIn(max = 720.dp),
+        shape = RoundedCornerShape(
+            topStart = if (index == 0) outer else inner,
+            topEnd = if (index == 0) outer else inner,
+            bottomStart = if (index == count - 1) outer else inner,
+            bottomEnd = if (index == count - 1) outer else inner
+        ),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        content = content
+    )
+}
+
+/** Переключатель «Чаты / Сообщения» в виде сегментированной пилюли. */
+@Composable
+internal fun SearchTabs(selected: SearchTab, labels: List<String>, onSelect: (SearchTab) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 8.dp)
+            .clip(CircleShape)
+            .background(colors.surfaceContainerHigh)
+            .padding(4.dp)
+            .selectableGroup()
     ) {
-        ListItem(
-            modifier = Modifier.fillMaxWidth(),
-            headlineContent = {
+        SearchTab.entries.forEachIndexed { index, tab ->
+            val isSelected = tab == selected
+            val container by animateColorAsState(
+                if (isSelected) colors.primaryContainer else Color.Transparent, label = "tabContainer"
+            )
+            val content by animateColorAsState(
+                if (isSelected) colors.onPrimaryContainer else colors.onSurfaceVariant, label = "tabContent"
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp)
+                    .clip(CircleShape)
+                    .background(container)
+                    .selectable(selected = isSelected, role = Role.Tab, onClick = { onSelect(tab) }),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = user.displayFullName,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    text = labels[index],
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    color = content
                 )
-            },
-            supportingContent = {
-                Text(
-                    text = user.displayUsername.ifBlank { " " },
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            },
-            leadingContent = {
-                SearchAvatar(
-                    fileId = user.displayAvatarFileId,
-                    displayName = user.displayFullName,
-                    userId = user.userData.userId,
-                    getAvatarUrl = getAvatarUrl
-                )
-            },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp
-        )
+            }
+        }
     }
+}
+
+/** Индикатор загрузки M3 Expressive с морфингом фигур (View-компонент Material 1.13). */
+@Composable
+internal fun MorphLoadingIndicator(
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp,
+    description: String? = null
+) {
+    val color = MaterialTheme.colorScheme.primary.toArgb()
+    val sizePx = with(LocalDensity.current) { size.roundToPx() }
+    AndroidView(
+        factory = { context -> LoadingIndicator(context) },
+        modifier = modifier.size(size),
+        update = { indicator ->
+            indicator.setIndicatorColor(color)
+            indicator.containerWidth = sizePx
+            indicator.containerHeight = sizePx
+            indicator.indicatorSize = sizePx * 4 / 5
+            indicator.contentDescription = description
+        }
+    )
 }
 
 @Composable
@@ -463,15 +553,7 @@ private fun LoadingState() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            CircularProgressIndicator(
-                modifier = Modifier
-                    .size(40.dp)
-                    .semantics {
-                        contentDescription = loadingDescription
-                    },
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 4.dp
-            )
+            MorphLoadingIndicator(size = 56.dp, description = loadingDescription)
             Text(
                 text = stringResourceCompat(R.string.search_loading),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
