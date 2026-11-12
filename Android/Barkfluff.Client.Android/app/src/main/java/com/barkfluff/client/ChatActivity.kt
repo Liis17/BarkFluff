@@ -765,9 +765,28 @@ class ChatActivity : AppCompatActivity() {
                 binding.sendButton.height + sendBaseMargin
             )
             val inputRowBandPx = maxOf(inputRowBandBasePx, inputContentHeight)
-            binding.messagesRecyclerView.updatePadding(
-                bottom = recyclerBasePaddingBottom + inputRowBandPx + lastBottomInset
-            )
+            val recycler = binding.messagesRecyclerView
+            val newBottom = recyclerBasePaddingBottom + inputRowBandPx + lastBottomInset
+            val delta = newBottom - recycler.paddingBottom
+            if (delta == 0) return
+            // Смена нижнего отступа (клавиатура, многострочный ввод) сама не удерживает сообщения
+            // над композером: запоминаем расстояние от нижней видимой строки до края контента
+            // и восстанавливаем его после раскладки. У самого низа просто докручиваем до конца.
+            val wasAtBottom = !recycler.canScrollVertically(1)
+            val layoutManager = recycler.layoutManager as? LinearLayoutManager
+            val anchorPosition = layoutManager?.findLastVisibleItemPosition() ?: RecyclerView.NO_POSITION
+            val gapBefore = layoutManager?.findViewByPosition(anchorPosition)
+                ?.let { recycler.height - recycler.paddingBottom - it.bottom }
+            recycler.updatePadding(bottom = newBottom)
+            recycler.doOnNextLayout {
+                if (wasAtBottom) {
+                    if (delta > 0) recycler.scrollBy(0, Int.MAX_VALUE / 2)
+                } else if (gapBefore != null) {
+                    val anchor = layoutManager?.findViewByPosition(anchorPosition) ?: return@doOnNextLayout
+                    val gapAfter = recycler.height - recycler.paddingBottom - anchor.bottom
+                    recycler.scrollBy(0, gapBefore - gapAfter)
+                }
+            }
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.chatRootLayout) { _, insets ->
@@ -782,7 +801,8 @@ class ChatActivity : AppCompatActivity() {
             binding.selectionToolbar.updatePadding(top = selectionBasePaddingTop + bars.top)
             // Recyclerview остаётся edge-to-edge снизу — фон/обои ленты уходят под панель
             // ввода и жестовую навигацию, а контент просто не долистывается ниже paddingBottom.
-            binding.messagesRecyclerView.updatePadding(top = recyclerBasePaddingTop)
+            // Верхний отступ здесь не трогаем: его ведёт слушатель шапки ниже, а сброс на каждом
+            // проходе insets заставлял ленту прыгать на высоту шапки и терять позицию.
             updateRecyclerBottomPadding()
 
             binding.sendButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = sendBaseMargin + bottomInset }
