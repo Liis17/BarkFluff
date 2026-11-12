@@ -47,6 +47,16 @@
                 android:padding="8dp"
                 android:visibility="gone" />
 
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/outgoingUploadProgress"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center"
+                android:indeterminate="true"
+                android:visibility="gone"
+                app:indicatorSize="44dp"
+                app:trackThickness="3dp" />
+
         </FrameLayout>
 
         <!-- Имя файла и длительность -->
