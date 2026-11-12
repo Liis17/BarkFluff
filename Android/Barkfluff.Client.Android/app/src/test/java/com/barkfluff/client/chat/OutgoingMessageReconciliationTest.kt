@@ -59,6 +59,48 @@ class OutgoingMessageReconciliationTest {
         assertEquals(emptyList<Uri>(), item.localPreviewUris)
     }
 
+    @Test
+    fun `replayed confirmed message does not adopt a new bubble with same content`() {
+        // Лента после перезапуска: подтверждённое сообщение без localId и новый исходящий пузырь
+        // с тем же (пустым) текстом и одним вложением.
+        val confirmed = optimistic(state = OutgoingMessageState.SENT, status = ReadStatus.SENT, text = "")
+            .copy(messageId = 41L, localId = null, outgoingState = null, uploadProgress = null)
+        val uploading = optimistic(
+            state = OutgoingMessageState.UPLOADING,
+            text = "",
+            attachment = outgoingAttachment(OutgoingAttachmentKind.RAW_IMAGE),
+        )
+
+        assertEquals(-1, findOutgoingEchoMatch(
+            rows = listOf(confirmed, uploading),
+            senderId = 7L,
+            currentUserId = 7L,
+            messageId = 41L,
+            clientOperationId = "op-old",
+            text = "",
+            attachmentCount = 1,
+        ))
+    }
+
+    @Test
+    fun `echo of another operation does not match by content`() {
+        val uploading = optimistic(
+            state = OutgoingMessageState.UPLOADING,
+            text = "",
+            attachment = outgoingAttachment(OutgoingAttachmentKind.RAW_IMAGE),
+        )
+
+        assertEquals(-1, findOutgoingEchoMatch(
+            rows = listOf(uploading),
+            senderId = 7L,
+            currentUserId = 7L,
+            messageId = 41L,
+            clientOperationId = "op-old",
+            text = "",
+            attachmentCount = 1,
+        ))
+    }
+
     private fun assertEchoKeepsIdentity(item: MessageRowUi, text: String, attachmentCount: Int) {
         val match = findOutgoingEchoMatch(
             rows = listOf(item),
