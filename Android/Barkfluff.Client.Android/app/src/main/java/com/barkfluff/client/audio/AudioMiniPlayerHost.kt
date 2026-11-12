@@ -21,11 +21,28 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
-/** Reserves a top row in each activity; existing content receives the remaining insets. */
+/**
+ * Показывает мини-плеер в каждой activity.
+ *
+ * - Если в разметке activity есть [R.id.audioMiniPlayerSlot] (ChatActivity), плеер живёт там — под шапкой.
+ * - Иначе резервируется строка сверху, а остальной контент получает оставшиеся insets.
+ * - Фрагмент может подключить собственное место через [attachSlot] (список чатов — под поиском);
+ *   пока оно активно, плеер показывается в нём, а верхняя строка скрыта.
+ */
 class AudioMiniPlayerHost(private val playback: AudioPlayback) : Application.ActivityLifecycleCallbacks {
     private val hosts = mutableMapOf<Activity, Host>()
 
+    fun attachSlot(activity: Activity, slot: ViewGroup) { hosts[activity]?.attachSlot(slot) }
+    fun detachSlot(activity: Activity, slot: ViewGroup) { hosts[activity]?.detachSlot(slot) }
+    /** Фрагмент со слотом скрыт/показан (переключение вкладок через hide/show). */
+    fun setSlotActive(activity: Activity, slot: ViewGroup, active: Boolean) { hosts[activity]?.setSlotActive(slot, active) }
+
     override fun onActivityPostCreated(activity: Activity, savedInstanceState: Bundle?) {
+        val layoutSlot = activity.findViewById<ViewGroup>(R.id.audioMiniPlayerSlot)
+        if (layoutSlot != null) {
+            hosts[activity] = Host(activity, top = null).also { it.attachSlot(layoutSlot) }
+            return
+        }
         val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
         if (content.childCount == 0) return
         val column = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
@@ -43,19 +60,18 @@ class AudioMiniPlayerHost(private val playback: AudioPlayback) : Application.Act
         content.addView(column, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         ViewCompat.setOnApplyWindowInsetsListener(column) { _, insets ->
             if (binding.root.visibility != View.VISIBLE) {
-                column.setPadding(0, 0, 0, 0)
                 insets
             } else {
+                // Фон плеера заходит под status bar, чтобы над ним не оставалась полоса цвета окна.
                 val bars = insets.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())
-                column.setPadding(0, bars.top, 0, 0)
-                binding.root.setPadding(bars.left, 0, bars.right, 0)
+                binding.root.setPadding(bars.left, bars.top, bars.right, 0)
                 WindowInsetsCompat.Builder(insets)
                     .setInsets(WindowInsetsCompat.Type.statusBars(), Insets.of(bars.left, 0, bars.right, 0))
                     .setInsets(WindowInsetsCompat.Type.displayCutout(), Insets.of(bars.left, 0, bars.right, bars.bottom))
                     .build()
             }
         }
-        hosts[activity] = Host(activity, column, binding)
+        hosts[activity] = Host(activity, Panel(binding.root, binding, column))
         ViewCompat.requestApplyInsets(column)
     }
 
@@ -67,15 +83,60 @@ class AudioMiniPlayerHost(private val playback: AudioPlayback) : Application.Act
     override fun onActivityPaused(activity: Activity) = Unit
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
 
-    private inner class Host(
-        private val activity: Activity,
-        private val column: View,
-        private val binding: ViewAudioMiniPlayerBinding,
-    ) {
+    /**
+     * Одно место показа плеера: [container] скрывается/показывается вместе с треком,
+     * [insetsTarget] — обёртка верхней строки, которой нужно заново раздать insets.
+     */
+    private class Panel(
+        val container: View,
+        val binding: ViewAudioMiniPlayerBinding,
+        val insetsTarget: View? = null,
+        var active: Boolean = true,
+    )
+
+    private inner class Host(private val activity: Activity, private val top: Panel?) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         private var subscription: Job? = null
+        private var slot: Panel? = null
 
-        init {
+        init { top?.let { wire(it.binding) } }
+
+        fun attachSlot(container: ViewGroup) {
+            if (slot?.container === container) return
+            slot?.let { detachSlot(it.container as ViewGroup) }
+            container.removeAllViews()
+            val binding = ViewAudioMiniPlayerBinding.inflate(activity.layoutInflater, container, true)
+            binding.root.background = null
+            container.visibility = View.GONE
+            wire(binding)
+            slot = Panel(container, binding)
+            render(playback.state.value)
+        }
+
+        fun detachSlot(container: ViewGroup) {
+            if (slot?.container !== container) return
+            container.removeAllViews()
+            container.visibility = View.GONE
+            slot = null
+            render(playback.state.value)
+        }
+
+        fun setSlotActive(container: ViewGroup, active: Boolean) {
+            val current = slot?.takeIf { it.container === container } ?: return
+            if (current.active == active) return
+            current.active = active
+            render(playback.state.value)
+        }
+
+        fun start() {
+            subscription?.cancel()
+            subscription = scope.launch { playback.state.collect(::render) }
+        }
+
+        fun stop() { subscription?.cancel(); subscription = null }
+        fun release() { scope.cancel() }
+
+        private fun wire(binding: ViewAudioMiniPlayerBinding) {
             binding.miniPlay.setOnClickListener {
                 if (playback.state.value.isPlaying) playback.pause() else playback.resume()
             }
@@ -88,24 +149,19 @@ class AudioMiniPlayerHost(private val playback: AudioPlayback) : Application.Act
                         track.isGroupChat, track.otherUserId))
                 }
             }
-
         }
-
-        fun start() {
-            subscription?.cancel()
-            subscription = scope.launch { playback.state.collect(::render) }
-        }
-
-        fun stop() { subscription?.cancel(); subscription = null }
-        fun release() { scope.cancel() }
 
         private fun render(state: PlaybackState) {
-            val visibility = if (state.track == null) View.GONE else View.VISIBLE
-            if (binding.root.visibility != visibility) {
-                binding.root.visibility = visibility
-                ViewCompat.requestApplyInsets(column)
+            val target = slot?.takeIf { it.active } ?: top
+            for (panel in listOfNotNull(top, slot)) {
+                val visibility = if (state.track != null && panel === target) View.VISIBLE else View.GONE
+                if (panel.container.visibility != visibility) {
+                    panel.container.visibility = visibility
+                    panel.insetsTarget?.let(ViewCompat::requestApplyInsets)
+                }
             }
             val track = state.track ?: return
+            val binding = target?.binding ?: return
             binding.miniSender.text = track.senderName.ifBlank { activity.getString(R.string.voice_playback_title) }
             binding.miniSource.isEnabled = track.chatId.isNotBlank() && track.messageId > 0L
             binding.miniPosition.text = if (state.hasError) activity.getString(R.string.voice_player_error) else

@@ -93,6 +93,8 @@ class ChatsFragment : Fragment() {
         setupChatList()
         setupFolderTabs()
         setupSearchButton()
+        miniPlayerHost.attachSlot(requireActivity(), binding.chatsMiniPlayerSlot)
+        miniPlayerHost.setSlotActive(requireActivity(), binding.chatsMiniPlayerSlot, !isHidden)
         showSkeleton()
 
         observeViewModel()
@@ -551,7 +553,15 @@ class ChatsFragment : Fragment() {
         requireActivity().finish()
     }
 
+    private val miniPlayerHost get() = (requireActivity().application as BarkFluffApplication).audioMiniPlayerHost
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        _binding?.let { miniPlayerHost.setSlotActive(requireActivity(), it.chatsMiniPlayerSlot, !hidden) }
+    }
+
     override fun onDestroyView() {
+        _binding?.let { miniPlayerHost.detachSlot(requireActivity(), it.chatsMiniPlayerSlot) }
         super.onDestroyView()
         headerAnimator?.cancel()
         headerAnimator = null

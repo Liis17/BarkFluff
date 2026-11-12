@@ -59,20 +59,19 @@
 
         </FrameLayout>
 
-        <!-- Имя файла и длительность -->
+        <!-- Имя файла или волна, под ними длительность (время сообщения встаёт в эту же строку справа) -->
         <LinearLayout
             android:layout_width="0dp"
+            android:minWidth="180dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="10dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/fileNameText"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:singleLine="true"
                 android:ellipsize="middle"
                 android:textAppearance="?attr/textAppearanceLabelMedium"
@@ -81,38 +80,23 @@
 
             <com.barkfluff.client.view.VoiceWaveformView
                 android:id="@+id/voiceWaveform"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
+                android:layout_width="match_parent"
+                android:layout_height="28dp"
                 android:enabled="false"
                 android:importantForAccessibility="yes"
                 android:visibility="gone"
                 tools:visibility="visible" />
 
-            <Button android:id="@+id/voiceSpeed" android:layout_width="48dp" android:layout_height="48dp"
-                android:minWidth="48dp" android:padding="0dp" android:visibility="gone"
-                android:background="?attr/selectableItemBackgroundBorderless" android:textColor="?attr/colorPrimary" />
-
             <TextView
                 android:id="@+id/durationText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginTop="2dp"
                 android:textAppearance="?attr/textAppearanceLabelSmall"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="3:45" />
 
         </LinearLayout>
-
-        <ImageButton
-            android:id="@+id/audioMenuButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_more_vert"
-            android:contentDescription="@string/cd_more_menu"
-            android:scaleType="center"
-            app:tint="?attr/colorOnSurfaceVariant" />
 
     </LinearLayout>
 

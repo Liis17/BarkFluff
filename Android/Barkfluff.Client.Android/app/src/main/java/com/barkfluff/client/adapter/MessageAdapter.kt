@@ -36,7 +36,6 @@ import com.barkfluff.client.databinding.ItemMessageSentBinding
 import com.barkfluff.client.databinding.ViewMessageQuoteBinding
 import com.barkfluff.client.audio.AudioPlayback
 import com.barkfluff.client.audio.AudioTrack
-import com.barkfluff.client.voice.VoicePlaybackSpeed
 import com.barkfluff.client.utils.AudioWaveformExtractor
 import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.cache.OutgoingMessageState
@@ -84,6 +83,28 @@ class MessageAdapter(
     private val audioRenderer = MessageAudioRenderer(audioPlaybackController)
 
     /** Возвращает MessageItem по позиции для обработчика свайпа (ItemTouchHelper). null если позиция вне диапазона или не сообщение. */
+    fun isAttachmentCached(fileId: String): Boolean = attachmentLoader.hasCached(fileId)
+
+    /** Удаляет аудио из кеша; [row] — видимая строка вложения, её сразу переводим в состояние «не скачано». */
+    fun removeCachedAudio(fileId: String, isVoice: Boolean, row: View?) {
+        if (audioPlaybackController.isActiveFile(fileId)) audioPlaybackController.stop()
+        attachmentLoader.deleteCached(fileId)
+        audioPlaybackController.remove(fileId)
+        val binding = row?.let(ItemAttachmentAudioBinding::bind) ?: return
+        binding.downloadButton.visibility = View.VISIBLE
+        binding.downloadButton.isEnabled = true
+        binding.downloadButton.alpha = 1f
+        binding.downloadProgressBar.visibility = View.GONE
+        binding.audioSeekBar.visibility = View.GONE
+        binding.voiceWaveform.resetAmplitudes()
+        binding.voiceWaveform.visibility = if (isVoice) View.VISIBLE else View.GONE
+        binding.voiceWaveform.isEnabled = false
+        binding.fileNameText.visibility = if (isVoice) View.GONE else View.VISIBLE
+        binding.playPauseButton.isEnabled = false
+        binding.playPauseButton.alpha = 0.4f
+        binding.durationText.text = formatAudioTime(0L)
+    }
+
     fun getMessageAt(position: Int): MessageItem? {
         if (position < 0 || position >= itemCount) return null
         val item = getItem(position)
@@ -217,6 +238,10 @@ class MessageAdapter(
     }
 
     companion object {
+        /** Совпадает с layout_marginTop у timeStatusLayout в item_message_sent/received. */
+        private const val TIME_STATUS_TOP_MARGIN_DP = 2f
+        /** Поднимает строку времени на уровень длительности под волной голосового. */
+        private const val VOICE_INLINE_TIME_OVERLAP_DP = 27f
         private const val VIEW_TYPE_SENT = 1
         private const val VIEW_TYPE_RECEIVED = 2
         private const val VIEW_TYPE_DATE_SEPARATOR = 3
@@ -631,6 +656,7 @@ class MessageAdapter(
                 val showMediaTimeOverlay = item.text.isBlank() &&
                     (hasOutgoingMedia || item.localPreviewUris.isNotEmpty() || displayedAttachments.isPureMedia())
                 binding.timeStatusLayout.visibility = if (showMediaTimeOverlay) View.GONE else View.VISIBLE
+                applyVoiceInlineTime(binding.timeStatusLayout, item, displayedAttachments, binding.forwardQuotesContainer)
 
                 if (item.outgoingAttachments.isNotEmpty()) {
                     val mediaWidthPx = if (hasOutgoingMedia) calcMediaWidthPx(binding.root.context) else 0
@@ -841,6 +867,7 @@ class MessageAdapter(
 
                 val showMediaTimeOverlay = item.text.isBlank() && displayedAttachments.isPureMedia()
                 binding.timeStatusLayout.visibility = if (showMediaTimeOverlay) View.GONE else View.VISIBLE
+                applyVoiceInlineTime(binding.timeStatusLayout, item, displayedAttachments, binding.forwardQuotesContainer)
 
                 if (displayedAttachments.isNotEmpty()) {
                     val hasMedia = displayedAttachments.any {
@@ -1530,8 +1557,6 @@ class MessageAdapter(
         binding.fileNameText.text = attachment.fileName.ifBlank { container.context.getString(R.string.attachment_file) }
         binding.fileNameText.visibility = View.VISIBLE
         binding.voiceWaveform.visibility = View.GONE
-        binding.voiceSpeed.visibility = View.GONE
-        binding.audioMenuButton.visibility = View.GONE
         binding.durationText.text = formatFileSize(container.context, attachment.sizeBytes)
         binding.downloadButton.visibility = View.GONE
         binding.downloadProgressBar.visibility = View.GONE
@@ -1730,6 +1755,25 @@ class MessageAdapter(
         }
     }
 
+    /** У голосового без текста время и статус встают справа в строку длительности, как в Telegram. */
+    private fun applyVoiceInlineTime(
+        timeStatus: View,
+        item: MessageItem,
+        displayed: List<Shared.MessageAttachment>,
+        forwardQuotes: View,
+    ) {
+        val inline = item.text.isBlank() && item.outgoingAttachments.isEmpty() &&
+            forwardQuotes.visibility != View.VISIBLE &&
+            displayed.size == 1 && displayed[0].type == Shared.MessageAttachmentType.VOICE
+        val params = timeStatus.layoutParams as ViewGroup.MarginLayoutParams
+        val topMargin = ((if (inline) -VOICE_INLINE_TIME_OVERLAP_DP else TIME_STATUS_TOP_MARGIN_DP) *
+            timeStatus.resources.displayMetrics.density).toInt()
+        if (params.topMargin != topMargin) {
+            params.topMargin = topMargin
+            timeStatus.layoutParams = params
+        }
+    }
+
     // ─── Audio Row ────────────────────────────────────────────────────────────
 
     private fun inflateAudioRow(container: ViewGroup, attachment: Shared.MessageAttachment, isSentByMe: Boolean = false, sourceMessageId: Long? = null): View {
@@ -1750,8 +1794,6 @@ class MessageAdapter(
         binding.voiceWaveform.resetAmplitudes()
         var cachedDurationMillis = 0L
         binding.durationText.text = formatAudioTime(0L)
-        binding.voiceSpeed.visibility = if (isVoice) View.VISIBLE else View.GONE
-        binding.voiceSpeed.setOnClickListener { playback.cycleSpeed() }
 
         if (isSentByMe) {
             val onContainer = resolveOnPrimaryContainerColor(context)
@@ -1939,9 +1981,6 @@ class MessageAdapter(
             playback.state.collect { state ->
                 val active = state.track?.fileId == fileId
                 updateAudioPlaybackUI(binding, active && state.isPlaying)
-                val speed = VoicePlaybackSpeed.label(context, state.speed)
-                binding.voiceSpeed.text = speed
-                binding.voiceSpeed.contentDescription = context.getString(R.string.cd_voice_speed, speed)
                 if (active && state.durationMillis > 0L) {
                     val progress = (state.positionMillis.toFloat() / state.durationMillis).coerceIn(0f, 1f)
                     if (!binding.voiceWaveform.isPressed) binding.voiceWaveform.setProgress(progress)
@@ -1967,10 +2006,19 @@ class MessageAdapter(
                     }
                 }
             }
-            override fun onStartTrackingTouch(seekBar: SeekBar) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar) {}
+            override fun onStartTrackingTouch(seekBar: SeekBar) {
+                if (audioPlaybackController.isActiveFile(fileId)) audioPlaybackController.beginScrub()
+            }
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                if (audioPlaybackController.isActiveFile(fileId)) audioPlaybackController.endScrub()
+            }
         })
 
+        binding.voiceWaveform.onScrubChanged = { started ->
+            if (audioPlaybackController.isActiveFile(fileId)) {
+                if (started) audioPlaybackController.beginScrub() else audioPlaybackController.endScrub()
+            }
+        }
         binding.voiceWaveform.onSeekRequested = { progress ->
             if (audioPlaybackController.isActiveFile(fileId)) {
                 val duration = audioPlaybackController.duration()
@@ -1980,85 +2028,7 @@ class MessageAdapter(
             }
         }
 
-        binding.audioMenuButton.setOnClickListener { view ->
-            showAudioContextMenu(view, context, fileId, fileName, binding, isVoice)
-        }
-
         return binding.root
-    }
-    private fun showAudioContextMenu(
-        anchor: View,
-        context: Context,
-        fileId: String,
-        fileName: String,
-        binding: ItemAttachmentAudioBinding,
-        isVoice: Boolean
-    ) {
-        val isCached = attachmentLoader.hasCached(fileId)
-        val items = buildList {
-            add(M3ContextMenu.Item(
-                id = R.id.action_save_audio,
-                title = context.getString(R.string.audio_save),
-                icon = R.drawable.ic_action_save,
-            ))
-            if (isCached) {
-                add(M3ContextMenu.Item(
-                    id = R.id.action_delete_from_cache,
-                    title = context.getString(R.string.file_remove_from_cache),
-                    icon = R.drawable.ic_action_delete,
-                    danger = true,
-                    dividerBefore = true,
-                ))
-            }
-        }
-        M3ContextMenu.show(
-            anchor = anchor,
-            items = items,
-            alignEnd = true,
-            onItemSelected = { menuItem ->
-            when (menuItem.id) {
-                R.id.action_save_audio -> {
-                    if (attachmentLoader.hasCached(fileId)) {
-                        val cachedFile = attachmentLoader.cached(fileId)
-                        if (cachedFile != null) {
-                            eventSink?.onAttachmentAction(
-                                MessageAttachmentAction.Save(fileName = fileName, cachedFile = cachedFile)
-                            )
-                        }
-                    } else {
-                        eventSink?.onAttachmentAction(
-                            MessageAttachmentAction.ToastRes(R.string.audio_download_required)
-                        )
-                    }
-                    true
-                }
-                R.id.action_delete_from_cache -> {
-                    if (audioPlaybackController.isActiveFile(fileId)) {
-                        audioPlaybackController.stop()
-                    }
-                    attachmentLoader.deleteCached(fileId)
-                    audioPlaybackController.remove(fileId)
-                    binding.downloadButton.visibility = View.VISIBLE
-                    binding.downloadButton.isEnabled = true
-                    binding.downloadButton.alpha = 1f
-                    binding.downloadProgressBar.visibility = View.GONE
-                    binding.audioSeekBar.visibility = View.GONE
-                    binding.voiceWaveform.resetAmplitudes()
-                    binding.voiceWaveform.visibility = if (isVoice) View.VISIBLE else View.GONE
-                    binding.voiceWaveform.isEnabled = false
-                    binding.fileNameText.visibility = if (isVoice) View.GONE else View.VISIBLE
-                    binding.playPauseButton.isEnabled = false
-                    binding.playPauseButton.alpha = 0.4f
-                    binding.durationText.text = "0:00"
-                    eventSink?.onAttachmentAction(
-                        MessageAttachmentAction.ToastRes(R.string.audio_removed_from_cache)
-                    )
-                    true
-                }
-                else -> false
-            }
-            },
-        )
     }
     private fun getVideoDimensions(uri: Uri, context: Context): Pair<Int, Int>? {
         return try {

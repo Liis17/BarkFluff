@@ -157,8 +157,28 @@ class AudioPlayback @Inject constructor(
     }
 
     fun seekTo(positionMillis: Long) {
-        controller?.let { it.seekTo(positionMillis.coerceIn(0L, it.duration.coerceAtLeast(0L))) }
+        controller?.let {
+            // После окончания трека playWhenReady остаётся true: без паузы seek из ENDED сам запускает воспроизведение.
+            if (it.playbackState == Player.STATE_ENDED) it.pause()
+            it.seekTo(positionMillis.coerceIn(0L, it.duration.coerceAtLeast(0L)))
+        }
         snapshot()
+    }
+
+    private var resumeAfterScrub = false
+
+    /** Начало перетаскивания таймлайна: играющий трек ставится на паузу до [endScrub]. */
+    fun beginScrub() {
+        resumeAfterScrub = controller?.isPlaying == true
+        if (resumeAfterScrub) pause()
+    }
+
+    /** Конец перетаскивания: воспроизведение продолжается, только если трек играл до начала. */
+    fun endScrub() {
+        if (resumeAfterScrub) {
+            resumeAfterScrub = false
+            resume()
+        }
     }
 
     fun cycleSpeed() {

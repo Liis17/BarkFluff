@@ -53,7 +53,21 @@ class VoiceDraftPreview(
             player.playbackParameters = PlaybackParameters(VoicePlaybackSpeed.cycle(context), 1f)
             render()
         }
+        var resumeAfterScrub = false
+        binding.voicePreviewWaveform.onScrubChanged = { started ->
+            if (started) {
+                resumeAfterScrub = player.isPlaying
+                if (resumeAfterScrub) player.pause()
+            } else if (resumeAfterScrub) {
+                resumeAfterScrub = false
+                player.play()
+                resumeUpdates()
+            }
+            render()
+        }
         binding.voicePreviewWaveform.onSeekRequested = { fraction ->
+            // После окончания playWhenReady остаётся true: без паузы seek из ENDED сам запускает воспроизведение.
+            if (player.playbackState == Player.STATE_ENDED) player.pause()
             player.seekTo((fraction * player.duration.coerceAtLeast(0L)).toLong())
             render()
         }
