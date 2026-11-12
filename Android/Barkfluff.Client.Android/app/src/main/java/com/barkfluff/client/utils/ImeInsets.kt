@@ -11,11 +11,26 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /** Keeps a view's bottom content area above either the navigation bar or the IME. */
 fun View.applyImeInsetsToBottomPadding() {
+    val basePaddingLeft = paddingLeft
+    val basePaddingTop = paddingTop
+    val basePaddingRight = paddingRight
     val basePaddingBottom = paddingBottom
+    // Свой listener отключает штатную обработку fitsSystemWindows, поэтому остальные стороны
+    // для таких view выставляем сами — иначе контент уезжает под статус-бар.
+    val fitsOtherSides = fitsSystemWindows
     ViewCompat.setOnApplyWindowInsetsListener(this) { view, insets ->
-        val systemBarsBottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+        val bars = insets.getInsets(
+            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+        )
         val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-        view.updatePadding(bottom = basePaddingBottom + maxOf(systemBarsBottom, imeBottom))
+        if (fitsOtherSides) {
+            view.updatePadding(
+                left = basePaddingLeft + bars.left,
+                top = basePaddingTop + bars.top,
+                right = basePaddingRight + bars.right,
+            )
+        }
+        view.updatePadding(bottom = basePaddingBottom + maxOf(bars.bottom, imeBottom))
         insets
     }
     ViewCompat.requestApplyInsets(this)
