@@ -34,6 +34,7 @@ import com.barkfluff.client.grpc.TokenValidity
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.repository.ChatRepository.UploadHttpException
 import com.barkfluff.client.utils.ImageCompressor
+import com.barkfluff.client.utils.ImageLoadHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -662,6 +663,16 @@ class OutgoingMessageQueue(
                         }
                     }
                 ).getOrElse { throw it }
+                // Отправленный файл сразу становится кешем этого fileId: после подтверждения
+                // сообщение не скачивает его с сервера заново.
+                runCatching {
+                    ImageLoadHelper.seedSentAttachment(
+                        appContext, finalId, file,
+                        isVideo = attachment.kind == OutgoingAttachmentKind.VIDEO,
+                        decodePreview = attachment.kind == OutgoingAttachmentKind.VIDEO ||
+                            type == UploadFileType.MESSAGE_ATTACHMENT_IMAGE,
+                    )
+                }.onFailure { if (it is CancellationException) throw it }
                 attachment = attachment.copy(
                     reservedFileId = uploadUrl.fileId,
                     finalFileId = finalId

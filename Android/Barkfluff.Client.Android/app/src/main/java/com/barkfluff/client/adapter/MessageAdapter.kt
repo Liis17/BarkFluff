@@ -17,6 +17,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import coil.imageLoader
 import coil.load
 import coil.dispose
 import com.barkfluff.client.R
@@ -1481,12 +1482,21 @@ class MessageAdapter(
                 applyMediaCellCorners(cell, corners)
                 cell.tag = attachment
                 val thumbnail = cell.findViewById<ImageView>(R.id.thumbnailImage)
-                thumbnail.setImageResource(R.drawable.ic_image_placeholder)
                 val localFile = File(attachment.previewPath ?: attachment.stagedPath)
-                if (localFile.isFile) {
-                    thumbnail.load(localFile) {
-                        crossfade(150)
-                        error(R.drawable.ic_image_placeholder)
+                // Перерисовка пузыря во время отправки берёт уже декодированное превью из памяти,
+                // чтобы картинка не пропадала на кадр-заглушку.
+                val memoryKey = "outgoing:${localFile.path}"
+                val seeded = ImageLoadHelper.peekMemory(context.imageLoader, memoryKey)
+                if (seeded != null) {
+                    thumbnail.setImageBitmap(seeded)
+                } else {
+                    thumbnail.setImageResource(R.drawable.ic_image_placeholder)
+                    if (localFile.isFile) {
+                        thumbnail.load(localFile) {
+                            memoryCacheKey(memoryKey)
+                            crossfade(150)
+                            error(R.drawable.ic_image_placeholder)
+                        }
                     }
                 }
                 renderOutgoingAttachmentIndicator(cell, attachment, item)
@@ -1643,8 +1653,10 @@ class MessageAdapter(
 
         val downloadIcon = cellView.findViewById<View>(R.id.mediaDownloadIcon)
         val progress = cellView.findViewById<com.google.android.material.progressindicator.CircularProgressIndicator>(R.id.mediaDownloadProgress)
-        thumbnail.setImageResource(R.drawable.ic_image_placeholder)
-        downloadIcon.visibility = View.VISIBLE
+        // Только что отправленное вложение уже лежит в памяти — показываем его без кадра-заглушки.
+        val seeded = ImageLoadHelper.peekMemory(thumbnail.context, attachment.fileId)
+        if (seeded != null) thumbnail.setImageBitmap(seeded) else thumbnail.setImageResource(R.drawable.ic_image_placeholder)
+        downloadIcon.visibility = if (seeded != null) View.GONE else View.VISIBLE
         cellView.contentDescription = thumbnail.context.getString(R.string.cd_download_file)
         viewOperations.launch(thumbnail) {
             if (ImageLoadHelper.loadCached(thumbnail, attachment)) {
