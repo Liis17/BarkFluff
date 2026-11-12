@@ -26,6 +26,30 @@ class SelectionReducer {
         )
     }
 
+    fun setSelection(messageIds: Iterable<Long>): SelectionState {
+        val selected = messageIds.filter { it > 0L }.toSet()
+        return SelectionState(selectedMessageIds = selected, isActive = selected.isNotEmpty())
+    }
+
+    fun selectRange(
+        state: SelectionState,
+        orderedMessageIds: List<Long>,
+        startMessageId: Long,
+        endMessageId: Long,
+        selected: Boolean = true,
+    ): SelectionState {
+        if (startMessageId <= 0L || endMessageId <= 0L) return state
+        val start = orderedMessageIds.indexOf(startMessageId)
+        val end = orderedMessageIds.indexOf(endMessageId)
+        if (start < 0 || end < 0) return state
+
+        val range = orderedMessageIds.subList(minOf(start, end), maxOf(start, end) + 1)
+            .filter { it > 0L }
+        val ids = state.selectedMessageIds.toMutableSet()
+        if (selected) ids.addAll(range) else ids.removeAll(range.toSet())
+        return SelectionState(selectedMessageIds = ids, isActive = ids.isNotEmpty())
+    }
+
     fun clear(): SelectionState = SelectionState()
 
     fun removeMissing(state: SelectionState, availableIds: Set<Long>): SelectionState {
