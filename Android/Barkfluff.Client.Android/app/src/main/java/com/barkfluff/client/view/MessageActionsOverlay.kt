@@ -1,5 +1,6 @@
 package com.barkfluff.client.view
 
+import android.graphics.Point
 import android.view.View
 import androidx.annotation.DrawableRes
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -24,6 +25,8 @@ class MessageActionsOverlay(@Suppress("unused") root: ConstraintLayout) {
         bubble: View,
         actions: List<Action>,
         alignEnd: Boolean,
+        barActions: List<Action> = emptyList(),
+        touchPoint: Point? = null,
         onDismiss: (() -> Unit)? = null,
         onAction: (Int) -> Unit,
     ) {
@@ -40,6 +43,8 @@ class MessageActionsOverlay(@Suppress("unused") root: ConstraintLayout) {
                     dividerBefore = action.dividerBefore || action.danger,
                 )
             },
+            barItems = barActions.map { M3ContextMenu.Item(id = it.id, title = it.title, icon = it.icon, danger = it.danger) },
+            touchPoint = touchPoint,
             alignEnd = alignEnd,
             onItemSelected = { onAction(it.id) },
             highlightView = bubble,

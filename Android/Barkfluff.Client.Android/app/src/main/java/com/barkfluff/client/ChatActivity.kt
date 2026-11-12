@@ -12,7 +12,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
-import android.graphics.Typeface
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
@@ -28,7 +27,6 @@ import android.os.Environment
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
-import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -36,7 +34,6 @@ import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.PathInterpolator
 import android.webkit.MimeTypeMap
-import androidx.core.animation.doOnEnd
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
@@ -182,6 +179,8 @@ class ChatActivity : AppCompatActivity() {
     private var suppressTypingInput = false
     private var renderedTypingUserIds: Set<Long> = emptySet()
     private var selectionGestureController: MessageSelectionTouchController? = null
+    /** Где палец последний раз коснулся списка сообщений — меню действий открывается над этой точкой. */
+    private var lastMessageTouch: android.graphics.Point? = null
     private var renderedSelectionCount = -1
     private val pendingTypingNameFetches = mutableSetOf<Long>()
     private var lastStatusText: CharSequence? = null
@@ -189,9 +188,6 @@ class ChatActivity : AppCompatActivity() {
 
     // Сжатие шапки при прокрутке в историю сообщений
     private var headerCompact = false
-    private var statusExpandedHeight = 0
-    private var headerNameAnimator: ValueAnimator? = null
-    private var headerStatusAnimator: ValueAnimator? = null
 
     // Морфинг кнопки отправки (круг с микрофоном ↔ pill со стрелкой)
     private val sendButtonBackground = android.graphics.drawable.GradientDrawable().apply {
@@ -291,7 +287,6 @@ class ChatActivity : AppCompatActivity() {
         private const val AUTO_SCROLL_FRAME_MS = 16L
         private const val VOICE_DOT_BLINK_DURATION_MS = 700L
         private const val VOICE_TIMER_TICK_MS = 200L
-        private const val HEADER_MORPH_DURATION_MS = 280L
         private const val SEND_BUTTON_MORPH_DURATION_MS = 300L
         private const val SEND_BUTTON_NARROW_DP = 52f
         private const val SEND_BUTTON_WIDE_DP = 68f
@@ -835,8 +830,8 @@ class ChatActivity : AppCompatActivity() {
     }
 
     /**
-     * В отличие от списка чатов, шапка чата сжимается при прокрутке **вверх** (в историю):
-     * имя уменьшается, строка статуса схлопывается, под шапкой появляется тень.
+     * При прокрутке **вверх** (в историю) под шапкой чата появляется тень;
+     * имя и строка статуса (онлайн/был(а)) не меняются.
      */
     private fun updateHeaderCompact(dy: Int) {
         val threshold = HEADER_SCROLL_THRESHOLD_DP * resources.displayMetrics.density
@@ -850,44 +845,6 @@ class ChatActivity : AppCompatActivity() {
         if (headerCompact == compact) return
         headerCompact = compact
         val density = resources.displayMetrics.density
-        val easing = PathInterpolator(0.2f, 0f, 0f, 1f)
-
-        val nameView = binding.chatNameTextView
-        val nameFrom = nameView.textSize / resources.displayMetrics.scaledDensity
-        headerNameAnimator?.cancel()
-        headerNameAnimator = ValueAnimator.ofFloat(nameFrom, if (compact) 17f else 22f).apply {
-            duration = HEADER_MORPH_DURATION_MS
-            interpolator = easing
-            addUpdateListener {
-                nameView.setTextSize(TypedValue.COMPLEX_UNIT_SP, it.animatedValue as Float)
-            }
-            start()
-        }
-        nameView.typeface = Typeface.create(Typeface.SANS_SERIF, if (compact) 500 else 600, false)
-
-        val statusContainer = binding.chatStatusContainer
-        if (statusExpandedHeight == 0) statusExpandedHeight = statusContainer.height
-        if (statusExpandedHeight > 0) {
-            headerStatusAnimator?.cancel()
-            headerStatusAnimator = ValueAnimator.ofInt(
-                statusContainer.height,
-                if (compact) 0 else statusExpandedHeight
-            ).apply {
-                duration = HEADER_MORPH_DURATION_MS
-                interpolator = easing
-                addUpdateListener { animator ->
-                    val value = animator.animatedValue as Int
-                    statusContainer.updateLayoutParams { height = value }
-                    statusContainer.alpha = value.toFloat() / statusExpandedHeight
-                }
-                doOnEnd {
-                    if (compact) return@doOnEnd
-                    statusContainer.updateLayoutParams { height = ViewGroup.LayoutParams.WRAP_CONTENT }
-                }
-                start()
-            }
-        }
-
         binding.chatHeaderBar.animate()
             .translationZ(if (compact) HEADER_SHADOW_ELEVATION_DP * density else 0f)
             .setDuration(HEADER_SHADOW_DURATION_MS)
@@ -2567,6 +2524,7 @@ class ChatActivity : AppCompatActivity() {
                 bubble = bubble,
                 actions = actions,
                 alignEnd = true,
+                touchPoint = messageTouchPoint(bubble),
                 onDismiss = { backCallback.isEnabled = binding.stickerPreviewOverlay.visibility == View.VISIBLE || inputPanelState == InputPanelState.STICKER_PANEL }
             ) { actionId ->
                 item.localId?.let { operationId ->
@@ -2595,66 +2553,59 @@ class ChatActivity : AppCompatActivity() {
         val hasText = item.text.isNotBlank()
         val isPinned = viewModel.isMessagePinned(item.messageId)
 
-        val actions = buildList {
+        // Частые действия — иконками на панели под списком, остальные — списком.
+        val barActions = buildList {
             add(MessageActionsOverlay.Action(MessageActionId.REPLY, R.drawable.ic_action_reply, getString(R.string.msg_action_reply)))
             if (hasText) {
                 add(MessageActionsOverlay.Action(MessageActionId.COPY_TEXT, R.drawable.ic_action_copy_text, getString(R.string.msg_action_copy_text)))
-                add(MessageActionsOverlay.Action(MessageActionId.COPY_MARKDOWN, R.drawable.ic_action_copy_markdown, getString(R.string.msg_action_copy_markdown)))
             }
             if (imageAtts.size == 1) {
                 add(MessageActionsOverlay.Action(MessageActionId.COPY_IMAGE, R.drawable.ic_action_copy_image, getString(R.string.msg_action_copy_image)))
             }
+            if (isOwnMessage) {
+                add(MessageActionsOverlay.Action(MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit)))
+            }
+            add(MessageActionsOverlay.Action(MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties)))
+        }
+        val actions = buildList {
+            if (hasText) {
+                add(MessageActionsOverlay.Action(MessageActionId.COPY_MARKDOWN, R.drawable.ic_action_copy_markdown, getString(R.string.msg_action_copy_markdown)))
+            }
             if (imageAtts.isNotEmpty()) {
                 add(MessageActionsOverlay.Action(
-                    MessageActionId.SAVE_IMAGES, R.drawable.ic_action_save,
+                    MessageActionId.SAVE_IMAGES, R.drawable.ic_action_save_gallery,
                     getString(if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images),
-                    dividerBefore = hasText,
                 ))
             }
             if (docAtts.isNotEmpty()) {
-                add(MessageActionsOverlay.Action(
-                    MessageActionId.SAVE_DOCS, R.drawable.ic_action_download,
-                    getString(R.string.msg_action_save_to_downloads), dividerBefore = imageAtts.isEmpty() && hasText,
-                ))
+                add(MessageActionsOverlay.Action(MessageActionId.SAVE_DOCS, R.drawable.ic_action_download, getString(R.string.msg_action_save_to_downloads)))
             }
             if (audioAtts.isNotEmpty()) {
-                add(MessageActionsOverlay.Action(
-                    MessageActionId.SAVE_AUDIO, R.drawable.ic_action_save, getString(R.string.audio_save),
-                    dividerBefore = imageAtts.isEmpty() && docAtts.isEmpty() && hasText,
-                ))
+                add(MessageActionsOverlay.Action(MessageActionId.SAVE_AUDIO, R.drawable.ic_action_save, getString(R.string.audio_save)))
             }
             if (cachedAudioAtts.isNotEmpty()) {
                 add(MessageActionsOverlay.Action(
                     MessageActionId.REMOVE_AUDIO_CACHE, R.drawable.ic_action_delete, getString(R.string.file_remove_from_cache),
                 ))
             }
-            if (isOwnMessage) {
-                add(MessageActionsOverlay.Action(
-                    MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit),
-                    dividerBefore = imageAtts.isNotEmpty() || docAtts.isNotEmpty() || audioAtts.isNotEmpty(),
-                ))
-                add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.ic_action_delete, getString(R.string.msg_action_delete), danger = true))
-            }
-            add(MessageActionsOverlay.Action(
-                MessageActionId.FORWARD, R.drawable.ic_action_forward, getString(R.string.msg_action_forward),
-                dividerBefore = isOwnMessage,
-            ))
+            add(MessageActionsOverlay.Action(MessageActionId.FORWARD, R.drawable.ic_action_forward, getString(R.string.msg_action_forward)))
             add(MessageActionsOverlay.Action(
                 MessageActionId.PIN,
                 if (isPinned) R.drawable.ic_action_unpin else R.drawable.ic_action_pin,
                 getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
             ))
-            add(MessageActionsOverlay.Action(
-                MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties),
-                dividerBefore = true,
-            ))
             add(MessageActionsOverlay.Action(MessageActionId.SELECT, R.drawable.ic_action_select, getString(R.string.msg_action_select)))
+            if (isOwnMessage) {
+                add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.ic_action_delete, getString(R.string.msg_action_delete), danger = true))
+            }
         }
 
         messageActionsOverlay.show(
             bubble = bubble,
             actions = actions,
             alignEnd = isOwnMessage,
+            barActions = barActions,
+            touchPoint = messageTouchPoint(bubble),
             onDismiss = {
                 // Закрытие анимированное (~180мс) — за это время действие могло уже включить
                 // режим выделения (SELECT), который сам управляет backCallback. Не перетираем.
@@ -2709,6 +2660,18 @@ class ChatActivity : AppCompatActivity() {
             }
         }
         backCallback.isEnabled = true
+    }
+
+    /**
+     * Точка последнего касания списка (экранные координаты), если она внутри строки этого сообщения.
+     * Иначе (клавиатура, accessibility) меню позиционируется по пузырю.
+     */
+    private fun messageTouchPoint(bubble: View): android.graphics.Point? {
+        val point = lastMessageTouch ?: return null
+        val row = binding.messagesRecyclerView.findContainingItemView(bubble) ?: return null
+        val location = IntArray(2).also(row::getLocationOnScreen)
+        val inside = point.x in location[0]..(location[0] + row.width) && point.y in location[1]..(location[1] + row.height)
+        return point.takeIf { inside }
     }
 
     private fun copyMessageText(item: MessageItem) {
@@ -2940,6 +2903,7 @@ class ChatActivity : AppCompatActivity() {
         override fun onInterceptTouchEvent(rv: RecyclerView, event: MotionEvent): Boolean {
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    lastMessageTouch = android.graphics.Point(event.rawX.toInt(), event.rawY.toInt())
                     startTracking(event)
                     return capturedSelectionTap
                 }
@@ -3483,8 +3447,6 @@ class ChatActivity : AppCompatActivity() {
         // Сбрасываем открытый чат
         OpenChatManager.closeChat()
         stopTypingHeartbeat(sendCancel = true)
-        headerNameAnimator?.cancel()
-        headerStatusAnimator?.cancel()
         sendButtonMorphAnimator?.cancel()
         voiceTimerJob?.cancel()
         voiceDotAnimator?.cancel()

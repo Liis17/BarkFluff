@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Point
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
@@ -21,6 +22,7 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.DrawableRes
+import androidx.appcompat.widget.TooltipCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -28,11 +30,17 @@ import com.barkfluff.client.R
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.MaterialColors
 
-/** Shared anchored Material 3 menu for the app's small contextual actions. */
+/**
+ * Shared anchored Material 3 menu for the app's small contextual actions.
+ *
+ * Компактный список действий; необязательные [barItems] показываются иконками на отдельной
+ * горизонтальной панели под списком. С [touchPoint] меню открывается над точкой касания
+ * и прижимается к безопасной области экрана, иначе — у [anchor].
+ */
 class M3ContextMenu private constructor(
     private val root: ViewGroup,
     private val overlay: FrameLayout,
-    private val menu: MaterialCardView,
+    private val menu: View,
     private val scrim: View,
     private val highlight: View?,
     private val backCallback: OnBackPressedCallback?,
@@ -85,10 +93,15 @@ class M3ContextMenu private constructor(
     }
 
     companion object {
-        private const val MENU_WIDTH_DP = 280
-        private const val MENU_CORNER_DP = 18
+        private const val MENU_MAX_WIDTH_DP = 280
+        private const val MENU_MIN_WIDTH_DP = 180
+        private const val MENU_CORNER_DP = 16
         private const val MENU_ELEVATION_DP = 3
-        private const val ROW_HEIGHT_DP = 48
+        private const val ROW_HEIGHT_DP = 44
+        private const val ROW_TEXT_SP = 15f
+        private const val ROW_ICON_DP = 20
+        private const val BAR_BUTTON_DP = 48
+        private const val BAR_PADDING_DP = 4
         private const val EDGE_MARGIN_DP = 8
         private const val MENU_GAP_DP = 8
         private const val OPEN_DURATION_MS = 200L
@@ -104,6 +117,8 @@ class M3ContextMenu private constructor(
             onItemSelected: (Item) -> Unit,
             onDismiss: (() -> Unit)? = null,
             highlightView: View? = null,
+            barItems: List<Item> = emptyList(),
+            touchPoint: Point? = null,
         ): M3ContextMenu? {
             if (items.isEmpty() || !anchor.isAttachedToWindow) return null
             val root = anchor.rootView as? ViewGroup ?: return null
@@ -129,7 +144,7 @@ class M3ContextMenu private constructor(
             val safeTop = maxOf(bars?.top ?: 0, dp(EDGE_MARGIN_DP))
             val safeBottom = root.height - maxOf(bars?.bottom ?: 0, ime?.bottom ?: 0, dp(EDGE_MARGIN_DP))
             val safeHeight = (safeBottom - safeTop).coerceAtLeast(dp(ROW_HEIGHT_DP))
-            val menuWidth = minOf(dp(MENU_WIDTH_DP), (root.width - 2 * edgeMargin).coerceAtLeast(1))
+            val maxMenuWidth = minOf(dp(MENU_MAX_WIDTH_DP), (root.width - 2 * edgeMargin).coerceAtLeast(1))
 
             val overlay = FrameLayout(context).apply {
                 isClickable = true
@@ -211,17 +226,49 @@ class M3ContextMenu private constructor(
                 anchor,
                 com.google.android.material.R.attr.colorSurfaceContainer,
             )
-            val menu = MaterialCardView(context).apply {
+            fun card() = MaterialCardView(context).apply {
                 radius = dp(MENU_CORNER_DP).toFloat()
                 cardElevation = dp(MENU_ELEVATION_DP).toFloat()
                 setCardBackgroundColor(surfaceColor)
                 strokeWidth = 0
                 clipToOutline = true
+                setOnClickListener { /* Keep taps inside the menu from reaching the scrim. */ }
+            }
+            val listCard = card().apply {
                 addView(scrollView, FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.WRAP_CONTENT,
                 ))
-                setOnClickListener { /* Keep taps inside the menu from reaching the scrim. */ }
+            }
+            val barCard = barItems.takeIf { it.isNotEmpty() }?.let { bar ->
+                val buttons = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    setPadding(dp(BAR_PADDING_DP), dp(BAR_PADDING_DP), dp(BAR_PADDING_DP), dp(BAR_PADDING_DP))
+                }
+                bar.forEach { item ->
+                    buttons.addView(buildBarButton(context, item, ::dp) {
+                        menuHandle?.dismiss()
+                        onItemSelected(item)
+                    }, LinearLayout.LayoutParams(0, dp(BAR_BUTTON_DP), 1f))
+                }
+                card().apply { addView(buttons) }
+            }
+
+            // Ширина — по самому длинному пункту, но не уже панели иконок и не шире экрана.
+            rows.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+            val barMinWidth = barItems.size * dp(BAR_BUTTON_DP) + 2 * dp(BAR_PADDING_DP)
+            val menuWidth = maxOf(rows.measuredWidth, barMinWidth, dp(MENU_MIN_WIDTH_DP)).coerceAtMost(maxMenuWidth)
+            val gap = dp(MENU_GAP_DP)
+
+            // Список и панель двигаются и анимируются вместе.
+            val menu = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                clipChildren = false
+                clipToPadding = false
+                addView(listCard, LinearLayout.LayoutParams(menuWidth, LinearLayout.LayoutParams.WRAP_CONTENT))
+                barCard?.let {
+                    addView(it, LinearLayout.LayoutParams(menuWidth, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = gap })
+                }
                 alpha = 0f
                 scaleX = INITIAL_SCALE
                 scaleY = INITIAL_SCALE
@@ -234,38 +281,45 @@ class M3ContextMenu private constructor(
                 ViewGroup.LayoutParams.MATCH_PARENT,
             ))
 
-            menu.measure(
+            fun measureMenu() = menu.measure(
                 View.MeasureSpec.makeMeasureSpec(menuWidth, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(safeHeight, View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             )
-            val contentHeight = menu.measuredHeight
-            if (contentHeight > safeHeight) {
+            measureMenu()
+            if (menu.measuredHeight > safeHeight) {
+                // Не влезает — прокручивается только список, панель остаётся видимой.
+                val barHeight = barCard?.let { it.measuredHeight + gap } ?: 0
                 scrollView.layoutParams = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
-                    safeHeight,
+                    (safeHeight - barHeight).coerceAtLeast(dp(ROW_HEIGHT_DP)),
                 )
-                menu.measure(
-                    View.MeasureSpec.makeMeasureSpec(menuWidth, View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(safeHeight, View.MeasureSpec.EXACTLY),
-                )
+                measureMenu()
             }
             val menuHeight = menu.measuredHeight.coerceAtMost(safeHeight)
             val margin = edgeMargin
-            val gap = dp(MENU_GAP_DP)
             val minX = margin
             val maxX = (root.width - menuWidth - margin).coerceAtLeast(minX)
             val menuX = if (alignEnd) anchorRect.right - menuWidth else anchorRect.left
             val x = menuX.coerceIn(minX, maxX)
-            val belowSpace = safeBottom - anchorRect.bottom - gap
-            val aboveSpace = anchorRect.top - safeTop - gap
-            val openBelow = belowSpace >= menuHeight || belowSpace >= aboveSpace
-            val desiredY = if (openBelow) anchorRect.bottom + gap else anchorRect.top - gap - menuHeight
-            val y = desiredY.coerceIn(safeTop, (safeBottom - menuHeight).coerceAtLeast(safeTop))
+            val maxY = (safeBottom - menuHeight).coerceAtLeast(safeTop)
+            val touch = touchPoint?.let { Point(it.x - rootLocation[0], it.y - rootLocation[1]) }
+            val desiredY = if (touch != null) {
+                // Над пальцем; у верхнего края сдвигается вниз ровно настолько, чтобы влезть.
+                touch.y - gap - menuHeight
+            } else {
+                val belowSpace = safeBottom - anchorRect.bottom - gap
+                val aboveSpace = anchorRect.top - safeTop - gap
+                val openBelow = belowSpace >= menuHeight || belowSpace >= aboveSpace
+                if (openBelow) anchorRect.bottom + gap else anchorRect.top - gap - menuHeight
+            }
+            val y = desiredY.coerceIn(safeTop, maxY)
             menuLayoutParams.leftMargin = x
             menuLayoutParams.topMargin = y
             menu.layoutParams = menuLayoutParams
-            menu.pivotX = (anchorRect.centerX() - x).coerceIn(0, menuWidth).toFloat()
-            menu.pivotY = (anchorRect.centerY() - y).coerceIn(0, menuHeight).toFloat()
+            val pivotX = touch?.x ?: anchorRect.centerX()
+            val pivotY = touch?.y ?: anchorRect.centerY()
+            menu.pivotX = (pivotX - x).coerceIn(0, menuWidth).toFloat()
+            menu.pivotY = (pivotY - y).coerceIn(0, menuHeight).toFloat()
 
             val activity = findComponentActivity(context)
             lateinit var holder: M3ContextMenu
@@ -316,7 +370,7 @@ class M3ContextMenu private constructor(
             val row = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(16), 0, dp(16), 0)
+                setPadding(dp(14), 0, dp(16), 0)
                 isClickable = true
                 isFocusable = true
                 val value = TypedValue()
@@ -336,11 +390,12 @@ class M3ContextMenu private constructor(
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
                 contentDescription = null
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            }, LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(12) })
+            }, LinearLayout.LayoutParams(dp(ROW_ICON_DP), dp(ROW_ICON_DP)).apply { marginEnd = dp(14) })
 
             row.addView(TextView(context).apply {
                 text = item.title
                 setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, ROW_TEXT_SP)
                 setTextColor(if (item.danger) MaterialColors.getColor(row, androidx.appcompat.R.attr.colorError)
                 else MaterialColors.getColor(row, com.google.android.material.R.attr.colorOnSurface))
                 maxLines = 1
@@ -360,6 +415,32 @@ class M3ContextMenu private constructor(
                 row.addView(View(context), LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginStart = dp(8) })
             }
             return row
+        }
+
+        /** Иконка панели: подпись доступна через contentDescription и всплывающую подсказку по удержанию. */
+        private fun buildBarButton(
+            context: Context,
+            item: Item,
+            dp: (Int) -> Int,
+            onClick: () -> Unit,
+        ): View = ImageView(context).apply {
+            setImageResource(item.icon)
+            imageTintList = ColorStateList.valueOf(MaterialColors.getColor(
+                this,
+                if (item.danger) androidx.appcompat.R.attr.colorError
+                else com.google.android.material.R.attr.colorOnSurfaceVariant,
+            ))
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            contentDescription = item.title
+            TooltipCompat.setTooltipText(this, item.title)
+            isClickable = true
+            isFocusable = true
+            val value = TypedValue()
+            if (context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, value, true)) {
+                setBackgroundResource(value.resourceId)
+            }
+            setOnClickListener { onClick() }
         }
 
         private fun findComponentActivity(context: Context): ComponentActivity? {

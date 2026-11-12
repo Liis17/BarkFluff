@@ -38,6 +38,8 @@ class AudioMiniPlayerHost(private val playback: AudioPlayback) : Application.Act
     fun setSlotActive(activity: Activity, slot: ViewGroup, active: Boolean) { hosts[activity]?.setSlotActive(slot, active) }
 
     override fun onActivityPostCreated(activity: Activity, savedInstanceState: Bundle?) {
+        // Сторонние экраны (UCrop и т.п.) имеют свою тему без Material3-атрибутов плеера — не трогаем их.
+        if (!activity.javaClass.name.startsWith(OWN_PACKAGE)) return
         val layoutSlot = activity.findViewById<ViewGroup>(R.id.audioMiniPlayerSlot)
         if (layoutSlot != null) {
             hosts[activity] = Host(activity, top = null).also { it.attachSlot(layoutSlot) }
@@ -178,5 +180,9 @@ class AudioMiniPlayerHost(private val playback: AudioPlayback) : Application.Act
         }
 
         private fun time(ms: Long) = activity.getString(R.string.voice_record_timer_format, ms / 60_000L, ms / 1_000L % 60)
+    }
+
+    private companion object {
+        val OWN_PACKAGE = "${ChatActivity::class.java.`package`!!.name}."
     }
 }

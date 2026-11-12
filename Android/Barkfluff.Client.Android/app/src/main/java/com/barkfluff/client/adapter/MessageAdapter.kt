@@ -567,6 +567,11 @@ class MessageAdapter(
         }
     }
 
+    /** Тап в пустую часть строки сообщения ведёт себя как тап по видимому пузырю (или стикеру). */
+    private fun bindRowClick(row: View, card: View, sticker: View, listener: View.OnClickListener) {
+        row.setOnClickListener { listener.onClick(if (sticker.visibility == View.VISIBLE) sticker else card) }
+    }
+
     // ─── Sent Message ViewHolder ───────────────────────────────────────────────
 
     inner class FooterViewHolder(view: View) : RecyclerView.ViewHolder(view)
@@ -580,8 +585,8 @@ class MessageAdapter(
             // Индикатор выделения уже попадает в существующий отступ слева — сдвигать нечего.
             bindSelectionIndicator(binding.root, binding.selectionIndicator, contentColumn = null, item)
 
-            // Клик открывает меню действий только по самому пузырю — тап в пустое
-            // место строки (широкий paddingStart для отступа от края экрана) меню не открывает.
+            // Клик по пузырю или в пустое место строки рядом с ним открывает меню действий:
+            // у сообщения из одной картинки тап по пузырю открывает просмотр, а удержание — выделение.
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
                 if (eventSink?.isSelectionActive() ?: item.selectionEnabled) {
@@ -592,6 +597,7 @@ class MessageAdapter(
             }
             binding.messageCard.setOnClickListener(bubbleClickListener)
             binding.stickerContainer.setOnClickListener(bubbleClickListener)
+            bindRowClick(binding.root, binding.messageCard, binding.stickerContainer, bubbleClickListener)
 
             // Цитата reply (выше текста) и forward (ниже текста) — выбираем какую показать
             bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
@@ -794,8 +800,8 @@ class MessageAdapter(
             // весь контент вправо, освобождая место индикатору у левого края.
             bindSelectionIndicator(binding.root, binding.selectionIndicator, binding.contentColumn, item)
 
-            // Клик открывает меню действий только по самому пузырю — тап в пустое
-            // место строки (широкий paddingEnd для отступа от края экрана) меню не открывает.
+            // Клик по пузырю или в пустое место строки рядом с ним открывает меню действий:
+            // у сообщения из одной картинки тап по пузырю открывает просмотр, а удержание — выделение.
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
                 if (eventSink?.isSelectionActive() ?: item.selectionEnabled) {
@@ -806,6 +812,7 @@ class MessageAdapter(
             }
             binding.messageCard.setOnClickListener(bubbleClickListener)
             binding.stickerContainer.setOnClickListener(bubbleClickListener)
+            bindRowClick(binding.root, binding.messageCard, binding.stickerContainer, bubbleClickListener)
 
             // Цитата reply (выше текста) и forward (ниже текста)
             bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)

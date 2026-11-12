@@ -181,7 +181,7 @@
                     android:textSize="22sp"
                     tools:text="Имя пользователя" />
 
-                <!-- Обёртка нужна, чтобы схлопывать строку статуса по высоте -->
+                <!-- Строка статуса (онлайн / печатает); при прокрутке не скрывается -->
                 <FrameLayout
                     android:id="@+id/chatStatusContainer"
                     android:layout_width="match_parent"
