@@ -11,6 +11,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.shape.ShapeAppearanceModel
 import barkfluff.shared.Shared
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemChatBinding
@@ -34,8 +35,11 @@ class ChatAdapter(
         val displayTitle: String,
         val displayAvatarFileId: String?,
         val otherUserId: Long = 0,
+        val unreadGroupPosition: UnreadGroupPosition = UnreadGroupPosition.NONE,
         val isFooter: Boolean = false
     )
+
+    enum class UnreadGroupPosition { NONE, SINGLE, FIRST, MIDDLE, LAST }
 
     companion object {
         private const val VIEW_TYPE_CHAT = 0
@@ -68,10 +72,14 @@ class ChatAdapter(
         add(FOOTER_ITEM)
     }
 
-    /** Переопределяем submitList, чтобы footer автоматически добавлялся/фиксировался в конце. */
-    override fun submitList(list: List<ChatDisplayItem>?) {
-        val mutable = (list ?: emptyList()).toMutableList().also { it.ensureFooter() }
-        super.submitList(mutable)
+    /** Группы назначаются до DiffUtil, чтобы при смене соседей обновились все затронутые карточки. */
+    override fun submitList(list: List<ChatDisplayItem>?) = submitList(list, null)
+
+    override fun submitList(list: List<ChatDisplayItem>?, commitCallback: Runnable?) {
+        val mutable = assignUnreadGroupPositions(list.orEmpty().filterNot { it.isFooter })
+            .toMutableList()
+            .also { it.ensureFooter() }
+        super.submitList(mutable, commitCallback)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -105,7 +113,7 @@ class ChatAdapter(
             val chat = item.chatData
 
             // Непрочитанный чат крупнее и заметнее: своя форма, фон, аватар и типографика
-            applyUnreadStyle(chat.countUnread > 0)
+            applyUnreadStyle(item.unreadGroupPosition)
 
             // Название чата
             binding.chatTitle.text = item.displayTitle.trim()
@@ -207,12 +215,30 @@ class ChatAdapter(
          * Оформление строки по наличию непрочитанных: форма, фон, размер аватара и типографика
          * (макет M3E, вариант 3).
          */
-        private fun applyUnreadStyle(isUnread: Boolean) {
+        private fun applyUnreadStyle(groupPosition: UnreadGroupPosition) {
             val density = binding.root.resources.displayMetrics.density
             fun dp(value: Int) = (value * density).toInt()
 
+            val isUnread = groupPosition != UnreadGroupPosition.NONE
             val card = binding.chatCard
-            card.radius = dp(if (isUnread) 28 else 20).toFloat()
+            val largeRadius = dp(if (isUnread) 28 else 20).toFloat()
+            val smallRadius = dp(6).toFloat()
+            val (topLeft, topRight, bottomRight, bottomLeft) = when (groupPosition) {
+                UnreadGroupPosition.SINGLE, UnreadGroupPosition.NONE ->
+                    listOf(largeRadius, largeRadius, largeRadius, largeRadius)
+                UnreadGroupPosition.FIRST ->
+                    listOf(largeRadius, largeRadius, smallRadius, smallRadius)
+                UnreadGroupPosition.MIDDLE ->
+                    listOf(smallRadius, smallRadius, smallRadius, smallRadius)
+                UnreadGroupPosition.LAST ->
+                    listOf(smallRadius, smallRadius, largeRadius, largeRadius)
+            }
+            card.shapeAppearanceModel = ShapeAppearanceModel.builder()
+                .setTopLeftCornerSize(topLeft)
+                .setTopRightCornerSize(topRight)
+                .setBottomRightCornerSize(bottomRight)
+                .setBottomLeftCornerSize(bottomLeft)
+                .build()
             card.setCardBackgroundColor(
                 if (isUnread) {
                     com.google.android.material.color.MaterialColors.getColor(
@@ -223,7 +249,11 @@ class ChatAdapter(
                 }
             )
             card.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                bottomMargin = if (isUnread) dp(8) else 0
+                bottomMargin = when (groupPosition) {
+                    UnreadGroupPosition.FIRST, UnreadGroupPosition.MIDDLE -> dp(2)
+                    UnreadGroupPosition.SINGLE, UnreadGroupPosition.LAST -> dp(8)
+                    UnreadGroupPosition.NONE -> 0
+                }
             }
 
             val verticalPadding = dp(if (isUnread) 16 else 12)
@@ -298,5 +328,23 @@ class ChatAdapter(
             if (oldItem.isFooter && newItem.isFooter) return true
             return oldItem == newItem
         }
+    }
+}
+
+internal fun assignUnreadGroupPositions(
+    items: List<ChatAdapter.ChatDisplayItem>,
+): List<ChatAdapter.ChatDisplayItem> = items.mapIndexed { index, item ->
+    if (item.isFooter || item.chatData.countUnread <= 0L) {
+        item.copy(unreadGroupPosition = ChatAdapter.UnreadGroupPosition.NONE)
+    } else {
+        val previousUnread = index > 0 && !items[index - 1].isFooter && items[index - 1].chatData.countUnread > 0L
+        val nextUnread = index < items.lastIndex && !items[index + 1].isFooter && items[index + 1].chatData.countUnread > 0L
+        val position = when {
+            !previousUnread && !nextUnread -> ChatAdapter.UnreadGroupPosition.SINGLE
+            !previousUnread -> ChatAdapter.UnreadGroupPosition.FIRST
+            nextUnread -> ChatAdapter.UnreadGroupPosition.MIDDLE
+            else -> ChatAdapter.UnreadGroupPosition.LAST
+        }
+        item.copy(unreadGroupPosition = position)
     }
 }

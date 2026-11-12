@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import coil.ImageLoader
+import coil.annotation.ExperimentalCoilApi
 import coil.load
 import coil.request.ImageRequest
 import coil.size.Size
@@ -16,6 +17,8 @@ import com.barkfluff.client.R
 import com.barkfluff.client.security.TlsCallFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -69,6 +72,7 @@ object AvatarLoader {
 
     // Кэш URL-ов в памяти для быстрого доступа (runtime only)
     internal val urlCache = ConcurrentHashMap<String, String>()
+    private val staleUrlRefreshGuard = AvatarUrlRefreshGuard()
 
     /**
      * Очищает все кеши: memory, disk, URL cache (runtime и персистентный)
@@ -83,6 +87,7 @@ object AvatarLoader {
 
         // Очищаем runtime URL кеш
         urlCache.clear()
+        staleUrlRefreshGuard.clear()
 
         // Очищаем персистентный URL кеш
         MainScope().launch {
@@ -94,6 +99,7 @@ object AvatarLoader {
     private var imageLoaderInstance: ImageLoader? = null
     private var tlsCallFactory: TlsCallFactory? = null
 
+    @OptIn(ExperimentalCoilApi::class)
     internal fun getImageLoader(context: android.content.Context): ImageLoader {
         if (imageLoaderInstance == null) {
             synchronized(this) {
@@ -242,6 +248,7 @@ object AvatarLoader {
     ) {
         // Привязываем fileId к ImageView для защиты от race condition при recycling
         imageView.tag = fileId
+        placeholderView.tag = fileId
 
         if (fileId.isNullOrBlank()) {
             imageView.visibility = View.GONE
@@ -264,7 +271,10 @@ object AvatarLoader {
             android.util.Log.d("AvatarLoader", "loadByFileId: Runtime cache hit for fileId=$fileId")
             showPlaceholderInternal(placeholderView, displayName, userId)
             imageView.visibility = View.GONE
-            loadImageWithCoil(imageView, placeholderView, cachedUrl, fileId, displayName, userId, size, circleCrop)
+            loadImageWithCoil(
+                imageView, placeholderView, cachedUrl, fileId, displayName, userId, size, circleCrop,
+                onCachedUrlError = { refreshExpiredUrl(imageView, placeholderView, fileId, cachedUrl, displayName, userId, size, circleCrop, getUrlCallback) },
+            )
             return
         }
 
@@ -276,7 +286,10 @@ object AvatarLoader {
             urlCache[fileId] = persistentUrl
             showPlaceholderInternal(placeholderView, displayName, userId)
             imageView.visibility = View.GONE
-            loadImageWithCoil(imageView, placeholderView, persistentUrl, fileId, displayName, userId, size, circleCrop)
+            loadImageWithCoil(
+                imageView, placeholderView, persistentUrl, fileId, displayName, userId, size, circleCrop,
+                onCachedUrlError = { refreshExpiredUrl(imageView, placeholderView, fileId, persistentUrl, displayName, userId, size, circleCrop, getUrlCallback) },
+            )
             return
         }
 
@@ -285,10 +298,46 @@ object AvatarLoader {
         showPlaceholderInternal(placeholderView, displayName, userId)
         imageView.visibility = View.GONE
 
+        fetchUrlAndLoad(imageView, placeholderView, fileId, displayName, userId, size, circleCrop, getUrlCallback)
+    }
+
+    private fun refreshExpiredUrl(
+        imageView: ImageView,
+        placeholderView: TextView,
+        fileId: String,
+        expiredUrl: String,
+        displayName: String,
+        userId: Long,
+        size: Int,
+        circleCrop: Boolean,
+        getUrlCallback: suspend () -> String?,
+    ) {
+        if (!isCurrentAvatarRequest(imageView.tag, placeholderView.tag, fileId) ||
+            !staleUrlRefreshGuard.tryBegin(fileId, expiredUrl)
+        ) return
+
         MainScope().launch {
-            val url = withContext(Dispatchers.IO) {
-                getUrlCallback()
-            }
+            urlCache.remove(fileId, expiredUrl)
+            fileUrlCache?.removeUrl(fileId, expiredUrl)
+            fetchUrlAndLoad(imageView, placeholderView, fileId, displayName, userId, size, circleCrop, getUrlCallback)
+        }
+    }
+
+    private fun fetchUrlAndLoad(
+        imageView: ImageView,
+        placeholderView: TextView,
+        fileId: String,
+        displayName: String,
+        userId: Long,
+        size: Int,
+        circleCrop: Boolean,
+        getUrlCallback: suspend () -> String?,
+    ) {
+        MainScope().launch {
+            val url = requestAvatarUrlWithSingleRetry(
+                getUrl = { withContext(Dispatchers.IO) { getUrlCallback() } },
+                retryDelay = { delay(250) },
+            )
             android.util.Log.d("AvatarLoader", "loadByFileId: fileId=$fileId, hasUrl=${!url.isNullOrBlank()}")
 
             if (url.isNullOrBlank()) {
@@ -301,7 +350,7 @@ object AvatarLoader {
             putUrlInCache(fileId, url)
 
             withContext(Dispatchers.Main) {
-                if (imageView.tag != fileId) return@withContext // View recycled
+                if (!isCurrentAvatarRequest(imageView.tag, placeholderView.tag, fileId)) return@withContext
                 loadImageWithCoil(imageView, placeholderView, url, fileId, displayName, userId, size, circleCrop)
             }
         }
@@ -310,6 +359,7 @@ object AvatarLoader {
     /**
      * Загружает изображение через Coil с указанным URL и fileId как ключом кэша.
      */
+    @OptIn(ExperimentalCoilApi::class)
     private fun loadImageWithCoil(
         imageView: ImageView,
         placeholderView: TextView,
@@ -318,18 +368,18 @@ object AvatarLoader {
         displayName: String,
         userId: Long,
         size: Int,
-        circleCrop: Boolean
+        circleCrop: Boolean,
+        onCachedUrlError: (() -> Unit)? = null,
     ) {
         android.util.Log.d("AvatarLoader", "loadImageWithCoil: Loading cacheKey=$cacheKey, size=$size")
         val imageLoader = getImageLoader(imageView.context)
+        val requestTag = imageView.tag
 
-        // Сохраняем cacheKey в tag для проверки при recycling
-        imageView.tag = cacheKey
-
+        val imageCacheKey = "$cacheKey:$url"
         val requestBuilder = ImageRequest.Builder(imageView.context)
             .data(url)
-            .memoryCacheKey(cacheKey)
-            .diskCacheKey(cacheKey)
+            .memoryCacheKey(imageCacheKey)
+            .diskCacheKey(imageCacheKey)
             .crossfade(200)
 
         if (circleCrop) {
@@ -338,7 +388,7 @@ object AvatarLoader {
 
         requestBuilder.target(
                 onSuccess = { drawable ->
-                    if (imageView.tag == cacheKey) {
+                    if (isCurrentAvatarRequest(imageView.tag, placeholderView.tag, requestTag)) {
                         android.util.Log.d("AvatarLoader", "loadImageWithCoil: onSuccess cacheKey=$cacheKey")
                         imageView.setImageDrawable(drawable)
                         imageView.visibility = View.VISIBLE
@@ -346,10 +396,11 @@ object AvatarLoader {
                     }
                 },
                 onError = { _ ->
-                    if (imageView.tag == cacheKey) {
+                    if (isCurrentAvatarRequest(imageView.tag, placeholderView.tag, requestTag)) {
                         android.util.Log.e("AvatarLoader", "loadImageWithCoil: onError cacheKey=$cacheKey")
                         imageView.visibility = View.GONE
                         showPlaceholderInternal(placeholderView, displayName, userId)
+                        onCachedUrlError?.invoke()
                     }
                 }
             )
@@ -416,3 +467,41 @@ object AvatarLoader {
     /** Публичный доступ к цвету плейсхолдера по userId (для аватаров в звонках и т.п.). */
     fun colorForUser(userId: Long): Int = getColorForId(userId)
 }
+
+internal class AvatarUrlRefreshGuard {
+    private val refreshedUrls = ConcurrentHashMap<String, String>()
+
+    fun tryBegin(fileId: String, expiredUrl: String): Boolean {
+        while (true) {
+            val previous = refreshedUrls[fileId]
+            if (previous == expiredUrl) return false
+            if (previous == null) {
+                if (refreshedUrls.putIfAbsent(fileId, expiredUrl) == null) return true
+            } else if (refreshedUrls.replace(fileId, previous, expiredUrl)) {
+                return true
+            }
+        }
+    }
+
+    fun clear() = refreshedUrls.clear()
+}
+
+internal suspend fun requestAvatarUrlWithSingleRetry(
+    getUrl: suspend () -> String?,
+    retryDelay: suspend () -> Unit = { delay(250) },
+): String? {
+    suspend fun attempt(): String? = try {
+        getUrl()?.takeIf { it.isNotBlank() }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null
+    }
+
+    attempt()?.let { return it }
+    retryDelay()
+    return attempt()
+}
+
+internal fun isCurrentAvatarRequest(imageTag: Any?, placeholderTag: Any?, fileId: Any?): Boolean =
+    imageTag == fileId && placeholderTag == fileId
