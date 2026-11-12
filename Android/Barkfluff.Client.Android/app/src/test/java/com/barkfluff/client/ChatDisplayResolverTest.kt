@@ -19,7 +19,7 @@ class ChatDisplayResolverTest {
         )
         resolver.loadCachedDisplays(mapOf(CHAT_ID to CachedChatDisplay("Алиса", "avatar-2", 2L)), 1L)
 
-        val item = resolver.resolveChats(listOf(chat()), 1L, "Чат").single()
+        val item = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат").single()
 
         assertEquals("Алиса", item.displayTitle)
         assertEquals("avatar-2", item.displayAvatarFileId)
@@ -37,7 +37,7 @@ class ChatDisplayResolverTest {
         )
 
         resolver.cacheChatList(listOf(chat(title = "Серверная Алиса", avatar = "server-avatar")), 1L)
-        val fromList = resolver.resolveChats(listOf(chat()), 1L, "Чат").single()
+        val fromList = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат").single()
         assertEquals("Серверная Алиса", fromList.displayTitle)
         assertEquals("server-avatar", fromList.displayAvatarFileId)
         assertEquals(0, userCalls)
@@ -53,8 +53,10 @@ class ChatDisplayResolverTest {
             saveDisplay = { chatId, display -> saved[chatId] = display },
         )
 
-        val firstResolution = resolver.resolveChats(listOf(chat()), 1L, "Чат").single()
-        val repeatedResolution = resolver.resolveChats(listOf(chat()), 1L, "Чат").single()
+        resolver.resolveMissingProfiles(listOf(chat()), 1L)
+        val firstResolution = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат").single()
+        resolver.resolveMissingProfiles(listOf(chat()), 1L)
+        val repeatedResolution = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат").single()
 
         assertEquals("Алиса Тест", firstResolution.displayTitle)
         assertEquals("preview-2", firstResolution.displayAvatarFileId)
@@ -71,11 +73,69 @@ class ChatDisplayResolverTest {
             saveDisplay = { _, _ -> },
         )
 
-        val item = resolver.resolveChats(listOf(chat(memberIds = listOf(1L))), 1L, "Чат").single()
+        resolver.resolveMissingProfiles(listOf(chat(memberIds = listOf(1L))), 1L)
+        val item = resolver.resolveCachedChats(listOf(chat(memberIds = listOf(1L))), 1L, "Чат").single()
 
         assertNull(requestedUserId)
         assertEquals(0L, item.otherUserId)
         assertNull(resolveOtherUserId(listOf(1L, 2L), 0L))
+    }
+
+    @Test
+    fun `known name without avatar still resolves peer profile`() = runTest {
+        var userCalls = 0
+        val resolver = ChatDisplayResolver(
+            loadUser = { userCalls++; Result.success(profile()) },
+            saveDisplay = { _, _ -> },
+        )
+        val chat = chat(title = "Имя из списка")
+
+        resolver.resolveMissingProfiles(listOf(chat), 1L)
+        val item = resolver.resolveCachedChats(listOf(chat), 1L, "Чат").single()
+
+        assertEquals("Имя из списка", item.displayTitle)
+        assertEquals("preview-2", item.displayAvatarFileId)
+        assertEquals(1, userCalls)
+    }
+
+    @Test
+    fun `successful profile without avatar is negatively cached for the session`() = runTest {
+        var userCalls = 0
+        val resolver = ChatDisplayResolver(
+            loadUser = {
+                userCalls++
+                Result.success(profile().copy(profilePicturePreviewFileId = "", profilePictureFileId = ""))
+            },
+            saveDisplay = { _, _ -> },
+        )
+        val chat = chat(title = "Имя из списка")
+
+        repeat(3) { resolver.resolveMissingProfiles(listOf(chat), 1L) }
+
+        assertEquals(1, userCalls)
+    }
+
+    @Test
+    fun `failed profile request retries after the next list refresh`() = runTest {
+        var userCalls = 0
+        val resolver = ChatDisplayResolver(
+            loadUser = {
+                userCalls++
+                if (userCalls == 1) Result.failure(IllegalStateException("offline")) else Result.success(profile())
+            },
+            saveDisplay = { _, _ -> },
+        )
+        val chat = chat(title = "Имя из списка")
+
+        resolver.resolveMissingProfiles(listOf(chat), 1L)
+        resolver.resolveMissingProfiles(listOf(chat), 1L)
+        assertEquals(1, userCalls)
+
+        resolver.beginChatListRefresh()
+        resolver.resolveMissingProfiles(listOf(chat), 1L)
+
+        assertEquals(2, userCalls)
+        assertEquals("preview-2", resolver.resolveCachedChats(listOf(chat), 1L, "Чат").single().displayAvatarFileId)
     }
 
     private fun chat(

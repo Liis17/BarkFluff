@@ -116,8 +116,14 @@ class ChatsFragment : Fragment() {
                     if (binding.chatRecyclerView.adapter !== chatAdapter) {
                         binding.chatRecyclerView.adapter = chatAdapter
                     }
+                    val preserveTop = previousItems.isNotEmpty() &&
+                        !binding.chatRecyclerView.canScrollVertically(-1)
                     val hasRealChat = state.displayItems.any { !it.isFooter }
                     chatAdapter.submitList(state.displayItems) {
+                        if (preserveTop && isAdded && _binding != null) {
+                            (binding.chatRecyclerView.layoutManager as? LinearLayoutManager)
+                                ?.scrollToPositionWithOffset(0, 0)
+                        }
                         if (hasRealChat && isAdded && PerfTrace.markFirstChatDisplayed()) {
                             PerfTrace.endAppToChats()
                             requireActivity().reportFullyDrawn()
