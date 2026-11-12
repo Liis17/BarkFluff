@@ -65,13 +65,12 @@
                 android:overScrollMode="never" />
 
             <!-- Индикатор загрузки -->
-            <com.google.android.material.progressindicator.CircularProgressIndicator
+            <com.google.android.material.loadingindicator.LoadingIndicator
                 android:id="@+id/loadingProgressBar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:layout_marginVertical="24dp"
-                android:indeterminate="true"
                 android:contentDescription="@string/server_list_loading"
                 android:visibility="gone"
                 app:indicatorColor="?attr/colorPrimary" />

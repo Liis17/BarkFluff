@@ -390,13 +390,14 @@
     </com.google.android.material.card.MaterialCardView>
 
     <!-- Индикатор загрузки сообщений -->
-    <com.google.android.material.progressindicator.CircularProgressIndicator
+    <com.google.android.material.loadingindicator.LoadingIndicator
         android:id="@+id/loadingProgress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:indeterminate="true"
         android:visibility="gone"
         app:indicatorSize="24dp"
+        app:containerWidth="32dp"
+        app:containerHeight="32dp"
         app:layout_constraintTop_toTopOf="@id/messagesRecyclerView"
         app:layout_constraintStart_toStartOf="@id/messagesRecyclerView"
         app:layout_constraintEnd_toEndOf="@id/messagesRecyclerView" />

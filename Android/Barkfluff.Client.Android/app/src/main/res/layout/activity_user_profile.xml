@@ -544,7 +544,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <ProgressBar
+                <com.google.android.material.loadingindicator.LoadingIndicator
                     android:id="@+id/mediaAttachmentsLoading"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -600,7 +600,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
 
-                    <ProgressBar
+                    <com.google.android.material.loadingindicator.LoadingIndicator
                         android:id="@+id/filesAttachmentsLoading"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -634,7 +634,7 @@
                 android:layout_height="wrap_content"
                 android:visibility="gone">
 
-                <ProgressBar
+                <com.google.android.material.loadingindicator.LoadingIndicator
                     android:id="@+id/voiceAttachmentsLoading"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
