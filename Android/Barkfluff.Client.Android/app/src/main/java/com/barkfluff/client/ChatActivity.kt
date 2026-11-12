@@ -97,6 +97,7 @@ import com.barkfluff.client.utils.MessageTimeSpacingDecoration
 import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.barkfluff.client.utils.applySpringPress
 import com.barkfluff.client.view.MessageActionsOverlay
+import com.barkfluff.client.view.M3ContextMenu
 import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
 import androidx.activity.OnBackPressedCallback
@@ -2567,23 +2568,36 @@ class ChatActivity : AppCompatActivity() {
             if (imageAtts.isNotEmpty()) {
                 add(MessageActionsOverlay.Action(
                     MessageActionId.SAVE_IMAGES, R.drawable.ic_action_save,
-                    getString(if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images)
+                    getString(if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images),
+                    dividerBefore = hasText,
                 ))
             }
             if (docAtts.isNotEmpty()) {
-                add(MessageActionsOverlay.Action(MessageActionId.SAVE_DOCS, R.drawable.ic_action_download, getString(R.string.msg_action_save_to_downloads)))
+                add(MessageActionsOverlay.Action(
+                    MessageActionId.SAVE_DOCS, R.drawable.ic_action_download,
+                    getString(R.string.msg_action_save_to_downloads), dividerBefore = imageAtts.isEmpty() && hasText,
+                ))
             }
             if (isOwnMessage) {
-                add(MessageActionsOverlay.Action(MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit)))
+                add(MessageActionsOverlay.Action(
+                    MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit),
+                    dividerBefore = imageAtts.isNotEmpty() || docAtts.isNotEmpty(),
+                ))
                 add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.ic_action_delete, getString(R.string.msg_action_delete), danger = true))
             }
-            add(MessageActionsOverlay.Action(MessageActionId.FORWARD, R.drawable.ic_action_forward, getString(R.string.msg_action_forward)))
+            add(MessageActionsOverlay.Action(
+                MessageActionId.FORWARD, R.drawable.ic_action_forward, getString(R.string.msg_action_forward),
+                dividerBefore = isOwnMessage,
+            ))
             add(MessageActionsOverlay.Action(
                 MessageActionId.PIN,
                 if (isPinned) R.drawable.ic_action_unpin else R.drawable.ic_action_pin,
                 getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
             ))
-            add(MessageActionsOverlay.Action(MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties)))
+            add(MessageActionsOverlay.Action(
+                MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties),
+                dividerBefore = true,
+            ))
             add(MessageActionsOverlay.Action(MessageActionId.SELECT, R.drawable.ic_action_select, getString(R.string.msg_action_select)))
         }
 
@@ -2850,18 +2864,17 @@ class ChatActivity : AppCompatActivity() {
 
     /** Контекстное меню чата (кнопка «три точки»): переключение уведомлений. */
     private fun showChatMenu(anchor: View) {
-        val popup = android.widget.PopupMenu(this, anchor)
         val muteTitle = if (isChatMuted) getString(R.string.chat_menu_unmute) else getString(R.string.chat_menu_mute)
-        val muteItem = popup.menu.add(muteTitle)
-        popup.setOnMenuItemClickListener { item ->
-            if (item === muteItem) {
-                toggleChatMute()
-                true
-            } else {
-                false
-            }
-        }
-        popup.show()
+        M3ContextMenu.show(
+            anchor = anchor,
+            items = listOf(M3ContextMenu.Item(
+                id = 1,
+                title = muteTitle,
+                icon = if (isChatMuted) R.drawable.ic_notifications else R.drawable.ic_notifications_off,
+            )),
+            alignEnd = true,
+            onItemSelected = { toggleChatMute() },
+        )
     }
 
     private fun toggleChatMute() {

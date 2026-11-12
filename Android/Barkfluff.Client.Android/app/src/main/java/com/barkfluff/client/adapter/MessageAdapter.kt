@@ -1,14 +1,17 @@
 package com.barkfluff.client.adapter
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.PathInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.PopupMenu
 import android.widget.SeekBar
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
@@ -40,8 +43,10 @@ import com.barkfluff.client.send.OutgoingAttachmentUi
 import com.barkfluff.client.send.OutgoingAttachmentUploadState
 import com.barkfluff.client.utils.ImageLoadHelper
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.view.M3ContextMenu
 import barkfluff.shared.Shared
 import android.content.res.ColorStateList
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -1384,6 +1389,7 @@ class MessageAdapter(
         binding.fileNameText.visibility = View.VISIBLE
         binding.voiceWaveform.visibility = View.GONE
         binding.voiceSpeed.visibility = View.GONE
+        binding.audioMenuButton.visibility = View.GONE
         binding.durationText.text = formatFileSize(container.context, attachment.sizeBytes)
         binding.downloadButton.visibility = View.GONE
         binding.downloadProgressBar.visibility = View.GONE
@@ -1406,6 +1412,7 @@ class MessageAdapter(
         binding.docFileSize.text = formatFileSize(container.context, attachment.sizeBytes)
         binding.docDownloadButton.visibility = View.GONE
         binding.docOpenButton.visibility = View.GONE
+        binding.docMenuButton.visibility = View.GONE
         binding.docDownloadProgress.visibility = View.GONE
         binding.outgoingUploadProgress.setIndicatorColor(resolveOnPrimaryContainerColor(container.context))
         renderOutgoingAttachmentIndicator(binding.root, attachment, item)
@@ -1829,9 +1836,8 @@ class MessageAdapter(
             }
         }
 
-        binding.root.setOnLongClickListener { view ->
+        binding.audioMenuButton.setOnClickListener { view ->
             showAudioContextMenu(view, context, fileId, fileName, binding, isVoice)
-            true
         }
 
         return binding.root
@@ -1844,15 +1850,29 @@ class MessageAdapter(
         binding: ItemAttachmentAudioBinding,
         isVoice: Boolean
     ) {
-        val popup = PopupMenu(context, anchor)
-        val menuInflater = popup.menuInflater
-        menuInflater.inflate(R.menu.menu_audio_attachment, popup.menu)
-
         val isCached = attachmentLoader.hasCached(fileId)
-        popup.menu.findItem(R.id.action_delete_from_cache).isVisible = isCached
-
-        popup.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
+        val items = buildList {
+            add(M3ContextMenu.Item(
+                id = R.id.action_save_audio,
+                title = context.getString(R.string.audio_save),
+                icon = R.drawable.ic_action_save,
+            ))
+            if (isCached) {
+                add(M3ContextMenu.Item(
+                    id = R.id.action_delete_from_cache,
+                    title = context.getString(R.string.file_remove_from_cache),
+                    icon = R.drawable.ic_action_delete,
+                    danger = true,
+                    dividerBefore = true,
+                ))
+            }
+        }
+        M3ContextMenu.show(
+            anchor = anchor,
+            items = items,
+            alignEnd = true,
+            onItemSelected = { menuItem ->
+            when (menuItem.id) {
                 R.id.action_save_audio -> {
                     if (attachmentLoader.hasCached(fileId)) {
                         val cachedFile = attachmentLoader.cached(fileId)
@@ -1893,8 +1913,8 @@ class MessageAdapter(
                 }
                 else -> false
             }
-        }
-        popup.show()
+            },
+        )
     }
     private fun getVideoDimensions(uri: Uri, context: Context): Pair<Int, Int>? {
         return try {
@@ -2050,12 +2070,14 @@ class MessageAdapter(
             binding.docDownloadButton.visibility = View.GONE
             binding.docOpenButton.visibility = View.VISIBLE
             binding.docDownloadProgress.visibility = View.GONE
+            binding.docMenuButton.visibility = View.VISIBLE
         }
 
         fun updateUiForNotCached() {
             binding.docDownloadButton.visibility = View.VISIBLE
             binding.docOpenButton.visibility = View.GONE
             binding.docDownloadProgress.visibility = View.GONE
+            binding.docMenuButton.visibility = View.GONE
             binding.docDownloadButton.isEnabled = true
         }
 
@@ -2066,6 +2088,7 @@ class MessageAdapter(
             binding.docDownloadProgress.isIndeterminate = false
             binding.docDownloadProgress.visibility = View.VISIBLE
             binding.docDownloadProgress.progress = 0
+            binding.docMenuButton.visibility = View.GONE
         }
 
         if (attachmentLoader.hasCached(fileId)) {
@@ -2121,10 +2144,8 @@ class MessageAdapter(
             )
         }
 
-        // Long press → context menu
-        binding.root.setOnLongClickListener { view ->
+        binding.docMenuButton.setOnClickListener { view ->
             showDocumentContextMenu(view, context, fileId, fileName, binding)
-            true
         }
 
         return binding.root
@@ -2142,18 +2163,24 @@ class MessageAdapter(
             // Меню сводилось к одному пункту "Удалить из кеша" — для нескачанного файла нет смысла показывать
             return
         }
-        val popup = PopupMenu(context, anchor)
-        val menuInflater = popup.menuInflater
-        menuInflater.inflate(R.menu.menu_document_attachment, popup.menu)
-
-        popup.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
+        M3ContextMenu.show(
+            anchor = anchor,
+            items = listOf(M3ContextMenu.Item(
+                id = R.id.action_delete_doc_from_cache,
+                title = context.getString(R.string.file_remove_from_cache),
+                icon = R.drawable.ic_action_delete,
+                danger = true,
+            )),
+            alignEnd = true,
+            onItemSelected = { menuItem ->
+            when (menuItem.id) {
                 R.id.action_delete_doc_from_cache -> {
                     attachmentLoader.deleteCached(fileId)
                     binding.docDownloadButton.visibility = View.VISIBLE
                     binding.docDownloadButton.isEnabled = true
                     binding.docOpenButton.visibility = View.GONE
                     binding.docDownloadProgress.visibility = View.GONE
+                    binding.docMenuButton.visibility = View.GONE
                     eventSink?.onAttachmentAction(
                         MessageAttachmentAction.ToastRes(R.string.file_removed_from_cache)
                     )
@@ -2161,8 +2188,8 @@ class MessageAdapter(
                 }
                 else -> false
             }
-        }
-        popup.show()
+            },
+        )
     }
 
     // ─── Formatting Helpers ───────────────────────────────────────────────────

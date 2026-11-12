@@ -81,7 +81,7 @@
     <!-- Контейнер для кнопок — 48dp touch target (M3 / WCAG минимум).
          Визуальный размер иконки сохраняется 24dp через scaleType=center. -->
     <FrameLayout
-        android:layout_width="48dp"
+        android:layout_width="96dp"
         android:layout_height="48dp">
 
         <!-- Кнопка скачать -->
@@ -105,6 +105,17 @@
             android:contentDescription="@string/cd_open_file"
             android:scaleType="center"
             android:visibility="gone"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+        <ImageButton
+            android:id="@+id/docMenuButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_more_vert"
+            android:contentDescription="@string/cd_more_menu"
+            android:scaleType="center"
             app:tint="?attr/colorOnSurfaceVariant" />
 
     </FrameLayout>
