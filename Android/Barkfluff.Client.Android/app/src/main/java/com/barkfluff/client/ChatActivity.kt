@@ -182,6 +182,8 @@ class ChatActivity : AppCompatActivity() {
     private var suppressTypingInput = false
     private var renderedTypingUserIds: Set<Long> = emptySet()
     private var selectionGestureController: MessageSelectionTouchController? = null
+    /** Где палец последний раз коснулся списка сообщений — меню действий открывается над этой точкой. */
+    private var lastMessageTouch: android.graphics.Point? = null
     private var renderedSelectionCount = -1
     private val pendingTypingNameFetches = mutableSetOf<Long>()
     private var lastStatusText: CharSequence? = null
@@ -2567,6 +2569,7 @@ class ChatActivity : AppCompatActivity() {
                 bubble = bubble,
                 actions = actions,
                 alignEnd = true,
+                touchPoint = messageTouchPoint(bubble),
                 onDismiss = { backCallback.isEnabled = binding.stickerPreviewOverlay.visibility == View.VISIBLE || inputPanelState == InputPanelState.STICKER_PANEL }
             ) { actionId ->
                 item.localId?.let { operationId ->
@@ -2595,66 +2598,59 @@ class ChatActivity : AppCompatActivity() {
         val hasText = item.text.isNotBlank()
         val isPinned = viewModel.isMessagePinned(item.messageId)
 
-        val actions = buildList {
+        // Частые действия — иконками на панели под списком, остальные — списком.
+        val barActions = buildList {
             add(MessageActionsOverlay.Action(MessageActionId.REPLY, R.drawable.ic_action_reply, getString(R.string.msg_action_reply)))
             if (hasText) {
                 add(MessageActionsOverlay.Action(MessageActionId.COPY_TEXT, R.drawable.ic_action_copy_text, getString(R.string.msg_action_copy_text)))
-                add(MessageActionsOverlay.Action(MessageActionId.COPY_MARKDOWN, R.drawable.ic_action_copy_markdown, getString(R.string.msg_action_copy_markdown)))
             }
             if (imageAtts.size == 1) {
                 add(MessageActionsOverlay.Action(MessageActionId.COPY_IMAGE, R.drawable.ic_action_copy_image, getString(R.string.msg_action_copy_image)))
             }
+            if (isOwnMessage) {
+                add(MessageActionsOverlay.Action(MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit)))
+            }
+            add(MessageActionsOverlay.Action(MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties)))
+        }
+        val actions = buildList {
+            if (hasText) {
+                add(MessageActionsOverlay.Action(MessageActionId.COPY_MARKDOWN, R.drawable.ic_action_copy_markdown, getString(R.string.msg_action_copy_markdown)))
+            }
             if (imageAtts.isNotEmpty()) {
                 add(MessageActionsOverlay.Action(
-                    MessageActionId.SAVE_IMAGES, R.drawable.ic_action_save,
+                    MessageActionId.SAVE_IMAGES, R.drawable.ic_action_save_gallery,
                     getString(if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images),
-                    dividerBefore = hasText,
                 ))
             }
             if (docAtts.isNotEmpty()) {
-                add(MessageActionsOverlay.Action(
-                    MessageActionId.SAVE_DOCS, R.drawable.ic_action_download,
-                    getString(R.string.msg_action_save_to_downloads), dividerBefore = imageAtts.isEmpty() && hasText,
-                ))
+                add(MessageActionsOverlay.Action(MessageActionId.SAVE_DOCS, R.drawable.ic_action_download, getString(R.string.msg_action_save_to_downloads)))
             }
             if (audioAtts.isNotEmpty()) {
-                add(MessageActionsOverlay.Action(
-                    MessageActionId.SAVE_AUDIO, R.drawable.ic_action_save, getString(R.string.audio_save),
-                    dividerBefore = imageAtts.isEmpty() && docAtts.isEmpty() && hasText,
-                ))
+                add(MessageActionsOverlay.Action(MessageActionId.SAVE_AUDIO, R.drawable.ic_action_save, getString(R.string.audio_save)))
             }
             if (cachedAudioAtts.isNotEmpty()) {
                 add(MessageActionsOverlay.Action(
                     MessageActionId.REMOVE_AUDIO_CACHE, R.drawable.ic_action_delete, getString(R.string.file_remove_from_cache),
                 ))
             }
-            if (isOwnMessage) {
-                add(MessageActionsOverlay.Action(
-                    MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit),
-                    dividerBefore = imageAtts.isNotEmpty() || docAtts.isNotEmpty() || audioAtts.isNotEmpty(),
-                ))
-                add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.ic_action_delete, getString(R.string.msg_action_delete), danger = true))
-            }
-            add(MessageActionsOverlay.Action(
-                MessageActionId.FORWARD, R.drawable.ic_action_forward, getString(R.string.msg_action_forward),
-                dividerBefore = isOwnMessage,
-            ))
+            add(MessageActionsOverlay.Action(MessageActionId.FORWARD, R.drawable.ic_action_forward, getString(R.string.msg_action_forward)))
             add(MessageActionsOverlay.Action(
                 MessageActionId.PIN,
                 if (isPinned) R.drawable.ic_action_unpin else R.drawable.ic_action_pin,
                 getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
             ))
-            add(MessageActionsOverlay.Action(
-                MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties),
-                dividerBefore = true,
-            ))
             add(MessageActionsOverlay.Action(MessageActionId.SELECT, R.drawable.ic_action_select, getString(R.string.msg_action_select)))
+            if (isOwnMessage) {
+                add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.ic_action_delete, getString(R.string.msg_action_delete), danger = true))
+            }
         }
 
         messageActionsOverlay.show(
             bubble = bubble,
             actions = actions,
             alignEnd = isOwnMessage,
+            barActions = barActions,
+            touchPoint = messageTouchPoint(bubble),
             onDismiss = {
                 // Закрытие анимированное (~180мс) — за это время действие могло уже включить
                 // режим выделения (SELECT), который сам управляет backCallback. Не перетираем.
@@ -2709,6 +2705,18 @@ class ChatActivity : AppCompatActivity() {
             }
         }
         backCallback.isEnabled = true
+    }
+
+    /**
+     * Точка последнего касания списка (экранные координаты), если она внутри строки этого сообщения.
+     * Иначе (клавиатура, accessibility) меню позиционируется по пузырю.
+     */
+    private fun messageTouchPoint(bubble: View): android.graphics.Point? {
+        val point = lastMessageTouch ?: return null
+        val row = binding.messagesRecyclerView.findContainingItemView(bubble) ?: return null
+        val location = IntArray(2).also(row::getLocationOnScreen)
+        val inside = point.x in location[0]..(location[0] + row.width) && point.y in location[1]..(location[1] + row.height)
+        return point.takeIf { inside }
     }
 
     private fun copyMessageText(item: MessageItem) {
@@ -2940,6 +2948,7 @@ class ChatActivity : AppCompatActivity() {
         override fun onInterceptTouchEvent(rv: RecyclerView, event: MotionEvent): Boolean {
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    lastMessageTouch = android.graphics.Point(event.rawX.toInt(), event.rawY.toInt())
                     startTracking(event)
                     return capturedSelectionTap
                 }
