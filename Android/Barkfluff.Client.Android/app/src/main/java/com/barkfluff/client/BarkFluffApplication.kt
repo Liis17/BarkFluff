@@ -92,6 +92,8 @@ class BarkFluffApplication : Application() {
     @Inject lateinit var callRepository: CallRepository
 
     @Inject lateinit var audioPlayback: com.barkfluff.client.audio.AudioPlayback
+    lateinit var audioMiniPlayerHost: com.barkfluff.client.audio.AudioMiniPlayerHost
+        private set
 
     @Inject lateinit var callEventsService: CallEventsService
 
@@ -178,7 +180,8 @@ class BarkFluffApplication : Application() {
         cleanupPendingUpdate()
         // Apply Material You dynamic colors system-wide (Android 12+)
         DynamicColors.applyToActivitiesIfAvailable(this)
-        registerActivityLifecycleCallbacks(com.barkfluff.client.audio.AudioMiniPlayerHost(audioPlayback))
+        audioMiniPlayerHost = com.barkfluff.client.audio.AudioMiniPlayerHost(audioPlayback)
+        registerActivityLifecycleCallbacks(audioMiniPlayerHost)
         NotificationHelper.createChannels(this)
         CallTelecomManager.registerPhoneAccount(this)
         connectivityManager = getSystemService(ConnectivityManager::class.java)

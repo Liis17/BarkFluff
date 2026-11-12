@@ -311,6 +311,25 @@
     </LinearLayout>
 
     <!-- ═══════════════════════════════════════════
+         МИНИ-ПЛЕЕР АУДИО (Telegram-style): заполняет AudioMiniPlayerHost,
+         показывается под шапкой, пока играет голосовое или аудио
+         ═══════════════════════════════════════════ -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/audioMiniPlayerSlot"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp"
+        android:visibility="gone"
+        android:elevation="6dp"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="6dp"
+        app:strokeWidth="0dp"
+        app:layout_constraintTop_toBottomOf="@id/chatHeaderBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ═══════════════════════════════════════════
          ПЛАШКА ЗАКРЕПЛЁННОГО СООБЩЕНИЯ (Telegram-style)
          Накладывается поверх верха ленты, ниже шапки чата
          ═══════════════════════════════════════════ -->
@@ -328,7 +347,7 @@
         app:cardCornerRadius="16dp"
         app:cardElevation="6dp"
         app:strokeWidth="0dp"
-        app:layout_constraintTop_toBottomOf="@id/chatHeaderBar"
+        app:layout_constraintTop_toBottomOf="@id/audioMiniPlayerSlot"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 

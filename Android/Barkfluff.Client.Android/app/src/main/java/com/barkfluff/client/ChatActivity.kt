@@ -2541,6 +2541,8 @@ class ChatActivity : AppCompatActivity() {
         const val SELECT = 12
         const val OUTGOING_RETRY = 13
         const val OUTGOING_CANCEL = 14
+        const val SAVE_AUDIO = 15
+        const val REMOVE_AUDIO_CACHE = 16
     }
 
     private fun showMessageActionMenu(bubble: View, item: MessageItem) {
@@ -2585,6 +2587,11 @@ class ChatActivity : AppCompatActivity() {
         val docAtts = item.attachments.filter {
             it.type == barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT
         }
+        val audioAtts = item.attachments.filter {
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.VOICE ||
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.AUDIO
+        }
+        val cachedAudioAtts = audioAtts.filter { messageAdapter.isAttachmentCached(it.fileId) }
         val hasText = item.text.isNotBlank()
         val isPinned = viewModel.isMessagePinned(item.messageId)
 
@@ -2610,10 +2617,21 @@ class ChatActivity : AppCompatActivity() {
                     getString(R.string.msg_action_save_to_downloads), dividerBefore = imageAtts.isEmpty() && hasText,
                 ))
             }
+            if (audioAtts.isNotEmpty()) {
+                add(MessageActionsOverlay.Action(
+                    MessageActionId.SAVE_AUDIO, R.drawable.ic_action_save, getString(R.string.audio_save),
+                    dividerBefore = imageAtts.isEmpty() && docAtts.isEmpty() && hasText,
+                ))
+            }
+            if (cachedAudioAtts.isNotEmpty()) {
+                add(MessageActionsOverlay.Action(
+                    MessageActionId.REMOVE_AUDIO_CACHE, R.drawable.ic_action_delete, getString(R.string.file_remove_from_cache),
+                ))
+            }
             if (isOwnMessage) {
                 add(MessageActionsOverlay.Action(
                     MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit),
-                    dividerBefore = imageAtts.isNotEmpty() || docAtts.isNotEmpty(),
+                    dividerBefore = imageAtts.isNotEmpty() || docAtts.isNotEmpty() || audioAtts.isNotEmpty(),
                 ))
                 add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.ic_action_delete, getString(R.string.msg_action_delete), danger = true))
             }
@@ -2653,6 +2671,22 @@ class ChatActivity : AppCompatActivity() {
                 MessageActionId.COPY_IMAGE -> copyMessageImage(imageAtts.first())
                 MessageActionId.SAVE_IMAGES -> saveMessageImages(imageAtts)
                 MessageActionId.SAVE_DOCS -> saveMessageDocuments(docAtts)
+                MessageActionId.SAVE_AUDIO -> saveMessageDocuments(audioAtts.map { att ->
+                    if (att.fileName.isNotBlank()) att else att.toBuilder().setFileName(
+                        if (att.type == barkfluff.shared.Shared.MessageAttachmentType.VOICE) "voice_${att.fileId.take(8)}.ogg"
+                        else "audio_${att.fileId.take(8)}"
+                    ).build()
+                })
+                MessageActionId.REMOVE_AUDIO_CACHE -> {
+                    cachedAudioAtts.forEach { att ->
+                        messageAdapter.removeCachedAudio(
+                            att.fileId,
+                            att.type == barkfluff.shared.Shared.MessageAttachmentType.VOICE,
+                            binding.messagesRecyclerView.findViewWithTag(att.fileId),
+                        )
+                    }
+                    Toast.makeText(this, R.string.audio_removed_from_cache, Toast.LENGTH_SHORT).show()
+                }
                 MessageActionId.EDIT -> setPendingEdit(item)
                 MessageActionId.DELETE -> confirmAndDelete(item)
                 MessageActionId.FORWARD -> {
