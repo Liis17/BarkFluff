@@ -1,14 +1,17 @@
 package com.barkfluff.client.adapter
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.PathInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.PopupMenu
 import android.widget.SeekBar
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
@@ -21,6 +24,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.imageview.ShapeableImageView
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.shape.CornerFamily
 import com.google.android.material.shape.ShapeAppearanceModel
 import com.barkfluff.client.databinding.ItemAttachmentDocumentBinding
@@ -40,8 +44,10 @@ import com.barkfluff.client.send.OutgoingAttachmentUi
 import com.barkfluff.client.send.OutgoingAttachmentUploadState
 import com.barkfluff.client.utils.ImageLoadHelper
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.view.M3ContextMenu
 import barkfluff.shared.Shared
 import android.content.res.ColorStateList
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -88,23 +94,125 @@ class MessageAdapter(
      * Для [contentColumn] (только у входящих — у исходящих под индикатор уже есть готовый
      * отступ) сдвигает содержимое вправо через translationX, освобождая место слева.
      */
-    private fun bindSelectionIndicator(indicator: ImageView, contentColumn: View?, item: MessageItem) {
+    private fun bindSelectionIndicator(root: View, indicator: ImageView, contentColumn: View?, item: MessageItem) {
         val isSelectable = item.selectionEnabled && item.type == MessageType.MESSAGE
-        indicator.visibility = if (isSelectable) View.VISIBLE else View.GONE
+        val density = root.resources.displayMetrics.density
+        val hiddenOffset = -12f * density
+        indicator.animate().cancel()
         if (isSelectable) {
+            val wasVisible = indicator.visibility == View.VISIBLE
+            if (!wasVisible) {
+                indicator.visibility = View.VISIBLE
+                indicator.alpha = 0f
+                indicator.translationX = hiddenOffset
+            }
+            val previousSelection = indicator.getTag(R.id.tag_message_selection_checked) as? Boolean
             indicator.setImageResource(
                 if (item.isSelected) R.drawable.ic_action_select else R.drawable.ic_circle_outline
             )
+            indicator.setTag(R.id.tag_message_selection_checked, item.isSelected)
+            if (!ValueAnimator.areAnimatorsEnabled()) {
+                indicator.alpha = 1f
+                indicator.translationX = 0f
+                indicator.scaleX = 1f
+                indicator.scaleY = 1f
+            } else {
+                indicator.animate()
+                    .alpha(1f)
+                    .translationX(0f)
+                    .setDuration(SELECTION_ANIMATION_MS)
+                    .setInterpolator(SELECTION_INTERPOLATOR)
+                    .start()
+                if (wasVisible && previousSelection != null && previousSelection != item.isSelected) {
+                    indicator.scaleX = 0.72f
+                    indicator.scaleY = 0.72f
+                    indicator.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(CHECK_ANIMATION_MS)
+                        .setInterpolator(SELECTION_INTERPOLATOR)
+                        .start()
+                }
+            }
             indicator.setOnClickListener {
                 eventSink?.onSelectionToggle(item.messageId)
             }
         } else {
             indicator.setOnClickListener(null)
+            if (indicator.visibility == View.VISIBLE && ValueAnimator.areAnimatorsEnabled()) {
+                indicator.animate()
+                    .alpha(0f)
+                    .translationX(hiddenOffset)
+                    .setDuration(SELECTION_ANIMATION_MS)
+                    .setInterpolator(SELECTION_INTERPOLATOR)
+                    .withEndAction {
+                        indicator.visibility = View.GONE
+                        indicator.alpha = 1f
+                        indicator.translationX = 0f
+                    }
+                    .start()
+            } else {
+                indicator.visibility = View.GONE
+                indicator.alpha = 1f
+                indicator.translationX = 0f
+            }
         }
         if (contentColumn != null) {
-            val density = contentColumn.resources.displayMetrics.density
-            contentColumn.translationX = if (isSelectable) SELECTION_SHIFT_DP * density else 0f
+            val targetTranslation = if (isSelectable) SELECTION_SHIFT_DP * density else 0f
+            contentColumn.animate().cancel()
+            if (ValueAnimator.areAnimatorsEnabled()) {
+                contentColumn.animate()
+                    .translationX(targetTranslation)
+                    .setDuration(SELECTION_ANIMATION_MS)
+                    .setInterpolator(SELECTION_INTERPOLATOR)
+                    .start()
+            } else {
+                contentColumn.translationX = targetTranslation
+            }
         }
+        bindSelectionBackground(root, item.isSelected && isSelectable)
+    }
+
+    private fun bindSelectionBackground(root: View, selected: Boolean) {
+        val existing = root.getTag(R.id.tag_message_selection_background) as? ColorDrawable
+        val oldAnimator = root.getTag(R.id.tag_message_selection_animator) as? ValueAnimator
+        root.setTag(R.id.tag_message_selection_animator, null)
+        oldAnimator?.cancel()
+        if (!selected && existing == null) return
+
+        val drawable = existing ?: ColorDrawable().also {
+            it.alpha = 0
+            root.setTag(R.id.tag_message_selection_background, it)
+            root.foreground = it
+        }
+        drawable.color = MaterialColors.getColor(root, androidx.appcompat.R.attr.colorPrimary)
+        if (root.foreground !== drawable) root.foreground = drawable
+        val targetAlpha = if (selected) SELECTION_BACKGROUND_ALPHA else 0
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            drawable.alpha = targetAlpha
+            if (!selected) {
+                root.foreground = null
+                root.setTag(R.id.tag_message_selection_background, null)
+            }
+            return
+        }
+        val animator = ValueAnimator.ofInt(drawable.alpha, targetAlpha).apply {
+            duration = SELECTION_ANIMATION_MS
+            interpolator = SELECTION_INTERPOLATOR
+            addUpdateListener { drawable.alpha = it.animatedValue as Int }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (root.getTag(R.id.tag_message_selection_animator) !== animation) return
+                    root.setTag(R.id.tag_message_selection_animator, null)
+                    if (!selected) {
+                        root.foreground = null
+                        root.setTag(R.id.tag_message_selection_background, null)
+                    }
+                }
+            })
+        }
+        root.setTag(R.id.tag_message_selection_animator, animator)
+        animator.start()
     }
 
     companion object {
@@ -124,6 +232,29 @@ class MessageAdapter(
 
         /** Only outgoing upload indicators/status changed; media views stay bound and keep previews. */
         const val PAYLOAD_OUTGOING_PROGRESS = 1 shl 0
+        /** Selection state changed; only the indicator, row tint and inbound content offset are rebound. */
+        const val PAYLOAD_SELECTION = 1 shl 1
+
+        internal data class MergedPayload(val flags: Int, val senderInfoChanged: Boolean)
+
+        internal fun mergePayloads(payloads: List<Any>): MergedPayload? {
+            if (payloads.isEmpty()) return null
+            var flags = 0
+            var senderInfoChanged = false
+            val knownFlags = PAYLOAD_OUTGOING_PROGRESS or PAYLOAD_SELECTION
+            payloads.forEach { payload ->
+                when (payload) {
+                    PAYLOAD_SENDER_INFO -> senderInfoChanged = true
+                    is Int -> {
+                        if (payload and knownFlags.inv() != 0) return null
+                        flags = flags or payload
+                    }
+                    else -> return null
+                }
+            }
+            return if (flags == 0 && !senderInfoChanged) null
+            else MergedPayload(flags = flags, senderInfoChanged = senderInfoChanged)
+        }
 
         /** «Хвостик» последнего пузыря в серии. */
         private const val BUBBLE_TAIL_CORNER_DP = 8f
@@ -135,6 +266,10 @@ class MessageAdapter(
         private val ZERO_CORNERS = floatArrayOf(0f, 0f, 0f, 0f)
         /** Сдвиг contentColumn у входящих в режиме выделения: 24dp индикатор + 8dp зазор. */
         private const val SELECTION_SHIFT_DP = 32f
+        private const val SELECTION_ANIMATION_MS = 180L
+        private const val CHECK_ANIMATION_MS = 150L
+        private const val SELECTION_BACKGROUND_ALPHA = 36
+        private val SELECTION_INTERPOLATOR = PathInterpolator(0.2f, 0f, 0f, 1f)
 
     }
 
@@ -249,30 +384,24 @@ class MessageAdapter(
             return
         }
 
-        var flags = 0
-        var senderInfoChanged = false
-        var isKnownPayload = true
-        payloads.forEach { payload ->
-            when (payload) {
-                PAYLOAD_SENDER_INFO -> senderInfoChanged = true
-                is Int -> {
-                    if (payload and PAYLOAD_OUTGOING_PROGRESS.inv() != 0) isKnownPayload = false
-                    flags = flags or payload
-                }
-                else -> isKnownPayload = false
-            }
-        }
-        if (!isKnownPayload || (flags == 0 && !senderInfoChanged)) {
+        val mergedPayload = mergePayloads(payloads)
+        if (mergedPayload == null) {
             super.onBindViewHolder(holder, position, payloads)
             return
         }
 
         val item = getItem(position)
-        if (senderInfoChanged && holder is ReceivedMessageViewHolder) {
+        if (mergedPayload.senderInfoChanged && holder is ReceivedMessageViewHolder) {
             holder.bindSenderInfo(item)
         }
-        if (flags and PAYLOAD_OUTGOING_PROGRESS != 0 && holder is SentMessageViewHolder) {
+        if (mergedPayload.flags and PAYLOAD_OUTGOING_PROGRESS != 0 && holder is SentMessageViewHolder) {
             holder.bindOutgoingProgress(item)
+        }
+        if (mergedPayload.flags and PAYLOAD_SELECTION != 0) {
+            when (holder) {
+                is SentMessageViewHolder -> holder.bindSelection(item)
+                is ReceivedMessageViewHolder -> holder.bindSelection(item)
+            }
         }
     }
 
@@ -423,13 +552,13 @@ class MessageAdapter(
         fun bind(item: MessageItem, group: GroupPosition) {
             applyGroupSpacing(binding.root, group)
             // Индикатор выделения уже попадает в существующий отступ слева — сдвигать нечего.
-            bindSelectionIndicator(binding.selectionIndicator, contentColumn = null, item)
+            bindSelectionIndicator(binding.root, binding.selectionIndicator, contentColumn = null, item)
 
             // Клик открывает меню действий только по самому пузырю — тап в пустое
             // место строки (широкий paddingStart для отступа от края экрана) меню не открывает.
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
-                if (item.selectionEnabled) {
+                if (eventSink?.isSelectionActive() ?: item.selectionEnabled) {
                     eventSink?.onSelectionToggle(item.messageId)
                 } else {
                     eventSink?.onMessageActionRequested(v, item)
@@ -579,6 +708,10 @@ class MessageAdapter(
             }
             updateOutgoingUploadViews(binding.attachmentsContainer, item)
         }
+
+        fun bindSelection(item: MessageItem) {
+            bindSelectionIndicator(binding.root, binding.selectionIndicator, contentColumn = null, item)
+        }
     }
 
     // ─── Received Message ViewHolder ──────────────────────────────────────────
@@ -624,17 +757,21 @@ class MessageAdapter(
             }
         }
 
+        fun bindSelection(item: MessageItem) {
+            bindSelectionIndicator(binding.root, binding.selectionIndicator, binding.contentColumn, item)
+        }
+
         fun bind(item: MessageItem, group: GroupPosition) {
             applyGroupSpacing(binding.root, group)
             // У входящих своего отступа под индикатор нет — в режиме выделения сдвигаем
             // весь контент вправо, освобождая место индикатору у левого края.
-            bindSelectionIndicator(binding.selectionIndicator, binding.contentColumn, item)
+            bindSelectionIndicator(binding.root, binding.selectionIndicator, binding.contentColumn, item)
 
             // Клик открывает меню действий только по самому пузырю — тап в пустое
             // место строки (широкий paddingEnd для отступа от края экрана) меню не открывает.
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
-                if (item.selectionEnabled) {
+                if (eventSink?.isSelectionActive() ?: item.selectionEnabled) {
                     eventSink?.onSelectionToggle(item.messageId)
                 } else {
                     eventSink?.onMessageActionRequested(v, item)
@@ -1384,6 +1521,7 @@ class MessageAdapter(
         binding.fileNameText.visibility = View.VISIBLE
         binding.voiceWaveform.visibility = View.GONE
         binding.voiceSpeed.visibility = View.GONE
+        binding.audioMenuButton.visibility = View.GONE
         binding.durationText.text = formatFileSize(container.context, attachment.sizeBytes)
         binding.downloadButton.visibility = View.GONE
         binding.downloadProgressBar.visibility = View.GONE
@@ -1406,6 +1544,7 @@ class MessageAdapter(
         binding.docFileSize.text = formatFileSize(container.context, attachment.sizeBytes)
         binding.docDownloadButton.visibility = View.GONE
         binding.docOpenButton.visibility = View.GONE
+        binding.docMenuButton.visibility = View.GONE
         binding.docDownloadProgress.visibility = View.GONE
         binding.outgoingUploadProgress.setIndicatorColor(resolveOnPrimaryContainerColor(container.context))
         renderOutgoingAttachmentIndicator(binding.root, attachment, item)
@@ -1829,9 +1968,8 @@ class MessageAdapter(
             }
         }
 
-        binding.root.setOnLongClickListener { view ->
+        binding.audioMenuButton.setOnClickListener { view ->
             showAudioContextMenu(view, context, fileId, fileName, binding, isVoice)
-            true
         }
 
         return binding.root
@@ -1844,15 +1982,29 @@ class MessageAdapter(
         binding: ItemAttachmentAudioBinding,
         isVoice: Boolean
     ) {
-        val popup = PopupMenu(context, anchor)
-        val menuInflater = popup.menuInflater
-        menuInflater.inflate(R.menu.menu_audio_attachment, popup.menu)
-
         val isCached = attachmentLoader.hasCached(fileId)
-        popup.menu.findItem(R.id.action_delete_from_cache).isVisible = isCached
-
-        popup.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
+        val items = buildList {
+            add(M3ContextMenu.Item(
+                id = R.id.action_save_audio,
+                title = context.getString(R.string.audio_save),
+                icon = R.drawable.ic_action_save,
+            ))
+            if (isCached) {
+                add(M3ContextMenu.Item(
+                    id = R.id.action_delete_from_cache,
+                    title = context.getString(R.string.file_remove_from_cache),
+                    icon = R.drawable.ic_action_delete,
+                    danger = true,
+                    dividerBefore = true,
+                ))
+            }
+        }
+        M3ContextMenu.show(
+            anchor = anchor,
+            items = items,
+            alignEnd = true,
+            onItemSelected = { menuItem ->
+            when (menuItem.id) {
                 R.id.action_save_audio -> {
                     if (attachmentLoader.hasCached(fileId)) {
                         val cachedFile = attachmentLoader.cached(fileId)
@@ -1893,8 +2045,8 @@ class MessageAdapter(
                 }
                 else -> false
             }
-        }
-        popup.show()
+            },
+        )
     }
     private fun getVideoDimensions(uri: Uri, context: Context): Pair<Int, Int>? {
         return try {
@@ -2050,12 +2202,14 @@ class MessageAdapter(
             binding.docDownloadButton.visibility = View.GONE
             binding.docOpenButton.visibility = View.VISIBLE
             binding.docDownloadProgress.visibility = View.GONE
+            binding.docMenuButton.visibility = View.VISIBLE
         }
 
         fun updateUiForNotCached() {
             binding.docDownloadButton.visibility = View.VISIBLE
             binding.docOpenButton.visibility = View.GONE
             binding.docDownloadProgress.visibility = View.GONE
+            binding.docMenuButton.visibility = View.GONE
             binding.docDownloadButton.isEnabled = true
         }
 
@@ -2066,6 +2220,7 @@ class MessageAdapter(
             binding.docDownloadProgress.isIndeterminate = false
             binding.docDownloadProgress.visibility = View.VISIBLE
             binding.docDownloadProgress.progress = 0
+            binding.docMenuButton.visibility = View.GONE
         }
 
         if (attachmentLoader.hasCached(fileId)) {
@@ -2121,10 +2276,8 @@ class MessageAdapter(
             )
         }
 
-        // Long press → context menu
-        binding.root.setOnLongClickListener { view ->
+        binding.docMenuButton.setOnClickListener { view ->
             showDocumentContextMenu(view, context, fileId, fileName, binding)
-            true
         }
 
         return binding.root
@@ -2142,18 +2295,24 @@ class MessageAdapter(
             // Меню сводилось к одному пункту "Удалить из кеша" — для нескачанного файла нет смысла показывать
             return
         }
-        val popup = PopupMenu(context, anchor)
-        val menuInflater = popup.menuInflater
-        menuInflater.inflate(R.menu.menu_document_attachment, popup.menu)
-
-        popup.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
+        M3ContextMenu.show(
+            anchor = anchor,
+            items = listOf(M3ContextMenu.Item(
+                id = R.id.action_delete_doc_from_cache,
+                title = context.getString(R.string.file_remove_from_cache),
+                icon = R.drawable.ic_action_delete,
+                danger = true,
+            )),
+            alignEnd = true,
+            onItemSelected = { menuItem ->
+            when (menuItem.id) {
                 R.id.action_delete_doc_from_cache -> {
                     attachmentLoader.deleteCached(fileId)
                     binding.docDownloadButton.visibility = View.VISIBLE
                     binding.docDownloadButton.isEnabled = true
                     binding.docOpenButton.visibility = View.GONE
                     binding.docDownloadProgress.visibility = View.GONE
+                    binding.docMenuButton.visibility = View.GONE
                     eventSink?.onAttachmentAction(
                         MessageAttachmentAction.ToastRes(R.string.file_removed_from_cache)
                     )
@@ -2161,8 +2320,8 @@ class MessageAdapter(
                 }
                 else -> false
             }
-        }
-        popup.show()
+            },
+        )
     }
 
     // ─── Formatting Helpers ───────────────────────────────────────────────────
@@ -2211,13 +2370,20 @@ class MessageAdapter(
                 oldItem.outgoingState != newItem.outgoingState ||
                 oldItem.outgoingAttachments != newItem.outgoingAttachments ||
                 oldItem.readStatus != newItem.readStatus
-            if (!progressChanged) return null
+            val selectionChanged = oldItem.isSelected != newItem.isSelected ||
+                oldItem.selectionEnabled != newItem.selectionEnabled
+            var flags = 0
+            if (progressChanged) flags = flags or PAYLOAD_OUTGOING_PROGRESS
+            if (selectionChanged) flags = flags or PAYLOAD_SELECTION
+            if (flags == 0) return null
             return oldItem.copy(
                 uploadProgress = newItem.uploadProgress,
                 outgoingState = newItem.outgoingState,
                 outgoingAttachments = newItem.outgoingAttachments,
                 readStatus = newItem.readStatus,
-            ).takeIf { it == newItem }?.let { PAYLOAD_OUTGOING_PROGRESS }
+                isSelected = newItem.isSelected,
+                selectionEnabled = newItem.selectionEnabled,
+            ).takeIf { it == newItem }?.let { flags }
         }
     }
 }

@@ -199,6 +199,14 @@ sealed interface ChatIntent {
     data object ClearEdit : ChatIntent
     data class SaveDraft(val text: String, val immediate: Boolean = false) : ChatIntent
     data class ToggleSelection(val messageId: Long) : ChatIntent
+    data class SetSelection(val messageIds: Set<Long>) : ChatIntent
+    data class SelectRange(
+        val orderedMessageIds: List<Long>,
+        val startMessageId: Long,
+        val endMessageId: Long,
+        val selected: Boolean = true,
+        val baseSelection: Set<Long>? = null,
+    ) : ChatIntent
     data object ClearSelection : ChatIntent
     data class TogglePin(val item: MessageItem) : ChatIntent
     data class Delete(val messageId: Long) : ChatIntent
@@ -361,6 +369,8 @@ class ChatViewModel @Inject constructor(
             ChatIntent.ClearEdit -> clearPendingEdit()
             is ChatIntent.SaveDraft -> saveDraft(intent.text, intent.immediate)
             is ChatIntent.ToggleSelection -> toggleSelection(intent.messageId)
+            is ChatIntent.SetSelection -> setSelection(intent.messageIds)
+            is ChatIntent.SelectRange -> selectRange(intent)
             ChatIntent.ClearSelection -> clearSelection()
             is ChatIntent.TogglePin -> togglePinForMessage(intent.item)
             is ChatIntent.Delete -> deleteMessage(intent.messageId)
@@ -1339,17 +1349,34 @@ class ChatViewModel @Inject constructor(
     }
 
     fun toggleSelection(messageId: Long) {
-        val state = _uiState.value
-        val selection = selectionReducer.toggle(state.selection, messageId)
-        _uiState.value = state.copy(selection = selection)
-        savedStateHandle[KEY_SELECTED_MESSAGE_IDS] = selection.selectedMessageIds.toLongArray()
-        submitItems(state.items)
+        publishSelection(selectionReducer.toggle(_uiState.value.selection, messageId))
     }
 
     fun clearSelection() {
+        publishSelection(selectionReducer.clear())
+    }
+
+    private fun setSelection(messageIds: Set<Long>) {
+        publishSelection(selectionReducer.setSelection(messageIds))
+    }
+
+    private fun selectRange(intent: ChatIntent.SelectRange) {
+        publishSelection(
+            selectionReducer.selectRange(
+                state = intent.baseSelection?.let(selectionReducer::setSelection) ?: _uiState.value.selection,
+                orderedMessageIds = intent.orderedMessageIds,
+                startMessageId = intent.startMessageId,
+                endMessageId = intent.endMessageId,
+                selected = intent.selected,
+            )
+        )
+    }
+
+    private fun publishSelection(selection: SelectionState) {
         val state = _uiState.value
-        _uiState.value = state.copy(selection = selectionReducer.clear())
-        savedStateHandle[KEY_SELECTED_MESSAGE_IDS] = LongArray(0)
+        if (selection == state.selection) return
+        _uiState.value = state.copy(selection = selection)
+        savedStateHandle[KEY_SELECTED_MESSAGE_IDS] = selection.selectedMessageIds.toLongArray()
         submitItems(state.items)
     }
 

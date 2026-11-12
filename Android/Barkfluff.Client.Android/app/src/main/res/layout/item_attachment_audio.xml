@@ -104,6 +104,16 @@
 
         </LinearLayout>
 
+        <ImageButton
+            android:id="@+id/audioMenuButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_more_vert"
+            android:contentDescription="@string/cd_more_menu"
+            android:scaleType="center"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
     </LinearLayout>
 
     <!-- Прогресс бар для скачивания -->

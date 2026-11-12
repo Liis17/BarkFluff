@@ -26,6 +26,56 @@ class MessageAdapterPayloadTest {
     }
 
     @Test
+    fun `selection changes use the selection payload without changing progress`() {
+        val old = optimistic()
+        val new = old.copy(selectionEnabled = true, isSelected = true)
+
+        assertEquals(MessageAdapter.PAYLOAD_SELECTION, MessageAdapter.MessageDiffCallback().getChangePayload(old, new))
+    }
+
+    @Test
+    fun `progress and selection changes combine their payload flags`() {
+        val old = optimistic()
+        val new = old.copy(
+            outgoingState = OutgoingMessageState.UPLOADING,
+            uploadProgress = 5,
+            outgoingAttachments = listOf(old.outgoingAttachments.single().copy(
+                uploadState = OutgoingAttachmentUploadState.UPLOADING,
+                progress = 5,
+            )),
+            selectionEnabled = true,
+            isSelected = true,
+        )
+
+        assertEquals(
+            MessageAdapter.PAYLOAD_OUTGOING_PROGRESS or MessageAdapter.PAYLOAD_SELECTION,
+            MessageAdapter.MessageDiffCallback().getChangePayload(old, new),
+        )
+    }
+
+    @Test
+    fun `payload flags are merged while sender info remains a string payload`() {
+        val merged = MessageAdapter.mergePayloads(listOf(
+            MessageAdapter.PAYLOAD_OUTGOING_PROGRESS,
+            MessageAdapter.PAYLOAD_SELECTION,
+            MessageAdapter.PAYLOAD_SENDER_INFO,
+        ))
+
+        assertEquals(
+            MessageAdapter.PAYLOAD_OUTGOING_PROGRESS or MessageAdapter.PAYLOAD_SELECTION,
+            merged?.flags,
+        )
+        assertEquals(true, merged?.senderInfoChanged)
+    }
+
+    @Test
+    fun `empty and unknown payloads require a full bind`() {
+        assertEquals(null, MessageAdapter.mergePayloads(emptyList()))
+        assertEquals(null, MessageAdapter.mergePayloads(listOf(1 shl 4)))
+        assertEquals(null, MessageAdapter.mergePayloads(listOf("unknown")))
+    }
+
+    @Test
     fun `confirmation with same local id remains the same adapter row`() {
         val old = optimistic()
         val confirmed = old.copy(
