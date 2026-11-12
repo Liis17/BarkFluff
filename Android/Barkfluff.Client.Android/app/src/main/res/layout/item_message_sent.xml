@@ -8,16 +8,18 @@
     android:paddingStart="80dp"
     android:paddingEnd="8dp"
     android:paddingTop="0dp"
-    android:paddingBottom="0dp">
+    android:paddingBottom="0dp"
+    android:clipToPadding="false">
 
-    <!-- Индикатор выделения (режим множественного выбора) — попадает в уже
-         существующий 80dp отступ слева, сдвигать облачко не нужно. -->
+    <!-- Индикатор выделения (режим множественного выбора) стоит у левого края строки, как у
+         входящих: отрицательный отступ выносит его в существующий 80dp отступ слева, поэтому
+         широкие медиа-пузыри его не перекрывают и сдвигать облачко не нужно. -->
     <ImageView
         android:id="@+id/selectionIndicator"
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:layout_gravity="start|center_vertical"
-        android:layout_marginStart="28dp"
+        android:layout_marginStart="-64dp"
         android:contentDescription="@string/cd_select_message"
         android:visibility="gone"
         tools:src="@drawable/ic_action_select"
