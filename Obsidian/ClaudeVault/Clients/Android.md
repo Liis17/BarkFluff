@@ -31,6 +31,10 @@ Kotlin-клиент в Android/Barkfluff.Client.Android. Поддерживае�
 - Calls V1 использует CallsApi для сигналинга и LiveKit для аудио/видео. UI звонка — calls/CallActivity.kt; жизненным циклом звонковых событий владеет calls/CallEventsService.kt.
 - Источники UI-референсов не являются спецификацией сетевых контрактов. Для точной реализации ориентируйся на Kotlin, manifest, Gradle, proto и gateway-контракты.
 
+## Клавиатура и системные отступы
+
+targetSdk 36 принудительно включает edge-to-edge, поэтому `adjustResize` сам контент не поднимает: каждый экран с вводом применяет IME insets сам. Общий хелпер — Android/Barkfluff.Client.Android/app/src/main/java/com/barkfluff/client/utils/ImeInsets.kt: `View.applyImeInsetsToBottomPadding()` ставит нижний отступ `max(system bars, IME)`, а для view с `fitsSystemWindows` выставляет и остальные стороны (свой listener отключает штатную обработку); `Dialog.configureImeInsets()` и `MaterialAlertDialogBuilder.showImeAware()` включают `ADJUST_RESIZE` в окне диалога или шторки. В `ChatActivity.setupWindowInsets` нижний отступ ленты следует за высотой композера и IME; при его изменении лента удерживает строку над композером, а у самого низа докручивается до конца. Верхний отступ ленты ведёт только слушатель высоты шапки. `LoginActivity` при открытой клавиатуре прокручивает форму до кнопки входа; `SelectServerActivity` скрывает плавающую карточку предупреждения, пока клавиатура открыта.
+
 ## Онбординг и юридические документы
 
 - WelcomeActivity показывает hero без иконки приложения. Под основной кнопкой шеврон 36dp с областью касания 48dp раскрывает ссылки на документы свайпом вверх или нажатием; свайп вниз скрывает их. Нижняя область фиксирована, поэтому hero и CTA не сдвигаются. Скрытые ссылки исключены из фокуса и accessibility; состояние раскрытия сохраняется при пересоздании Activity, отключение системных анимаций учитывается.
