@@ -9,6 +9,7 @@ public sealed class BotOwnerRestrictionReconciler(
     ILogger<BotOwnerRestrictionReconciler> logger) : BackgroundService
 {
     private static readonly TimeSpan ReconciliationInterval = TimeSpan.FromMinutes(1);
+    private const int OwnersPerRequest = 500;
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -46,12 +47,17 @@ public sealed class BotOwnerRestrictionReconciler(
         {
             try
             {
-                var response = await usersClient.ListByIdsAsync(
-                    new ListByIdsRequest { Ids = { ownerIds } },
-                    deadline: DateTime.UtcNow.AddSeconds(5),
-                    cancellationToken: cancellationToken);
+                var accountsById = new Dictionary<long, User>();
+                foreach (var chunk in ownerIds.Chunk(OwnersPerRequest))
+                {
+                    var response = await usersClient.ListByIdsAsync(
+                        new ListByIdsRequest { Ids = { chunk } },
+                        deadline: DateTime.UtcNow.AddSeconds(5),
+                        cancellationToken: cancellationToken);
+                    foreach (var user in response.Users)
+                        accountsById[user.Id] = user;
+                }
 
-                var accountsById = response.Users.ToDictionary(user => user.Id);
                 foreach (var ownerId in ownerIds)
                 {
                     cancellationToken.ThrowIfCancellationRequested();

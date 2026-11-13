@@ -324,12 +324,13 @@ public sealed partial class AuthenticationService
                         DeviceId = c.DeviceId,
                         AccessTokenExpiresAt = Now.AddMinutes(jwtSettings.ExpiryMinutes + 2),
                     }, ct);
-                    await users.DeleteUserDeviceAsync(new DeleteUserDeviceRequest { UserId = c.UserId, DeviceId = c.DeviceId }, cancellationToken: ct);
                 }
                 finally
                 {
                     db.RefreshTokens.Remove(token);
-                    await db.SaveChangesAsync(ct);
+                    await db.SaveChangesAsync(CancellationToken.None);
+                    await users.DeleteUserDeviceAsync(new DeleteUserDeviceRequest { UserId = c.UserId, DeviceId = c.DeviceId },
+                        cancellationToken: CancellationToken.None);
                 }
 
                 AccountRestrictionStatusGuard.ThrowIfInactive(restriction.Restriction.Status);

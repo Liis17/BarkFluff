@@ -30,7 +30,7 @@ public class BotsStorage
             .Select(bot => bot.OwnerUserId!.Value).Distinct().ToListAsync();
 
     public Task<int> SetOwnerRestricted(long ownerUserId, bool restricted, CancellationToken cancellationToken = default)
-        => _context.Bots.Where(bot => bot.OwnerUserId == ownerUserId)
+        => _context.Bots.Where(bot => bot.OwnerUserId == ownerUserId && bot.OwnerRestricted != restricted)
             .ExecuteUpdateAsync(update => update.SetProperty(bot => bot.OwnerRestricted, restricted), cancellationToken);
 
     public async Task<Bot> Add(Bot bot)

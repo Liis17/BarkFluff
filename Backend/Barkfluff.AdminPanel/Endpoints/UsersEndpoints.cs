@@ -184,7 +184,7 @@ public static class UsersEndpoints
                 {
                     email = !string.IsNullOrEmpty(restriction.Value?.Email)
                         ? restriction.Value.Email
-                        : contacts.Value.Contact?.Email
+                        : contacts.Value?.Contact?.Email
                 } : null,
                 devices = devices.Value?.Devices.Select(d => new
                 {
