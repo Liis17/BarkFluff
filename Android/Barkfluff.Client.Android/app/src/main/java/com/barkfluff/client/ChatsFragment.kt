@@ -30,6 +30,8 @@ import com.barkfluff.client.perf.PerfTrace
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -46,6 +48,8 @@ class ChatsFragment : Fragment() {
     private lateinit var chatAdapter: ChatAdapter
     private lateinit var foldersAdapter: FolderTabsAdapter
     private lateinit var skeletonAdapter: ChatSkeletonAdapter
+    private var subtitleHideJob: Job? = null
+    private var lastHeaderSubtitle: String? = null
     private var titleAnimationGeneration = 0
     private var initialScrollPending = true
 
@@ -244,17 +248,20 @@ class ChatsFragment : Fragment() {
             }
         }
 
-        if (binding.headerSubtitle.text == subtitle) return
+        if (lastHeaderSubtitle == subtitle) return
+        lastHeaderSubtitle = subtitle
+        subtitleHideJob?.cancel()
+        val generation = ++titleAnimationGeneration
 
         binding.headerSubtitle.animate().cancel()
         if (!animate) {
             binding.headerSubtitle.alpha = 1f
             binding.headerSubtitle.translationY = 0f
             binding.headerSubtitle.text = subtitle
+            scheduleSubtitleHide()
             return
         }
 
-        val generation = ++titleAnimationGeneration
         val offset = 4 * resources.displayMetrics.density
         binding.headerSubtitle.animate()
             .alpha(0f)
@@ -263,14 +270,29 @@ class ChatsFragment : Fragment() {
             .withEndAction {
                 if (_binding == null || generation != titleAnimationGeneration) return@withEndAction
                 binding.headerSubtitle.text = subtitle
+                binding.headerSubtitle.visibility = View.VISIBLE
                 binding.headerSubtitle.translationY = offset
                 binding.headerSubtitle.animate()
                     .alpha(1f)
                     .translationY(0f)
                     .setDuration(TITLE_FADE_IN_DURATION_MS)
+                    .withEndAction {
+                        if (_binding != null && generation == titleAnimationGeneration) {
+                            scheduleSubtitleHide()
+                        }
+                    }
                     .start()
             }
             .start()
+    }
+
+    private fun scheduleSubtitleHide() {
+        binding.headerSubtitle.visibility = View.VISIBLE
+        subtitleHideJob?.cancel()
+        subtitleHideJob = viewLifecycleOwner.lifecycleScope.launch {
+            delay(3_000L)
+            _binding?.headerSubtitle?.visibility = View.INVISIBLE
+        }
     }
 
     /**
@@ -561,6 +583,11 @@ class ChatsFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        subtitleHideJob?.cancel()
+        subtitleHideJob = null
+        lastHeaderSubtitle = null
+        titleAnimationGeneration++
+        _binding?.headerSubtitle?.animate()?.cancel()
         _binding?.let { miniPlayerHost.detachSlot(requireActivity(), it.chatsMiniPlayerSlot) }
         super.onDestroyView()
         headerAnimator?.cancel()
