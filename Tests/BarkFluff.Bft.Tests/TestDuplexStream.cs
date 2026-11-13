@@ -1,0 +1,95 @@
+using System.IO.Pipelines;
+
+namespace BarkFluff.Bft.Tests;
+
+internal sealed class TestDuplexStream(Stream input, Stream output) : Stream
+{
+    private readonly object _outputGate = new();
+    private int _writesUntilDrop = -1;
+
+    public static (TestDuplexStream Client, TestDuplexStream Server) CreatePair()
+    {
+        var clientToServer = new Pipe();
+        var serverToClient = new Pipe();
+        var client = new TestDuplexStream(serverToClient.Reader.AsStream(leaveOpen: true), clientToServer.Writer.AsStream(leaveOpen: true));
+        var server = new TestDuplexStream(clientToServer.Reader.AsStream(leaveOpen: true), serverToClient.Writer.AsStream(leaveOpen: true));
+        return (client, server);
+    }
+
+    public override bool CanRead => true;
+    public override bool CanSeek => false;
+    public override bool CanWrite => true;
+    public override long Length => throw new NotSupportedException();
+    public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+    public override int Read(byte[] buffer, int offset, int count) => input.Read(buffer, offset, count);
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => input.ReadAsync(buffer, cancellationToken);
+    public void DropOutputAfter(int allowedWrites)
+    {
+        lock (_outputGate) _writesUntilDrop = allowedWrites;
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        if (!ShouldDropOutput()) output.Write(buffer, offset, count);
+    }
+
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) =>
+        ShouldDropOutput() ? ValueTask.CompletedTask : output.WriteAsync(buffer, cancellationToken);
+    public override Task FlushAsync(CancellationToken cancellationToken) => output.FlushAsync(cancellationToken);
+    public override void Flush() => output.Flush();
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
+
+    private bool ShouldDropOutput()
+    {
+        lock (_outputGate)
+        {
+            if (_writesUntilDrop == 0) return true;
+            if (_writesUntilDrop > 0) _writesUntilDrop--;
+            return false;
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            input.Dispose();
+            output.Dispose();
+        }
+        base.Dispose(disposing);
+    }
+}
+
+internal sealed class RecordingStream(Stream inner) : Stream
+{
+    private readonly object _gate = new();
+    private readonly MemoryStream _written = new();
+
+    public byte[] WrittenBytes
+    {
+        get { lock (_gate) return _written.ToArray(); }
+    }
+
+    public override bool CanRead => inner.CanRead;
+    public override bool CanSeek => false;
+    public override bool CanWrite => inner.CanWrite;
+    public override long Length => throw new NotSupportedException();
+    public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+    public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => inner.ReadAsync(buffer, cancellationToken);
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        inner.Write(buffer, offset, count);
+        lock (_gate) _written.Write(buffer, offset, count);
+    }
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        await inner.WriteAsync(buffer, cancellationToken);
+        lock (_gate) _written.Write(buffer.Span);
+    }
+    public override Task FlushAsync(CancellationToken cancellationToken) => inner.FlushAsync(cancellationToken);
+    public override void Flush() => inner.Flush();
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
+}
