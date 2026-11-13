@@ -74,9 +74,11 @@ public static class UsersEndpoints
                         id = b.Badge.Id,
                         name = b.Badge.Name,
                         description = b.Badge.Description,
-                        imageUrl = b.Badge.ImageUrl
+                        imageUrl = b.Badge.ImageUrl,
+                        miniImageUrl = b.Badge.MiniImageUrl
                     },
-                    priority = b.Priority
+                    priority = b.Priority,
+                    isPrimary = b.IsPrimary
                 })
             });
 
@@ -144,10 +146,12 @@ public static class UsersEndpoints
                             id = b.Badge.Id,
                             name = b.Badge.Name,
                             description = b.Badge.Description,
-                            imageUrl = b.Badge.ImageUrl
+                            imageUrl = b.Badge.ImageUrl,
+                            miniImageUrl = b.Badge.MiniImageUrl
                         },
                         priority = b.Priority,
-                        assignedDate = b.AssignedDate?.ToDateTime()
+                        assignedDate = b.AssignedDate?.ToDateTime(),
+                        isPrimary = b.IsPrimary
                     })
                 },
                 contacts = contacts.Value != null ? new
@@ -230,10 +234,12 @@ public static class UsersEndpoints
                     id = response.UserBadge.Badge.Id,
                     name = response.UserBadge.Badge.Name,
                     description = response.UserBadge.Badge.Description,
-                    imageUrl = response.UserBadge.Badge.ImageUrl
+                    imageUrl = response.UserBadge.Badge.ImageUrl,
+                    miniImageUrl = response.UserBadge.Badge.MiniImageUrl
                 },
                 priority = response.UserBadge.Priority,
-                assignedDate = response.UserBadge.AssignedDate?.ToDateTime()
+                assignedDate = response.UserBadge.AssignedDate?.ToDateTime(),
+                isPrimary = response.UserBadge.IsPrimary
             });
         })
         .WithName("AssignUserBadge")

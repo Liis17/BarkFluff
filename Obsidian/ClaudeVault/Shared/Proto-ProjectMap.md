@@ -46,6 +46,8 @@
 
 - `FilesServerApi`: `GetFileData`, `GetFilesData`, `UploadBadgeImage`, `GetUserStorageInfoServer`, `UploadAvatarServer`, `UploadPosterServer`, `UploadFileServer`, `GetTempDownloadUrlServer`, `CreateStickerPack`, `UpdateStickerPack`, `DeleteStickerPack`, `ListStickerPacks`, `GetStickerPack`, `AddSticker`, `RemoveSticker`, `UpdateSticker`, `GetStickers`, `UploadStickerImage`, `FetchFileStream`, `CheckFedAvatarAccess`.
 
+`UploadBadgeImageRequest.kind` различает `BADGE_IMAGE_KIND_FULL` (PNG 256×256) и `BADGE_IMAGE_KIND_MINI` (PNG 32×32); `UNSPECIFIED` отклоняется. Badge image upload ограничен 256 KiB.
+
 ## `identity_api.proto` — `BarkFluff.Proto.Identity`
 
 - `IdentityApi`: `Auth`, `FastAuth`, `CreateToken`, `CreateAccount`, `ConfirmAccount`, `GetActiveSessions`, `RemoveActiveSession`, `EnableOtpVerification`, `ConfirmOtpVerification`, `DisableOtpVerification`, `ListOtpVerification`, `ResetPassword`, `ConfirmResetPassword`, `SetPassword`, `Logout`, `GetAuthCapabilities`, `BeginRegistration`, `BeginSignIn`, `GetAuthChallenge`, `CompleteAuthChallenge`, `CancelAuthChallenge`, `ResendAuthChallenge`, `GetSecuritySettings`, `GetLoginNotificationSettings`, `SetLoginNotificationChannel`, `BeginReauthentication`, `UpdateSecuritySettings`, `BeginTelegramBinding`, `UnlinkTelegram`, `BeginEmailBinding`, `GenerateRecoveryCodes`, `BeginPasswordRecovery`, `SetRecoveredPassword`.
@@ -81,9 +83,11 @@
 
 ## `users_api.proto` — `BarkFluff.Proto.Users`
 
-- `UsersApi`: `GetUser`, `SetProfilePicture`, `CheckExistUsername`, `CheckExistEmail`, `ChangeName`, `ChangeUsername`, `ChangeBio`, `SearchUsers`, `ResolveFederatedUser`, `GetUserBadges`, `GetDevices`, `GetCurrentDevice`, `RenameDevice`, `SetFirebaseToken`, `ClearFirebaseToken`, `SetNotificationsEnabled`, `SetChatMuted`, `GetMutedChats`, `GetPrivacySettings`, `UpdatePrivacySettings`, `AcceptLegalConsent`, `GetPersonalization`, `UpdatePersonalization`, `GetUserSettings`, `SetGlobalChatBackground`, `SetChatBackground`, `GetProfilePoster`, `SetProfilePoster`, `GetChatFolders`, `CreateChatFolder`, `UpdateChatFolder`, `DeleteChatFolder`, `AddChatToFolder`, `RemoveChatFromFolder`, `ReorderChatFolders`, `RegisterPrekeyBundle`, `FetchPrekeyBundle`, `ListPeerDevices`, `ReplenishOneTimePrekeys`, `RotateSignedPrekey`.
+- `UsersApi`: `GetUser`, `SetProfilePicture`, `CheckExistUsername`, `CheckExistEmail`, `ChangeName`, `ChangeUsername`, `ChangeBio`, `SearchUsers`, `ResolveFederatedUser`, `GetUserBadges`, `SetPrimaryBadge`, `GetDevices`, `GetCurrentDevice`, `RenameDevice`, `SetFirebaseToken`, `ClearFirebaseToken`, `SetNotificationsEnabled`, `SetChatMuted`, `GetMutedChats`, `GetPrivacySettings`, `UpdatePrivacySettings`, `AcceptLegalConsent`, `GetPersonalization`, `UpdatePersonalization`, `GetUserSettings`, `SetGlobalChatBackground`, `SetChatBackground`, `GetProfilePoster`, `SetProfilePoster`, `GetChatFolders`, `CreateChatFolder`, `UpdateChatFolder`, `DeleteChatFolder`, `AddChatToFolder`, `RemoveChatFromFolder`, `ReorderChatFolders`, `RegisterPrekeyBundle`, `FetchPrekeyBundle`, `ListPeerDevices`, `ReplenishOneTimePrekeys`, `RotateSignedPrekey`.
 
 - `UsersServerApi`: `SetVerifiedEmail`, `FindByLogin`, `CheckExistUsername`, `CheckExistEmail`, `AddDraftUser`, `OverrideDraftUser`, `ConfirmUser`, `GetById`, `GetUserContacts`, `ListByIds`, `AssignUserBadge`, `RemoveUserBadge`, `UpdateUserBadgePriority`, `CreateBadge`, `GetAllBadges`, `UpdateBadge`, `DeleteBadge`, `ExportData`, `RegisterDevice`, `GetUserDevices`, `DeleteUserDevice`, `UpdateDeviceAppInfo`, `GetUserByUsername`, `SearchUsersServer`, `UpdateStorageLimit`, `SetProfilePictureServer`, `GetDevicesWithFirebaseTokens`, `GetDevicesWithFirebaseTokensByDeviceIds`, `GetAllDevicesWithFirebaseTokens`, `GetUserPrivacy`, `GetMutedChatIds`, `UpdateProfileServer`, `SetProfilePosterServer`, `GetProfilePosterServer`, `CreateBotUser`, `DeleteBotUser`, `UpsertRemoteUsers`, `GetUsersByUuid`, `GetFederatedProfile`, `IsAvatarVisibleToFederation`, `CheckRemoteAvatarRef`.
+
+Badge contract additions are field-numbered in `users_api.proto`: `Badge.mini_image_url = 7`, `UserBadge.is_primary = 4`, `CreateBadgeRequest.mini_image_url = 4`, and `UpdateBadgeRequest.mini_image_url = 6`. `SetPrimaryBadgeRequest.badge_id = 1` uses zero to clear the selection; an empty `SetPrimaryBadgeResponse.primary_badge` means no selection.
 
 ## Подключение
 

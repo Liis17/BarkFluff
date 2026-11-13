@@ -11,4 +11,6 @@ public class CreateBadgeCommand : IRequest<CreateBadgeResponse>
     public string Description { get; init; }
 
     public string ImageUrl { get; init; }
+
+    public string? MiniImageUrl { get; init; }
 }

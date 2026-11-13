@@ -219,7 +219,8 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         {
             Name = request.Name,
             Description = request.Description,
-            ImageUrl = request.ImageUrl
+            ImageUrl = request.ImageUrl,
+            MiniImageUrl = request.MiniImageUrl
         };
 
         return _mediator.Send(command);
@@ -245,7 +246,8 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
             Name = request.Name,
             Description = request.Description,
             ImageUrl = request.ImageUrl,
-            IsActive = request.IsActive
+            IsActive = request.IsActive,
+            MiniImageUrl = request.MiniImageUrl
         };
 
         return _mediator.Send(command);

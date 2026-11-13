@@ -18,6 +18,8 @@ public class UpdateBadgeCommandHandlerTests : IAsyncDisposable
     public async Task Handle_ExistingBadge_UpdatesFields()
     {
         var badge = await _h.SeedBadge("Old");
+        badge.MiniImageUrl = "https://old.com/mini.png";
+        await _h.DbContext.SaveChangesAsync();
         var handler = new UpdateBadgeCommandHandler(_h.UsersStorage, TestHelper.CreateLogger<UpdateBadgeCommandHandler>());
 
         var result = await handler.Handle(new UpdateBadgeCommand
@@ -26,11 +28,14 @@ public class UpdateBadgeCommandHandlerTests : IAsyncDisposable
             Name = "New",
             Description = "Updated",
             ImageUrl = "https://new.com/img.png",
-            IsActive = false
+            IsActive = true,
+            MiniImageUrl = string.Empty
         }, CancellationToken.None);
 
         result.Badge.Name.Should().Be("New");
-        result.Badge.IsActive.Should().BeFalse();
+        result.Badge.IsActive.Should().BeTrue();
+        result.Badge.ImageUrl.Should().Be("https://new.com/img.png");
+        result.Badge.MiniImageUrl.Should().Be("https://old.com/mini.png");
     }
 
     [Fact]

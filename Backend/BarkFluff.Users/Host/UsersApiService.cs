@@ -2,6 +2,7 @@ using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Features.Badges.GetUserBadges;
+using BarkFluff.Users.Features.Badges.SetPrimaryBadge;
 using BarkFluff.Users.Features.ChangeBio;
 using BarkFluff.Users.Features.ChatFolders.AddChatToFolder;
 using BarkFluff.Users.Features.ChatFolders.CreateChatFolder;
@@ -218,6 +219,11 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         };
 
         return _mediator.Send(query);
+    }
+
+    public override Task<SetPrimaryBadgeResponse> SetPrimaryBadge(SetPrimaryBadgeRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new SetPrimaryBadgeCommand { BadgeId = request.BadgeId }, context.CancellationToken);
     }
 
     // Методы для работы с устройствами
