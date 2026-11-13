@@ -14,6 +14,7 @@ import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.ServerAdapter
+import com.barkfluff.client.bft.BftProxyManager
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
 import com.barkfluff.client.databinding.ActivitySelectServerBinding
@@ -56,6 +57,7 @@ class SelectServerActivity : AppCompatActivity() {
         private const val SERVER_LIST_TIMEOUT_MS = 10_000L
         private const val SERVER_CONNECTION_TIMEOUT_MS = 10_000L
         private const val SERVER_PROBE_TIMEOUT_MS = 3_000L
+        private const val PROXY_BEACON_ENDPOINT = "https://bft.internal:443"
         private const val CHEVRON_SPRING_STIFFNESS = 1_400f
         private const val CHEVRON_SPRING_DAMPING = 0.9f
     }
@@ -106,19 +108,32 @@ class SelectServerActivity : AppCompatActivity() {
         setupRecyclerView()
         setupClickListeners()
         setupBackNavigation()
-        loadServerList()
+        val proxyEnabled = BftProxyManager.get(applicationContext).isEnabled
+        if (proxyEnabled) {
+            binding.titleText.setText(R.string.bft_proxy_selecting_node_title)
+            binding.subtitleText.setText(R.string.bft_proxy_selecting_node_message)
+            binding.publicNodesLabel.visibility = View.GONE
+            binding.serverListRecyclerView.visibility = View.GONE
+            binding.serverListState.visibility = View.GONE
+            binding.customServerRow.visibility = View.GONE
+            connectToServer(PROXY_BEACON_ENDPOINT)
+        } else {
+            loadServerList()
+        }
 
-        intent.getStringExtra(EXTRA_TRUST_REVIEW_ADDRESS)
-            ?.let(::normalizeServerAddress)
-            ?.let { address ->
-                binding.serverAddressEditText.setText(address)
-                connectToServer(address)
-            }
+        if (!proxyEnabled) {
+            intent.getStringExtra(EXTRA_TRUST_REVIEW_ADDRESS)
+                ?.let(::normalizeServerAddress)
+                ?.let { address ->
+                    binding.serverAddressEditText.setText(address)
+                    connectToServer(address)
+                }
+        }
     }
 
     override fun onStart() {
         super.onStart()
-        if (::serverAdapter.isInitialized && !isConnecting) {
+        if (::serverAdapter.isInitialized && !isConnecting && !BftProxyManager.get(applicationContext).isEnabled) {
             serverAdapter.setProbingEnabled(true)
         }
     }
@@ -153,6 +168,9 @@ class SelectServerActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.serverListRetryButton.setOnClickListener { loadServerList() }
+        binding.proxySettingsButton.setOnClickListener {
+            startActivity(Intent(this, ProxySettingsActivity::class.java))
+        }
 
         // Шапка «Своей ноды» разворачивает встроенную форму ручного ввода.
         binding.customServerHeader.setOnClickListener { toggleCustomServerPanel() }
@@ -353,13 +371,14 @@ class SelectServerActivity : AppCompatActivity() {
                         } else {
                             serverInfo.copy(filesMediaEndpoint = navigatorFilesMediaEndpoint)
                         }
-                        if (!preflightServerCertificates(effectiveServerInfo)) {
+                        val proxyEnabled = BftProxyManager.get(applicationContext).isEnabled
+                        if (!proxyEnabled && !preflightServerCertificates(effectiveServerInfo)) {
                             resetConnectionState()
                             return@launch
                         }
 
                         // Сохраняем информацию о сервере в GlobalParam
-                        globalParam.socketBeacon = address
+                        if (!proxyEnabled) globalParam.socketBeacon = address
                         globalParam.applyServerInfo(effectiveServerInfo)
 
                         Log.d(TAG, "Успешное подключение к серверу: ${effectiveServerInfo.name}")
@@ -390,7 +409,9 @@ class SelectServerActivity : AppCompatActivity() {
                 resetConnectionState()
             } finally {
                 beaconOperationMutex.unlock()
-                if (!isFinishing && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                if (!isFinishing && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) &&
+                    !BftProxyManager.get(applicationContext).isEnabled
+                ) {
                     serverAdapter.setProbingEnabled(true)
                 }
             }
@@ -555,4 +576,5 @@ class SelectServerActivity : AppCompatActivity() {
     }
 
     private fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
+
 }

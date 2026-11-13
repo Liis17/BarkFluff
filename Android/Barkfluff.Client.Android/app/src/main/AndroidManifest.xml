@@ -101,10 +101,22 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="bfdev" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="bft" />
+            </intent-filter>
         </activity>
 
         <activity
             android:name=".WelcomeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ProxySettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
             android:screenOrientation="portrait" />
