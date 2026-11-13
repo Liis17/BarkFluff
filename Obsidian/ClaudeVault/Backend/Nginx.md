@@ -8,7 +8,10 @@ Parent: [[Architecture]]. Nginx терминирует TLS и передаёт g
 
 - `00-default.conf` закрывает неизвестные hosts кодом 444; сервисные HTTP-блоки перенаправляют на HTTPS.
 - `01-ssl-params.conf`: TLS 1.2/1.3 и сертификат/ключ `barkfluff.com`. В `files-media.conf` отдельная пара сертификатов `files2.barkfluff.com`, а не общий wildcard snippet. При установке сертификатов требуется полная цепочка; её фактическое содержимое не хранится в Git.
-- `00-real-ip.conf` доверяет `CF-Connecting-IP` от **любого** IPv4/IPv6 источника (`0.0.0.0/0`, `::/0`), не ограничивает доверие Cloudflare CIDR. Корректность IP для rate limits зависит от внешней фильтрации доступа к origin; наличие безопасной фильтрации репозиторий не подтверждает.
+- `00-real-ip.conf` доверяет `CF-Connecting-IP` от **любого** IPv4/IPv6 источника (`0.0.0.0/0`, `::/0`), не ограничивает доверие Cloudflare CIDR. Поэтому allowlist BFT в `00-bft-proxy.conf` сопоставляется с уже переписанным `$remote_addr`; прямой запрос с поддельным `CF-Connecting-IP` может заявить адрес Exit, но без точного секрета BFT-заголовки всё равно не принимаются. Закрытие этой границы требует отдельного изменения real-IP доверия или origin ACL.
+- `00-bft-proxy.conf` проверяет источник Exit, точное совпадение секрета и синтаксический IP через `geo`. Прокси выключен, пока в `bft-proxy-exit-ips/` и `bft-proxy-secrets/` нет дополнительных map-файлов. В этих каталогах `.gitignore` исключает добавленные `*.conf`; примеры синтаксиса находятся рядом в `bft-proxy-*.conf.example`. Реальные адреса и секреты в репозитории не хранятся.
+- Переменная `$bft_client_ip` подставляется в существующие `X-Real-IP`; `$bft_forwarded_for` и `$bft_forwarded_for_add` сохраняют исходный вариант XFF каждой локации при недоверенном запросе и используют адрес BFT-клиента при доверенном. `02-bft-proxy-headers.conf` удаляет входящие `X-BFT-Client-IP` и `X-BFT-Proxy-Secret`, а проверенный `X-BFT-Proxy-Id` передаёт только для доверенного запроса. Секрет не включён в access-log.
+- `$bft_rate_limit_key` подменяет ключ существующих `limit_req`/`limit_conn` зон на адрес клиента для доверенного запроса; в остальных случаях значение остаётся прежним `$binary_remote_addr`. Это сохраняет текущую группировку лимитов при выключенном BFT.
 - `00-rate-limits.conf`: Identity 10r/s, Beacon 5r/s, FastAuth 2r/s и максимум 10 соединений/IP, Federation S2S 30r/s. Зона well-known 5r/s объявлена, но location для неё в текущих Nginx-конфигах отсутствует.
 
 ## Маршруты основного ingress
@@ -42,3 +45,5 @@ Parent: [[Architecture]]. Nginx терминирует TLS и передаёт g
 - Federation предоставляет HTTP `/.well-known/barkfluff` на отдельном listener 7031 (`Backend/BarkFluff.Federation/Program.cs`), но ни `barkfluff.conf`, ни другой текущий Nginx site не проксирует этот путь туда. Нельзя считать публичный discovery настроенным по одному наличию API. См. [[Backend/Federation]].
 
 Контракты приложений: [[Backend/Files]], [[Backend/ClientStorage]], [[Backend/Identity]], [[Backend/Calls]].
+
+`Docker/nightly/nginx/docker-compose.yml` монтирует весь каталог `sites/` read-only, включая новые BFT map-файлы. `Tools/BarkFluff.Builder/NginxGenerator.cs` создаёт отдельный набор Nginx-конфигов и пока не генерирует BFT maps, очистку BFT-заголовков или клиентские ключи лимитов; такие конфиги не принимают BFT-запросы до аналогичного обновления генератора. `Docker/setup/settings-setup.nginx.conf` — отдельный setup ingress, не входящий в список сервисов BFT v1.

@@ -1,0 +1,2 @@
+*.conf
+!00-empty.conf

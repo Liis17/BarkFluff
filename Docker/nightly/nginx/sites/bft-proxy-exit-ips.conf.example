@@ -1,0 +1,4 @@
+# Add each Exit source IP, as seen in $remote_addr after 00-real-ip.conf, to
+# sites/bft-proxy-exit-ips/private.conf. The directory ignores added *.conf files.
+# Example entry for that private file (documentation-only address):
+# 198.51.100.10 1;

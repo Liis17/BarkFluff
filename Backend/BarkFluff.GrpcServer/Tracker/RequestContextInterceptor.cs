@@ -24,10 +24,35 @@ public class RequestContextInterceptor : Interceptor
         _logger = logger;
     }
 
-    public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
+    public override Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
         TRequest request,
         ServerCallContext context,
         UnaryServerMethod<TRequest, TResponse> continuation)
+        => RunWithRequestContextAsync(context, () => continuation(request, context));
+
+    public override Task<TResponse> ClientStreamingServerHandler<TRequest, TResponse>(
+        IAsyncStreamReader<TRequest> requestStream,
+        ServerCallContext context,
+        ClientStreamingServerMethod<TRequest, TResponse> continuation)
+        => RunWithRequestContextAsync(context, () => continuation(requestStream, context));
+
+    public override Task ServerStreamingServerHandler<TRequest, TResponse>(
+        TRequest request,
+        IServerStreamWriter<TResponse> responseStream,
+        ServerCallContext context,
+        ServerStreamingServerMethod<TRequest, TResponse> continuation)
+        => RunWithRequestContextAsync(context, () => continuation(request, responseStream, context));
+
+    public override Task DuplexStreamingServerHandler<TRequest, TResponse>(
+        IAsyncStreamReader<TRequest> requestStream,
+        IServerStreamWriter<TResponse> responseStream,
+        ServerCallContext context,
+        DuplexStreamingServerMethod<TRequest, TResponse> continuation)
+        => RunWithRequestContextAsync(context, () => continuation(requestStream, responseStream, context));
+
+    private async Task<TResponse> RunWithRequestContextAsync<TResponse>(
+        ServerCallContext context,
+        Func<Task<TResponse>> continuation)
     {
         var httpContext = context.GetHttpContext();
         var accessor = httpContext.RequestServices.GetRequiredService<IRequestContextAccessor>();
@@ -43,11 +68,15 @@ public class RequestContextInterceptor : Interceptor
             DeviceId = GetMetadataValue(metadata, MetadataKeys.DeviceId),
             IpAddress = ResolveIpAddress(metadata, httpContext),
             TrustedIpAddress = ResolveTrustedIpAddress(httpContext),
+            ProxyId = ResolveProxyId(httpContext),
         };
 
         accessor.Set(requestContext);
 
         using var requestIdScope = LogContext.PushProperty("RequestId", httpContext.TraceIdentifier);
+        using var proxyIdScope = requestContext.ProxyId is null
+            ? null
+            : LogContext.PushProperty("ProxyId", requestContext.ProxyId);
         var incomingCorrelationId = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault();
         using var correlationScope = string.IsNullOrWhiteSpace(incomingCorrelationId)
             ? null
@@ -64,7 +93,16 @@ public class RequestContextInterceptor : Interceptor
             requestContext.AppVersion ?? "Unknown"
         );
 
-        return await continuation(request, context);
+        return await continuation();
+    }
+
+    private async Task RunWithRequestContextAsync(ServerCallContext context, Func<Task> continuation)
+    {
+        await RunWithRequestContextAsync<bool>(context, async () =>
+        {
+            await continuation();
+            return true;
+        });
     }
 
     /// <summary>
@@ -148,6 +186,31 @@ public class RequestContextInterceptor : Interceptor
 
         _logger.LogDebug("Доверенный IP определён из соединения: {IpAddress}", remoteIp);
         return remoteIp.ToString();
+    }
+
+    private static string? ResolveProxyId(HttpContext? httpContext)
+    {
+        if (httpContext is null)
+            return null;
+
+        var values = httpContext.Request.Headers["X-BFT-Proxy-Id"];
+        if (values.Count != 1)
+            return null;
+
+        var proxyId = values[0];
+        if (string.IsNullOrEmpty(proxyId) || proxyId.Length > 64)
+            return null;
+
+        foreach (var character in proxyId)
+        {
+            var isAsciiLetterOrDigit = character is >= 'A' and <= 'Z'
+                or >= 'a' and <= 'z'
+                or >= '0' and <= '9';
+            if (!isAsciiLetterOrDigit && character is not ('.' or '_' or '-'))
+                return null;
+        }
+
+        return proxyId;
     }
 
     private string? GetMetadataValue(Metadata metadata, string key)

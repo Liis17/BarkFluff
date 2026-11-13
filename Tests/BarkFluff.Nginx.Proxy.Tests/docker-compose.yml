@@ -1,0 +1,45 @@
+services:
+  proxy:
+    image: nginx:alpine
+    container_name: ${BFT_PROXY_TEST_PROXY_NAME:?set a unique test container name}
+    ports:
+      - target: 8080
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    depends_on:
+      - upstream
+    extra_hosts:
+      - gitnotifier:127.0.0.1
+      - webserver:127.0.0.1
+      - clientstorage:127.0.0.1
+      - fluffboard:127.0.0.1
+    volumes:
+      - type: bind
+        source: ${BFT_PROXY_TEST_NGINX_CONFIG_FILE:?set a generated test nginx.conf path}
+        target: /etc/nginx/nginx.conf
+        read_only: true
+      - type: bind
+        source: ${BFT_PROXY_TEST_NGINX_CONFIG_DIR:?set a staged test config path}
+        target: /etc/nginx/conf.d
+        read_only: true
+      - type: bind
+        source: ${BFT_PROXY_TEST_CERT_DIR:?set a temporary test certificate directory}
+        target: /etc/nginx/certs
+        read_only: true
+    networks:
+      - test
+
+  upstream:
+    image: nginx:alpine
+    container_name: ${BFT_PROXY_TEST_UPSTREAM_NAME:?set a unique test container name}
+    volumes:
+      - type: bind
+        source: ${BFT_PROXY_TEST_UPSTREAM_CONFIG:?set the upstream stub config path}
+        target: /etc/nginx/conf.d/default.conf
+        read_only: true
+    networks:
+      - test
+
+networks:
+  test:

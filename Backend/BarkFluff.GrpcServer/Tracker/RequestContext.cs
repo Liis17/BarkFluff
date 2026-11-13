@@ -12,6 +12,8 @@ public class RequestContext
     /// </summary>
     public string? TrustedIpAddress { get; init; }
 
+    public string? ProxyId { get; init; }
+
     public string? DeviceName { get; init; }
 
     public string? AppName { get; init; }
