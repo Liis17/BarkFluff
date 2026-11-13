@@ -767,6 +767,7 @@
     <string name="storage_category_avatars">Avatares</string>
     <string name="security_hero_title">Cuenta protegida</string>
     <string name="security_hero_subtitle">Activa 2FA para mayor protección</string>
+    <string name="security_hero_title_unprotected">Tu cuenta podría estar más protegida</string>
     <string name="security_section_parameters">Configuración</string>
     <string name="security_password_step">Paso %1$d de 3: %2$s</string>
     <string name="security_password_step_request">Solicitar código</string>
@@ -1366,11 +1367,9 @@
     <string name="security_link_telegram">Vincular Telegram</string>
     <string name="security_unlink_telegram">Desvincular Telegram</string>
     <string name="security_bind_email">Vincular correo</string>
-    <string name="security_bound_email">Correo: %1$s</string>
+    <string name="security_email_title">Correo</string>
     <string name="security_login_policy">Política de acceso</string>
-    <string name="security_login_policy_value">Acceso: %1$s</string>
-    <string name="security_2fa_telegram">Autenticación de dos factores por Telegram</string>
-    <string name="security_recovery_codes_count">Códigos de recuperación: %1$d</string>
+    <string name="security_2fa_telegram">2FA por Telegram</string>
     <string name="security_reauthenticate">Confirmar acción</string>
     <string name="security_reauthenticate_message">Confirma con el método de acceso configurado.</string>
     <string name="security_reauthenticate_password">Contraseña (si se usa)</string>
@@ -1460,4 +1459,16 @@
     <string name="voice_sender_you">Tú</string>
     <string name="cd_voice_player_close">Cerrar reproductor</string>
     <string name="voice_player_error">No se pudo reproducir el audio</string>
+    <string name="account_blocked_title">Cuenta bloqueada</string>
+    <string name="account_pending_deletion_title">Cuenta pendiente de eliminación</string>
+    <string name="account_blocked_user">Usuario bloqueado</string>
+    <string name="account_deleted_user">Usuario eliminado</string>
+    <string name="account_restriction_reason">Motivo: %1$s</string>
+    <string name="account_blocked_explanation">Solo el administrador del servidor puede quitar este bloqueo.</string>
+    <string name="account_deletion_date">Eliminación definitiva: %1$s</string>
+    <string name="account_pending_deletion_explanation">Puedes cancelar la eliminación antes de esta fecha contactando con el administrador del servidor.</string>
+    <string name="account_restricted_chat_read_only">Este chat es de solo lectura porque el servidor ha restringido la otra cuenta.</string>
+    <string name="account_session_blocked">La sesión terminó porque la cuenta está bloqueada. Solo el administrador del servidor puede quitar esta restricción.</string>
+    <string name="account_session_pending_deletion">La sesión terminó porque la cuenta está pendiente de eliminación. Contacta con el administrador del servidor.</string>
+    <string name="account_user_unavailable">Este usuario no está disponible. Es posible que el servidor haya restringido su cuenta.</string>
 </resources>

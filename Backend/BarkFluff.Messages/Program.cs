@@ -2,6 +2,7 @@ using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.BackgroundServices;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Messages.Host;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Infrastructure.Behaviors;
@@ -87,6 +88,7 @@ public class Program
         builder.Services.AddTransient<EncryptedMessagesStorage>();
         builder.Services.AddTransient<FederatedReadStatesStorage>();
         builder.Services.AddTransient<ChatDraftsStorage>();
+        builder.Services.AddSingleton<UserAccountStatusCache>();
         builder.Services.AddTransient<Mapping.ReplyPreviewResolver>();
         builder.Services.AddSingleton<SecretMessageBuffer>();
         builder.Services.AddSingleton<PrivateChatInviteStore>();
@@ -103,6 +105,7 @@ public class Program
             x.AddConsumer<UserChangedNameConsumer>();
             x.AddConsumer<SessionRevokedConsumer>();
             x.AddConsumer<FederatedChatRejectedConsumer>();
+            x.AddConsumer<UserAccountStatusChangedConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -132,6 +135,13 @@ public class Program
                 cfg.ReceiveEndpoint("federated-chat-rejected-messages", e =>
                 {
                     e.ConfigureConsumer<FederatedChatRejectedConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint($"user-account-status-changed-messages-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<UserAccountStatusChangedConsumer>(context);
                 });
             });
         });

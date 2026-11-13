@@ -12,7 +12,6 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityAboutBinding
 import com.barkfluff.client.utils.ServicePingChecker
 import com.barkfluff.client.utils.ServicePingResult
-import com.google.android.material.divider.MaterialDivider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -82,28 +81,22 @@ class AboutActivity : AppCompatActivity() {
         val services = serverServices()
 
         services.forEachIndexed { index, service ->
-            if (index > 0) {
-                val divider = MaterialDivider(this)
-                divider.layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    marginStart = dp(16)
-                }
-                container.addView(divider)
-            }
-
             val row = LinearLayout(this).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = resources.getDimensionPixelSize(R.dimen.settings_split_gap)
+                }
+                // Строка проверки — верх группы, поэтому сервисы — середина, последний — низ.
+                setBackgroundResource(
+                    if (index == services.lastIndex) R.drawable.bg_settings_item_bottom
+                    else R.drawable.bg_settings_item_middle
                 )
-                minimumHeight = dp(56)
+                minimumHeight = dp(58)
                 orientation = LinearLayout.HORIZONTAL
                 gravity = android.view.Gravity.CENTER_VERTICAL
-                setPadding(
-                    dp(16), dp(8), dp(16), dp(8)
-                )
+                setPadding(dp(20), dp(10), dp(20), dp(10))
             }
 
             val details = LinearLayout(this).apply {
@@ -113,14 +106,14 @@ class AboutActivity : AppCompatActivity() {
 
             val nameView = TextView(this).apply {
                 text = service.name
-                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
-                setTextColor(getColorFromAttr(com.google.android.material.R.attr.colorOnSurface))
+                setTextAppearance(R.style.TextAppearance_Barkfluff_Profile_Item)
+                setTextColor(getColor(R.color.profile_settings_on_surface))
             }
 
             val addressView = TextView(this).apply {
                 text = service.address.ifBlank { "—" }
                 setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-                setTextColor(getColorFromAttr(com.google.android.material.R.attr.colorOnSurfaceVariant))
+                setTextColor(getColor(R.color.profile_settings_on_surface_variant))
                 setTextIsSelectable(true)
                 maxLines = 2
                 ellipsize = TextUtils.TruncateAt.END
@@ -150,7 +143,7 @@ class AboutActivity : AppCompatActivity() {
     }
 
     private fun serviceStatus(service: ServiceDefinition): Pair<String, Int> {
-        val secondaryColor = getColorFromAttr(com.google.android.material.R.attr.colorOnSurfaceVariant)
+        val secondaryColor = getColor(R.color.profile_settings_on_surface_variant)
         if (!service.pingable) {
             return getString(R.string.about_service_not_checked) to secondaryColor
         }
@@ -242,11 +235,4 @@ class AboutActivity : AppCompatActivity() {
         val pingable: Boolean = true,
         val fileEndpoint: Boolean = false
     )
-
-    private fun getColorFromAttr(attr: Int): Int {
-        val typedArray = obtainStyledAttributes(intArrayOf(attr))
-        val color = typedArray.getColor(0, 0)
-        typedArray.recycle()
-        return color
-    }
 }

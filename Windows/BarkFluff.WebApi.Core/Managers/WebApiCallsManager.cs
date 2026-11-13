@@ -59,6 +59,10 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Нет доступа к чату"), null);
             }
+            catch (BarkFluff.Shared.Exceptions.Users.UserUnavailableException)
+            {
+                return (new ErrorReturner(false, errorResourceKey: "Messenger_UserUnavailable"), null);
+            }
             catch (RpcException ex) when (ex.StatusCode == StatusCode.FailedPrecondition)
             {
                 return (new ErrorReturner(false, "Звонок сейчас невозможен"), null);

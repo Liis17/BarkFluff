@@ -41,6 +41,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<MessageUnpinnedConsumer>();
     x.AddConsumer<AllMessagesUnpinnedConsumer>();
     x.AddConsumer<ChatHiddenConsumer>();
+    x.AddConsumer<ChatFoldersChangedConsumer>();
     x.AddConsumer<NewEncryptedMessageConsumer>();
     x.AddConsumer<EncryptedMessageEditedConsumer>();
     x.AddConsumer<EncryptedMessageDeletedConsumer>();
@@ -122,6 +123,13 @@ builder.Services.AddMassTransit(x =>
             e.AutoDelete = true;
             e.Durable = false;
             e.ConfigureConsumer<ChatHiddenConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint($"chat-folders-changed-updates-{InstanceId.Current}", e =>
+        {
+            e.AutoDelete = true;
+            e.Durable = false;
+            e.ConfigureConsumer<ChatFoldersChangedConsumer>(context);
         });
 
         cfg.ReceiveEndpoint($"new-encrypted-messages-updates-{InstanceId.Current}", e =>

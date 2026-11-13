@@ -5,6 +5,7 @@ import com.barkfluff.client.domain.model.AuthenticationChallenge
 import com.barkfluff.client.domain.model.AuthenticationChallengeReference
 import com.barkfluff.client.domain.model.AuthenticationChallengeState
 import com.barkfluff.client.domain.model.AuthenticationCompletion
+import com.barkfluff.client.domain.model.AuthenticationErrorCodes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -63,7 +64,9 @@ class AuthenticationChallengeController(
         }.also { result ->
             result.getOrNull()?.let { completion ->
                 if (completion.state != AuthenticationChallengeState.WAITING &&
-                    completion.state != AuthenticationChallengeState.APPROVED
+                    completion.state != AuthenticationChallengeState.APPROVED ||
+                    completion.errorCode == AuthenticationErrorCodes.ACCOUNT_BLOCKED ||
+                    completion.errorCode == AuthenticationErrorCodes.ACCOUNT_PENDING_DELETION
                 ) {
                     activeReference = null
                 }

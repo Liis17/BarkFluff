@@ -20,6 +20,7 @@ import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.model.ChatFolder
 import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.utils.FirebaseTokenHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -59,7 +60,7 @@ data class ChatsUiState(
 sealed interface ChatsEvent {
     data object NavigateToLogin : ChatsEvent
     /** Identity rejected the refresh token: wipe account crypto state before Login. */
-    data object SessionRejected : ChatsEvent
+    data class SessionRejected(val validity: TokenValidity) : ChatsEvent
     /** Аватар/профиль могли подтянуться при первом входе — перерисовать шапку. */
     data object RefreshUserAvatar : ChatsEvent
     data class ChatLoadError(val message: String) : ChatsEvent
@@ -295,14 +296,12 @@ internal class ChatDisplayResolver(
 ) {
     private val displays = linkedMapOf<String, CachedChatDisplay>()
     private val resolvedProfiles = mutableSetOf<String>()
-    private val profilesWithoutAvatar = mutableSetOf<String>()
     private val failedProfileLoads = mutableSetOf<String>()
     private val profilesInFlight = mutableSetOf<String>()
 
     fun loadCachedDisplays(cached: Map<String, CachedChatDisplay>, currentUserId: Long) {
         displays.clear()
         resolvedProfiles.clear()
-        profilesWithoutAvatar.clear()
         failedProfileLoads.clear()
         profilesInFlight.clear()
         cached.forEach { (chatId, display) ->
@@ -314,6 +313,7 @@ internal class ChatDisplayResolver(
 
     /** Ошибки профиля повторяются после следующего явного обновления списка. */
     fun beginChatListRefresh() {
+        resolvedProfiles.clear()
         failedProfileLoads.clear()
     }
 
@@ -331,6 +331,7 @@ internal class ChatDisplayResolver(
                     title = chat.title,
                     avatarFileId = chatAvatarFileId(chat),
                     otherUserId = peerId,
+                    accountStatus = displays[chat.id]?.accountStatus ?: AccountStatus.ACTIVE,
                 ),
                 currentUserId,
             )?.let { updates[chat.id] = it }
@@ -342,6 +343,8 @@ internal class ChatDisplayResolver(
         chat: ChatSummary,
         currentUserId: Long,
         defaultTitle: String,
+        blockedUserTitle: String,
+        deletedUserTitle: String,
     ): ChatAdapter.ChatDisplayItem {
         if (chat.isGroupChat) {
             return ChatAdapter.ChatDisplayItem(
@@ -353,13 +356,19 @@ internal class ChatDisplayResolver(
 
         val cached = displays[chat.id]
         val otherUserId = resolveOtherUserId(chat.memberIds, currentUserId, cached?.otherUserId ?: 0L)
-        var title = chat.title.ifBlank { cached?.title.orEmpty() }
-        var avatarFileId = chatAvatarFileId(chat).ifBlank { cached?.avatarFileId.orEmpty() }
+        val restricted = cached?.accountStatus?.let { it != AccountStatus.ACTIVE } == true
+        val title = when {
+            restricted && cached?.accountStatus in setOf(AccountStatus.PENDING_DELETION, AccountStatus.DELETED) -> deletedUserTitle
+            restricted -> blockedUserTitle
+            else -> chat.title.ifBlank { cached?.title.orEmpty() }
+        }
+        val avatarFileId = if (restricted) null else chatAvatarFileId(chat).ifBlank { cached?.avatarFileId.orEmpty() }
         return ChatAdapter.ChatDisplayItem(
             chatData = chat,
             displayTitle = title.ifBlank { defaultTitle },
-            displayAvatarFileId = avatarFileId.ifBlank { null },
+            displayAvatarFileId = avatarFileId?.ifBlank { null },
             otherUserId = otherUserId ?: 0L,
+            accountStatus = cached?.accountStatus ?: AccountStatus.ACTIVE,
         )
     }
 
@@ -367,17 +376,20 @@ internal class ChatDisplayResolver(
         chats: List<ChatSummary>,
         currentUserId: Long,
         defaultTitle: String,
-    ): List<ChatAdapter.ChatDisplayItem> = chats.map { resolveCached(it, currentUserId, defaultTitle) }
+        blockedUserTitle: String,
+        deletedUserTitle: String,
+    ): List<ChatAdapter.ChatDisplayItem> = chats.map {
+        resolveCached(it, currentUserId, defaultTitle, blockedUserTitle, deletedUserTitle)
+    }
 
     suspend fun resolveMissingProfiles(chats: List<ChatSummary>, currentUserId: Long) {
         for (chat in chats) {
             if (chat.isGroupChat) continue
             val cached = displays[chat.id]
-            if (chatAvatarFileId(chat).isNotBlank() || !cached?.avatarFileId.isNullOrBlank()) continue
 
             val otherUserId = resolveOtherUserId(chat.memberIds, currentUserId, cached?.otherUserId ?: 0L)
                 ?: continue
-            if (chat.id in resolvedProfiles || chat.id in profilesWithoutAvatar ||
+            if (chat.id in resolvedProfiles ||
                 chat.id in failedProfileLoads || !profilesInFlight.add(chat.id)
             ) continue
 
@@ -398,12 +410,14 @@ internal class ChatDisplayResolver(
                 }
 
                 resolvedProfiles += chat.id
-                val avatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }
-                if (avatarFileId.isBlank()) profilesWithoutAvatar += chat.id
-                val title = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
+                val restricted = user.accountStatus != AccountStatus.ACTIVE
+                val avatarFileId = if (restricted) null else {
+                    user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }.ifBlank { null }
+                }
+                val title = if (restricted) "" else "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
                 remember(
                     chat.id,
-                    CachedChatDisplay(title, avatarFileId.ifBlank { null }, otherUserId),
+                    CachedChatDisplay(title, avatarFileId, otherUserId, user.accountStatus),
                     currentUserId,
                 )?.let { saveDisplay(chat.id, it) }
             } finally {
@@ -414,12 +428,14 @@ internal class ChatDisplayResolver(
 
     private fun remember(chatId: String, candidate: CachedChatDisplay, currentUserId: Long): CachedChatDisplay? {
         val existing = displays[chatId]
+        val restricted = candidate.accountStatus != AccountStatus.ACTIVE
         val display = CachedChatDisplay(
-            title = candidate.title.ifBlank { existing?.title.orEmpty() },
-            avatarFileId = candidate.avatarFileId?.takeIf { it.isNotBlank() } ?: existing?.avatarFileId,
+            title = if (restricted) "" else candidate.title.ifBlank { existing?.title.orEmpty() },
+            avatarFileId = if (restricted) null else candidate.avatarFileId?.takeIf { it.isNotBlank() } ?: existing?.avatarFileId,
             otherUserId = resolveOtherUserId(emptyList(), currentUserId, candidate.otherUserId)
                 ?: resolveOtherUserId(emptyList(), currentUserId, existing?.otherUserId ?: 0L)
                 ?: 0L,
+            accountStatus = candidate.accountStatus,
         )
         if (display != existing &&
             (display.title.isNotBlank() || display.avatarFileId != null || display.otherUserId > 0L)
@@ -788,6 +804,8 @@ class ChatsViewModel @Inject constructor(
             chats,
             globalParam.userId,
             appContext.getString(R.string.chat_title_default),
+            appContext.getString(R.string.account_blocked_user),
+            appContext.getString(R.string.account_deleted_user),
         )
 
     private fun totalUnread(chats: List<ChatSummary>): Int =
@@ -837,6 +855,12 @@ class ChatsViewModel @Inject constructor(
             realtimeService.chatHidden.collect { event ->
                 handleChatHidden(event.chatId, event.contentWiped)
             }
+        }
+        // Папки изменились (в том числе на другом устройстве): перечитываем только папки.
+        // collect последователен, а поток сигналов схлопывает повторы — пока идёт обновление,
+        // в очереди остаётся не больше одного сигнала, и последнее изменение не теряется.
+        viewModelScope.launch {
+            realtimeService.chatFoldersChanged.collect { refreshFolders() }
         }
         viewModelScope.launch {
             realtimeService.privateMessagesRead.collect { event ->
@@ -915,6 +939,22 @@ class ChatsViewModel @Inject constructor(
     }
 
     /** DeleteChat на другом устройстве: чат исчезает из списка и кеша, как в веб-клиенте. */
+    private suspend fun refreshFolders() {
+        // loadChats тоже читает папки: даём ему завершиться, чтобы его более ранний
+        // снимок не перезаписал свежий результат этого обновления.
+        while (loadChatsJob?.isActive == true) loadChatsJob?.join()
+        val folders = chatFolderGateway.folders().getOrElse {
+            Log.w(TAG, "Не удалось обновить папки после сигнала об изменении", it)
+            return
+        }
+        val state = _uiState.value
+        if (folders == state.folders) return
+        val selectedFolderId = state.selectedFolderId?.takeIf { id -> folders.any { it.folderId == id } }
+        _uiState.value = state.copy(folders = folders, selectedFolderId = selectedFolderId)
+        applyFolderFilter()
+        persistChatList()
+    }
+
     private fun handleChatHidden(chatId: String, contentWiped: Boolean) {
         val state = _uiState.value
         val wasListed = state.allChats.any { it.id == chatId }
@@ -985,12 +1025,15 @@ class ChatsViewModel @Inject constructor(
      * истёк или устройство отвязано) ведёт на логин — иначе список вечно висит на кеше,
      * а стримы бесконечно получают 401. Недоступность Identity — только статус offline.
      */
-    private suspend fun applyTokenValidity(): Boolean =
-        when (authGateway.tokenValidity()) {
+    private suspend fun applyTokenValidity(): Boolean {
+        val validity = authGateway.tokenValidity()
+        return when (validity) {
             TokenValidity.VALID -> true
-            TokenValidity.REJECTED -> {
+            TokenValidity.REJECTED,
+            TokenValidity.ACCOUNT_BLOCKED,
+            TokenValidity.ACCOUNT_PENDING_DELETION -> {
                 Log.w(TAG, "Refresh token rejected, navigating to login")
-                _events.tryEmit(ChatsEvent.SessionRejected)
+                _events.tryEmit(ChatsEvent.SessionRejected(validity))
                 false
             }
             TokenValidity.UNAVAILABLE -> {
@@ -998,6 +1041,7 @@ class ChatsViewModel @Inject constructor(
                 false
             }
         }
+    }
 
     /**
      * Отправляет Firebase токен на сервер при каждом запуске — нужно для push-уведомлений.

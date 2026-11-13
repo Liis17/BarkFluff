@@ -397,7 +397,12 @@
                 BF.sound.play('tick');
             })
             .catch(function (error) {
-                if (!entry.settled) setPendingState(entry, error && error.outcomeUnknown ? 'unknown' : 'failed');
+                if (!entry.settled) {
+                    setPendingState(entry, error && error.outcomeUnknown ? 'unknown' : 'failed');
+                    if (error && error.errorCode === '6BC0E7A1-5117-4910-9717-1784E6921F6F') {
+                        deps.showToast(BF.i18n.t('accountRestriction.userUnavailable'), true);
+                    }
+                }
             })
             .finally(function () {
                 sendBtn.disabled = false;
@@ -539,6 +544,7 @@
     }
 
     function sendMessage() {
+        if (deps.canSend && !deps.canSend()) return;
         var text = BF.composer.getText().trim();
         var currentChatId = deps.getCurrentChatId();
         if (!currentChatId) return;
@@ -591,6 +597,7 @@
     }
 
     function sendMessageWithFiles(files, asDocuments, caption) {
+        if (deps.canSend && !deps.canSend()) return;
         if (BF.composer.getEdit()) {
             // Во время редактирования attach-flow заблокирован, чтобы не отправить новое сообщение
             // вместо правки исходного. Завершите или отмените редактирование.

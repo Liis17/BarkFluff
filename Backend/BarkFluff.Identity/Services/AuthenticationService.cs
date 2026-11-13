@@ -14,6 +14,8 @@ using BarkFluff.Shared.Queue.Notifications;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
+using MassTransit;
+using BarkFluff.Shared.Queue.Identity;
 using OtpNet;
 
 namespace BarkFluff.Identity.Services;
@@ -24,7 +26,7 @@ public sealed partial class AuthenticationService(
     NotificationQueueSender notifications, LoginNotificationService loginNotifications,
     ITelegramAuthBot bot, TelegramAuthOptions telegram,
     IConfiguration configuration, RequestContext request, UserContext currentUser,
-    IIdentityAbuseGuard guard, TimeProvider clock)
+    IIdentityAbuseGuard guard, TimeProvider clock, IPublishEndpoint publishEndpoint, JwtSettings jwtSettings)
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
     private bool EmailAvailable => configuration.GetValue("Email:Enabled", true);

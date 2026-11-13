@@ -10,6 +10,22 @@ namespace BarkFluff.Users.Tests.Host;
 public class UsersApiServiceBadgeTests
 {
     [Fact]
+    public async Task GetUserBadges_RestrictedAccountReturnsNoBadges()
+    {
+        var testHelper = new TestHelper();
+        var user = await testHelper.SeedUser();
+        var badge = await testHelper.SeedBadge();
+        await testHelper.UsersStorage.AssignBadgeToUserAsync(user.Id, badge.Id, 0);
+        user.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Blocked;
+        await testHelper.DbContext.SaveChangesAsync();
+
+        var handler = new GetUserBadgesQueryHandler(testHelper.UsersStorage, TestHelper.CreateLogger<GetUserBadgesQueryHandler>());
+        var response = await handler.Handle(new GetUserBadgesQuery { UserId = user.Id }, CancellationToken.None);
+
+        response.Badges.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task GetUserBadges_WithoutLimit_ReturnsAllActiveBadges()
     {
         var testHelper = new TestHelper();

@@ -10,6 +10,12 @@
 - Viewer — пустой базовый набор ролей. Support управляет чтением/сессиями/паролями пользователей и почтой; ContentAdmin — контентом, ботами, зарезервированными именами, S3 просмотром и уведомлениями; OperationsAdmin — Docker, удалёнными серверами, конфигурацией и удалением Seq; SecurityAdmin — 2FA, federation, админами, аудитом и соответствующими пользовательскими действиями. Owner разрешено всё. Источник матрицы: Models/AdminPermissions.cs.
 - Опасные операции дополнительно требуют step-up через Telegram. Подтверждение связано с токеном сессии, ключом действия и хэшем параметров; одноразовое, ожидание и окно после одобрения — по 5 минут. Состояние хранится в памяти процесса.
 
+## Управление статусом аккаунта
+
+`users.block` и `users.delete` разрешены только SecurityAdmin и Owner. Маршруты POST `/api/users/{id}/block`, POST `/unblock`, POST `/deletion` и DELETE `/deletion` проверяют обязательную причину (до 500 символов), привязывают к Telegram step-up `userId`, действие и причину и делегируют изменение `IdentityServerApi.SetAccountRestrictionServer`.
+
+GET `/api/users` передаёт Users фильтр `status=all|blocked|pending_deletion`; Users выполняет фильтрацию до пагинации и считает общий total. Список и карточка пользователя показывают статус, причину, время ограничения и дату окончательного удаления. Tombstone со статусом Deleted отображается без действий. UI и JSON-маршруты находятся в `Pages/v2/users.html` и `Endpoints/UsersEndpoints.cs`.
+
 ## Управление сервисом
 
 При запуске `Program.cs` вызывает `LoadConfiguration(ServiceId.Unknown, requireValidSettings: false)`.
@@ -25,7 +31,7 @@ Endpoint-группы в Program.cs охватывают auth/step-up/admins/aud
 
 Создание загружает FULL до MINI. Если Files отклонит MINI, загруженный FULL остаётся сиротским объектом в S3; автоматической очистки в этом потоке нет.
 
-`Endpoints/UsersEndpoints.cs` включает `miniImageUrl` и `isPrimary` в сведения о назначенных бейджах пользователя. Страница `Pages/v2/users.html` показывает основной бейдж только для чтения; AdminPanel не меняет выбор пользователя.
+`Endpoints/UsersEndpoints.cs` включает `miniImageUrl` и `isPrimary` в сведения о назначенных бейджах пользователя. Страница `Pages/v2/users.html` показывает основной бейдж только для чтения; AdminPanel не меняет выбор пользователя. Назначение и снятие бейджа доступны только с `badges.manage` и требуют Telegram step-up, привязанный к пользователю/бейджу. Обновление и удаление бейджа также требуют step-up, поскольку деактивация или удаление может изменить назначенные пользователям связи.
 
 Панель опрашивает liveness/readiness, Docker, Seq и инфраструктуру для своей страницы health; собственный HTTP endpoint — /api/health/overview. Это отдельный сборщик, не общий readiness из [[Backend/GrpcServer]]. `HealthCollectorService` опрашивает каждые 30 секунд. Имена контейнеров для health сопоставляются с Compose-сервисами текущего проекта; при отключённом Seq остаются доступны Docker-статусы и HTTP-пробы, но отсутствуют данные о свежести логов. `MetricsCollectorService` строит часовые rollups из Seq каждые 5 минут: общая статистика хранится 24 часа, ServiceMetrics — 30 дней; восстановление пробелов идёт до 72 часов, по 6 часов за цикл. `MetricsCollectorService` и `MetricsLogCompressorService` пропускают Seq-запросы, когда Seq отключён.
 

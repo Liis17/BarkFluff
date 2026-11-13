@@ -34,8 +34,8 @@ public class UpdatePersonalizationCommandHandler : IRequestHandler<UpdatePersona
 
         var chatBackgroundFileIds = data.ChatBackgroundFileIds.ToArray();
 
-        var previous = await _personalizationStorage.GetOrCreate(_userContext.UserId);
-        var removedFileIds = previous.ChatBackgroundFileIds.Except(chatBackgroundFileIds).ToArray();
+        var previous = await _personalizationStorage.Get(_userContext.UserId);
+        var removedFileIds = (previous?.ChatBackgroundFileIds ?? Array.Empty<string>()).Except(chatBackgroundFileIds).ToArray();
 
         await _personalizationStorage.Update(_userContext.UserId, profilePosterFileId, chatBackgroundFileIds);
         await _userSettingsStorage.ClearBackgroundReferences(_userContext.UserId, removedFileIds);

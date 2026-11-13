@@ -3,6 +3,7 @@ syntax = "proto3";
 option csharp_namespace = "BarkFluff.Proto.Identity";
 
 import "google/protobuf/timestamp.proto";
+import "users_api.proto";
 
 package barkfluff.identity;
 
@@ -54,6 +55,7 @@ service IdentityApi {
   rpc Logout(LogoutRequest) returns(LogoutResponse);
 
   rpc GetAuthCapabilities(GetAuthCapabilitiesRequest) returns(GetAuthCapabilitiesResponse);
+  rpc ResolveSignIn(ResolveSignInRequest) returns(ResolveSignInResponse);
   rpc BeginRegistration(BeginRegistrationRequest) returns(AuthChallengeResponse);
   rpc BeginSignIn(BeginSignInRequest) returns(AuthChallengeResponse);
   rpc GetAuthChallenge(AuthChallengeReference) returns(AuthChallengeResponse);
@@ -100,6 +102,19 @@ service IdentityServerApi {
 
   // Выпустить JWT для бота с уже существующим token_id, не отзывая действующий токен.
   rpc GetBotTokenServer(GetBotTokenServerRequest) returns(GetBotTokenServerResponse);
+
+  // Ограничить или восстановить аккаунт пользователя на этой ноде.
+  rpc SetAccountRestrictionServer(SetAccountRestrictionServerRequest) returns(SetAccountRestrictionServerResponse);
+}
+
+message SetAccountRestrictionServerRequest {
+  int64 user_id = 1;
+  barkfluff.users.AccountRestrictionAction action = 2;
+  string reason = 3;
+}
+
+message SetAccountRestrictionServerResponse {
+  barkfluff.users.AccountRestrictionInfo restriction = 1;
 }
 
 message CreateSessionForUserServerRequest {
@@ -362,6 +377,11 @@ message GetAuthCapabilitiesResponse {
   bool telegram_available = 2;
   string telegram_bot_username = 3;
 }
+message ResolveSignInRequest { string login = 1; }
+message ResolveSignInResponse {
+  AuthLoginMode login_mode = 1;
+  string error_code = 2;
+}
 message AuthChallengeReference {
   string id = 1;
   string secret = 2;
@@ -391,6 +411,7 @@ message BeginSignInRequest {
   AuthLoginMode login_mode = 3;
   OtpTypeId factor = 4;
   bool use_recovery_code = 5;
+  bool report_login_mode_mismatch = 6;
 }
 message CompleteAuthChallengeRequest {
   AuthChallengeReference challenge = 1;
@@ -403,6 +424,12 @@ message CompleteAuthChallengeResponse {
   AuthChallengeReference security_proof = 3;
   repeated string recovery_codes = 4;
   string error_code = 5;
+  IdentityAccountRestrictionInfo account_restriction = 6;
+}
+message IdentityAccountRestrictionInfo {
+  barkfluff.users.AccountStatus status = 1;
+  string reason = 2;
+  google.protobuf.Timestamp deletion_scheduled_at = 3;
 }
 message GetSecuritySettingsRequest { }
 message GetLoginNotificationSettingsRequest { }

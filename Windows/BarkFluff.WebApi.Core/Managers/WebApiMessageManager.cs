@@ -224,6 +224,10 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Неверный идентификатор чата."), null);
             }
+            catch (BarkFluff.Shared.Exceptions.Users.UserUnavailableException)
+            {
+                return (new ErrorReturner(false, errorResourceKey: "Messenger_UserUnavailable"), null);
+            }
             catch (Exception)
             {
                 return (new ErrorReturner(false, "Ошибка отправки сообщения"), null);
@@ -391,6 +395,10 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (BarkFluff.Shared.Exceptions.Identity.UserNotFoundException)
             {
                 return (new ErrorReturner(false, "Пользователь не найден"), string.Empty);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserUnavailableException)
+            {
+                return (new ErrorReturner(false, errorResourceKey: "Messenger_UserUnavailable"), string.Empty);
             }
             catch (BarkFluff.Shared.Exceptions.Messages.ChatNotFoundException)
             {

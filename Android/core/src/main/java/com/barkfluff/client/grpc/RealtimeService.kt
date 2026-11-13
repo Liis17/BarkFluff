@@ -15,6 +15,7 @@ import io.grpc.Status
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -116,6 +117,14 @@ class RealtimeService(
 
     private val _chatHidden = MutableSharedFlow<UpdatesApiOuterClass.ChatHiddenEvent>(extraBufferCapacity = 16)
     val chatHidden: SharedFlow<UpdatesApiOuterClass.ChatHiddenEvent> = _chatHidden
+
+    // Сигнал без данных: папки чатов изменились на любом устройстве пользователя.
+    // Подряд идущие сигналы схлопываются — подписчик всё равно перечитывает папки целиком.
+    private val _chatFoldersChanged = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val chatFoldersChanged: SharedFlow<Unit> = _chatFoldersChanged
 
     // --- Приватные чаты (user-scope) ---
     private val _privateMessages = MutableSharedFlow<UpdatesApiOuterClass.NewEncryptedMessageEvent>(extraBufferCapacity = 64)
@@ -227,6 +236,8 @@ class RealtimeService(
         scope.launch { streamWithReconnect("AllMessagesUnpinned") { collectAllMessagesUnpinned() } }
         // Ноды до DeleteChat не знают этот RPC — UNIMPLEMENTED завершает только этот стрим.
         scope.launch { streamWithReconnect("ChatHidden", stopOnUnimplemented = true) { collectChatHidden() } }
+        // Ноды без синхронизации папок не знают этот RPC — UNIMPLEMENTED завершает только этот стрим.
+        scope.launch { streamWithReconnect("ChatFoldersChanged", stopOnUnimplemented = true) { collectChatFoldersChanged() } }
         scope.launch { streamWithReconnect("OnlineStatus") { collectOnlineStatus() } }
         scope.launch { streamWithReconnect("Typing") { collectTyping() } }
         // E2E приватные чаты (user-scope)
@@ -497,6 +508,15 @@ class RealtimeService(
             Log.d(TAG, "Chat hidden: chatId=${event.chatId}, contentWiped=${event.contentWiped}")
             _chatHidden.emit(event)
             sideEffects?.onChatChanged(event.chatId)
+        }
+    }
+
+    private suspend fun collectChatFoldersChanged() {
+        val client = clientRegistry.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribeChatFoldersChangedRequest.getDefaultInstance()
+        client.subscribeChatFoldersChanged(request).collect {
+            Log.d(TAG, "Chat folders changed")
+            _chatFoldersChanged.tryEmit(Unit)
         }
     }
 

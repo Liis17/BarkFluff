@@ -19,6 +19,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.await
 import barkfluff.files.FilesApiOuterClass.UploadFileType
+import com.barkfluff.client.R
 import com.barkfluff.client.cache.CacheScope
 import com.barkfluff.client.cache.ChatCacheRepository
 import com.barkfluff.client.cache.OutgoingAttachmentKind
@@ -31,6 +32,8 @@ import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.drafts.ComposerAttachmentStore
 import com.barkfluff.client.grpc.TokenCoordinator
 import com.barkfluff.client.grpc.TokenValidity
+import com.barkfluff.client.grpc.AccountRestrictionErrorCodes
+import com.barkfluff.client.grpc.grpcErrorCode
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.repository.ChatRepository.UploadHttpException
 import com.barkfluff.client.utils.ImageCompressor
@@ -597,7 +600,9 @@ class OutgoingMessageQueue(
 
             when (tokenCoordinator.validity()) {
                 TokenValidity.VALID -> Unit
-                TokenValidity.REJECTED ->
+                TokenValidity.REJECTED,
+                TokenValidity.ACCOUNT_BLOCKED,
+                TokenValidity.ACCOUNT_PENDING_DELETION ->
                     throw PermanentOutgoingException(OutgoingFailureCategory.AUTH_REQUIRED, "Token refresh rejected")
                 // Identity is often unreachable right after the network returns; that must not end the send.
                 TokenValidity.UNAVAILABLE -> throw RetryOutgoingException(0L)
@@ -728,7 +733,11 @@ class OutgoingMessageQueue(
                 cache.saveOutgoing(scope, latest.copy(
                     state = OutgoingMessageState.FAILED,
                     failureCategory = permanent,
-                    failureDetail = safeDetail(e),
+                    failureDetail = if (e.grpcErrorCode().equals(AccountRestrictionErrorCodes.USER_UNAVAILABLE, ignoreCase = true)) {
+                        appContext.getString(R.string.account_user_unavailable)
+                    } else {
+                        safeDetail(e)
+                    },
                     leaseOwner = null,
                     leaseExpiresAtMillis = 0
                 ))
@@ -1049,6 +1058,7 @@ class OutgoingMessageQueue(
 
     private fun classifyPermanent(error: Throwable): OutgoingFailureCategory? {
         if (error is PermanentOutgoingException) return error.category
+        permanentOutgoingFailureCategory(error.grpcErrorCode())?.let { return it }
         val httpCode = (error as? UploadHttpException)?.statusCode
         if (httpCode != null) return when (httpCode) {
             408, 409, 429 -> null

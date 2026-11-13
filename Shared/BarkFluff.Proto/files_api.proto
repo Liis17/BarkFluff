@@ -62,7 +62,14 @@ service FilesServerApi {
   // Разрешено ли отдать аватар в федерацию (этап 3.4): файл существует, это UserAvatar,
   // и его владелец не скрыл аватар настройкой приватности.
   rpc CheckFedAvatarAccess(CheckFedAvatarAccessRequest) returns(CheckFedAvatarAccessResponse);
+
+  // Удалить профильные изображения пользователя, не затрагивая вложения сообщений.
+  rpc DeleteUserProfileImages(DeleteUserProfileImagesRequest) returns(DeleteUserProfileImagesResponse);
 }
+
+message DeleteUserProfileImagesRequest { int64 user_id = 1; }
+
+message DeleteUserProfileImagesResponse { }
 
 message GetTempDownloadUrlRequest {
   repeated string file_ids = 1; // Идентификаторы локальных файлов

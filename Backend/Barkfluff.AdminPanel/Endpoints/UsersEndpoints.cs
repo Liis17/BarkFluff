@@ -7,6 +7,7 @@ using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 
 using Google.Protobuf;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Barkfluff.AdminPanel.Endpoints;
 
@@ -42,44 +43,67 @@ public static class UsersEndpoints
             return await next(filterContext);
         });
 
-        // GET /api/users?query=&offset=0&size=50
+        // GET /api/users?query=&status=all|blocked|pending_deletion&offset=0&size=50
         group.MapGet("/", async (
             string? query,
+            string? status,
             int? offset,
             int? size,
             UsersServerApi.UsersServerApiClient usersClient) =>
         {
-            var response = await usersClient.SearchUsersServerAsync(new SearchUsersServerRequest
+            var statusFilter = status?.Trim().ToLowerInvariant();
+            if (statusFilter is not (null or "" or "all" or "blocked" or "pending_deletion"))
+                return Results.BadRequest(new { error = "status must be all, blocked, or pending_deletion" });
+
+            var request = new SearchUsersServerRequest
             {
                 Query = query ?? string.Empty,
                 Offset = offset ?? 0,
                 Size = size ?? 50
-            });
+            };
+            if (statusFilter == "blocked")
+                request.StatusFilter = AccountStatus.Blocked;
+            else if (statusFilter == "pending_deletion")
+                request.StatusFilter = AccountStatus.PendingDeletion;
 
-            var users = response.Users.Select(u => new
+            var response = await usersClient.SearchUsersServerAsync(request);
+            var restrictions = response.Results
+                .Where(result => result.User is not null)
+                .ToDictionary(result => result.User.Id, result => result.Restriction);
+
+            var users = response.Users.Select(u =>
             {
-                id = u.Id,
-                firstName = u.FirstName,
-                lastName = u.LastName,
-                username = u.Username,
-                profilePicture = u.ProfilePicture,
-                profilePicturePreview = u.ProfilePicturePreview,
-                registrationDate = u.RegistrationDate?.ToDateTime(),
-                bio = u.Bio,
-                storageLimitGb = u.StorageLimitGb,
-                badges = u.Badges.Select(b => new
+                restrictions.TryGetValue(u.Id, out var restriction);
+                return new
                 {
-                    badge = new
+                    id = u.Id,
+                    firstName = u.FirstName,
+                    lastName = u.LastName,
+                    username = u.Username,
+                    profilePicture = u.ProfilePicture,
+                    profilePicturePreview = u.ProfilePicturePreview,
+                    registrationDate = u.RegistrationDate?.ToDateTime(),
+                    bio = u.Bio,
+                    storageLimitGb = u.StorageLimitGb,
+                    accountStatus = u.AccountStatus.ToString(),
+                    restrictionReason = restriction?.Reason ?? string.Empty,
+                    restrictedAt = restriction?.RestrictedAt?.ToDateTime(),
+                    deletionScheduledAt = restriction?.DeletionScheduledAt?.ToDateTime(),
+                    badges = u.Badges.Select(b => new
                     {
-                        id = b.Badge.Id,
-                        name = b.Badge.Name,
-                        description = b.Badge.Description,
-                        imageUrl = b.Badge.ImageUrl,
-                        miniImageUrl = b.Badge.MiniImageUrl
-                    },
-                    priority = b.Priority,
-                    isPrimary = b.IsPrimary
-                })
+                        badge = new
+                        {
+                            id = b.Badge.Id,
+                            name = b.Badge.Name,
+                            description = b.Badge.Description,
+                            imageUrl = b.Badge.ImageUrl,
+                            miniImageUrl = b.Badge.MiniImageUrl
+                        },
+                        priority = b.Priority,
+                        assignedDate = b.AssignedDate?.ToDateTime(),
+                        isPrimary = b.IsPrimary
+                    })
+                };
             });
 
             return Results.Ok(new { users, totalCount = response.TotalCount });
@@ -102,16 +126,18 @@ public static class UsersEndpoints
                 Size = 1
             }));
             var contactsTask = SafeCall(() => usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = id }));
+            var restrictionTask = SafeCall(() => usersClient.GetAccountRestrictionAsync(new GetAccountRestrictionRequest { UserId = id }));
             var devicesTask = SafeCall(() => usersClient.GetUserDevicesAsync(new GetUserDevicesRequest { UserId = id }));
             var storageTask = SafeCall(() => filesClient.GetUserStorageInfoServerAsync(new GetUserStorageInfoServerRequest { UserId = id }));
             var otpTask = SafeCall(() => identityClient.ListOtpVerificationServerAsync(new ListOtpVerificationServerRequest { UserId = id }));
             var sessionsTask = SafeCall(() => identityClient.GetActiveSessionsServerAsync(new GetActiveSessionsServerRequest { UserId = id }));
             var posterTask = SafeCall(() => usersClient.GetProfilePosterServerAsync(new GetProfilePosterServerRequest { UserId = id }));
 
-            await Task.WhenAll(userSearchTask, contactsTask, devicesTask, storageTask, otpTask, sessionsTask, posterTask);
+            await Task.WhenAll(userSearchTask, contactsTask, restrictionTask, devicesTask, storageTask, otpTask, sessionsTask, posterTask);
 
             var userSearch = userSearchTask.Result;
             var contacts = contactsTask.Result;
+            var restriction = restrictionTask.Result;
             var devices = devicesTask.Result;
             var storage = storageTask.Result;
             var otp = otpTask.Result;
@@ -121,7 +147,8 @@ public static class UsersEndpoints
             if (!userSearch.Available)
                 return Results.Problem("Сервис пользователей временно недоступен", statusCode: StatusCodes.Status503ServiceUnavailable);
 
-            var userProto = userSearch.Value?.Users.FirstOrDefault();
+            var userResult = userSearch.Value?.Results.FirstOrDefault();
+            var userProto = userResult?.User ?? userSearch.Value?.Users.FirstOrDefault();
             if (userProto is null)
                 return Results.NotFound();
 
@@ -139,6 +166,10 @@ public static class UsersEndpoints
                     bio = userProto.Bio,
                     registrationDate = userProto.RegistrationDate?.ToDateTime(),
                     storageLimitGb = userProto.StorageLimitGb,
+                    accountStatus = userProto.AccountStatus.ToString(),
+                    restrictionReason = userResult?.Restriction?.Reason ?? string.Empty,
+                    restrictedAt = userResult?.Restriction?.RestrictedAt?.ToDateTime(),
+                    deletionScheduledAt = userResult?.Restriction?.DeletionScheduledAt?.ToDateTime(),
                     badges = userProto.Badges.Select(b => new
                     {
                         badge = new
@@ -154,9 +185,11 @@ public static class UsersEndpoints
                         isPrimary = b.IsPrimary
                     })
                 },
-                contacts = contacts.Value != null ? new
+                contacts = contacts.Value != null || restriction.Value != null ? new
                 {
-                    email = contacts.Value.Contact?.Email
+                    email = !string.IsNullOrEmpty(restriction.Value?.Email)
+                        ? restriction.Value.Email
+                        : contacts.Value?.Contact?.Email
                 } : null,
                 devices = devices.Value?.Devices.Select(d => new
                 {
@@ -210,6 +243,35 @@ public static class UsersEndpoints
         .WithName("GetUserDetails")
         .RequirePermission(AdminPermissions.UsersRead);
 
+        // Account restriction changes are orchestrated by Identity; each action is bound to its step-up parameters.
+        group.MapPost("/{id:long}/block", (long id, [FromBody] AccountRestrictionBody? body, IdentityServerApi.IdentityServerApiClient identityClient) =>
+                SetAccountRestriction(identityClient, id, AccountRestrictionAction.Block, body))
+            .WithName("BlockUserAccount")
+            .RequirePermission(AdminPermissions.UsersBlock)
+            .RequireAdminReasonFromArguments(context => context.Arguments.OfType<AccountRestrictionBody>().FirstOrDefault()?.Reason)
+            .RequireStepUpFromArguments(StepUpActions.UsersBlock, context => RestrictionStepUpParameters(context, "BLOCK"));
+
+        group.MapPost("/{id:long}/unblock", (long id, [FromBody] AccountRestrictionBody? body, IdentityServerApi.IdentityServerApiClient identityClient) =>
+                SetAccountRestriction(identityClient, id, AccountRestrictionAction.Unblock, body))
+            .WithName("UnblockUserAccount")
+            .RequirePermission(AdminPermissions.UsersBlock)
+            .RequireAdminReasonFromArguments(context => context.Arguments.OfType<AccountRestrictionBody>().FirstOrDefault()?.Reason)
+            .RequireStepUpFromArguments(StepUpActions.UsersUnblock, context => RestrictionStepUpParameters(context, "UNBLOCK"));
+
+        group.MapPost("/{id:long}/deletion", (long id, [FromBody] AccountRestrictionBody? body, IdentityServerApi.IdentityServerApiClient identityClient) =>
+                SetAccountRestriction(identityClient, id, AccountRestrictionAction.ScheduleDeletion, body))
+            .WithName("ScheduleUserDeletion")
+            .RequirePermission(AdminPermissions.UsersDelete)
+            .RequireAdminReasonFromArguments(context => context.Arguments.OfType<AccountRestrictionBody>().FirstOrDefault()?.Reason)
+            .RequireStepUpFromArguments(StepUpActions.UsersDeletionSchedule, context => RestrictionStepUpParameters(context, "SCHEDULE_DELETION"));
+
+        group.MapDelete("/{id:long}/deletion", (long id, [FromBody] AccountRestrictionBody? body, IdentityServerApi.IdentityServerApiClient identityClient) =>
+                SetAccountRestriction(identityClient, id, AccountRestrictionAction.CancelDeletion, body))
+            .WithName("CancelUserDeletion")
+            .RequirePermission(AdminPermissions.UsersDelete)
+            .RequireAdminReasonFromArguments(context => context.Arguments.OfType<AccountRestrictionBody>().FirstOrDefault()?.Reason)
+            .RequireStepUpFromArguments(StepUpActions.UsersDeletionCancel, context => RestrictionStepUpParameters(context, "CANCEL_DELETION"));
+
         // POST /api/users/{id}/badges
         group.MapPost("/{id:long}/badges", async (
             long id,
@@ -243,7 +305,9 @@ public static class UsersEndpoints
             });
         })
         .WithName("AssignUserBadge")
-        .RequirePermission(AdminPermissions.BadgesManage);
+        .RequirePermission(AdminPermissions.BadgesManage)
+        .RequireStepUp(StepUpActions.UserBadgeAssign, context =>
+            "userId=" + context.Request.RouteValues["id"]);
 
         // DELETE /api/users/{id}/badges/{badgeId}
         group.MapDelete("/{id:long}/badges/{badgeId:int}", async (
@@ -260,7 +324,9 @@ public static class UsersEndpoints
             return Results.Ok(new { success = response.Success });
         })
         .WithName("RemoveUserBadge")
-        .RequirePermission(AdminPermissions.BadgesManage);
+        .RequirePermission(AdminPermissions.BadgesManage)
+        .RequireStepUp(StepUpActions.UserBadgeRemove, context =>
+            "userId=" + context.Request.RouteValues["id"] + ";badgeId=" + context.Request.RouteValues["badgeId"]);
 
         // PUT /api/users/{id}/storage-limit
         group.MapPut("/{id:long}/storage-limit", async (
@@ -516,4 +582,38 @@ public static class UsersEndpoints
     private sealed record DisableOtpBody(int OtpType, string? Reason);
     private sealed record UpdateProfileBody(string? FirstName, string? LastName, string? Bio, string? Username);
     private sealed record ChangePasswordBody(string? NewPassword, string? Reason);
+    private sealed record AccountRestrictionBody(string? Reason);
+
+    private static async Task<IResult> SetAccountRestriction(
+        IdentityServerApi.IdentityServerApiClient identityClient,
+        long userId,
+        AccountRestrictionAction action,
+        AccountRestrictionBody? body)
+    {
+        if (body is null)
+            return Results.BadRequest("Invalid request body");
+
+        var response = await identityClient.SetAccountRestrictionServerAsync(new SetAccountRestrictionServerRequest
+        {
+            UserId = userId,
+            Action = action,
+            Reason = body.Reason?.Trim() ?? string.Empty
+        });
+
+        var restriction = response.Restriction;
+        return Results.Ok(new
+        {
+            accountStatus = restriction.Status.ToString(),
+            restrictionReason = restriction.Reason,
+            restrictedAt = restriction.RestrictedAt?.ToDateTime(),
+            deletionScheduledAt = restriction.DeletionScheduledAt?.ToDateTime()
+        });
+    }
+
+    private static string RestrictionStepUpParameters(EndpointFilterInvocationContext context, string action)
+    {
+        var userId = context.HttpContext.Request.RouteValues["id"];
+        var body = context.Arguments.OfType<AccountRestrictionBody>().FirstOrDefault();
+        return $"userId={userId};action={action};reason={body?.Reason?.Trim()}";
+    }
 }

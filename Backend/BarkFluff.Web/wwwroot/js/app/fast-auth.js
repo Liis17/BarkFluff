@@ -113,6 +113,25 @@
         }, delay);
     }
 
+    function stopForRestrictedAccount(error) {
+        var errorCode = error && error.metadata && error.metadata['x-error-code'];
+        var codes = BF.auth && BF.auth.ERROR_CODES;
+        if (!codes || (errorCode !== codes.ACCOUNT_BLOCKED && errorCode !== codes.ACCOUNT_PENDING_DELETION)) return false;
+
+        generation++;
+        started = false;
+        generating = false;
+        currentFastAuthId = null;
+        clearTimers();
+        cancelStream();
+        BF.tokens.clear();
+        setPhase('restricted');
+        setStatus(BF.i18n.t(errorCode === codes.ACCOUNT_BLOCKED
+            ? 'accountRestriction.rpcBlocked'
+            : 'accountRestriction.rpcPendingDeletion'), 'err');
+        return true;
+    }
+
     function startCountdown(expiresAtMs) {
         if (countdownTimer) clearInterval(countdownTimer);
         function tick() {
@@ -191,8 +210,9 @@
             handleStatus(status, evt);
         });
 
-        subscription.on('error', function () {
+        subscription.on('error', function (error) {
             if (!current()) return;
+            if (stopForRestrictedAccount(error)) return;
             // Сетевая ошибка / разрыв до финального статуса — переподключаемся с backoff
             scheduleRestart(backoff, true);
             backoff = Math.min(backoff * 2, MAX_BACKOFF);
@@ -293,6 +313,7 @@
             generating = false;
             if (!started) return;
             if (!res.ok) {
+                if (stopForRestrictedAccount(res.err)) return;
                 setStatus(BF.i18n.t('qr.error'), 'err');
                 scheduleRestart(backoff);
                 backoff = Math.min(backoff * 2, MAX_BACKOFF);

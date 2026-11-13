@@ -86,7 +86,7 @@
 
     <section class="hero">
       <h1><span lang="ru">Политика удаления аккаунта</span><span lang="en">Account Deletion Policy</span></h1>
-      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</span></p>
+      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 13 ноября 2026 г.</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> November 13, 2026.</span></p>
     </section>
 
   <section class="sec">
@@ -109,7 +109,7 @@
   <section class="sec">
     <div><span class="idx">2</span><h2><span lang="ru">Как запросить удаление аккаунта</span><span lang="en">How to request account deletion</span></h2></div>
     <div>
-      <div lang="ru"><p>Отправьте запрос с адреса, связанного с аккаунтом, или укажите данные, которые помогут подтвердить владение аккаунтом.</p>
+      <div lang="ru"><p>Самостоятельно удалить аккаунт в приложении нельзя. Удаление выполняет только администратор ноды по запросу пользователя. Отправьте запрос с адреса, связанного с аккаунтом, или укажите данные, которые помогут подтвердить владение аккаунтом.</p>
       <p>В запросе укажите:</p>
       <ul>
         <li>username;</li>
@@ -117,9 +117,9 @@
         <li>краткое описание запроса;</li>
         <li>дополнительные сведения для подтверждения владения аккаунтом, если доступа к email нет.</li>
       </ul>
-      <p>Срок ответа на ноде barkfluff.com — до 7 рабочих дней.</p>
+      <p>Срок ответа на ноде barkfluff.com — до 7 рабочих дней. После обработки запроса администратором аккаунт на 7 дней переводится в состояние «в удалении»: вход закрывается, все сессии завершаются, а профиль для собеседников отображается как «Удалённый пользователь» и чат доступен только для чтения. Пользователь получает письмо на email аккаунта с причиной и датой окончательного удаления; при попытке входа приложение показывает, что аккаунт удаляется, причину и дату. В течение этих 7 дней удаление можно отменить, написав администратору ноды. Аккаунт восстанавливается полностью, войти в него нужно заново; об отмене приходит письмо.</p>
       </div>
-      <div lang="en"><p>Send the request from the address associated with the account, or provide details that help confirm ownership of the account.</p>
+      <div lang="en"><p>You cannot delete your account yourself in the app. Only the node administrator can delete it at the user's request. Send the request from the address associated with the account, or provide details that help confirm ownership of the account.</p>
       <p>In the request, include:</p>
       <ul>
         <li>username;</li>
@@ -127,7 +127,7 @@
         <li>a brief description of the request;</li>
         <li>additional details to confirm account ownership if you no longer have access to the email.</li>
       </ul>
-      <p>Response time on the barkfluff.com node: up to 7 business days.</p>
+      <p>Response time on the barkfluff.com node: up to 7 business days. After the node administrator processes the request, the account enters the “pending deletion” state for 7 days: sign-in is blocked, all sessions are ended, other users see the profile as “Deleted user,” and the chat is read-only. The user receives an email at the account address stating the reason and final deletion date; when they try to sign in, the app shows that the account is being deleted, together with the reason and date. During these 7 days, the user may cancel deletion by writing to the node administrator. The account is fully restored, the user must sign in again, and an email confirms the cancellation.</p>
       </div>
     </div>
   </section>
@@ -169,14 +169,14 @@
         <li>Обычные сообщения поддерживают удаление через Messages API.</li>
         <li>Приватные encrypted-сообщения при удалении помечаются как удалённые, а шифротекст очищается.</li>
         <li>Секретные сообщения не сохраняются как обычная история: нода ретранслирует envelope и временно буферизует его до доставки или истечения TTL.</li>
-        <li>Если сообщение уже доставлено другому пользователю или включено в историю чата, обработка запроса учитывает целостность истории для других участников и применимые юридические обязанности.</li>
+        <li>Сообщения и вложения, уже отправленные в чаты, остаются в истории у собеседников. Запрос обрабатывается с учётом целостности истории для других участников и применимых юридических обязанностей.</li>
       </ul>
       </div>
       <div lang="en"><ul>
         <li>Regular messages support deletion via the Messages API.</li>
         <li>Private encrypted messages are marked as deleted on deletion, and the ciphertext is cleared.</li>
         <li>Secret messages are not stored as regular history: the node relays the envelope and buffers it temporarily until delivery or TTL expiry.</li>
-        <li>If a message has already been delivered to another user or is part of a chat history, processing of the request takes into account the integrity of the history for other participants and the applicable legal obligations.</li>
+        <li>Messages and attachments already sent in chats remain in the other participants' history. The request is handled with regard to the integrity of that history and applicable legal obligations.</li>
       </ul>
       </div>
     </div>
@@ -185,7 +185,7 @@
     <div><span class="idx">5</span><h2><span lang="ru">Границы удаления в федерации</span><span lang="en">Limits of deletion in a federation</span></h2></div>
     <div>
       <div lang="ru"><div class="callout">
-        <p><strong>Удаление действует только в пределах вашей ноды.</strong> Если вы переписывались с пользователями других нод, копии ваших сообщений, вложений и профильных данных уже находятся на тех нодах. Автоматического распространения удаления по федерации сейчас нет.</p>
+        <p><strong>Удаление действует только в пределах вашей ноды.</strong> Если вы переписывались с пользователями других нод, копии ваших сообщений, вложений и профильных данных уже находятся на тех нодах. Сведения об удалении аккаунта, включая его статус «в удалении», автоматически на другие ноды не передаются.</p>
       </div>
       <ul>
         <li>Копии на чужих нодах удаляет только их администратор — обращайтесь к нему напрямую.</li>
@@ -196,7 +196,7 @@
       <p>Если вы хотите ограничить будущее распространение данных — запретите входящие федеративные личные чаты в настройках приватности до отправки запроса на удаление.</p>
       </div>
       <div lang="en"><div class="callout">
-        <p><strong>Deletion applies within your node only.</strong> If you have exchanged messages with users of other nodes, copies of your messages, attachments and profile data are already on those nodes. There is currently no automatic propagation of deletion across the federation.</p>
+        <p><strong>Deletion applies within your node only.</strong> If you have exchanged messages with users of other nodes, copies of your messages, attachments and profile data are already on those nodes. Information about account deletion, including its pending-deletion status, is not automatically sent to other nodes.</p>
       </div>
       <ul>
         <li>Copies on other nodes can only be deleted by their administrators — contact them directly.</li>
@@ -217,7 +217,7 @@
         <li><code>messages.json</code> — сообщения и чаты, где пользователь является участником;</li>
         <li><code>files.json</code> — метаданные файлов, связанных с профилем и сообщениями.</li>
       </ul>
-      <p>Если вам нужен экспорт перед удалением, укажите это в обращении к администратору ноды. Удаление необратимо — экспортируйте важное заранее.</p>
+      <p>Если вам нужен экспорт, запросите его у администратора ноды до отправки запроса на удаление. Окончательное удаление аккаунта после 7 дней необратимо.</p>
       </div>
       <div lang="en"><p>Barkfluff has a gRPC method <code>Users.ExportData</code>. It produces JSON data:</p>
       <ul>
@@ -225,27 +225,27 @@
         <li><code>messages.json</code> — messages and chats the user participates in;</li>
         <li><code>files.json</code> — metadata of files linked to the profile and messages.</li>
       </ul>
-      <p>If you need an export before deletion, state that in your request to the node administrator. Deletion is irreversible — export what matters in advance.</p>
+      <p>If you need an export, request it from the node administrator before submitting the deletion request. Final account deletion after 7 days is irreversible.</p>
       </div>
     </div>
   </section>
   <section class="sec">
-    <div><span class="idx">7</span><h2><span lang="ru">Частичное удаление и отзыв доступа</span><span lang="en">Partial deletion and access revocation</span></h2></div>
+    <div><span class="idx">7</span><h2><span lang="ru">Что происходит с аккаунтом и его данными</span><span lang="en">What happens to the account and its data</span></h2></div>
     <div>
       <div lang="ru"><ul>
-        <li>Сообщения можно удалять через функции клиента, использующие Messages API.</li>
-        <li>Активные сессии можно завершать через управление устройствами.</li>
-        <li>Firebase token хранится в Users.UserDevices и используется для push-уведомлений.</li>
-        <li>Аватар и постер профиля меняются или очищаются через функции профиля и персонализации.</li>
-        <li>Входящие федеративные личные чаты можно запретить в настройках приватности, не удаляя аккаунт.</li>
+        <li>В течение 7 дней после перевода аккаунта в состояние «в удалении» профиль уже отображается собеседникам как «Удалённый пользователь», а чат доступен только для чтения.</li>
+        <li>По окончании 7 дней аккаунт удаляется окончательно и без возможности отмены.</li>
+        <li>Удаляются пароль, настройки двухфакторной аутентификации, привязка Telegram, коды восстановления, сессии, устройства и push-токены, а также ключи шифрования устройств (prekeys).</li>
+        <li>Удаляются email, имя и фамилия, био, аватар и постер профиля, настройки приватности и персонализации, папки чатов и бейджи. Боты аккаунта также удаляются, а username освобождается.</li>
+        <li>Для сохранения структуры чатов и истории остаётся обезличенная запись без персональных данных, которая отображается как «Удалённый пользователь» без аватара и времени входа. Уже отправленные сообщения и вложения остаются в истории собеседников; написать удалённому пользователю нельзя.</li>
       </ul>
       </div>
       <div lang="en"><ul>
-        <li>Messages can be deleted through client features that use the Messages API.</li>
-        <li>Active sessions can be terminated through device management.</li>
-        <li>The Firebase token is stored in Users.UserDevices and used for push notifications.</li>
-        <li>The profile avatar and poster can be changed or cleared through the profile and personalization features.</li>
-        <li>Incoming federated private chats can be refused in the privacy settings without deleting the account.</li>
+        <li>During the 7-day pending-deletion period, other users already see the profile as “Deleted user,” and the chat is read-only.</li>
+        <li>When the 7 days end, the account is permanently deleted and deletion can no longer be cancelled.</li>
+        <li>The password, two-factor authentication settings, Telegram link, recovery codes, sessions, devices and push tokens, and device encryption keys (prekeys) are deleted.</li>
+        <li>The email, first and last names, bio, avatar and profile poster, privacy and personalization settings, chat folders and badges are deleted. The account's bots are also deleted, and the username is released.</li>
+        <li>An anonymized record without personal data remains to preserve chat structure and history. It is shown as “Deleted user,” without an avatar or last-seen time. Messages and attachments already sent remain in other participants' history; they cannot message the deleted user.</li>
       </ul>
       </div>
     </div>

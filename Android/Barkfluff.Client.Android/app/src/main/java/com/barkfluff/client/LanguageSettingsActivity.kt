@@ -1,5 +1,6 @@
 package com.barkfluff.client
 
+import android.graphics.drawable.InsetDrawable
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.barkfluff.client.data.GlobalParam
@@ -23,6 +24,8 @@ class LanguageSettingsActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
+
+        insetRadioButtons()
 
         val checkedId = when (globalParam.appLanguage) {
             GlobalParam.LANGUAGE_RU -> R.id.radioRussian
@@ -53,5 +56,21 @@ class LanguageSettingsActivity : AppCompatActivity() {
         super.onResume()
         NotificationHelper.createChannels(this)
         MediaSendNotification.ensureChannel(this)
+    }
+
+    /**
+     * CompoundButton рисует кружок вплотную к краю, игнорируя padding, поэтому отодвигаем его
+     * прозрачной вставкой — так же, как шевроны в других строках настроек (20dp от края).
+     */
+    private fun insetRadioButtons() {
+        val inset = resources.getDimensionPixelSize(R.dimen.settings_radio_end_inset)
+        val radios = (0 until binding.languageRadioGroup.childCount)
+            .map(binding.languageRadioGroup::getChildAt)
+            .filterIsInstance<android.widget.RadioButton>()
+        radios.forEach { radio ->
+            val drawable = radio.buttonDrawable ?: return@forEach
+            // Строки в RTL-раскладке: кружок справа, значит вставка нужна справа.
+            radio.buttonDrawable = InsetDrawable(drawable, 0, 0, inset, 0)
+        }
     }
 }

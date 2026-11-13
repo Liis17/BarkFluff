@@ -17,7 +17,7 @@ Users владеет локальными профилями, устройств
 ## Интеграции
 
 - Messages, Identity, Files, Bots, Onliner и Federation вызывают UsersServerApi для профиля, устройства, privacy, ботов и remote UUID mappings.
-- `Consumers/SessionRevokedConsumer.cs` обновляет локальный token revocation cache; `Infrastructure/UserInfoQueueSender.cs` публикует изменения профиля.
+- `Consumers/SessionRevokedConsumer.cs` обновляет локальный token revocation cache; `Infrastructure/UserInfoQueueSender.cs` публикует изменения профиля и сигнал `ChatFoldersChanged` (через `Features/ChatFolders/ChatFoldersChangedBehavior.cs`).
 - Тесты: `Tests/BarkFluff.Users.Tests`; общий helper использует InMemory, отдельные SQLite-тесты проверяют relational concurrency.
 
 ← [[Backend/Users]]

@@ -7,6 +7,7 @@ using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Shared.Queue.Federation;
 
 using MediatR;
@@ -36,6 +37,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
     private readonly ReplyPreviewResolver _replyPreviewResolver;
+    private readonly UserAccountStatusCache _userAccountStatusCache;
     private readonly ILogger<SendMessageCommandHandler> _logger;
 
     private readonly Dictionary<UploadFileType, Domain.MessageAttachmentType> _attachmentMap =
@@ -53,9 +55,11 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     public SendMessageCommandHandler(ChatsStorage chatsStorage, UsersServerApi.UsersServerApiClient usersServerApiClient,
         UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient, ChatCache chatCache, MessagesStorage messagesStorage,
         MessageQueueSender messageQueueSender, IConfiguration configuration, MetricsCollector metrics,
-        ReplyPreviewResolver replyPreviewResolver, ILogger<SendMessageCommandHandler> logger)
+        ReplyPreviewResolver replyPreviewResolver, UserAccountStatusCache userAccountStatusCache,
+        ILogger<SendMessageCommandHandler> logger)
     {
         _replyPreviewResolver = replyPreviewResolver;
+        _userAccountStatusCache = userAccountStatusCache;
         _chatsStorage = chatsStorage;
         _usersServerApiClient = usersServerApiClient;
         _userContext = userContext;
@@ -240,12 +244,12 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogDebug("Проверка доступа пользователя {UserId} к чату {ChatId}", senderId, chatId.Value);
 
-            var hasAccess = await _chatsStorage.CheckAccessToChat(
+            var chat = await _chatsStorage.GetChatForUser(
                 chatId.Value,
                 senderId,
                 cancellationToken);
 
-            if (!hasAccess)
+            if (chat is null)
             {
                 _logger.LogWarning(
                     "Пользователь {UserId} не имеет доступа к чату {ChatId}",
@@ -253,6 +257,16 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                     chatId.Value
                 );
                 throw new NoAccessToChatException();
+            }
+
+            if (chat is { Type: ChatType.Regular, IsGroupChat: false, IsFederated: false })
+            {
+                var peerId = chat.Members?.FirstOrDefault(member => member.UserId != senderId)?.UserId;
+                if (peerId.HasValue)
+                {
+                    UserAccountStatusGuard.EnsureActive(await _userAccountStatusCache.GetStatusAsync(
+                        peerId.Value, _usersServerApiClient, cancellationToken));
+                }
             }
 
             // Fed-чат, отклонённый partner-нодой (privacy DenyFederatedDm, этап 2.5) — понятная
@@ -281,6 +295,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             var personRepose = await _usersServerApiClient.GetByIdAsync(
                 new GetByIdRequest { UserId = request.UserId!.Value },
                 cancellationToken: cancellationToken);
+            UserAccountStatusGuard.EnsureActive(personRepose.User.AccountStatus);
 
             var chatIdWithPerson = await _chatsStorage.GetUserChatIdWithPerson(
                 personRepose.User.Id,

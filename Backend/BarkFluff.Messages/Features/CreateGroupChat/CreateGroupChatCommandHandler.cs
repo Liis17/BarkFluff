@@ -1,10 +1,12 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Domain;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Messages.Mapping;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
 
 using MediatR;
@@ -20,6 +22,7 @@ using Infrastructure;
 public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatCommand, CreateGroupChatResponse>
 {
     private readonly UserContext _userContext;
+    private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly FilesServerApi.FilesServerApiClient _filesServerApiClient;
     private readonly ChatsStorage _chatsStorage;
     private readonly MessagesStorage _messagesStorage;
@@ -27,11 +30,13 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
     private readonly MetricsCollector _metrics;
     private readonly ILogger<CreateGroupChatCommandHandler> _logger;
 
-    public CreateGroupChatCommandHandler(UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient,
+    public CreateGroupChatCommandHandler(UserContext userContext, UsersServerApi.UsersServerApiClient usersClient,
+        FilesServerApi.FilesServerApiClient filesServerApiClient,
         ChatsStorage chatsStorage, MessagesStorage messagesStorage, MessageQueueSender messageQueueSender,
         MetricsCollector metrics, ILogger<CreateGroupChatCommandHandler> logger)
     {
         _userContext = userContext;
+        _usersClient = usersClient;
         _filesServerApiClient = filesServerApiClient;
         _chatsStorage = chatsStorage;
         _messagesStorage = messagesStorage;
@@ -61,6 +66,14 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
         if (!request.UserIds.Contains(_userContext.UserId))
         {
             request.UserIds.Add(_userContext.UserId);
+        }
+
+        var users = await _usersClient.ListByIdsAsync(
+            new ListByIdsRequest { Ids = { request.UserIds.Distinct() } },
+            cancellationToken: cancellationToken);
+        foreach (var user in users.Users.Where(user => user.Id != _userContext.UserId))
+        {
+            UserAccountStatusGuard.EnsureActive(user.AccountStatus);
         }
 
         string? pictureUrl = null;

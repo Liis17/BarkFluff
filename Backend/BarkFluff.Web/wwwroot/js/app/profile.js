@@ -41,12 +41,16 @@
             if (!d || !d.user) return;
             var user = d.user;
 
+            var restricted = BF.utils.isRestrictedUser(user);
+            var displayName = restricted
+                ? BF.utils.restrictedUserName(user)
+                : [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username;
             if (profilePoster) {
-                BF.files.loadResilientBackground(profilePoster, user.profilePosterFileId, false);
+                BF.files.loadResilientBackground(profilePoster, restricted ? null : user.profilePosterFileId, false);
             }
 
-            var initial = (user.firstName || user.username || '?')[0].toUpperCase();
-            if (user.profilePicture) {
+            var initial = (displayName || '?')[0].toUpperCase();
+            if (!restricted && user.profilePicture) {
                 var avImg = document.createElement('img');
                 avImg.src = user.profilePicture;
                 avImg.alt = '';
@@ -54,27 +58,29 @@
             } else {
                 profileAvatar.textContent = initial;
             }
-            profileName.textContent = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username;
-            if (user.isBot) profileName.insertAdjacentHTML('beforeend', deps.botBadgeMarkup());
-            profileUsername.textContent = user.username ? '@' + user.username : '';
-            profileBio.textContent = user.bio || '';
-            profileBio.style.display = user.bio ? 'block' : 'none';
+            profileName.textContent = displayName;
+            if (user.isBot && !restricted) profileName.insertAdjacentHTML('beforeend', deps.botBadgeMarkup());
+            profileUsername.textContent = !restricted && user.username ? '@' + user.username : '';
+            profileBio.textContent = restricted ? '' : user.bio || '';
+            profileBio.style.display = !restricted && user.bio ? 'block' : 'none';
 
             var online = deps.isUserOnline(userId);
             var entry = deps.getOnlineEntry(userId);
-            profileStatus.textContent = online
-                ? BF.i18n.t('status.online')
-                : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
-            profileStatus.className = 'profile-status-line' + (online ? ' online' : '');
-            profileStatus.hidden = !!user.isBot;
-            deps.setCallButtonsVisible(!user.isBot);
+            profileStatus.textContent = restricted
+                ? ''
+                : online
+                  ? BF.i18n.t('status.online')
+                  : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
+            profileStatus.className = 'profile-status-line' + (!restricted && online ? ' online' : '');
+            profileStatus.hidden = restricted || !!user.isBot;
+            deps.setCallButtonsVisible(!restricted && !user.isBot);
 
             var _profileUserId = $('#profileUserId');
             var _profileChatId = $('#profileChatId');
             if (_profileUserId) _profileUserId.textContent = user.id;
             if (_profileChatId) _profileChatId.textContent = deps.getCurrentChatId() || '—';
 
-            if (user.registrationDate) {
+            if (!restricted && user.registrationDate) {
                 profileRegDate.textContent = new Date(user.registrationDate).toLocaleDateString('ru-RU', {
                     day: 'numeric',
                     month: 'long',
@@ -85,7 +91,7 @@
             }
 
             profileBadges.innerHTML = '';
-            if (user.badges && user.badges.length > 0) {
+            if (!restricted && user.badges && user.badges.length > 0) {
                 user.badges.forEach(function (b) {
                     var el = document.createElement('div');
                     el.className = 'profile-badge';

@@ -16,7 +16,11 @@ import com.barkfluff.client.domain.model.AuthenticationChallenge
 import com.barkfluff.client.domain.model.AuthenticationChallengeState
 import com.barkfluff.client.domain.model.AuthenticationCompletion
 import com.barkfluff.client.domain.model.AuthenticationErrorCodes
+import com.barkfluff.client.domain.model.AccountRestriction
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.domain.model.AuthenticationFactor
+import com.barkfluff.client.utils.accountRestrictionDetails
+import com.barkfluff.client.utils.accountRestrictionTitle
 import com.barkfluff.client.utils.configureImeInsets
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -86,6 +90,7 @@ class AuthenticationChallengeDialog(
         content.addView(switchFactor)
 
         var completed = false
+        var restrictionError: AuthenticationChallengeErrorException? = null
         val dialog = MaterialAlertDialogBuilder(activity)
             .setTitle(title)
             .setView(content)
@@ -107,6 +112,33 @@ class AuthenticationChallengeDialog(
             result.onFailure { error.text = it.message ?: activity.getString(R.string.auth_error); error.visibility = View.VISIBLE }
             result.onSuccess { completion ->
                 when {
+                    completion.errorCode == AuthenticationErrorCodes.ACCOUNT_BLOCKED ||
+                        completion.errorCode == AuthenticationErrorCodes.ACCOUNT_PENDING_DELETION -> {
+                        val accountStatus = completion.accountRestriction?.status ?:
+                            if (completion.errorCode == AuthenticationErrorCodes.ACCOUNT_PENDING_DELETION) {
+                                AccountStatus.PENDING_DELETION
+                            } else {
+                                AccountStatus.BLOCKED
+                            }
+                        val restriction = completion.accountRestriction ?: AccountRestriction(accountStatus, "", null)
+                        val titleText = activity.accountRestrictionTitle(accountStatus)
+                        val details = activity.accountRestrictionDetails(restriction)
+                        restrictionError = AuthenticationChallengeErrorException(
+                            completion.errorCode,
+                            listOf(titleText, details).filter(String::isNotBlank).joinToString("\n\n"),
+                        )
+                        dialog.setTitle(titleText)
+                        status.text = details
+                        error.visibility = View.GONE
+                        codeLayout.visibility = View.GONE
+                        telegram.visibility = View.GONE
+                        resend.visibility = View.GONE
+                        switchFactor.visibility = View.GONE
+                        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)?.apply {
+                            text = activity.getString(R.string.btn_close)
+                            visibility = View.VISIBLE
+                        }
+                    }
                     completion.errorCode.isNotBlank() -> {
                         error.text = activity.getString(R.string.auth_invalid_code)
                         error.visibility = View.VISIBLE
@@ -179,7 +211,7 @@ class AuthenticationChallengeDialog(
                 when (challenge.state) {
                     AuthenticationChallengeState.APPROVED -> {
                         showCompletion()
-                        !completed
+                        !completed && restrictionError == null
                     }
                     AuthenticationChallengeState.REJECTED -> {
                         finish(Result.failure(IllegalStateException(activity.getString(R.string.auth_challenge_rejected))))
@@ -199,10 +231,16 @@ class AuthenticationChallengeDialog(
         }
 
         dialog.setOnShowListener {
+            dialog.configureImeInsets()
             dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                activity.lifecycleScope.launch { showCompletion() }
+                restrictionError?.let { finish(Result.failure(it)) }
+                    ?: activity.lifecycleScope.launch { showCompletion() }
             }
             dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
+                restrictionError?.let {
+                    finish(Result.failure(it))
+                    return@setOnClickListener
+                }
                 activity.lifecycleScope.launch { controller.cancel() }
                 finish(Result.failure(java.util.concurrent.CancellationException("Authentication challenge cancelled")))
             }

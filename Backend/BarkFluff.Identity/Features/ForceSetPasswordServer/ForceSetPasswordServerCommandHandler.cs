@@ -47,6 +47,19 @@ public class ForceSetPasswordServerCommandHandler : IRequestHandler<ForceSetPass
             }
 
             username = userInfo.User?.Username ?? string.Empty;
+            if (userInfo.User.AccountStatus == AccountStatus.Deleted)
+                throw new RpcException(new Status(StatusCode.FailedPrecondition,
+                    "Deleted accounts cannot have credentials changed"));
+
+            if (userInfo.User.AccountStatus != AccountStatus.Active)
+            {
+                var restriction = await _usersClient.GetAccountRestrictionAsync(
+                    new GetAccountRestrictionRequest { UserId = request.UserId }, cancellationToken: cancellationToken);
+                if (restriction.Restriction.Status == AccountStatus.Deleted)
+                    throw new RpcException(new Status(StatusCode.FailedPrecondition,
+                        "Deleted accounts cannot have credentials changed"));
+                username = restriction.Username;
+            }
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.FailedPrecondition)
         {

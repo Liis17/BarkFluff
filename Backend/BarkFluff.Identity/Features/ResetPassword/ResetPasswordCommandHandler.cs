@@ -87,7 +87,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
 
         var user = await _usersClient.FindByLoginAsync(usersRequest);
 
-        if (user.User is null || user.User.IsBot)
+        if (user.User is null || user.User.IsBot || user.User.AccountStatus != AccountStatus.Active)
         {
             // Защита от энумерации: не раскрываем факт существования пользователя.
             // Why: endpoint сброса пароля не должен позволять перебирать логины/email.

@@ -203,7 +203,7 @@ public sealed partial class MessengerViewModel : ObservableObject
 
             foreach (var user in result.users)
             {
-                SearchResults.Add(new UserSearchResultViewModel(user));
+                SearchResults.Add(new UserSearchResultViewModel(user, _localization));
             }
 
             OnPropertyChanged(nameof(IsSearchResultsVisible));
@@ -262,7 +262,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     private async Task SendAsync()
     {
         var currentUserId = _messenger.CurrentUserId;
-        if (currentUserId is null || SelectedChat is null || string.IsNullOrWhiteSpace(DraftText))
+        if (currentUserId is null || SelectedChat is null || !SelectedChat.CanSend || string.IsNullOrWhiteSpace(DraftText))
         {
             return;
         }
@@ -632,6 +632,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         var firstName = string.Empty;
         var lastName = string.Empty;
         var username = string.Empty;
+        var accountStatus = BarkFluff.Proto.Users.AccountStatus.Active;
         long? peerUserId = null;
         // Chat.Picture сервер отдаёт готовой ссылкой на файл, а не идентификатором,
         // поэтому её нельзя разрешать через Files — она уже готова к показу.
@@ -646,17 +647,31 @@ public sealed partial class MessengerViewModel : ObservableObject
                 var userResult = await _messenger.GetUserDataAsync(otherMember.UserId);
                 if (userResult.Error.IsSuccess && userResult.Data is not null)
                 {
-                    firstName = userResult.Data.FirstName;
-                    lastName = userResult.Data.LastName;
-                    username = userResult.Data.Username;
-                    title = string.Join(' ', new[] { firstName, lastName }.Where(name => !string.IsNullOrWhiteSpace(name)));
-                    title = string.IsNullOrWhiteSpace(title) ? _localization.GetString("Messenger_Chat") : title;
-                    avatarUrl = userResult.Data.ProfilePicturePreviewUrl;
+                    accountStatus = userResult.Data.AccountStatus;
+                    if (accountStatus is BarkFluff.Proto.Users.AccountStatus.Blocked
+                        or BarkFluff.Proto.Users.AccountStatus.PendingDeletion
+                        or BarkFluff.Proto.Users.AccountStatus.Deleted)
+                    {
+                        title = _localization.GetString(accountStatus == BarkFluff.Proto.Users.AccountStatus.Blocked
+                            ? "Messenger_UserBlocked"
+                            : "Messenger_UserDeleted");
+                        firstName = title;
+                        avatarUrl = string.Empty;
+                    }
+                    else
+                    {
+                        firstName = userResult.Data.FirstName;
+                        lastName = userResult.Data.LastName;
+                        username = userResult.Data.Username;
+                        title = string.Join(' ', new[] { firstName, lastName }.Where(name => !string.IsNullOrWhiteSpace(name)));
+                        title = string.IsNullOrWhiteSpace(title) ? _localization.GetString("Messenger_Chat") : title;
+                        avatarUrl = userResult.Data.ProfilePicturePreviewUrl;
+                    }
                 }
             }
         }
 
-        return new ChatItemViewModel(chat, title, firstName, lastName, avatarUrl, peerUserId, _localization, username);
+        return new ChatItemViewModel(chat, title, firstName, lastName, avatarUrl, peerUserId, _localization, username, accountStatus);
     }
 
     private async Task<MessageItemViewModel> CreateMessageItemAsync(MessageModel message, long currentUserId)
@@ -1011,9 +1026,23 @@ public sealed partial class MessengerViewModel : ObservableObject
 
 public sealed class UserSearchResultViewModel
 {
-    public UserSearchResultViewModel(UserData user)
+    public UserSearchResultViewModel(UserData user, ILocalizationService localization)
     {
         UserId = user.Id;
+        IsRestricted = user.AccountStatus is BarkFluff.Proto.Users.AccountStatus.Blocked
+            or BarkFluff.Proto.Users.AccountStatus.PendingDeletion
+            or BarkFluff.Proto.Users.AccountStatus.Deleted;
+        if (IsRestricted)
+        {
+            Username = string.Empty;
+            UsernameLabel = string.Empty;
+            AvatarUrl = string.Empty;
+            DisplayName = localization.GetString(user.AccountStatus == BarkFluff.Proto.Users.AccountStatus.Blocked
+                ? "Messenger_UserBlocked"
+                : "Messenger_UserDeleted");
+            return;
+        }
+
         Username = user.Username;
         DisplayName = string.Join(' ', new[] { user.FirstName, user.LastName }.Where(name => !string.IsNullOrWhiteSpace(name)));
         DisplayName = string.IsNullOrWhiteSpace(DisplayName) ? Username : DisplayName;
@@ -1028,6 +1057,7 @@ public sealed class UserSearchResultViewModel
     public string Username { get; }
     public string UsernameLabel { get; }
     public string AvatarUrl { get; }
+    public bool IsRestricted { get; }
 }
 
 public sealed partial class ChatItemViewModel : ObservableObject
@@ -1042,7 +1072,8 @@ public sealed partial class ChatItemViewModel : ObservableObject
         string avatarUrl,
         long? peerUserId,
         ILocalizationService localization,
-        string username = "")
+        string username = "",
+        BarkFluff.Proto.Users.AccountStatus accountStatus = BarkFluff.Proto.Users.AccountStatus.Active)
     {
         _localization = localization;
         Definition = chat;
@@ -1053,6 +1084,7 @@ public sealed partial class ChatItemViewModel : ObservableObject
         Username = username;
         AvatarUrl = avatarUrl;
         PeerUserId = peerUserId;
+        AccountStatus = accountStatus;
         IsPrivate = chat.ChatType == ChatType.Private;
         Preview = IsPrivate ? string.Empty : CreatePreview(chat.LastMessage?.Content?.Text ?? string.Empty, 20);
         UnreadCount = chat.CountUnread;
@@ -1070,6 +1102,16 @@ public sealed partial class ChatItemViewModel : ObservableObject
 
     /// <summary>Собеседник личного чата; <c>null</c> у групповых — им присутствие не показывается.</summary>
     public long? PeerUserId { get; }
+    public BarkFluff.Proto.Users.AccountStatus AccountStatus { get; }
+    public bool IsRestricted => AccountStatus is BarkFluff.Proto.Users.AccountStatus.Blocked
+        or BarkFluff.Proto.Users.AccountStatus.PendingDeletion
+        or BarkFluff.Proto.Users.AccountStatus.Deleted;
+    public bool CanSend => !IsRestricted;
+    public string RestrictionMessage => !IsRestricted
+        ? string.Empty
+        : _localization.GetString(AccountStatus == BarkFluff.Proto.Users.AccountStatus.Blocked
+            ? "Messenger_ReadOnlyBlocked"
+            : "Messenger_ReadOnlyDeleted");
 
     // Превью и время последней активности переписывает входящее сообщение, поэтому они
     // наблюдаемые, а не вычисленные один раз в конструкторе.
@@ -1091,7 +1133,7 @@ public sealed partial class ChatItemViewModel : ObservableObject
     private DateTimeOffset? _lastSeen;
     public bool IsPrivate { get; }
     public bool IsPrivateAccepted => !IsPrivate || Definition.PrivateInviteState == PrivateChatInviteState.Accepted;
-    public bool HasPresence => PeerUserId is not null;
+    public bool HasPresence => PeerUserId is not null && !IsRestricted;
     public string PresenceLabel => LastSeenFormatter.Format(_localization, IsOnline, LastSeen, DateTimeOffset.Now);
 
     /// <summary>В WinUI нет <c>StringFormat</c>, поэтому время приходит в разметку готовой строкой.</summary>

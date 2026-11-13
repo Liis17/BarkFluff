@@ -82,7 +82,8 @@ function challenge(options) {
         getFactor: () => options.factor || 0,
         getNeedsCode: () => !!options.needsCode,
         getAvailableFactorsList: () => options.available || [],
-        getTelegramUrl: () => options.telegramUrl || ''
+        getTelegramUrl: () => options.telegramUrl || '',
+        getAccountRestriction: () => options.restriction || null
     };
 }
 
@@ -91,7 +92,8 @@ function completed(options) {
     return {
         getErrorCode: () => options.error || '',
         getState: () => options.state === undefined ? 5 : options.state,
-        getSession: () => options.session === false ? null : { token: 'session' }
+        getSession: () => options.session === false ? null : { token: 'session' },
+        getAccountRestriction: () => options.restriction || null
     };
 }
 
@@ -345,6 +347,42 @@ async function testPasswordFlow() {
     assert.equal(h.context.BF.legal.flushCount, 1);
     assert.equal(h.context.window.location.href, '/messenger');
     assert.equal(h.tokens.modes[0], false);
+}
+
+async function testAccountRestrictionFlow() {
+    for (const [error, expectedTitle] of [
+        ['account_blocked', 'accountRestriction.blockedTitle'],
+        ['account_pending_deletion', 'accountRestriction.pendingTitle']
+    ]) {
+        const h = makeHarness();
+        await h.ready();
+        h.resolve(1);
+        h.beginQueue.push(Promise.resolve(challenge({ state: 2, factor: 0 })));
+        const reason = '<img src=x onerror=alert(1)>';
+        const restriction = {
+            getReason: () => reason,
+            getDeletionScheduledAt: () => ({ toDate: () => new Date('2030-04-05T06:07:00Z') })
+        };
+        h.completeQueue.push(Promise.resolve(completed({ error, restriction })));
+        h.getElement('loginInput').value = 'restricted-user';
+        submit(h);
+        await settle(h);
+        await enterPassword(h, 'correct-password');
+
+        const message = h.getElement('challengeStatus');
+        assert.match(message.textContent, new RegExp(expectedTitle));
+        assert.match(message.textContent, new RegExp(reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+        assert.equal(message.children.length, 0, 'server reason remains text and is never parsed as HTML');
+        assert.equal(h.getElement('challengeRetryBtn').hidden, true, 'restricted auth does not offer an automatic challenge retry');
+        assert.equal(h.getElement('changeLoginBtn').hidden, false, 'the user can switch to another account');
+        assert.equal(h.tokens.saved.length, 0, 'restricted auth never creates a client session');
+        if (error === 'account_pending_deletion') {
+            assert.match(message.textContent, /2030/);
+            assert.match(message.textContent, /accountRestriction.pendingHelp/);
+        } else {
+            assert.match(message.textContent, /accountRestriction.blockedHelp/);
+        }
+    }
 }
 
 async function testTelegramFlowAndQrRace() {
@@ -746,6 +784,7 @@ async function main() {
     await testInstallingUpgradeAndFailures();
     console.log('PASS: stale installed login shells block auth, activate updates on explicit action, reload once, and bound failed updates with cleanup');
     await testPasswordFlow();
+    await testAccountRestrictionFlow();
     await testTelegramFlowAndQrRace();
     await testUnknownAccountAndOldServer();
     await testPasswordCodeRetryAndSinglePoll();

@@ -114,6 +114,19 @@ public class HtmlEmailTemplateParserTests : IDisposable
     }
 
     [Fact]
+    public async Task Parse_AccountRestrictionReasonIsHtmlEncoded()
+    {
+        WriteTemplate("account_blocked.html", "<html>ꟿꟿꟿreasonꟿꟿꟿ</html>");
+        var parser = new HtmlEmailTemplateParser();
+
+        var result = await ParseInTestDir(parser, NotificationType.AccountBlocked,
+            new Dictionary<string, string> { ["reason"] = "<b>policy</b>" });
+
+        result.Should().Contain("&lt;b&gt;policy&lt;/b&gt;");
+        result.Should().NotContain("<b>policy</b>");
+    }
+
+    [Fact]
     public async Task Parse_DoesNotModifyStaticTemplate()
     {
         WriteDefaultTemplate("<html><body>Hello World</body></html>");
@@ -158,6 +171,10 @@ public class HtmlEmailTemplateParserTests : IDisposable
     [InlineData(NotificationType.PasswordChanged, "password_changed.html")]
     [InlineData(NotificationType.TwoFactorMethodChanged, "two_factor_method_changed.html")]
     [InlineData(NotificationType.PasswordChangedByAdmin, "password_changed_by_admin.html")]
+    [InlineData(NotificationType.AccountBlocked, "account_blocked.html")]
+    [InlineData(NotificationType.AccountUnblocked, "account_unblocked.html")]
+    [InlineData(NotificationType.AccountDeletionScheduled, "account_deletion_scheduled.html")]
+    [InlineData(NotificationType.AccountDeletionCancelled, "account_deletion_cancelled.html")]
     public async Task Parse_AllNotificationTypesHaveTemplates(NotificationType type, string expectedFile)
     {
         WriteTemplate(expectedFile, $"<html>{type}</html>");

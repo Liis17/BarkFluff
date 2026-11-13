@@ -242,6 +242,8 @@ public sealed partial class AuthenticationService
         if (!EmailAvailable) throw Unavailable("Email recovery is unavailable; use an existing session or a recovery code to sign in");
         await GuardRequest(input.Login, true, ct);
         var account = await FindUser(input.Login, ct);
+        if (account?.AccountStatus != BarkFluff.Proto.Users.AccountStatus.Active)
+            account = null;
         var settings = account == null ? null : await Settings(account.Id, ct);
         var (c, reference) = NewChallenge(AuthenticationPurpose.PasswordRecovery, account?.Id ?? 0, account?.Username ?? input.Login, settings);
         c.Factor = OtpTypeId.Email;
@@ -264,6 +266,9 @@ public sealed partial class AuthenticationService
         {
             if (c.Purpose != AuthenticationPurpose.PasswordRecovery || c.State != AuthChallengeState.Completed || c.ProofConsumed || c.UserId == 0)
                 throw Denied();
+            var restriction = await users.GetAccountRestrictionAsync(
+                new GetAccountRestrictionRequest { UserId = c.UserId }, cancellationToken: ct);
+            AccountRestrictionStatusGuard.ThrowIfInactive(restriction.Restriction.Status);
             await passwords.UpdateUserPasswordHash(c.UserId, PasswordHasher.HashPassword(input.Password));
             c.ProofConsumed = true;
             await InvalidatePending(await EnsureSettings(c.UserId, ct), c.Id, ct);

@@ -38,10 +38,15 @@ import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.AccountStatus
+import com.barkfluff.client.grpc.AccountRestrictionErrorCodes
+import com.barkfluff.client.grpc.grpcErrorCode
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.OnlineTimeFormatter
+import com.barkfluff.client.utils.accountStatusLabel
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
 import com.barkfluff.client.utils.showImeAware
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -480,27 +485,36 @@ class GroupInfoActivity : AppCompatActivity() {
             val members = result.getOrNull() ?: emptyList()
             val currentUserId = globalParam.userId
 
-            // Онлайн-статусы участников (batch).
-            val statuses = loadOnlineStatuses(members.map { it.userId })
-
-            val items = members.map { member ->
+            val profiles = members.map { member ->
                 async(Dispatchers.IO) {
-                    val name = "${member.firstName} ${member.lastName}".trim()
-                        .ifBlank { getString(R.string.group_member_id, member.userId) }
-                    val avatarFileId = userProfileGateway.user(member.userId).getOrNull()?.let { user ->
-                        avatarSourceFor(user)
-                    }
-                    val status = statuses[member.userId]
-                    GroupMemberAdapter.MemberItem(
-                        userId = member.userId,
-                        name = name,
-                        avatarFileId = avatarFileId,
-                        canRemove = member.userId != currentUserId,
-                        online = status?.first == true,
-                        subtitle = memberSubtitle(status)
-                    )
+                    member to userProfileGateway.user(member.userId).getOrNull()
                 }
             }.awaitAll()
+            val activeMemberIds = profiles.filter { (_, user) ->
+                user?.accountStatus == AccountStatus.ACTIVE
+            }.map { (member, _) -> member.userId }
+            val statuses = loadOnlineStatuses(activeMemberIds)
+
+            val items = profiles.map { (member, user) ->
+                val restricted = user?.accountStatus?.let { it != AccountStatus.ACTIVE } == true
+                val name = if (restricted) {
+                    accountStatusLabel(user!!.accountStatus)
+                } else {
+                    "${user?.firstName ?: member.firstName} ${user?.lastName ?: member.lastName}".trim()
+                }.ifBlank {
+                    getString(R.string.group_member_id, member.userId)
+                }
+                val avatarFileId = user?.takeUnless { restricted }?.let(::avatarSourceFor)
+                val status = statuses[member.userId]
+                GroupMemberAdapter.MemberItem(
+                    userId = member.userId,
+                    name = name,
+                    avatarFileId = avatarFileId,
+                    canRemove = member.userId != currentUserId,
+                    online = !restricted && status?.first == true,
+                    subtitle = if (restricted) "" else memberSubtitle(status)
+                )
+            }
 
             memberAdapter.submitList(items)
 
@@ -519,16 +533,20 @@ class GroupInfoActivity : AppCompatActivity() {
 
     private fun openMemberProfile(member: GroupMemberAdapter.MemberItem) {
         lifecycleScope.launch {
-            val personalChatId = if (member.userId != globalParam.userId) {
-                userDirectoryGateway.personChatId(member.userId).getOrNull()
+            val personalChatResult = if (member.userId != globalParam.userId) {
+                userDirectoryGateway.personChatId(member.userId)
             } else {
                 null
             }
+            val error = personalChatResult?.exceptionOrNull()
+            if (error != null && exitToLoginIfAccountRestricted(error)) return@launch
+            val unavailable = error?.grpcErrorCode().equals(AccountRestrictionErrorCodes.USER_UNAVAILABLE, ignoreCase = true)
+            val personalChatId = if (unavailable) "" else personalChatResult?.getOrNull() ?: chatId
 
             startActivity(
                 UserProfileActivity.createIntent(
                     this@GroupInfoActivity,
-                    chatId = personalChatId ?: chatId,
+                    chatId = personalChatId,
                     otherUserId = member.userId,
                     isGroupChat = false,
                     chatTitle = member.name,

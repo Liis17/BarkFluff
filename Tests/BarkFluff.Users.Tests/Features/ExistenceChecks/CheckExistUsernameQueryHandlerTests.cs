@@ -73,5 +73,20 @@ public class CheckExistUsernameQueryHandlerTests : IAsyncDisposable
         result.Exist.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task Handle_BlockedUsernameIsOccupiedAndDeletedUsernameIsFree()
+    {
+        var blocked = await _h.SeedUser(username: "blockedname");
+        blocked.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Blocked;
+        var deleted = await _h.SeedUser(username: "deletedname");
+        deleted.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Deleted;
+        await _h.DbContext.SaveChangesAsync();
+        var handler = new CheckExistUsernameQueryHandler(
+            _h.UsersStorage, CreateReservedService(), TestHelper.CreateLogger<CheckExistUsernameQueryHandler>());
+
+        (await handler.Handle(new CheckExistUsernameQuery { Username = "blockedname" }, CancellationToken.None)).Exist.Should().BeTrue();
+        (await handler.Handle(new CheckExistUsernameQuery { Username = "deletedname" }, CancellationToken.None)).Exist.Should().BeFalse();
+    }
+
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();
 }

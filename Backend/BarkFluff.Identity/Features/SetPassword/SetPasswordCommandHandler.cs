@@ -85,6 +85,13 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
 
         // Отправка уведомления об изменении пароля
         var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = _userContext.UserId });
+        var username = userInfo.User.Username;
+        if (userInfo.User.AccountStatus != AccountStatus.Active)
+        {
+            var restriction = await _usersClient.GetAccountRestrictionAsync(
+                new GetAccountRestrictionRequest { UserId = _userContext.UserId }, cancellationToken: cancellationToken);
+            username = restriction.Username;
+        }
         var userContacts = await _usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = _userContext.UserId });
 
         var locationInfo = await _locationClient.GetLocationString(_requestContext.IpAddress);
@@ -98,7 +105,7 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
                 CreatedAt = DateTime.UtcNow,
                 Payload = new Dictionary<string, string>
                 {
-                    {"username", userInfo.User.Username},
+                    {"username", username},
                     {"ip", _requestContext.IpAddress ?? string.Empty},
                     {"devicename", _requestContext.DeviceName ?? string.Empty},
                     {"os", _requestContext.OperationSystem ?? string.Empty},

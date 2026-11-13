@@ -23,4 +23,12 @@ public enum NotificationType
     TwoFactorMethodChanged = 9,
 
     PasswordChangedByAdmin = 10,
+
+    AccountBlocked = 11,
+
+    AccountUnblocked = 12,
+
+    AccountDeletionScheduled = 13,
+
+    AccountDeletionCancelled = 14,
 }

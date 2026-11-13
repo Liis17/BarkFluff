@@ -20,6 +20,8 @@ Parent: [[Clients/Android]]
 
 AndroidManifest.xml → SplashActivity → WelcomeActivity при первом запуске или SelectServerActivity → LoginActivity. При наличии сессии переход идёт в MainActivity. SelectServerActivity использует ServerDiscoveryGateway: Navigator возвращает каталог и Files media origin; Beacon возвращает service endpoints. ServerInfoPrefs.applyServerInfo сохраняет актуальную конфигурацию в GlobalParam.
 
+LoginActivity делегирует challenge-поток AuthenticationChallengeController; серверная блокировка или ожидающее удаление показываются отдельным состоянием с причиной и, для удаления, локальной датой. Ограничение refresh/FastAuth по gRPC-коду завершает сессию и возвращает на вход с понятным сообщением.
+
 Основные исходники: Android/Barkfluff.Client.Android/app/src/main/AndroidManifest.xml, app/SplashActivity.kt, app/SelectServerActivity.kt, app/LoginActivity.kt, app/utils/ServerInfoPrefs.kt, core/domain/gateway/DomainGateways.kt.
 
 ### RPC и TLS
@@ -42,6 +44,8 @@ MainActivity → ChatsFragment → ChatActivity. ChatActivity создаёт Cha
 
 ComposerAttachmentStore сохраняет preview-файлы и metadata. ChatDraftRepository синхронизирует текстовый черновик; OutgoingMessageQueue передаёт принятый текст/media в SQLCipher outbox. WorkManager запускает OutgoingMessageWorker, который использует ChatRepository через MessageGateway/FileMediaGateway. Идемпотентность send/upload обеспечивается стабильным client operation ID.
 
+Для ограниченного peer ChatDisplayResolver и Room сохраняют статус аккаунта; UI показывает локализованное имя и заглушку аватара. В direct-чате отключены отправка, вложения, голосовые и звонок, история остаётся доступной. UserUnavailable считается постоянной ошибкой outbox.
+
 Основные исходники: app/ChatActivity.kt, app/ChatViewModel.kt, app/ChatStateModules.kt, app/chat/RegularChatSession.kt, app/adapter/MessageRowProjector.kt, app/adapter/MessageAdapter.kt, app/drafts/ChatDraftRepository.kt, app/drafts/ComposerAttachmentStore.kt, app/send/OutgoingMessageQueue.kt, app/send/OutgoingMessageWorker.kt, app/cache/ChatCacheRepository.kt.
 
 ### Фоновые события и уведомления
@@ -54,7 +58,7 @@ BarkFluffApplication задаёт process lifecycle. RealtimeService при во
 
 - Calls: CallsFragment → CallActivity → LiveKitCallEngine; CallsApi и события принадлежат core/calls и app/calls orchestration. Incoming-call service связывает FCM/realtime, Android Telecom и foreground UI.
 - E2E: PrivateChatRepository обрабатывает passphrase-based private chat; SecretChatRepository содержит libsignal scaffold, но текущий handshake заблокирован отсутствующими Kyber-полями в server prekey proto.
-- Поиск: SearchActivity → SearchViewModel/SearchScreen; ChatSearchActivity → ChatSearchViewModel/MessageSearchViewModel/ChatSearchScreen.
+- Поиск: SearchActivity → SearchViewModel/SearchScreen; ограниченные результаты показываются с локальным статусным именем и без username/аватара. ChatSearchActivity → ChatSearchViewModel/MessageSearchViewModel/ChatSearchScreen.
 - Share: внешний ACTION_SEND → ShareReceiverActivity → ShareConfirmBottomSheet → OutgoingMessageQueue.
 
 ## Границы ответственности
@@ -62,5 +66,5 @@ BarkFluffApplication задаёт process lifecycle. RealtimeService при во
 - ChatViewModel — внешний state/effect/intent контракт регулярного чата; ChatActivity не владеет основным timeline/composer/presence state.
 - MessageAdapter только отображает MessageRowUi и поднимает события через MessageRowEventSink. Projector определяет rows, отдельные контроллеры загружают вложения и воспроизводят audio.
 - UI/background adapters зависят от gateways, не от generated RPC stubs.
-- Room v7 владеет scoped cache, cached_user_badges, draft metadata, composer metadata, outbox и независимым журналом pending read actions. Файлы composer/outbox находятся в app-private noBackup staging.
+- Room v8 владеет scoped cache, AccountStatus профиля чата и `cached_user_badges`, draft/composer metadata, outbox и журналом pending read actions. `MIGRATION_6_7` добавляет кеш бейджей, `MIGRATION_7_8` — статус peer; файлы composer/outbox находятся в app-private noBackup staging.
 - Clear cache (StorageSettingsActivity) — выборочный диалог с подтверждением необратимых категорий. Границы очистки, account/server scope, синхронизация черновиков и сохранение worker для pending reads описаны в [[Clients/Android#Состояние обычного чата и durable отправка|Android — durable отправка]]. Logout использует полную очистку clearAll() и остаётся источником clearedEvents.

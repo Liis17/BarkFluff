@@ -4,7 +4,7 @@ using MediatR;
 
 namespace BarkFluff.Users.Features.ChatFolders.UpdateChatFolder;
 
-public class UpdateChatFolderCommand : IRequest<UpdateChatFolderResponse>
+public class UpdateChatFolderCommand : IRequest<UpdateChatFolderResponse>, IChatFoldersMutation
 {
     public string? FolderId { get; set; }
 

@@ -12,6 +12,7 @@ const publicProtoFiles = [
   'developers_api.proto',
   'identity_api.proto',
   'shared.proto',
+  'users_api.proto',
 ];
 
 let hasDrift = false;

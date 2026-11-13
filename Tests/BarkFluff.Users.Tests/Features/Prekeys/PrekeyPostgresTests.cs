@@ -23,6 +23,47 @@ namespace BarkFluff.Users.Tests.Features.Prekeys;
 public class PrekeyPostgresTests
 {
     [PrekeyPostgresFact]
+    public async Task ConcurrentDeletionClaimsLeaveAccountDeletedAndAvailableForIdempotentCleanup()
+    {
+        await using var database = await PrekeyDatabase.Create();
+        var user = new User
+        {
+            Username = $"deletion_{Guid.NewGuid():N}",
+            FirstName = "Deletion",
+            LastName = "Test",
+            RegistrationDate = DateTime.UtcNow,
+            AccountStatus = AccountStatus.PendingDeletion,
+            RestrictionReason = "requested",
+            RestrictedAt = DateTime.UtcNow.AddDays(-7),
+            DeletionScheduledAt = DateTime.UtcNow.AddMinutes(-1),
+            Contact = new UserContact { Email = "deletion@test.invalid" },
+        };
+        database.Context.Users.Add(user);
+        await database.Context.SaveChangesAsync();
+
+        var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var first = ClaimAfterStart();
+        var second = ClaimAfterStart();
+        start.SetResult();
+        var claimed = await Task.WhenAll(first, second);
+
+        claimed.SelectMany(ids => ids).Distinct().Should().ContainSingle().Which.Should().Be(user.Id);
+        await using var verifyContext = database.CreateContext();
+        var deleted = await verifyContext.Users.SingleAsync(item => item.Id == user.Id);
+        deleted.AccountStatus.Should().Be(AccountStatus.Deleted);
+        deleted.Username.Should().Be($"deleted-{deleted.Uuid:N}");
+        deleted.CleanupCompletedAt.Should().BeNull();
+        (await verifyContext.UserContacts.AnyAsync(contact => contact.UserId == user.Id)).Should().BeFalse();
+
+        async Task<List<long>> ClaimAfterStart()
+        {
+            await start.Task;
+            await using var context = database.CreateContext();
+            return await new UsersStorage(context).ClaimAccountsForDeletion(10, CancellationToken.None);
+        }
+    }
+
+    [PrekeyPostgresFact]
     public async Task ConcurrentFetchesConsumeDistinctKeysAndThenUseLastResort()
     {
         await using var database = await PrekeyDatabase.Create();
@@ -293,7 +334,7 @@ public class PrekeyPostgresTests
     public async Task LegacySchemaUpgradePreservesEcBundleAndCreatesNullablePqState()
     {
         await using var database = await PrekeyDatabase.Create("20260802000000_AddDevicePushPlatform");
-        var (user, device) = await SeedDeviceAsync(database.Context);
+        var (user, device) = await SeedLegacyDeviceAsync(database.Context);
         var identity = EcKey(1);
         var ec = EcKey(2);
         var signature = Signature(3);
@@ -365,6 +406,38 @@ public class PrekeyPostgresTests
         };
         context.UserDevices.Add(device);
         await context.SaveChangesAsync();
+        return (user, device);
+    }
+
+    // На legacy-схеме ещё нет колонок текущей модели User (например AccountStatus),
+    // поэтому пользователь и устройство вставляются SQL-запросом с колонками той миграции.
+    private static async Task<(User User, UserDevice Device)> SeedLegacyDeviceAsync(UsersContext context)
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var user = new User
+        {
+            Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Uuid = Guid.NewGuid(),
+            Username = $"prekey_{suffix}",
+            FirstName = "Prekey",
+            LastName = "Test",
+            RegistrationDate = DateTime.UtcNow,
+        };
+        await context.Database.ExecuteSqlInterpolatedAsync($@"
+            INSERT INTO ""Users""
+                (""Id"", ""Uuid"", ""Username"", ""FirstName"", ""LastName"", ""RegistrationDate"", ""IsDraft"", ""IsBot"", ""StorageLimitGb"")
+            VALUES ({user.Id}, {user.Uuid}, {user.Username}, {user.FirstName}, {user.LastName}, {user.RegistrationDate}, {false}, {false}, {1})");
+
+        var device = new UserDevice
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            OriginalName = "Prekey Test Device",
+            AuthorizedAt = DateTime.UtcNow,
+        };
+        await context.Database.ExecuteSqlInterpolatedAsync($@"
+            INSERT INTO ""UserDevices"" (""Id"", ""UserId"", ""OriginalName"", ""AuthorizedAt"")
+            VALUES ({device.Id}, {device.UserId}, {device.OriginalName}, {device.AuthorizedAt})");
         return (user, device);
     }
 

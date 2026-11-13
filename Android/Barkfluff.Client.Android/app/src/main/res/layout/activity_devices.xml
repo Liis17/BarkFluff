@@ -14,7 +14,7 @@
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="64dp"
             app:navigationIcon="@drawable/ic_back"
             app:title="@string/devices_title"
             app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
@@ -25,178 +25,168 @@
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="16dp">
 
-            <!-- QR-подключение — отдельная мягкая hero-карточка. -->
-            <com.google.android.material.card.MaterialCardView
+            <!-- QR-подключение — hero-карточка в цветах настроек. -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
-                app:cardCornerRadius="28dp"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp">
-                <LinearLayout
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_settings_item_single"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <ImageView
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:background="@drawable/bg_settings_tonal_square"
+                    android:importantForAccessibility="no"
+                    android:padding="18dp"
+                    android:src="@drawable/ic_qr_code"
+                    app:tint="@color/profile_settings_on_tonal_container" />
+
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-                    <ImageView
-                        android:layout_width="112dp"
-                        android:layout_height="112dp"
-                        android:background="@drawable/bg_settings_tonal_square"
-                        android:padding="24dp"
-                        android:importantForAccessibility="no"
-                        android:src="@drawable/ic_qr_code"
-                        app:tint="?attr/colorOnPrimaryContainer" />
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:text="@string/devices_hint"
-                        android:textAlignment="center"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/buttonConnectDevice"
-                        style="@style/Widget.Barkfluff.Settings2A.PrimaryButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="54dp"
-                        android:layout_marginTop="14dp"
-                        android:text="@string/devices_connect"
-                        app:icon="@drawable/ic_qr_code"
-                        app:iconGravity="textStart"
-                        app:iconPadding="8dp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                    android:layout_marginTop="14dp"
+                    android:text="@string/devices_hint"
+                    android:textAlignment="center"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="@color/profile_settings_on_surface_variant" />
 
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="24dp" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonConnectDevice"
+                    style="@style/Widget.Barkfluff.Settings2A.PrimaryButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/devices_connect"
+                    app:icon="@drawable/ic_qr_code"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp" />
 
-            <!-- Текущее устройство -->
+            </LinearLayout>
+
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginTop="22dp"
+                android:layout_marginBottom="8dp"
                 android:text="@string/devices_this_device"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textColor="?attr/colorOnSurface" />
+                android:textAppearance="@style/TextAppearance.Barkfluff.Settings2A.Section" />
 
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="12dp" />
-
-            <com.google.android.material.card.MaterialCardView
+            <!-- Текущее устройство и завершение остальных сессий — одна группа строк. -->
+            <LinearLayout
                 android:id="@+id/cardCurrentDevice"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="28dp"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground">
+                android:background="@drawable/bg_settings_item_top"
+                android:foreground="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:minHeight="72dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
+
+                <ImageView
+                    android:id="@+id/imageCurrentDeviceIcon"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_settings_tonal_circle"
+                    android:importantForAccessibility="no"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_smartphone"
+                    app:tint="@color/profile_settings_on_tonal_container" />
 
                 <LinearLayout
-                    android:id="@+id/layoutCurrentDevice"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
-                    <ImageView
-                        android:id="@+id/imageCurrentDeviceIcon"
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
-                        android:importantForAccessibility="no"
-                        android:src="@drawable/ic_smartphone"
-                        app:tint="?attr/colorPrimary" />
-
-                    <LinearLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:id="@+id/textCurrentDeviceName"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="14dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                        android:textColor="@color/profile_settings_on_surface" />
 
-                        <TextView
-                            android:id="@+id/textCurrentDeviceName"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textAppearance="?attr/textAppearanceTitleMedium"
-                            android:textColor="?attr/colorOnSurface" />
-
-                        <TextView
-                            android:id="@+id/textCurrentDeviceOriginalName"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:textAppearance="?attr/textAppearanceBodySmall"
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            android:visibility="gone" />
-
-                        <TextView
-                            android:id="@+id/textCurrentDeviceApp"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:textAppearance="?attr/textAppearanceBodySmall"
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            android:visibility="gone" />
-
-                    </LinearLayout>
+                    <TextView
+                        android:id="@+id/textCurrentDeviceDetails"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="@color/profile_settings_on_surface_variant"
+                        android:visibility="gone" />
 
                 </LinearLayout>
 
-            </com.google.android.material.card.MaterialCardView>
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/profile_settings_on_surface_variant" />
 
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="24dp" />
+            </LinearLayout>
 
-            <!-- Завершить все сессии -->
-            <com.google.android.material.button.MaterialButton
+            <LinearLayout
                 android:id="@+id/buttonTerminateAll"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/devices_terminate_others"
-                app:icon="@drawable/ic_logout"
-                app:iconGravity="textStart"
-                app:iconPadding="8dp"
-                style="@style/Widget.Barkfluff.Settings2A.ErrorButton"
-                android:textColor="@color/profile_settings_on_error_container"
-                app:backgroundTint="@color/profile_settings_error_container"
-                app:iconTint="@color/profile_settings_on_error_container"
-                app:cornerRadius="28dp"
-                android:enabled="false" />
+                android:layout_height="58dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/bg_settings_item_bottom"
+                android:foreground="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:visibility="gone">
 
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="24dp" />
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_logout"
+                    app:tint="?attr/colorError" />
 
-            <!-- Заголовок других устройств -->
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:text="@string/devices_terminate_others"
+                    android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                    android:textColor="?attr/colorError" />
+
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/textOtherDevicesTitle"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginTop="22dp"
+                android:layout_marginBottom="8dp"
                 android:text="@string/devices_other_devices"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textColor="?attr/colorOnSurface"
+                android:textAppearance="@style/TextAppearance.Barkfluff.Settings2A.Section"
                 android:visibility="gone" />
 
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="12dp" />
-
-            <!-- Список других устройств -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerDevices"
                 android:layout_width="match_parent"

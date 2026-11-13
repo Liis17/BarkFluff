@@ -233,7 +233,7 @@
 
     function checkAuth() { return BF.requireAuth(); }
 
-    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML.replace(/\"/g, '&quot;').replace(/'/g, '&#39;'); }
     function formatDate(s) { if (!s) return ''; return new Date(s).toLocaleDateString('ru-RU'); }
 
     async function loadBadges() {

@@ -41,5 +41,20 @@ public class GetUserContactsCommandHandlerTests : IAsyncDisposable
         await act.Should().ThrowAsync<UserNotFoundException>();
     }
 
+    [Fact]
+    public async Task Handle_RestrictedUser_HidesContactEmailAndProfile()
+    {
+        var user = await _h.SeedUser(username: "private-contact", firstName: "Private", email: "private@test.com");
+        user.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Blocked;
+        await _h.DbContext.SaveChangesAsync();
+        var handler = new GetUserContactsCommandHandler(_h.UsersStorage, TestHelper.CreateLogger<GetUserContactsCommandHandler>());
+
+        var result = await handler.Handle(new GetUserContactsCommand { UserId = user.Id }, CancellationToken.None);
+
+        result.User.FirstName.Should().Be("Заблокированный пользователь");
+        result.User.Username.Should().BeEmpty();
+        result.Contact.Email.Should().BeEmpty();
+    }
+
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();
 }

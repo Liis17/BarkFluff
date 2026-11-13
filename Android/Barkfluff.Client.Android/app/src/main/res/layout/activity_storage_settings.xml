@@ -90,6 +90,12 @@
                             android:textAppearance="?attr/textAppearanceTitleLarge"
                             android:textColor="@color/profile_settings_on_surface"
                             android:textStyle="bold" />
+                        <View
+                            android:id="@+id/skeletonStorageUsage"
+                            android:layout_width="96dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center_vertical"
+                            android:background="@drawable/bg_skeleton_bar" />
                     </LinearLayout>
 
                     <FrameLayout
@@ -113,6 +119,12 @@
                         android:layout_marginTop="8dp"
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="@color/profile_settings_on_surface_variant" />
+                    <View
+                        android:id="@+id/skeletonStorageLimit"
+                        android:layout_width="90dp"
+                        android:layout_height="12dp"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_skeleton_bar" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -178,6 +190,12 @@
                             android:textAppearance="?attr/textAppearanceTitleLarge"
                             android:textColor="@color/profile_settings_on_surface"
                             android:textStyle="bold" />
+                        <View
+                            android:id="@+id/skeletonLocalCacheUsage"
+                            android:layout_width="96dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center_vertical"
+                            android:background="@drawable/bg_skeleton_bar" />
                     </LinearLayout>
                     <FrameLayout
                         android:layout_width="match_parent"
@@ -199,6 +217,12 @@
                         android:layout_marginTop="8dp"
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="@color/profile_settings_on_surface_variant" />
+                    <View
+                        android:id="@+id/skeletonLocalCacheSummary"
+                        android:layout_width="150dp"
+                        android:layout_height="12dp"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_skeleton_bar" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -234,6 +258,11 @@
                         android:layout_height="wrap_content"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:textColor="@color/profile_settings_on_surface_variant" />
+                    <View
+                        android:id="@+id/skeletonImageCacheSize"
+                        android:layout_width="56dp"
+                        android:layout_height="14dp"
+                        android:background="@drawable/bg_skeleton_bar" />
                 </LinearLayout>
                 <Space android:layout_width="match_parent" android:layout_height="3dp" />
                 <LinearLayout
@@ -263,6 +292,11 @@
                         android:layout_height="wrap_content"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:textColor="@color/profile_settings_on_surface_variant" />
+                    <View
+                        android:id="@+id/skeletonChatCacheSize"
+                        android:layout_width="56dp"
+                        android:layout_height="14dp"
+                        android:background="@drawable/bg_skeleton_bar" />
                 </LinearLayout>
             </LinearLayout>
 

@@ -16,6 +16,8 @@
 - Webhook `/livekit/webhook` завершает записи комнаты и сообщает о входе/выходе участника. Таймаут звонка обрабатывает `CallRingTimeoutSweeper`.
 - События звонков идут через RabbitMQ; отдельная очередь с `InstanceId.Current` доставляет их локальным потокам устройств на каждом инстансе. При завершении Calls записывает системное сообщение через Messages.
 
+Инициирование, принятие и вход в личный звонок требуют статуса Active у собеседника. `CallLifecycleHandler` получает профиль через Users server client, настроенный для Calls, и отклоняет restricted peer через `UserUnavailableException`; проверка при Accept/Join закрывает блокировку, произошедшую после создания звонка. Групповые звонки не проверяют весь состав участников.
+
 Текущие ограничения `CallLifecycleHandler`: групповая история включает только звонки, инициированные текущим пользователем; `GetActiveCalls` проверяет членство, но не заполняет `participant_user_ids`. Наличие полей proto не означает их заполнение.
 
 Основные файлы: `Host/CallsApiService.cs`, `Features/CallLifecycle/CallLifecycleHandler.cs`, `Services/LiveKitTokenService.cs`, `Services/CallEventDispatcher.cs`, `Consumers/CallEventDeliveryConsumer.cs`, `BackgroundServices/CallRingTimeoutSweeper.cs`, `Persistence/CallsContext.cs`.

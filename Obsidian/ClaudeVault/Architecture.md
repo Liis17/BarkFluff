@@ -71,6 +71,12 @@ Identity high-risk RPC используют Redis `IIdentityAbuseGuard` с ат�
 
 SendMessage в Messages сохраняет сообщение и `NewMessageEvent` в одной PostgreSQL-транзакции через `MessagesStorage.AddMessageWithOutboxAsync`. Dispatcher claim-ит строки с lease и публикует со стабильным `EventId`; retry/reclaim дают **at-least-once**. Crash после publish до delivered допускает повтор; exactly-once consumer inbox не подразумевается. Область применения, lease/backoff/cleanup — [[Backend/Messages]]. Другие публикации нельзя автоматически считать transactional outbox.
 
+## Ограничение и удаление аккаунта
+
+AdminPanel (`users.block`/`users.delete`, SecurityAdmin + Owner, причина и Telegram step-up) вызывает Identity `SetAccountRestrictionServer`; Users остаётся источником статуса и маскирования профиля. Block/PendingDeletion закрывают вход, Identity удаляет refresh tokens/устройства и публикует отзыв сессий; Messages и Calls запрещают новые личные взаимодействия, Bots сохраняет owner restriction и отказывает токенам/обновлениям. `PendingDeletion` длится 7 дней. Identity worker под Redis lease забирает только просроченные записи через условный терминальный переход в Users, затем очищает Identity, профильные файлы Files и ботов; сообщения, вложения и история собеседников сохраняются. Развёртывай Notification раньше Identity: старая версия Notification не знает `NotificationType` 11–14.
+
+Остаточные риски: Users не имеет outbox для `UserChangedName`/`UserChangedAvatar`, а запись статуса и публикация `UserAccountStatusChanged` в Identity не атомарны. Ошибка публикации возвращается в RPC; восстановление — идемпотентный повтор того же действия администратором. Кеш статуса собеседника для DM в каждом Messages-инстансе инвалидируется broadcast-событием; периодической сверки нет, но после потери события запись истекает через 45 секунд и обновляется при следующей проверке. Bots сверяет статусы владельцев при старте и раз в минуту одним batch-запросом. `TokenRevocationCache` хранится в памяти каждого сервиса; после перезапуска уже выданный JWT заблокированного пользователя может работать до истечения, не дольше `JwtSettings.ExpiryMinutes` (по умолчанию 60 минут). Статус аккаунта между нодами федерации не распространяется.
+
 ## Браузерный поток
 
 Браузер использует gRPC-Web через [[Backend/Web]], а не нативные per-service каналы:

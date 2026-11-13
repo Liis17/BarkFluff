@@ -12,6 +12,8 @@ public class AdminPermissionsTests
         { AdminPermissions.UsersSessionsRevoke, new[] { AdminRole.Support, AdminRole.SecurityAdmin }, true },
         { AdminPermissions.UsersPasswordSet, new[] { AdminRole.Support, AdminRole.SecurityAdmin }, true },
         { AdminPermissions.Users2FaDisable, new[] { AdminRole.SecurityAdmin }, true },
+        { AdminPermissions.UsersBlock, new[] { AdminRole.SecurityAdmin }, true },
+        { AdminPermissions.UsersDelete, new[] { AdminRole.SecurityAdmin }, true },
         { AdminPermissions.BadgesManage, new[] { AdminRole.ContentAdmin }, true },
         { AdminPermissions.StickersManage, new[] { AdminRole.ContentAdmin }, true },
         { AdminPermissions.BotsManage, new[] { AdminRole.ContentAdmin }, true },
@@ -30,6 +32,21 @@ public class AdminPermissionsTests
         { AdminPermissions.AdminsRoles, new[] { AdminRole.SecurityAdmin }, true },
         { AdminPermissions.AuditRead, new[] { AdminRole.SecurityAdmin }, true }
     };
+
+    public static TheoryData<string, string> RestrictionStepUpCases => new()
+    {
+        { StepUpActions.UsersBlock, AdminPermissions.UsersBlock },
+        { StepUpActions.UsersUnblock, AdminPermissions.UsersBlock },
+        { StepUpActions.UsersDeletionSchedule, AdminPermissions.UsersDelete },
+        { StepUpActions.UsersDeletionCancel, AdminPermissions.UsersDelete }
+    };
+
+    [Theory, MemberData(nameof(RestrictionStepUpCases))]
+    public void RestrictionStepUpActions_RequireTheirAdminPermission(string action, string expectedPermission)
+    {
+        Assert.True(StepUpActions.TryGetPermission(action, out var permission));
+        Assert.Equal(expectedPermission, permission);
+    }
 
     [Theory, MemberData(nameof(MatrixCases))]
     public void IsAllowed_MatchesApprovedMatrix(string permission, AdminRole[] allowedRoles, bool expected)

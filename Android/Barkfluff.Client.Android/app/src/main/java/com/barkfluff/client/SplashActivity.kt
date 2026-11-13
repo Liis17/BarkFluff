@@ -11,12 +11,15 @@ import com.barkfluff.client.domain.gateway.ServerDiscoveryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.grpc.GrpcClientRegistry
+import com.barkfluff.client.grpc.AccountRestrictionErrorCodes
 import com.barkfluff.client.grpc.TokenValidity
+import com.barkfluff.client.grpc.grpcErrorCode
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.FirebaseTokenHelper
 import com.barkfluff.client.utils.LogoutHelper
 import com.barkfluff.client.utils.SessionGate
 import com.barkfluff.client.utils.gateTokenValidity
+import com.barkfluff.client.utils.accountRestrictionSessionMessage
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.barkfluff.client.utils.ServerInfoRefreshResult
 import com.barkfluff.client.utils.refreshServerInfoFromBeacon
@@ -109,13 +112,11 @@ class SplashActivity : AppCompatActivity() {
                 hasRefreshToken && (!hasAccessToken || isAccessTokenExpired) -> {
                     // Есть refresh токен, но нет access токена или он истек
                     // Пытаемся обновить токен
-                    val refreshResult = tryRefreshToken()
-                    if (refreshResult) {
-                        // Успешно обновили токен -> загружаем данные пользователя и переходим в чаты
-                        loadUserDataAndNavigateToChats()
-                    } else {
-                        // Не удалось обновить токен -> LoginActivity
-                        navigateToLogin()
+                    when (val validity = tryRefreshToken()) {
+                        TokenValidity.VALID -> loadUserDataAndNavigateToChats()
+                        TokenValidity.ACCOUNT_BLOCKED, TokenValidity.ACCOUNT_PENDING_DELETION ->
+                            handleRejectedSession(validity)
+                        else -> navigateToLogin()
                     }
                 }
                 hasRefreshToken && hasAccessToken && !isAccessTokenExpired -> {
@@ -152,23 +153,23 @@ class SplashActivity : AppCompatActivity() {
     /**
      * Пытается обновить access токен используя refresh токен
      */
-    private suspend fun tryRefreshToken(): Boolean {
+    private suspend fun tryRefreshToken(): TokenValidity {
         return try {
             val identityAddress = globalParam.socketIdentity
             if (identityAddress.isBlank()) {
-                return false
+                return TokenValidity.REJECTED
             }
 
             // Создаем Identity клиент с interceptor для авторизованных вызовов
             val createResult = authGateway.createIdentity(identityAddress, this)
             if (createResult.isFailure) {
-                return false
+                return TokenValidity.REJECTED
             }
 
             // Обновляем токен
             val refreshToken = globalParam.refreshToken
             if (refreshToken == null) {
-                return false
+                return TokenValidity.REJECTED
             }
 
             val refreshResult = authGateway.refresh(refreshToken, globalParam.refreshTokenExpiration)
@@ -181,12 +182,16 @@ class SplashActivity : AppCompatActivity() {
                 globalParam.refreshToken = newRefreshToken
                 globalParam.refreshTokenExpiration = newRefreshTokenExpiration
                 
-                true
+                TokenValidity.VALID
             } else {
-                false
+                when (refreshResult.exceptionOrNull()?.grpcErrorCode()?.uppercase()) {
+                    AccountRestrictionErrorCodes.ACCOUNT_BLOCKED -> TokenValidity.ACCOUNT_BLOCKED
+                    AccountRestrictionErrorCodes.ACCOUNT_PENDING_DELETION -> TokenValidity.ACCOUNT_PENDING_DELETION
+                    else -> TokenValidity.REJECTED
+                }
             }
         } catch (e: Exception) {
-            false
+            TokenValidity.REJECTED
         }
     }
 
@@ -219,7 +224,9 @@ class SplashActivity : AppCompatActivity() {
                         // Only a rejected refresh is destructive; an unavailable Identity keeps
                         // the session and continues to the offline chat cache.
                         when (val validity = authGateway.tokenValidity(forceRefresh = true)) {
-                            TokenValidity.REJECTED -> {
+                            TokenValidity.REJECTED,
+                            TokenValidity.ACCOUNT_BLOCKED,
+                            TokenValidity.ACCOUNT_PENDING_DELETION -> {
                                 userSettingsDeferred.cancel()
                                 handleRejectedSession(validity)
                                 return@coroutineScope false
@@ -279,7 +286,7 @@ class SplashActivity : AppCompatActivity() {
         app.realtimeService.shutdown()
         val gate = gateTokenValidity(validity) { LogoutHelper.clearCredentials(this, app.prekeyManager) }
         if (gate == SessionGate.LOGIN) {
-            navigateToLogin()
+            navigateToLogin(accountRestrictionSessionMessage(validity))
             return
         }
         if (isFinishing || isDestroyed) return
@@ -300,8 +307,9 @@ class SplashActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun navigateToLogin() {
+    private fun navigateToLogin(restrictionNotice: String? = null) {
         val intent = Intent(this, LoginActivity::class.java)
+        restrictionNotice?.let { intent.putExtra(LoginActivity.EXTRA_ACCOUNT_RESTRICTION_NOTICE, it) }
         if (this.intent.hasExtra(NotificationHelper.EXTRA_KIND)) {
             intent.action = this.intent.action
             intent.data = this.intent.data

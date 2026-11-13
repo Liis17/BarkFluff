@@ -13,6 +13,8 @@ public sealed partial class AuthenticationService : IAuthenticationService
     private readonly IClientSession _session;
     private readonly ISecureSessionStore _secureSessionStore;
 
+    public string? RestoreSessionErrorResourceKey { get; private set; }
+
     public AuthenticationService(WebApiClient webApi, IClientSession session, ISecureSessionStore secureSessionStore)
     {
         _webApi = webApi;
@@ -22,6 +24,7 @@ public sealed partial class AuthenticationService : IAuthenticationService
 
     public async Task<bool> TryRestoreSessionAsync(CancellationToken cancellationToken = default)
     {
+        RestoreSessionErrorResourceKey = null;
         var parameters = GetConnectionParameters();
         var saved = await _secureSessionStore.LoadAsync(cancellationToken);
         if (parameters is null || saved is null)
@@ -34,6 +37,7 @@ public sealed partial class AuthenticationService : IAuthenticationService
         var refreshed = await _webApi.ForceRefreshTokenAsync(parameters);
         if (!refreshed.IsSuccess || parameters.AccessToken is null || !InitializeAuthorizedClient(parameters))
         {
+            RestoreSessionErrorResourceKey = refreshed.ErrorResourceKey;
             await _secureSessionStore.ClearAsync(cancellationToken);
             return false;
         }

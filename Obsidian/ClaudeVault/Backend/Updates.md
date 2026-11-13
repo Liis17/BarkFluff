@@ -4,9 +4,10 @@ Updates преобразует RabbitMQ domain events в gRPC-потоки дл�
 
 ## Потоки событий
 
-`Shared/BarkFluff.Proto/updates_api.proto` объявляет 17 подписок:
+`Shared/BarkFluff.Proto/updates_api.proto` объявляет 18 подписок:
 
 - Обычные чаты: новое сообщение, read, edit/delete, pin/unpin, unpin-all и hide.
+- Папки чатов: пустой сигнал `ChatFoldersChangedEvent` по событию Users `ChatFoldersChanged`; клиент перечитывает папки через Users.
 - Личные чаты: encrypted message/edit/delete/read и invite/resolution.
 - Секретные чаты: invite/resolution и доставка encrypted envelope.
 

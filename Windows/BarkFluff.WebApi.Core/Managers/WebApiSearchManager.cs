@@ -44,6 +44,7 @@ namespace BarkFluff.WebApi.Core.Managers
                             Badges = item.Badges.ToString(),
                             ProfilePictureUrl = item.ProfilePicture,
                             ProfilePicturePreviewUrl = item.ProfilePicturePreview,
+                            AccountStatus = item.AccountStatus,
                         })
                         .ToList();
 

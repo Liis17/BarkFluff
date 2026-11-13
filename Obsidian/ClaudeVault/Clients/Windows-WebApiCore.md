@@ -17,6 +17,8 @@ WinUI identifier-first flow использует additive `ResolveSignIn`, `Begi
 
 TokenInvalidated сообщает о непригодном refresh token. TokenRefreshed поднимается после проактивного обновления: клиенты должны пересоздать streaming RPC. TokenManager сериализует параллельные обновления, поскольку refresh tokens ротируются. SafeCallAsync повторяет вызов после обновления access token. WebApiBase.ReadStream освобождает gRPC-вызов, но завершает перечисление при RPC/сетевых ошибках; клиент, которому нужно восстановление связи, должен повторно создать поток.
 
+`UserData.AccountStatus` заполняется из Users API и используется WinUI для локальных подписей ограниченных профилей и read-only личных чатов. Менеджеры токенов и FastAuth переводят `AccountBlockedException`/`AccountPendingDeletionException` в локализуемые ключи ошибки; отправка regular/private/secret сообщений, создание личных чатов/secret invite и вызов переводят `UserUnavailableException` в `Messenger_UserUnavailable`. WebApi не получает причину блокировки из legacy RPC.
+
 ## Модели и безопасность
 
 GlobalParam содержит endpoints, профиль, токены и параметры интерфейса. Для legacy WPF методы Save/Load шифруют datas/GlobalParam.json AES-256-GCM; BFV3 выводит ключ PBKDF2-SHA512/600 000, чтение BFV2 поддерживает PBKDF2-SHA256/100 000. WPF V2 и WinUI сохраняют сессию собственными DPAPI CurrentUser хранилищами в SQLite; не смешивать эти форматы.

@@ -8,6 +8,7 @@ using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 
 using Npgsql;
+using NpgsqlTypes;
 
 namespace BarkFluff.Users.Persistence.Services;
 
@@ -43,6 +44,43 @@ public class UsersStorage
 
         return user;
     }
+
+    public Task<User?> GetAccountRestrictionUser(long id, CancellationToken cancellationToken) =>
+        _usersContext.Users.AsNoTracking().Include(u => u.Contact)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public Task<AccountStatus?> GetAccountStatus(long id, CancellationToken cancellationToken) =>
+        _usersContext.Users.AsNoTracking()
+            .Where(user => user.Id == id)
+            .Select(user => (AccountStatus?)user.AccountStatus)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public Task<int> TouchAccountRestrictionStatus(long userId, AccountStatus status, CancellationToken cancellationToken) =>
+        _usersContext.Users
+            .Where(u => u.Id == userId && !u.IsDraft && !u.IsBot && u.AccountStatus == status)
+            .ExecuteUpdateAsync(update => update.SetProperty(u => u.AccountStatus, u => u.AccountStatus), cancellationToken);
+
+    public Task<int> TrySetAccountRestriction(
+        long userId,
+        AccountStatus expectedStatus,
+        AccountStatus status,
+        string reason,
+        DateTime restrictedAt,
+        DateTime? deletionScheduledAt,
+        AccountStatus? preDeletionAccountStatus,
+        string? preDeletionRestrictionReason,
+        DateTime? preDeletionRestrictedAt,
+        CancellationToken cancellationToken) =>
+        _usersContext.Users
+            .Where(u => u.Id == userId && !u.IsDraft && !u.IsBot && u.AccountStatus == expectedStatus)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(u => u.AccountStatus, status)
+                .SetProperty(u => u.RestrictionReason, status == AccountStatus.Active ? null : reason)
+                .SetProperty(u => u.RestrictedAt, status == AccountStatus.Active ? null : restrictedAt)
+                .SetProperty(u => u.DeletionScheduledAt, deletionScheduledAt)
+                .SetProperty(u => u.PreDeletionAccountStatus, status == AccountStatus.PendingDeletion ? preDeletionAccountStatus : null)
+                .SetProperty(u => u.PreDeletionRestrictionReason, status == AccountStatus.PendingDeletion ? preDeletionRestrictionReason : null)
+                .SetProperty(u => u.PreDeletionRestrictedAt, status == AccountStatus.PendingDeletion ? preDeletionRestrictedAt : null), cancellationToken);
 
     public async Task<List<User>> GetByIds(List<long> ids)
     {
@@ -99,11 +137,15 @@ public class UsersStorage
         var sql = @"
             SELECT u.""Id"", u.""Uuid"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
                    u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""StorageLimitGb"",
+                   u.""IsBot"", u.""AccountStatus"", u.""RestrictionReason"", u.""RestrictedAt"", u.""DeletionScheduledAt"", u.""CleanupCompletedAt"",
+                   u.""PreDeletionAccountStatus"", u.""PreDeletionRestrictionReason"", u.""PreDeletionRestrictedAt"",
+                   u.""AcceptedLegalRevision"", u.""AcceptedLegalAt"",
                    uc.""Email"", uc.""UserId""
             FROM ""Users"" u
             LEFT JOIN ""UserContacts"" uc ON u.""Id"" = uc.""UserId""
             WHERE to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username"") @@ plainto_tsquery('russian', @searchTerm)
             AND u.""IsDraft"" = false
+            AND u.""AccountStatus"" = 0
             ORDER BY ts_rank(to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username""), plainto_tsquery('russian', @searchTerm)) DESC
             LIMIT @pageSize OFFSET @skip";
 
@@ -120,7 +162,8 @@ public class UsersStorage
             SELECT COUNT(*)
             FROM ""Users"" u
             WHERE to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username"") @@ plainto_tsquery('russian', @searchTerm)
-            AND u.""IsDraft"" = false";
+            AND u.""IsDraft"" = false
+            AND u.""AccountStatus"" = 0";
 
         var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql,
             new NpgsqlParameter("@searchTerm", normalizedSearchTerm));
@@ -137,7 +180,7 @@ public class UsersStorage
     /// <param name="pageSize">Размер страницы</param>
     /// <param name="similarityThreshold">Порог схожести (от 0 до 1, рекомендуется 0.3)</param>
     /// <returns>Список пользователей и общее количество найденных пользователей</returns>
-    public async Task<(List<User> Users, int TotalCount)> SearchUsersByTrigram(string searchTerm, int skip = 0, int pageSize = 10, double similarityThreshold = 0.3, long? currentUserId = null, bool respectSearchVisibility = true, bool excludeBots = false)
+    public async Task<(List<User> Users, int TotalCount)> SearchUsersByTrigram(string searchTerm, int skip = 0, int pageSize = 10, double similarityThreshold = 0.3, long? currentUserId = null, bool respectSearchVisibility = true, bool excludeBots = false, AccountStatus? statusFilter = AccountStatus.Active)
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -160,6 +203,8 @@ public class UsersStorage
         var sql = @"
             SELECT u.""Id"", u.""Uuid"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
                    u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""IsBot"", u.""StorageLimitGb"",
+                   u.""AccountStatus"", u.""RestrictionReason"", u.""RestrictedAt"", u.""DeletionScheduledAt"", u.""CleanupCompletedAt"",
+                   u.""PreDeletionAccountStatus"", u.""PreDeletionRestrictionReason"", u.""PreDeletionRestrictedAt"",
                    uc.""Email"", uc.""UserId"",
                    COUNT(*) OVER() AS ""TotalCount""
             FROM ""Users"" u
@@ -168,7 +213,8 @@ public class UsersStorage
             WHERE (similarity(u.""FirstName"", @searchTerm) > @threshold
                OR similarity(u.""LastName"", @searchTerm) > @threshold
                OR similarity(u.""Username"", @searchTerm) > @threshold)
-            AND u.""IsDraft"" = false" + privacyFilter + botFilter + @"
+            AND u.""IsDraft"" = false
+            AND (@statusFilter IS NULL OR u.""AccountStatus"" = @statusFilter)" + privacyFilter + botFilter + @"
             ORDER BY GREATEST(
                 similarity(u.""FirstName"", @searchTerm),
                 similarity(u.""LastName"", @searchTerm),
@@ -182,7 +228,8 @@ public class UsersStorage
                 new NpgsqlParameter("@threshold", similarityThreshold),
                 new NpgsqlParameter("@pageSize", pageSize),
                 new NpgsqlParameter("@skip", skip),
-                new NpgsqlParameter("@currentUserId", (object?)currentUserId ?? DBNull.Value))
+                new NpgsqlParameter("@currentUserId", (object?)currentUserId ?? DBNull.Value),
+                new NpgsqlParameter("@statusFilter", NpgsqlDbType.Integer) { Value = statusFilter.HasValue ? (int)statusFilter.Value : DBNull.Value })
             .ToListAsync();
 
         // COUNT(*) OVER() одинаков во всех строках; при пустой выдаче — 0.
@@ -202,6 +249,14 @@ public class UsersStorage
             IsDraft = r.IsDraft,
             IsBot = r.IsBot,
             StorageLimitGb = r.StorageLimitGb,
+            AccountStatus = (AccountStatus)r.AccountStatus,
+            RestrictionReason = r.RestrictionReason,
+            RestrictedAt = r.RestrictedAt,
+            DeletionScheduledAt = r.DeletionScheduledAt,
+            CleanupCompletedAt = r.CleanupCompletedAt,
+            PreDeletionAccountStatus = r.PreDeletionAccountStatus.HasValue ? (AccountStatus?)r.PreDeletionAccountStatus.Value : null,
+            PreDeletionRestrictionReason = r.PreDeletionRestrictionReason,
+            PreDeletionRestrictedAt = r.PreDeletionRestrictedAt,
             Contact = new UserContact { Email = r.Email ?? string.Empty, UserId = r.UserId ?? r.Id }
         }).ToList();
 
@@ -224,6 +279,14 @@ public class UsersStorage
         public bool IsDraft { get; set; }
         public bool IsBot { get; set; }
         public int StorageLimitGb { get; set; }
+        public int AccountStatus { get; set; }
+        public string? RestrictionReason { get; set; }
+        public DateTime? RestrictedAt { get; set; }
+        public DateTime? DeletionScheduledAt { get; set; }
+        public DateTime? CleanupCompletedAt { get; set; }
+        public int? PreDeletionAccountStatus { get; set; }
+        public string? PreDeletionRestrictionReason { get; set; }
+        public DateTime? PreDeletionRestrictedAt { get; set; }
         public string? Email { get; set; }
         public long? UserId { get; set; }
         public long TotalCount { get; set; }
@@ -321,6 +384,7 @@ public class UsersStorage
             throw new UserNotFoundException();
         }
 
+        AccountRestrictionGuard.EnsureActive(user);
         user.ProfilePicture = profilePictureUrl;
         user.ProfilePicturePreviewUrl = profilePicturePreviewUrl;
         await _usersContext.SaveChangesAsync();
@@ -343,6 +407,7 @@ public class UsersStorage
             throw new UserNotFoundException();
         }
 
+        AccountRestrictionGuard.EnsureActive(user);
         user.FirstName = firstName;
         user.LastName = lastName;
 
@@ -357,6 +422,7 @@ public class UsersStorage
             throw new UserNotFoundException();
         }
 
+        AccountRestrictionGuard.EnsureActive(user);
         user.Username = username;
 
         try
@@ -381,6 +447,7 @@ public class UsersStorage
             throw new UserNotFoundException();
         }
 
+        AccountRestrictionGuard.EnsureActive(user);
         user.Bio = newBio;
 
         await _usersContext.SaveChangesAsync();
@@ -438,6 +505,8 @@ public class UsersStorage
 
     public async Task<UserBadge> AssignBadgeToUserAsync(long userId, int badgeId, int priority)
     {
+        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        AccountRestrictionGuard.EnsureActive(user);
         var userBadge = new UserBadge
         {
             UserId = userId,
@@ -457,6 +526,8 @@ public class UsersStorage
 
     public async Task<bool> RemoveBadgeFromUserAsync(long userId, int badgeId)
     {
+        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        AccountRestrictionGuard.EnsureActive(user);
         var userBadge = await _usersContext.UserBadges
             .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
 
@@ -473,6 +544,10 @@ public class UsersStorage
 
     public async Task<UserBadge?> SetPrimaryBadgeAsync(long userId, int badgeId, CancellationToken cancellationToken = default)
     {
+        var user = await _usersContext.Users.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+        AccountRestrictionGuard.EnsureActive(user);
+
         if (badgeId == 0)
         {
             await _usersContext.UserBadges
@@ -539,6 +614,8 @@ public class UsersStorage
 
     public async Task<UserBadge?> UpdateUserBadgePriorityAsync(long userId, int badgeId, int newPriority)
     {
+        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        AccountRestrictionGuard.EnsureActive(user);
         var userBadge = await _usersContext.UserBadges
             .Include(ub => ub.Badge)
             .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
@@ -703,17 +780,117 @@ public class UsersStorage
                postgresException.ConstraintName == "IX_UserBadges_UserId_Primary";
     }
 
-    public async Task<(List<User> Users, int TotalCount)> GetAllUsersDescending(int offset, int size)
+    public async Task<(List<User> Users, int TotalCount)> GetAllUsersDescending(int offset, int size, AccountStatus? statusFilter = null)
     {
         var query = _usersContext.Users
             .Include(u => u.Contact)
-            .Where(u => !u.IsDraft && !u.IsBot)
+            .Where(u => !u.IsDraft && !u.IsBot && (!statusFilter.HasValue || u.AccountStatus == statusFilter.Value))
             .OrderByDescending(u => u.Id);
 
         var totalCount = await query.CountAsync();
         var users = await query.Skip(offset).Take(size).ToListAsync();
 
         return (users, totalCount);
+    }
+
+    public async Task<List<long>> ClaimAccountsForDeletion(int limit, CancellationToken cancellationToken)
+    {
+        if (limit <= 0)
+            return [];
+
+        // В Program.cs включён EnableRetryOnFailure: пользовательская транзакция допустима
+        // только внутри execution strategy, повтор выполняет весь блок заново.
+        var strategy = _usersContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(() => ClaimAccountsForDeletionCore(limit, cancellationToken));
+    }
+
+    private async Task<List<long>> ClaimAccountsForDeletionCore(int limit, CancellationToken cancellationToken)
+    {
+        _usersContext.ChangeTracker.Clear();
+        await using var transaction = await _usersContext.Database.BeginTransactionAsync(cancellationToken);
+        var now = DateTime.UtcNow;
+        var candidateIds = await _usersContext.Users
+            .Where(u => u.AccountStatus == AccountStatus.PendingDeletion && u.DeletionScheduledAt <= now)
+            .OrderBy(u => u.DeletionScheduledAt)
+            .ThenBy(u => u.Id)
+            .Take(limit)
+            .Select(u => u.Id)
+            .ToListAsync(cancellationToken);
+
+        if (candidateIds.Count > 0)
+        {
+            await _usersContext.Users
+                .Where(u => candidateIds.Contains(u.Id)
+                    && u.AccountStatus == AccountStatus.PendingDeletion
+                    && u.DeletionScheduledAt <= now)
+                .ExecuteUpdateAsync(update => update
+                    .SetProperty(u => u.AccountStatus, AccountStatus.Deleted)
+                    .SetProperty(u => u.PreDeletionAccountStatus, (AccountStatus?)null)
+                    .SetProperty(u => u.PreDeletionRestrictionReason, (string?)null)
+                    .SetProperty(u => u.PreDeletionRestrictedAt, (DateTime?)null)
+                    .SetProperty(u => u.CleanupCompletedAt, (DateTime?)null), cancellationToken);
+        }
+
+        _usersContext.ChangeTracker.Clear();
+
+        var incompleteIds = await _usersContext.Users
+            .Where(u => u.AccountStatus == AccountStatus.Deleted && u.CleanupCompletedAt == null)
+            .Select(u => u.Id)
+            .ToListAsync(cancellationToken);
+
+        if (incompleteIds.Count == 0)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return [];
+        }
+
+        var users = await _usersContext.Users
+            .Where(u => incompleteIds.Contains(u.Id))
+            .ToListAsync(cancellationToken);
+        foreach (var user in users)
+        {
+            user.Username = $"deleted-{user.Uuid:N}";
+            user.FirstName = string.Empty;
+            user.LastName = string.Empty;
+            user.Bio = null;
+            user.ProfilePicture = null;
+            user.ProfilePicturePreviewUrl = null;
+            user.RestrictionReason = null;
+            user.PreDeletionAccountStatus = null;
+            user.PreDeletionRestrictionReason = null;
+            user.PreDeletionRestrictedAt = null;
+            user.StorageLimitGb = 1;
+            user.AcceptedLegalRevision = null;
+            user.AcceptedLegalAt = null;
+        }
+
+        await _usersContext.UserContacts.Where(x => incompleteIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
+        await _usersContext.UserSettings.Where(x => incompleteIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
+        await _usersContext.Privacies.Where(x => incompleteIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
+        await _usersContext.UserPersonalizations.Where(x => incompleteIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
+        await _usersContext.UserChatSettings.Where(x => incompleteIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
+        await _usersContext.ChatFolders.Where(x => incompleteIds.Contains(x.OwnerUserId)).ExecuteDeleteAsync(cancellationToken);
+        await _usersContext.ChatMutes.Where(x => incompleteIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
+        await _usersContext.UserBadges.Where(x => incompleteIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
+        await _usersContext.UserDevices.Where(x => incompleteIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
+        await _usersContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return incompleteIds;
+    }
+
+    public async Task CompleteAccountCleanup(long userId, CancellationToken cancellationToken)
+    {
+        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+        if (user is null)
+            throw new UserNotFoundException();
+        if (user.AccountStatus != AccountStatus.Deleted)
+            throw new BarkFluff.Shared.Exceptions.Identity.InvalidAccountRestrictionTransitionException();
+        if (user.CleanupCompletedAt.HasValue)
+            return;
+
+        user.CleanupCompletedAt = DateTime.UtcNow;
+        await _usersContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task UpdateStorageLimitGb(long userId, int limitGb)

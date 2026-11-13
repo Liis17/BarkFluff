@@ -34,7 +34,7 @@ public sealed class SettingsCatalogTests
             [ServiceId.Beacon] = 13, [ServiceId.Notifications] = 8, [ServiceId.Files] = 55,
             [ServiceId.Messages] = 9, [ServiceId.FastAuth] = 8, [ServiceId.Updates] = 5,
             [ServiceId.Onliner] = 15, [ServiceId.CloudMessaging] = 8, [ServiceId.Web] = 5,
-            [ServiceId.Developers] = 7, [ServiceId.Calls] = 13, [ServiceId.Bots] = 16,
+            [ServiceId.Developers] = 7, [ServiceId.Calls] = 15, [ServiceId.Bots] = 16,
             [ServiceId.Federation] = 36
         };
         Assert.Equal(expectedCounts, SettingsCatalog.All.GroupBy(entry => entry.ServiceId)
@@ -55,7 +55,7 @@ public sealed class SettingsCatalogTests
             .ThenBy(entry => entry.Key, StringComparer.Ordinal)
             .Select(entry => $"{(int)entry.ServiceId}|{entry.Section}|{entry.Key}|{entry.StorageKey}|{entry.IsSensitive}|{entry.RequiresManualValue}"));
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot)));
-        Assert.True(hash == "2FEBA90B9FCC3319A60E5E106FCFF7B7B14A200221265FBE0AFA42A7C87E8875", $"Catalog fingerprint: {hash}");
+        Assert.True(hash == "78882D726532F22BDDDFD0EC266BFF006466238DF75F32893C0780CEEBB59A69", $"Catalog fingerprint: {hash}");
     }
 
     [Theory]
