@@ -7,6 +7,17 @@ namespace BarkFluff.Bft.Tests;
 public sealed class BftMuxSequencesTests
 {
     [Fact]
+    public async Task UnadvertisedServiceOpenQueuesServiceUnavailableReset()
+    {
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await using var tunnel = await ConnectAsync(262144, cancellation.Token);
+
+        var action = await tunnel.Server.Connection.ProcessFrameAsync(BftFrame.Open(1, 99), cancellation.Token);
+
+        Assert.Equal(BftMuxFrameAction.ResetServiceUnavailable, action);
+    }
+
+    [Fact]
     public async Task MuxSequences_MatchAllDeclaredActions()
     {
         using var json = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "bftv1-vectors.json")));
