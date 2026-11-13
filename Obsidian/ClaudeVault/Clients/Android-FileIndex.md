@@ -22,8 +22,9 @@ Parent: [[Clients/Android]]
 | grpc | GrpcClientRegistry, GrpcApiTransport, TokenCoordinator, MediaHttpTransport, RealtimeService |
 | domain/gateway | DomainGateways contracts, включая UserBadgeGateway, и GrpcGatewayAdapters production mapping |
 | domain/auth, domain/model | Challenge controller, AuthenticationChallengeModels, AccountStatus и UserBadgeInfo с маппингом серверных статусов |
-| security | TlsTransportFactory, TlsTrustStore, TlsCertificateProbe, endpoint policy |
-| data | GlobalParam и локальные настройки сети |
+| security | TlsTransportFactory и TlsCallFactory, TlsTrustStore, TlsCertificateProbe, endpoint policy |
+| bft | BftProxyManager, BftServiceRouter, BftReconnectPolicy, BftTunnel и виртуальные сокеты |
+| data | GlobalParam, включая стабильные socket* endpoints и BFT service map |
 | repository | ChatRepository, PrivateChatRepository, SecretChatRepository |
 | crypto | PrivateChatCrypto, BarkFluffSignalStore, PrekeyManager |
 | calls | CallsApi repository/event service |
@@ -33,7 +34,7 @@ Parent: [[Clients/Android]]
 
 | Пакет / вход | Назначение |
 |---|---|
-| Корень package com.barkfluff.client | Activities/Fragments и composition root BarkFluffApplication |
+| Корень package com.barkfluff.client | Activities/Fragments, DeepLinkActivity/BftProxyLinkImporter, ProxySettingsActivity и composition root BarkFluffApplication |
 | di/AppModule.kt | Hilt wiring для transport, gateways, cache и фоновых сервисов |
 | ChatViewModel.kt, ChatStateModules.kt | State/effect/intent и reducers обычного чата |
 | chat | RegularChatSession, MessageNavigator и timeline coordination |
@@ -55,9 +56,9 @@ Parent: [[Clients/Android]]
 
 | Тип | Путь | Примеры покрытия |
 |---|---|---|
-| :core unit | Android/core/src/test | ClientSlotRegistry, token refresh, endpoint/hostname/pin checks, auth challenge, download bounds |
+| :core unit | Android/core/src/test | ClientSlotRegistry, BFT routing/reconnect/Exit interop, token refresh, endpoint/hostname/pin checks, auth challenge, download bounds |
 | :core variant unit | Android/core/src/testDebug, Android/core/src/testRelease | TLS cleartext and variant policy |
-| :core instrumentation | Android/core/src/androidTest | Registry/settings storage |
+| :core instrumentation | Android/core/src/androidTest | Registry/settings storage and production BFT tunnel transports |
 | :app unit | Android/Barkfluff.Client.Android/app/src/test | ChatStateModules, ChatDraftJournal, MessageRowProjector, MessageNavigator, search, retry, notification policies |
 | :app instrumentation | Android/Barkfluff.Client.Android/app/src/androidTest | SQLCipher migration/outbox, notification actions, voice, media, Compose UI, Markdown |
 

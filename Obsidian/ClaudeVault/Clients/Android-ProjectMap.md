@@ -18,7 +18,9 @@ Parent: [[Clients/Android]]
 
 ### Запуск и выбор ноды
 
-AndroidManifest.xml → SplashActivity → WelcomeActivity при первом запуске или SelectServerActivity → LoginActivity. При наличии сессии переход идёт в MainActivity. SelectServerActivity использует ServerDiscoveryGateway: Navigator возвращает каталог и Files media origin; Beacon возвращает service endpoints. ServerInfoPrefs.applyServerInfo сохраняет актуальную конфигурацию в GlobalParam.
+AndroidManifest.xml → SplashActivity → WelcomeActivity при первом запуске или SelectServerActivity → LoginActivity. При наличии сессии переход идёт в MainActivity. SelectServerActivity использует ServerDiscoveryGateway: Navigator возвращает каталог и Files media origin; Beacon возвращает service endpoints. ServerInfoPrefs.applyServerInfo сохраняет актуальную конфигурацию в GlobalParam. При включённом BFT прокси выбор из Navigator отключён: Beacon вызывается по service ID 1 через `bft.internal`, а ServerInfo по-прежнему сохраняется обычным способом.
+
+`bft://` открывает `DeepLinkActivity` и требует подтверждения в `BftProxyLinkImporter` до записи. После согласия `BftProxyManager` сохраняет ссылку и включает прокси, затем запускается выбор ноды через Beacon. ProxySettingsActivity открывается с Welcome, SelectServer и профиля; настройки переживают logout.
 
 LoginActivity делегирует challenge-поток AuthenticationChallengeController; серверная блокировка или ожидающее удаление показываются отдельным состоянием с причиной и, для удаления, локальной датой. Ограничение refresh/FastAuth по gRPC-коду завершает сессию и возвращает на вход с понятным сообщением.
 
@@ -28,9 +30,9 @@ LoginActivity делегирует challenge-поток AuthenticationChallengeC
 
 Activities/ViewModels → typed gateway → production gateway adapter → GrpcApiTransport / repository → GrpcClientRegistry → gRPC stub. RPC registry не передаётся UI. RealtimeService использует registry для стримов и публикует events через RealtimeGateway; app-слой подключает NotificationHelper и WidgetUpdater через RealtimeSideEffects.
 
-MediaHttpTransport обрабатывает Files upload/download отдельно от gRPC. TLS политика сосредоточена в core/security/TlsTransportFactory.kt, core/security/TlsTrustStore.kt и core/security/TlsCertificateProbe.kt.
+MediaHttpTransport обрабатывает Files upload/download отдельно от gRPC через OkHttp. При включённом прокси `TlsTransportFactory` связывает endpoint с логическим BFT service ID, подменяет DNS на loopback и создаёт внутренний TLS `bft.internal` с pin из HELLO. `GrpcClientRegistry`, `TlsCallFactory` и HTTP pools инвалидируются по transport generation; неизвестный BarkFluff host не уходит напрямую. Только LiveKit и FCM используют явные прямые исключения. TLS политика сосредоточена в core/security/TlsTransportFactory.kt, core/security/TlsTrustStore.kt и core/security/TlsCertificateProbe.kt; процессный туннель и маршрутизация — в core/bft/BftProxyManager.kt и core/bft/BftServiceRouter.kt.
 
-Точки входа: core/grpc/GrpcClientRegistry.kt, core/grpc/GrpcApiTransport.kt, core/grpc/TokenCoordinator.kt, core/grpc/MediaHttpTransport.kt; core/domain/gateway/DomainGateways.kt и core/domain/gateway/GrpcGatewayAdapters.kt; app/di/AppModule.kt.
+Точки входа: core/grpc/GrpcClientRegistry.kt, core/grpc/GrpcApiTransport.kt, core/grpc/TokenCoordinator.kt, core/grpc/MediaHttpTransport.kt; core/domain/gateway/DomainGateways.kt и core/domain/gateway/GrpcGatewayAdapters.kt; core/bft/BftProxyManager.kt, core/bft/BftServiceRouter.kt, core/security/TlsTransportFactory.kt; app/di/AppModule.kt.
 
 ### Профиль и бейджи
 
