@@ -1467,4 +1467,37 @@
     <string name="account_session_blocked">Your session ended because the account is blocked. Only the server administrator can remove this restriction.</string>
     <string name="account_session_pending_deletion">Your session ended because the account is pending deletion. Contact the server administrator.</string>
     <string name="account_user_unavailable">This user is unavailable. Their account may be restricted by the server.</string>
+    <!-- BFT proxy -->
+    <string name="bft_proxy_title">Proxy</string>
+    <string name="bft_proxy_name_label">Proxy name</string>
+    <string name="bft_proxy_address_label">Address</string>
+    <string name="bft_proxy_address_format">%1$s:%2$d</string>
+    <string name="bft_proxy_ipv6_host_format">[%1$s]</string>
+    <string name="bft_proxy_name_unknown">Unnamed</string>
+    <string name="bft_proxy_not_configured">Not configured</string>
+    <string name="bft_proxy_use">Use proxy</string>
+    <string name="bft_proxy_paste_link">Paste link from clipboard</string>
+    <string name="bft_proxy_delete">Delete proxy</string>
+    <string name="bft_proxy_delete_title">Delete proxy?</string>
+    <string name="bft_proxy_delete_message">The proxy link and settings will be removed from this device.</string>
+    <string name="bft_proxy_status_disabled">Off</string>
+    <string name="bft_proxy_status_connecting">Connecting…</string>
+    <string name="bft_proxy_status_connected">Connected</string>
+    <string name="bft_proxy_status_no_connection">No connection to proxy</string>
+    <string name="bft_proxy_status_key_rejected">Key is invalid or revoked</string>
+    <string name="bft_proxy_enable_requires_configuration">Add a proxy link first.</string>
+    <string name="bft_proxy_clipboard_empty">There is no proxy link in the clipboard.</string>
+    <string name="bft_proxy_link_invalid">The proxy link is invalid.</string>
+    <string name="bft_proxy_import_title">Add proxy</string>
+    <string name="bft_proxy_replace_title">Replace proxy?</string>
+    <string name="bft_proxy_import">Add</string>
+    <string name="bft_proxy_replace">Replace</string>
+    <string name="bft_proxy_import_details">Name: %1$s\nAddress: %2$s</string>
+    <string name="bft_proxy_import_warning">The proxy can see app traffic, except the contents of secret chats. Add and enable this proxy?</string>
+    <string name="bft_proxy_welcome_link">Set up proxy</string>
+    <string name="bft_proxy_selecting_node_title">Connecting through proxy</string>
+    <string name="bft_proxy_selecting_node_message">Getting this node’s details through the secure tunnel.</string>
+    <string name="bft_proxy_enabled_summary">Proxy is on</string>
+    <string name="bft_proxy_no_connection_summary">No connection to proxy</string>
+    <string name="bft_proxy_key_rejected_summary">Proxy key is invalid or revoked</string>
 </resources>

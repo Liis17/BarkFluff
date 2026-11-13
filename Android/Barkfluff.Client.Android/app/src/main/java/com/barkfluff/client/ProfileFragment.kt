@@ -8,8 +8,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.barkfluff.client.cache.ChatCacheRepository
+import com.barkfluff.client.bft.BftProxyManager
+import com.barkfluff.client.bft.BftProxyStatus
 import com.barkfluff.client.calls.CallEventsService
 import com.barkfluff.client.crypto.PrekeyManager
 import com.barkfluff.client.data.GlobalParam
@@ -28,6 +32,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.color.MaterialColors
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import java.util.Locale
 
 @AndroidEntryPoint
@@ -67,6 +72,21 @@ class ProfileFragment : Fragment() {
         setupClickListeners()
         updateUI()
         checkForUpdates()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                BftProxyManager.get(requireContext().applicationContext).state.collect { state ->
+                    binding.textProxyStatus.setText(
+                        when (state.status) {
+                            BftProxyStatus.DISABLED -> R.string.bft_proxy_status_disabled
+                            BftProxyStatus.CONNECTING -> R.string.bft_proxy_status_connecting
+                            BftProxyStatus.CONNECTED -> R.string.bft_proxy_status_connected
+                            BftProxyStatus.NO_CONNECTION -> R.string.bft_proxy_no_connection_summary
+                            BftProxyStatus.KEY_REJECTED -> R.string.bft_proxy_key_rejected_summary
+                        }
+                    )
+                }
+            }
+        }
     }
 
     override fun onResume() {
@@ -112,6 +132,9 @@ class ProfileFragment : Fragment() {
         }
         binding.itemDevices.setOnClickListener {
             startActivity(Intent(requireContext(), DevicesActivity::class.java))
+        }
+        binding.itemProxy.setOnClickListener {
+            startActivity(Intent(requireContext(), ProxySettingsActivity::class.java))
         }
         binding.itemNotifications.setOnClickListener {
             startActivity(Intent(requireContext(), NotificationSettingsActivity::class.java))
@@ -245,7 +268,7 @@ class ProfileFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val currentVersion = GlobalParam.getAppVersion(requireContext())
-                val hasUpdate = UpdateChecker.hasUpdate(currentVersion)
+                val hasUpdate = UpdateChecker.hasUpdate(currentVersion, requireContext())
                 if (_binding != null) {
                     binding.badgeUpdate.visibility = if (hasUpdate) View.VISIBLE else View.GONE
                 }

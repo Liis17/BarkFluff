@@ -1468,4 +1468,37 @@
     <string name="account_session_blocked">Ihre Sitzung wurde beendet, weil das Konto gesperrt ist. Nur der Serveradministrator kann diese Einschränkung aufheben.</string>
     <string name="account_session_pending_deletion">Ihre Sitzung wurde beendet, weil das Konto gelöscht werden soll. Wenden Sie sich an den Serveradministrator.</string>
     <string name="account_user_unavailable">Dieser Benutzer ist nicht verfügbar. Das Konto ist möglicherweise vom Server eingeschränkt.</string>
+    <!-- BFT proxy -->
+    <string name="bft_proxy_title">Proxy</string>
+    <string name="bft_proxy_name_label">Proxyname</string>
+    <string name="bft_proxy_address_label">Adresse</string>
+    <string name="bft_proxy_address_format">%1$s:%2$d</string>
+    <string name="bft_proxy_ipv6_host_format">[%1$s]</string>
+    <string name="bft_proxy_name_unknown">Ohne Namen</string>
+    <string name="bft_proxy_not_configured">Nicht eingerichtet</string>
+    <string name="bft_proxy_use">Proxy verwenden</string>
+    <string name="bft_proxy_paste_link">Link aus der Zwischenablage einfügen</string>
+    <string name="bft_proxy_delete">Proxy entfernen</string>
+    <string name="bft_proxy_delete_title">Proxy entfernen?</string>
+    <string name="bft_proxy_delete_message">Der Proxy-Link und die Einstellungen werden von diesem Gerät entfernt.</string>
+    <string name="bft_proxy_status_disabled">Aus</string>
+    <string name="bft_proxy_status_connecting">Verbindung wird hergestellt…</string>
+    <string name="bft_proxy_status_connected">Verbunden</string>
+    <string name="bft_proxy_status_no_connection">Keine Verbindung zum Proxy</string>
+    <string name="bft_proxy_status_key_rejected">Schlüssel ungültig oder widerrufen</string>
+    <string name="bft_proxy_enable_requires_configuration">Fügen Sie zuerst einen Proxy-Link hinzu.</string>
+    <string name="bft_proxy_clipboard_empty">Die Zwischenablage enthält keinen Proxy-Link.</string>
+    <string name="bft_proxy_link_invalid">Der Proxy-Link ist ungültig.</string>
+    <string name="bft_proxy_import_title">Proxy hinzufügen</string>
+    <string name="bft_proxy_replace_title">Proxy ersetzen?</string>
+    <string name="bft_proxy_import">Hinzufügen</string>
+    <string name="bft_proxy_replace">Ersetzen</string>
+    <string name="bft_proxy_import_details">Name: %1$s\nAdresse: %2$s</string>
+    <string name="bft_proxy_import_warning">Der Proxy kann den App-Datenverkehr außer den Inhalten geheimer Chats sehen. Diesen Proxy hinzufügen und aktivieren?</string>
+    <string name="bft_proxy_welcome_link">Proxy einrichten</string>
+    <string name="bft_proxy_selecting_node_title">Verbindung über Proxy</string>
+    <string name="bft_proxy_selecting_node_message">Nodendaten werden über den geschützten Tunnel abgerufen.</string>
+    <string name="bft_proxy_enabled_summary">Proxy ist aktiviert</string>
+    <string name="bft_proxy_no_connection_summary">Keine Verbindung zum Proxy</string>
+    <string name="bft_proxy_key_rejected_summary">Proxy-Schlüssel ungültig oder widerrufen</string>
 </resources>

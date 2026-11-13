@@ -138,6 +138,15 @@
                 app:backgroundTint="?attr/colorPrimary"
                 app:cornerRadius="@dimen/shape_corner_full" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/proxySettingsButton"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="4dp"
+                android:text="@string/bft_proxy_welcome_link"
+                android:textAllCaps="false" />
+
             <!-- Фиксированная область: раскрытие ссылок не двигает hero и CTA. -->
             <LinearLayout
                 android:layout_width="match_parent"
