@@ -70,6 +70,7 @@ public class Program
             ConnectionMultiplexer.Connect(builder.Configuration["Redis"]
                 ?? throw new InvalidOperationException("Redis configuration is missing")));
         builder.Services.AddSingleton<BotRegistryCache>();
+        builder.Services.AddHostedService<BotOwnerRestrictionReconciler>();
         builder.Services.AddSingleton<BotUpdateNotifier>();
         builder.Services.AddSingleton<IBotRateLimiter, RedisBotRateLimiter>();
         builder.Services.AddSingleton<IBotPollingGuard, RedisBotPollingGuard>();
@@ -110,6 +111,7 @@ public class Program
             x.AddConsumer<LoginNotificationConsumer>();
             x.AddConsumer<BotUpdateSignalConsumer>();
             x.AddConsumer<BotRegistryChangedConsumer>();
+            x.AddConsumer<UserAccountStatusChangedConsumer>();
             x.AddConsumer<SessionRevokedConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
@@ -144,6 +146,13 @@ public class Program
                     e.AutoDelete = true;
                     e.Durable = false;
                     e.ConfigureConsumer<BotRegistryChangedConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint($"bot-owner-restriction-{InstanceId.Current}", e =>
+                {
+                    e.AutoDelete = true;
+                    e.Durable = false;
+                    e.ConfigureConsumer<UserAccountStatusChangedConsumer>(context);
                 });
 
                 // Fan-out: каждый инстанс получает копию отзыва сессии в свой TokenRevocationCache

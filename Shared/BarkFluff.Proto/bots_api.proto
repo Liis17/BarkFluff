@@ -26,6 +26,9 @@ service BotsServerApi {
   // аккаунт помечается удалённым. Чаты бот↔пользователь сохраняются.
   rpc DeleteBot(DeleteBotRequest) returns(DeleteBotResponse);
 
+  // Удалить всех ботов владельца после окончательного удаления аккаунта.
+  rpc DeleteBotsForOwner(DeleteBotsForOwnerRequest) returns(DeleteBotsForOwnerResponse);
+
   // Перегенерировать токен бота. Новый токен показывается один раз.
   rpc RegenerateToken(RegenerateTokenRequest) returns(RegenerateTokenResponse);
 }
@@ -76,6 +79,10 @@ message DeleteBotRequest {
 }
 
 message DeleteBotResponse { }
+
+message DeleteBotsForOwnerRequest { int64 owner_user_id = 1; }
+
+message DeleteBotsForOwnerResponse { }
 
 message RegenerateTokenRequest {
   int64 bot_id = 1; // идентификатор бота

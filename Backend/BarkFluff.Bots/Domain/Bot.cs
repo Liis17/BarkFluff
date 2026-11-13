@@ -8,6 +8,8 @@ public class Bot
     /// <summary>Владелец бота (NULL = системный)</summary>
     public long? OwnerUserId { get; set; }
 
+    public bool OwnerRestricted { get; set; }
+
     public string Username { get; set; } = string.Empty;
 
     /// <summary>Отображаемое имя (кэш из Users)</summary>

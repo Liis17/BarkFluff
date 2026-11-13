@@ -24,6 +24,37 @@ namespace BarkFluff.Identity.Tests.Features;
 
 public class AuthenticationFlowTests
 {
+    [Theory]
+    [InlineData(AccountStatus.Blocked, "account_blocked")]
+    [InlineData(AccountStatus.PendingDeletion, "account_pending_deletion")]
+    public async Task Complete_RestrictedAccountAfterFactorProofReturnsRestrictionWithoutSession(
+        AccountStatus status, string errorCode)
+    {
+        using var h = new Harness();
+        await h.Register();
+        var pending = await h.Service.BeginSignIn(h.SignIn(), default);
+        var messagesBeforeComplete = h.Bot.Messages.Count;
+        var code = h.Bot.LastCode;
+        var deletionDate = DateTime.UtcNow.AddDays(4);
+        h.SetRestriction(status, "node policy", status == AccountStatus.PendingDeletion ? deletionDate : null);
+
+        var result = await h.Complete(pending, code);
+
+        Assert.Equal(AuthChallengeState.Rejected, result.State);
+        Assert.Equal(errorCode, result.ErrorCode);
+        Assert.Equal(status, result.AccountRestriction.Status);
+        Assert.Equal("node policy", result.AccountRestriction.Reason);
+        if (status == AccountStatus.PendingDeletion)
+            Assert.Equal(deletionDate, result.AccountRestriction.DeletionScheduledAt.ToDateTime());
+        Assert.Null(result.Session);
+        Assert.Equal(1, h.RegisteredDevices);
+        Assert.Equal(messagesBeforeComplete, h.Bot.Messages.Count);
+
+        var repeated = await h.Complete(pending, code);
+        Assert.Equal(AuthChallengeState.Rejected, repeated.State);
+        Assert.Null(repeated.Session);
+    }
+
     [Fact]
     public async Task TelegramRegistration_WithoutSmtp_RequiresButtonAndReturnsOneSession()
     {
@@ -816,6 +847,9 @@ public class AuthenticationFlowTests
         private bool _registered;
         private User? _loginUser;
         private bool _loginUserNotFound;
+        private AccountStatus _accountStatus = AccountStatus.Active;
+        private string _restrictionReason = "";
+        private Google.Protobuf.WellKnownTypes.Timestamp? _deletionScheduledAt;
 
         public Harness(bool emailEnabled = false)
         {
@@ -849,6 +883,16 @@ public class AuthenticationFlowTests
                 .Callback(() => RegisteredDevices++).Returns(() => Unary(new RegisterDeviceResponse()));
             _users.Setup(x => x.GetUserContactsAsync(It.IsAny<GetUserContactsRequest>(), null, null, It.IsAny<CancellationToken>()))
                 .Returns(() => Unary(new GetUserContactsResponse { User = user, Contact = new UserContact { Email = emailEnabled ? "verified@example.com" : "" } }));
+            _users.Setup(x => x.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+                .Returns(() => Unary(new GetAccountRestrictionResponse
+                {
+                    Restriction = new AccountRestrictionInfo
+                    {
+                        Status = _accountStatus,
+                        Reason = _restrictionReason,
+                        DeletionScheduledAt = _deletionScheduledAt,
+                    }
+                }));
             var publish = new Mock<IPublishEndpoint>();
             publish.Setup(x => x.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()))
                 .Callback<EmailNotification, CancellationToken>((message, _) => Emails.Add(message)).Returns(Task.CompletedTask);
@@ -864,7 +908,7 @@ public class AuthenticationFlowTests
                 return new AuthenticationService(context, new AuthenticationStore(context),
                     new AuthenticationSecrets(new JwtSettings { SecretKey = "test-auth-secret" }), _users.Object, TestHelper.CreateJwtService(),
                     new PasswordsStorage(context), notificationQueue, loginNotifications, Bot, telegramOptions, configuration,
-                    request, TestHelper.CreateUserContext(42, deviceId), abuseGuard, Clock);
+                    request, TestHelper.CreateUserContext(42, deviceId), abuseGuard, Clock, publish.Object, new JwtSettings());
             };
             CreateService = context => CreateServiceWithGuard(context, AbuseGuard);
             Service = CreateService(Db);
@@ -876,6 +920,14 @@ public class AuthenticationFlowTests
         { Login = "newuser", Password = password, LoginMode = AuthLoginMode.PasswordSecondFactor, Factor = OtpTypeId.Telegram };
         public void SetLoginUser(User? user) => _loginUser = user;
         public void SetLoginNotFound(bool notFound) => _loginUserNotFound = notFound;
+        public void SetRestriction(AccountStatus status, string reason, DateTime? deletionScheduledAt)
+        {
+            _accountStatus = status;
+            _restrictionReason = reason;
+            _deletionScheduledAt = deletionScheduledAt.HasValue
+                ? Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(deletionScheduledAt.Value, DateTimeKind.Utc))
+                : null;
+        }
         public async Task<CompleteAuthChallengeResponse> Register(AuthLoginMode mode = AuthLoginMode.PasswordSecondFactor)
         {
             var pending = await Service.BeginRegistration(Registration(mode), default);

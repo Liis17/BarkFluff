@@ -4,12 +4,16 @@ using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Security;
+using BarkFluff.Identity.Settings;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
+using BarkFluff.Shared.Queue.Identity;
+
+using MassTransit;
 
 using Google.Protobuf.WellKnownTypes;
 
@@ -21,7 +25,8 @@ namespace BarkFluff.Identity.Features.ConfirmAccount;
 public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationCodesStorage,
     UsersServerApi.UsersServerApiClient usersClient, RefreshTokensStorage refreshTokensStorage, RequestContext requestContext,
     NotificationQueueSender notificationQueueSender, LocationClient locationClient, MetricsCollector metrics,
-    ILogger<ConfirmAccountCommandHandler> logger, IIdentityAbuseGuard abuseGuard)
+    ILogger<ConfirmAccountCommandHandler> logger, IIdentityAbuseGuard abuseGuard,
+    IPublishEndpoint publishEndpoint, JwtSettings jwtSettings)
     : IRequestHandler<ConfirmAccountCommand, ConfirmAccountResponse>
 {
 
@@ -122,6 +127,10 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
 
         await usersClient.ConfirmUserAsync(confirmRequest);
 
+        var restriction = await usersClient.GetAccountRestrictionAsync(
+            new GetAccountRestrictionRequest { UserId = code.OwnerId.Value }, cancellationToken: cancellationToken);
+        AccountRestrictionStatusGuard.ThrowIfInactive(restriction.Restriction.Status);
+
         // Удаляем использованный код, чтобы предотвратить повторное использование.
         await confirmationCodesStorage.DeleteCode(codeId);
 
@@ -166,6 +175,20 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
             : Guid.NewGuid().ToString();
 
         await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, code.OwnerId!.Value, deviceId, ExpDaysRefreshToken);
+
+        restriction = await usersClient.GetAccountRestrictionAsync(
+            new GetAccountRestrictionRequest { UserId = code.OwnerId.Value }, cancellationToken: cancellationToken);
+        if (restriction.Restriction.Status != AccountStatus.Active)
+        {
+            await publishEndpoint.Publish(new SessionRevokedEvent
+            {
+                UserId = code.OwnerId.Value,
+                DeviceId = deviceId,
+                AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes + 2),
+            }, cancellationToken);
+            await refreshTokensStorage.DeleteRefreshTokenByValueSafe(refreshTokenString);
+            AccountRestrictionStatusGuard.ThrowIfInactive(restriction.Restriction.Status);
+        }
 
         metrics.Increment("accounts_confirmed");
         metrics.Increment("sessions_created");

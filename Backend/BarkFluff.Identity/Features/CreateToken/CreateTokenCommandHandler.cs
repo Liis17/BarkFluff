@@ -33,6 +33,14 @@ public class CreateTokenCommandHandler(RefreshTokensStorage refreshTokensStorage
             throw new InvalidRefreshTokenException();
         }
 
+        var restriction = await usersClient.GetAccountRestrictionAsync(
+            new GetAccountRestrictionRequest { UserId = accessToken.UserId }, cancellationToken: cancellationToken);
+        if (restriction.Restriction.Status != AccountStatus.Active)
+        {
+            await refreshTokensStorage.DeleteRefreshTokenByValueSafe(request.RefreshToken);
+            AccountRestrictionStatusGuard.ThrowIfInactive(restriction.Restriction.Status);
+        }
+
         logger.LogDebug("Генерация access token для пользователя {UserId}", accessToken.UserId);
 
         var token = jwtService.GenerateUserToken(accessToken.UserId, accessToken.DeviceId);

@@ -80,6 +80,13 @@ public class AuthCommandHandlerTests
         _loginNotifications = new LoginNotificationService(_authPropsStorage, _usersClient.Object,
             _notificationSender, telegramBot.Object, new TelegramAuthOptions(), new ConfigurationBuilder().Build(),
             NullLogger<LoginNotificationService>.Instance);
+        _usersClient
+            .Setup(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<GetAccountRestrictionResponse>(
+                Task.FromResult(new GetAccountRestrictionResponse
+                {
+                    Restriction = new AccountRestrictionInfo { Status = AccountStatus.Active }
+                }), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
     }
 
     private static RequestContext BuildRequestContext(
@@ -109,6 +116,7 @@ public class AuthCommandHandlerTests
             _notificationSender, _refreshTokensStorage, ctx ?? _requestContext,
             _passwordsStorage, _locationClient, _metrics, _logger.Object, _loginNotifications,
             abuseGuard ?? TestHelper.CreateAbuseGuard(),
+            _publishEndpoint.Object, new JwtSettings(),
             authenticationStore: new AuthenticationStore(_context));
     }
 

@@ -3,6 +3,7 @@ using BarkFluff.Identity.Security;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Shared.Queue.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -193,6 +194,28 @@ public sealed partial class AuthenticationService
             }
             if (c.Purpose is AuthenticationPurpose.SignIn or AuthenticationPurpose.Registration)
             {
+                var accountRestriction = await users.GetAccountRestrictionAsync(
+                    new GetAccountRestrictionRequest { UserId = c.UserId }, cancellationToken: ct);
+                if (accountRestriction.Restriction.Status != BarkFluff.Proto.Users.AccountStatus.Active)
+                {
+                    c.State = AuthChallengeState.Rejected;
+                    c.CodeHash = null;
+                    c.TelegramTokenHash = null;
+                    return new CompleteAuthChallengeResponse
+                    {
+                        State = AuthChallengeState.Rejected,
+                        ErrorCode = accountRestriction.Restriction.Status == BarkFluff.Proto.Users.AccountStatus.Blocked
+                            ? "account_blocked"
+                            : "account_pending_deletion",
+                        AccountRestriction = new IdentityAccountRestrictionInfo
+                        {
+                            Status = accountRestriction.Restriction.Status,
+                            Reason = accountRestriction.Restriction.Reason,
+                            DeletionScheduledAt = accountRestriction.Restriction.DeletionScheduledAt,
+                        },
+                    };
+                }
+
                 response.Session = await Session(c, ct);
                 await guard.ClearLoginFailuresAsync(c.Username, request.TrustedIpAddress, c.UserId, ct);
             }
@@ -265,7 +288,12 @@ public sealed partial class AuthenticationService
         var createNewSession = !c.SessionId.HasValue;
         RefreshToken? token;
         if (c.SessionId.HasValue)
+        {
             token = await db.RefreshTokens.SingleOrDefaultAsync(x => x.Id == c.SessionId && x.ExpiresAt > Now, ct) ?? throw Denied();
+            var restriction = await users.GetAccountRestrictionAsync(
+                new GetAccountRestrictionRequest { UserId = c.UserId }, cancellationToken: ct);
+            AccountRestrictionStatusGuard.ThrowIfInactive(restriction.Restriction.Status);
+        }
         else
         {
             var account = await users.GetByIdAsync(new GetByIdRequest { UserId = c.UserId }, cancellationToken: ct);
@@ -279,6 +307,20 @@ public sealed partial class AuthenticationService
             c.SessionId = token.Id;
             await users.RegisterDeviceAsync(new RegisterDeviceRequest { UserId = c.UserId, DeviceId = c.DeviceId,
                 OriginalName = c.DeviceName, OperationSystem = c.OperationSystem, AppName = c.AppName, Location = "" }, cancellationToken: ct);
+            var restriction = await users.GetAccountRestrictionAsync(
+                new GetAccountRestrictionRequest { UserId = c.UserId }, cancellationToken: ct);
+            if (restriction.Restriction.Status != BarkFluff.Proto.Users.AccountStatus.Active)
+            {
+                await publishEndpoint.Publish(new SessionRevokedEvent
+                {
+                    UserId = c.UserId,
+                    DeviceId = c.DeviceId,
+                    AccessTokenExpiresAt = Now.AddMinutes(jwtSettings.ExpiryMinutes + 2),
+                }, ct);
+                await users.DeleteUserDeviceAsync(new DeleteUserDeviceRequest { UserId = c.UserId, DeviceId = c.DeviceId }, cancellationToken: ct);
+                AccountRestrictionStatusGuard.ThrowIfInactive(restriction.Restriction.Status);
+            }
+
             if (createNewSession && c.Purpose == AuthenticationPurpose.SignIn)
                 await loginNotifications.SendAsync(c.UserId, NotificationType.SuccessfulLogin, c.Username,
                     c.IpAddress, c.DeviceName, c.OperationSystem, c.AppName, "неизвестно", Now, ct);

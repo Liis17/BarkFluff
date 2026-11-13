@@ -4,12 +4,16 @@ using BarkFluff.Identity.Features.CreateToken;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Security;
+using BarkFluff.Identity.Settings;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
+using BarkFluff.Shared.Queue.Identity;
+
+using MassTransit;
 
 using Google.Protobuf.WellKnownTypes;
 
@@ -26,7 +30,8 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
     RefreshTokensStorage refreshTokensStorage, RequestContext requestContext, PasswordsStorage passwordsStorage,
     LocationClient locationClient, MetricsCollector metrics, ILogger<AuthCommandHandler> logger,
     LoginNotificationService loginNotifications,
-    IIdentityAbuseGuard abuseGuard, IConfiguration? configuration = null,
+    IIdentityAbuseGuard abuseGuard, IPublishEndpoint publishEndpoint, JwtSettings jwtSettings,
+    IConfiguration? configuration = null,
     AuthenticationStore? authenticationStore = null) : IRequestHandler<AuthCommand, AuthResponse>
 {
 
@@ -351,6 +356,25 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             {
                 logger.LogWarning(ex, "Не удалось зарегистрировать устройство {DeviceId} для пользователя {UserId}",
                     deviceId, user.User.Id);
+            }
+
+            var accountRestriction = await usersClient.GetAccountRestrictionAsync(
+                new GetAccountRestrictionRequest { UserId = user.User.Id }, cancellationToken: cancellationToken);
+            if (accountRestriction.Restriction.Status != AccountStatus.Active)
+            {
+                await publishEndpoint.Publish(new SessionRevokedEvent
+                {
+                    UserId = user.User.Id,
+                    DeviceId = deviceId,
+                    AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes + 2),
+                }, cancellationToken);
+                await usersClient.DeleteUserDeviceAsync(new DeleteUserDeviceRequest
+                {
+                    UserId = user.User.Id,
+                    DeviceId = deviceId,
+                }, cancellationToken: cancellationToken);
+                await refreshTokensStorage.DeleteRefreshTokensByDeviceIdSafe(deviceId, user.User.Id);
+                AccountRestrictionStatusGuard.ThrowIfInactive(accountRestriction.Restriction.Status);
             }
 
             await loginNotifications.SendAsync(user.User.Id, NotificationType.SuccessfulLogin,

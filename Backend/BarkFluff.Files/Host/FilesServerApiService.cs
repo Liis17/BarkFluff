@@ -9,6 +9,7 @@ using BarkFluff.Files.Features.CheckFedAvatarAccess;
 using BarkFluff.Files.Features.FetchFileStream;
 using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUserStorageInfoServer;
+using BarkFluff.Files.Features.DeleteUserProfileImages;
 using BarkFluff.Files.Features.ListStickerPacks;
 using BarkFluff.Files.Features.RemoveSticker;
 using BarkFluff.Files.Features.UpdateSticker;
@@ -50,6 +51,12 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
         var command = new CheckFedAvatarAccessCommand { FileId = request.FileId };
 
         return _mediator.Send(command, context.CancellationToken);
+    }
+
+    public override Task<DeleteUserProfileImagesResponse> DeleteUserProfileImages(
+        DeleteUserProfileImagesRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new DeleteUserProfileImagesCommand { UserId = request.UserId }, context.CancellationToken);
     }
 
     // Стриминг содержимого файла ноде-партнёру (этап 3.2). Не через MediatR: результат — поток.

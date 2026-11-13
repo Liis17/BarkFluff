@@ -47,6 +47,12 @@ public class ForceSetPasswordServerCommandHandler : IRequestHandler<ForceSetPass
             }
 
             username = userInfo.User?.Username ?? string.Empty;
+            if (userInfo.User.AccountStatus != AccountStatus.Active)
+            {
+                var restriction = await _usersClient.GetAccountRestrictionAsync(
+                    new GetAccountRestrictionRequest { UserId = request.UserId }, cancellationToken: cancellationToken);
+                username = restriction.Username;
+            }
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.FailedPrecondition)
         {

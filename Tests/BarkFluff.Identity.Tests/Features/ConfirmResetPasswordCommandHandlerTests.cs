@@ -9,12 +9,17 @@ using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Security;
 using BarkFluff.Identity.Services;
+using BarkFluff.Identity.Settings;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 
 using MediatR;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
+using Grpc.Core;
+using MassTransit;
 
 using Moq;
 
@@ -34,6 +39,8 @@ public class ConfirmResetPasswordCommandHandlerTests
     private readonly RequestContext _requestContext;
     private readonly MetricsCollector _metrics;
     private readonly Mock<ILogger<ConfirmResetPasswordCommandHandler>> _logger;
+    private readonly Mock<UsersServerApi.UsersServerApiClient> _usersClient;
+    private readonly Mock<IPublishEndpoint> _publishEndpoint;
     private readonly IdentityContext _context;
 
     public ConfirmResetPasswordCommandHandlerTests()
@@ -50,6 +57,15 @@ public class ConfirmResetPasswordCommandHandlerTests
         };
         _metrics = new MetricsCollector();
         _logger = new Mock<ILogger<ConfirmResetPasswordCommandHandler>>();
+        _usersClient = new Mock<UsersServerApi.UsersServerApiClient>();
+        _publishEndpoint = new Mock<IPublishEndpoint>();
+        _usersClient
+            .Setup(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<GetAccountRestrictionResponse>(
+                Task.FromResult(new GetAccountRestrictionResponse
+                {
+                    Restriction = new AccountRestrictionInfo { Status = AccountStatus.Active }
+                }), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
     }
 
     private static RequestContext BuildRequestContext(
@@ -73,7 +89,8 @@ public class ConfirmResetPasswordCommandHandlerTests
         return new ConfirmResetPasswordCommandHandler(
             _resetPasswordsStorage, _authPropsStorage, _passwordsStorage,
             _refreshTokensStorage, _mediator.Object, ctx ?? _requestContext, _metrics, _logger.Object,
-            abuseGuard ?? TestHelper.CreateAbuseGuard(), new AuthenticationStore(_context));
+            abuseGuard ?? TestHelper.CreateAbuseGuard(), _usersClient.Object, _publishEndpoint.Object,
+            new JwtSettings(), new AuthenticationStore(_context));
     }
 
     [Fact]

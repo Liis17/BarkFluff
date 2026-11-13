@@ -40,6 +40,26 @@ public class RefreshTokensStorage(IdentityContext context)
         return await context.RefreshTokens.Where(x => x.UserId == userId).ToListAsync();
     }
 
+    public async Task DeleteRefreshTokensByUserIdSafe(long userId)
+    {
+        var refreshTokens = await context.RefreshTokens.Where(x => x.UserId == userId).ToListAsync();
+        if (refreshTokens.Count == 0)
+            return;
+
+        context.RefreshTokens.RemoveRange(refreshTokens);
+        await context.SaveChangesAsync();
+    }
+
+    public async Task DeleteRefreshTokenByValueSafe(string value)
+    {
+        var refreshToken = await context.RefreshTokens.FirstOrDefaultAsync(x => x.Value == value);
+        if (refreshToken is null)
+            return;
+
+        context.RefreshTokens.Remove(refreshToken);
+        await context.SaveChangesAsync();
+    }
+
     public async Task DeleteRefreshTokensByDeviceId(string deviceId, long userId)
     {
         var refreshTokens = await context.RefreshTokens

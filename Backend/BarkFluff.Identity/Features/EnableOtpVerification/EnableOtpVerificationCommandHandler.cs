@@ -76,6 +76,13 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
         }
 
         var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest() { UserId = _userContext.UserId });
+        var username = userInfo.User.Username;
+        if (userInfo.User.AccountStatus != AccountStatus.Active)
+        {
+            var restriction = await _usersClient.GetAccountRestrictionAsync(
+                new GetAccountRestrictionRequest { UserId = _userContext.UserId }, cancellationToken: cancellationToken);
+            username = restriction.Username;
+        }
 
         if (request.OptType == OtpTypeId.Authenticator)
         {
@@ -95,7 +102,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
             var key = KeyGeneration.GenerateRandomKey(20);
             var base32Secret = Base32Encoding.ToString(key);
 
-            var optUri = new OtpUri(OtpType.Totp, base32Secret, userInfo.User.Username, "BarkFluff");
+            var optUri = new OtpUri(OtpType.Totp, base32Secret, username, "BarkFluff");
 
             var uri = optUri.ToString();
 
@@ -157,7 +164,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
                 CreatedAt = DateTime.UtcNow,
                 Payload = new Dictionary<string, string>()
                 {
-                    {"username", userInfo.User.Username},
+                    {"username", username},
                     {"confirmation_code", code},
                     {"ip", _requestContext.IpAddress ?? string.Empty},
                     {"devicename", _requestContext.DeviceName},

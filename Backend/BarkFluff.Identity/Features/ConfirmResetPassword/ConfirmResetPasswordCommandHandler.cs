@@ -1,7 +1,13 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Security;
+using BarkFluff.Identity.Services;
+using BarkFluff.Identity.Settings;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Shared.Queue.Identity;
+
+using MassTransit;
 
 using MediatR;
 
@@ -32,6 +38,9 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
         private readonly MetricsCollector _metrics;
         private readonly ILogger<ConfirmResetPasswordCommandHandler> _logger;
         private readonly AuthenticationStore? _authenticationStore;
+        private readonly UsersServerApi.UsersServerApiClient _usersClient;
+        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly JwtSettings _jwtSettings;
 
         private const int ExpDaysRefreshToken = 9999;
 
@@ -39,7 +48,8 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
         public ConfirmResetPasswordCommandHandler(ResetPasswordsStorage resetPasswordsStorage, AuthPropertiesStorage authPropertiesStorage,
             PasswordsStorage passwordsStorage, RefreshTokensStorage refreshTokensStorage, IMediator mediator, RequestContext requestContext,
             MetricsCollector metrics, ILogger<ConfirmResetPasswordCommandHandler> logger,
-            IIdentityAbuseGuard abuseGuard, AuthenticationStore? authenticationStore = null)
+            IIdentityAbuseGuard abuseGuard, UsersServerApi.UsersServerApiClient usersClient,
+            IPublishEndpoint publishEndpoint, JwtSettings jwtSettings, AuthenticationStore? authenticationStore = null)
         {
             _resetPasswordsStorage = resetPasswordsStorage;
             _authPropertiesStorage = authPropertiesStorage;
@@ -51,6 +61,9 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
             _logger = logger;
             _abuseGuard = abuseGuard;
             _authenticationStore = authenticationStore;
+            _usersClient = usersClient;
+            _publishEndpoint = publishEndpoint;
+            _jwtSettings = jwtSettings;
         }
 
         private readonly IIdentityAbuseGuard _abuseGuard;
@@ -203,6 +216,10 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
                     _logger.LogDebug("Email OTP код успешно проверен для пользователя {UserId}", resetPasswordInfo.UserId);
                 }
 
+                var restriction = await _usersClient.GetAccountRestrictionAsync(
+                    new GetAccountRestrictionRequest { UserId = resetPasswordInfo.UserId }, cancellationToken: cancellationToken);
+                AccountRestrictionStatusGuard.ThrowIfInactive(restriction.Restriction.Status);
+
                 await _abuseGuard.ClearCodeFailuresAsync(
                     IdentityCodeKind.PasswordReset,
                     request.ResetId,
@@ -218,6 +235,20 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
                 await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, resetPasswordInfo.UserId, deviceId, ExpDaysRefreshToken);
 
                 var accessTokenResponse = await _mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
+
+                restriction = await _usersClient.GetAccountRestrictionAsync(
+                    new GetAccountRestrictionRequest { UserId = resetPasswordInfo.UserId }, cancellationToken: cancellationToken);
+                if (restriction.Restriction.Status != AccountStatus.Active)
+                {
+                    await _publishEndpoint.Publish(new SessionRevokedEvent
+                    {
+                        UserId = resetPasswordInfo.UserId,
+                        DeviceId = deviceId,
+                        AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes + 2),
+                    }, cancellationToken);
+                    await refreshTokensStorage.DeleteRefreshTokenByValueSafe(refreshTokenString);
+                    AccountRestrictionStatusGuard.ThrowIfInactive(restriction.Restriction.Status);
+                }
 
                 // Отметить запрос сброса как использованный
                 _logger.LogDebug("Отметка запроса сброса {ResetId} как использованного", request.ResetId);
