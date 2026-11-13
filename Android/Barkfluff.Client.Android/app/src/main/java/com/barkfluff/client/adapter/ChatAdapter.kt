@@ -1,5 +1,7 @@
 package com.barkfluff.client.adapter
 
+import com.barkfluff.client.utils.isSavedMessages
+import com.barkfluff.client.utils.showSavedMessagesAvatar
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
@@ -116,12 +118,15 @@ class ChatAdapter(
             applyUnreadStyle(item.unreadGroupPosition)
 
             // Название чата
-            binding.chatTitle.text = item.displayTitle.trim()
+            val savedMessages = chat.isSavedMessages(currentUserId)
+            binding.chatTitle.text = if (savedMessages) binding.root.context.getString(R.string.saved_messages_title) else item.displayTitle.trim()
             val isPrivateChat = chat.chatType == Shared.ChatType.CHAT_TYPE_PRIVATE
             binding.privateChatLock.visibility = if (isPrivateChat) View.VISIBLE else View.GONE
 
             // Аватар через AvatarLoader с fileId
-            AvatarLoader.loadByFileId(
+            if (savedMessages) {
+                showSavedMessagesAvatar(binding.chatAvatar, binding.chatAvatarPlaceholder)
+            } else AvatarLoader.loadByFileId(
                 imageView = binding.chatAvatar,
                 placeholderView = binding.chatAvatarPlaceholder,
                 fileId = item.displayAvatarFileId,

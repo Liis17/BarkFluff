@@ -732,7 +732,8 @@ class ChatViewModel @Inject constructor(
 
                     // Определяем otherUserId из участников чата (если не был передан через intent)
                     if (!chatInfo.isGroupChat && _uiState.value.otherUserId == 0L && chatInfo.memberIds.isNotEmpty()) {
-                        val other = chatInfo.memberIds.firstOrNull { it != currentUserId } ?: 0L
+                        val other = chatInfo.memberIds.firstOrNull { it != currentUserId }
+                            ?: currentUserId.takeIf { com.barkfluff.client.utils.isSelfChat(chatInfo.memberIds, it) } ?: 0L
                         if (other > 0) {
                             _uiState.value = _uiState.value.copy(
                                 session = _uiState.value.session.copy(otherUserId = other)

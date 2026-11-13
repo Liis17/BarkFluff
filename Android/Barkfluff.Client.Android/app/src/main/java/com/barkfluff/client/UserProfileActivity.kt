@@ -81,6 +81,11 @@ class UserProfileActivity : AppCompatActivity() {
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     @javax.inject.Inject lateinit var userSettingsGateway: UserSettingsGateway
 
+    @javax.inject.Inject lateinit var userDirectoryGateway: com.barkfluff.client.domain.gateway.UserDirectoryGateway
+
+    private val isOwnProfile: Boolean
+        get() = !isGroupChat && otherUserId > 0 && otherUserId == globalParam.userId
+
     private var chatId: String = ""
     private var otherUserId: Long = 0L
     private var isGroupChat: Boolean = false
@@ -155,7 +160,7 @@ class UserProfileActivity : AppCompatActivity() {
         val showIds = globalParam.showIdsInProfile
         val showUserId = showIds && !isGroupChat && otherUserId > 0L
 
-        if (showIds) {
+        if (showIds && chatId.isNotBlank()) {
             binding.rowChatId.show(chatId, copyLabel = getString(R.string.profile_chat_id_label))
         }
         if (showUserId) {
@@ -354,6 +359,20 @@ class UserProfileActivity : AppCompatActivity() {
     // ── Кнопки действий ───────────────────────────────────────────────────────
 
     private fun setupActions() {
+        if (isOwnProfile) {
+            binding.profileActionsRow.visibility = View.VISIBLE
+            binding.actionCallButton.visibility = View.GONE
+            binding.moreButton.visibility = View.GONE
+            binding.actionMessageButton.setText(R.string.saved_messages_title)
+            binding.actionMessageButton.setIconResource(R.drawable.ic_saved_messages)
+            binding.actionMessageButton.setOnClickListener { openSavedMessages() }
+            return
+        }
+        if (chatId.isBlank()) {
+            binding.profileActionsRow.visibility = View.GONE
+            binding.moreButton.visibility = View.GONE
+            return
+        }
         if (isGroupChat) {
             binding.profileActionsRow.visibility = View.GONE
             return
@@ -437,6 +456,33 @@ class UserProfileActivity : AppCompatActivity() {
                 ).show()
             } else {
                 Toast.makeText(this@UserProfileActivity, getString(R.string.chat_mute_error), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun openSavedMessages() {
+        if (!binding.actionMessageButton.isEnabled) return
+        binding.actionMessageButton.isEnabled = false
+        lifecycleScope.launch {
+            try {
+                val savedChatId = chatId.ifBlank {
+                    userDirectoryGateway.personChatId(globalParam.userId).getOrThrow()
+                }
+                if (savedChatId.isBlank()) return@launch
+                startActivity(Intent(this@UserProfileActivity, ChatActivity::class.java).apply {
+                    putExtra("chat_id", savedChatId)
+                    putExtra("chat_title", getString(R.string.saved_messages_title))
+                    putExtra("is_group_chat", false)
+                    putExtra("other_user_id", globalParam.userId)
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                })
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Toast.makeText(this@UserProfileActivity,
+                    getString(R.string.chat_open_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
+            } finally {
+                binding.actionMessageButton.isEnabled = true
             }
         }
     }
@@ -614,6 +660,12 @@ class UserProfileActivity : AppCompatActivity() {
     // ── Табы вложений ─────────────────────────────────────────────────────────
 
     private fun setupTabs() {
+        if (chatId.isBlank()) {
+            binding.attachmentsTitle.visibility = View.GONE
+            binding.attachmentTabs.visibility = View.GONE
+            binding.attachmentsContainer.visibility = View.GONE
+            return
+        }
         binding.tabMedia.setOnClickListener { selectTab(Tab.MEDIA) }
         binding.tabFiles.setOnClickListener { selectTab(Tab.FILES) }
         binding.tabVoice.setOnClickListener { selectTab(Tab.VOICE) }
@@ -857,6 +909,13 @@ class UserProfileActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading user profile", e)
             }
+        }
+
+        // Собственный профиль не показывает presence и не запрашивает его.
+        if (isOwnProfile) {
+            binding.rowStatus.root.visibility = View.GONE
+            updateInfoCardVisibility()
+            return
         }
 
         // Онлайн-статус

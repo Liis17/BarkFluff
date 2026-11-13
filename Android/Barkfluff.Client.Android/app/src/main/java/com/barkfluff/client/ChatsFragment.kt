@@ -30,6 +30,8 @@ import com.barkfluff.client.perf.PerfTrace
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -46,6 +48,8 @@ class ChatsFragment : Fragment() {
     private lateinit var chatAdapter: ChatAdapter
     private lateinit var foldersAdapter: FolderTabsAdapter
     private lateinit var skeletonAdapter: ChatSkeletonAdapter
+    private var subtitleHideJob: Job? = null
+    private var lastHeaderSubtitle: String? = null
     private var titleAnimationGeneration = 0
     private var initialScrollPending = true
 
@@ -89,6 +93,16 @@ class ChatsFragment : Fragment() {
         globalParam = GlobalParam(requireContext())
         initialScrollPending = true
 
+        binding.userAvatarButton.setOnClickListener {
+            startActivity(UserProfileActivity.createIntent(
+                context = requireContext(),
+                chatId = "",
+                otherUserId = globalParam.userId,
+                isGroupChat = false,
+                chatTitle = "${globalParam.firstName} ${globalParam.lastName}".trim(),
+                chatAvatarFileId = globalParam.pictureFileId.ifBlank { globalParam.picturePreviewFileId }.ifBlank { null },
+            ))
+        }
         setupToolbar()
         setupChatList()
         setupFolderTabs()
@@ -244,17 +258,20 @@ class ChatsFragment : Fragment() {
             }
         }
 
-        if (binding.headerSubtitle.text == subtitle) return
+        if (lastHeaderSubtitle == subtitle) return
+        lastHeaderSubtitle = subtitle
+        subtitleHideJob?.cancel()
+        val generation = ++titleAnimationGeneration
 
         binding.headerSubtitle.animate().cancel()
         if (!animate) {
             binding.headerSubtitle.alpha = 1f
             binding.headerSubtitle.translationY = 0f
             binding.headerSubtitle.text = subtitle
+            scheduleSubtitleHide()
             return
         }
 
-        val generation = ++titleAnimationGeneration
         val offset = 4 * resources.displayMetrics.density
         binding.headerSubtitle.animate()
             .alpha(0f)
@@ -263,14 +280,29 @@ class ChatsFragment : Fragment() {
             .withEndAction {
                 if (_binding == null || generation != titleAnimationGeneration) return@withEndAction
                 binding.headerSubtitle.text = subtitle
+                binding.headerSubtitle.visibility = View.VISIBLE
                 binding.headerSubtitle.translationY = offset
                 binding.headerSubtitle.animate()
                     .alpha(1f)
                     .translationY(0f)
                     .setDuration(TITLE_FADE_IN_DURATION_MS)
+                    .withEndAction {
+                        if (_binding != null && generation == titleAnimationGeneration) {
+                            scheduleSubtitleHide()
+                        }
+                    }
                     .start()
             }
             .start()
+    }
+
+    private fun scheduleSubtitleHide() {
+        binding.headerSubtitle.visibility = View.VISIBLE
+        subtitleHideJob?.cancel()
+        subtitleHideJob = viewLifecycleOwner.lifecycleScope.launch {
+            delay(3_000L)
+            _binding?.headerSubtitle?.visibility = View.INVISIBLE
+        }
     }
 
     /**
@@ -510,7 +542,7 @@ class ChatsFragment : Fragment() {
             putExtra("chat_title", displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.chat_title_default) })
             putExtra("chat_avatar_file_id", displayItem?.displayAvatarFileId ?: chat.pictureFileId.ifBlank { null })
             putExtra("is_group_chat", chat.isGroupChat)
-            putExtra("other_user_id", displayItem?.otherUserId ?: 0L)
+            putExtra("other_user_id", if (com.barkfluff.client.utils.isSelfChat(chat.memberIds, globalParam.userId) && !chat.isGroupChat) globalParam.userId else displayItem?.otherUserId ?: 0L)
             putExtra(PerfTrace.EXTRA_CHAT_OPEN, true)
         }
 
@@ -561,6 +593,11 @@ class ChatsFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        subtitleHideJob?.cancel()
+        subtitleHideJob = null
+        lastHeaderSubtitle = null
+        titleAnimationGeneration++
+        _binding?.headerSubtitle?.animate()?.cancel()
         _binding?.let { miniPlayerHost.detachSlot(requireActivity(), it.chatsMiniPlayerSlot) }
         super.onDestroyView()
         headerAnimator?.cancel()
