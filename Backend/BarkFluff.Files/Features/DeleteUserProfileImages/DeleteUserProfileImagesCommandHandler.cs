@@ -30,7 +30,7 @@ public sealed class DeleteUserProfileImagesCommandHandler(
             .Distinct()
             .ToArray();
         var files = await context.UploadedFiles
-            .Where(file => targetIds.Contains(file.Id) && ProfileImageTypes.Contains(file.Type))
+            .Where(file => targetIds.Contains(file.Id))
             .ToListAsync(cancellationToken);
 
         foreach (var file in files)

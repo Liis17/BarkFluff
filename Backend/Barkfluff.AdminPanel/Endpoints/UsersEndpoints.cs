@@ -123,16 +123,18 @@ public static class UsersEndpoints
                 Size = 1
             }));
             var contactsTask = SafeCall(() => usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = id }));
+            var restrictionTask = SafeCall(() => usersClient.GetAccountRestrictionAsync(new GetAccountRestrictionRequest { UserId = id }));
             var devicesTask = SafeCall(() => usersClient.GetUserDevicesAsync(new GetUserDevicesRequest { UserId = id }));
             var storageTask = SafeCall(() => filesClient.GetUserStorageInfoServerAsync(new GetUserStorageInfoServerRequest { UserId = id }));
             var otpTask = SafeCall(() => identityClient.ListOtpVerificationServerAsync(new ListOtpVerificationServerRequest { UserId = id }));
             var sessionsTask = SafeCall(() => identityClient.GetActiveSessionsServerAsync(new GetActiveSessionsServerRequest { UserId = id }));
             var posterTask = SafeCall(() => usersClient.GetProfilePosterServerAsync(new GetProfilePosterServerRequest { UserId = id }));
 
-            await Task.WhenAll(userSearchTask, contactsTask, devicesTask, storageTask, otpTask, sessionsTask, posterTask);
+            await Task.WhenAll(userSearchTask, contactsTask, restrictionTask, devicesTask, storageTask, otpTask, sessionsTask, posterTask);
 
             var userSearch = userSearchTask.Result;
             var contacts = contactsTask.Result;
+            var restriction = restrictionTask.Result;
             var devices = devicesTask.Result;
             var storage = storageTask.Result;
             var otp = otpTask.Result;
@@ -178,9 +180,11 @@ public static class UsersEndpoints
                         assignedDate = b.AssignedDate?.ToDateTime()
                     })
                 },
-                contacts = contacts.Value != null ? new
+                contacts = contacts.Value != null || restriction.Value != null ? new
                 {
-                    email = contacts.Value.Contact?.Email
+                    email = !string.IsNullOrEmpty(restriction.Value?.Email)
+                        ? restriction.Value.Email
+                        : contacts.Value.Contact?.Email
                 } : null,
                 devices = devices.Value?.Devices.Select(d => new
                 {

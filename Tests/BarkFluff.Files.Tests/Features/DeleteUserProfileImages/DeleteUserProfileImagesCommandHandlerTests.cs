@@ -18,6 +18,8 @@ public class DeleteUserProfileImagesCommandHandlerTests
         const long otherUserId = 18;
         var mainId = Guid.NewGuid();
         var previewId = Guid.NewGuid();
+        var differentlyTypedPreviewId = Guid.NewGuid();
+        var differentlyTypedMainId = Guid.NewGuid();
         var sharedMainId = Guid.NewGuid();
         var sharedPreviewId = Guid.NewGuid();
         var posterId = Guid.NewGuid();
@@ -25,6 +27,8 @@ public class DeleteUserProfileImagesCommandHandlerTests
 
         await helper.SeedFile(previewId, [userId], UploadFileType.UserAvatar, etag: "preview");
         await helper.SeedFile(mainId, [userId], UploadFileType.UserAvatar, etag: "main", previewId: previewId);
+        await helper.SeedFile(differentlyTypedPreviewId, [userId], UploadFileType.MessageAttachmentImage, etag: "preview-other-type");
+        await helper.SeedFile(differentlyTypedMainId, [userId], UploadFileType.UserAvatar, etag: "main-other-type", previewId: differentlyTypedPreviewId);
         await helper.SeedFile(sharedPreviewId, [userId], UploadFileType.UserAvatar, etag: "shared-preview");
         await helper.SeedFile(sharedMainId, [userId, otherUserId], UploadFileType.UserAvatar,
             etag: "shared-main", previewId: sharedPreviewId);
@@ -52,6 +56,6 @@ public class DeleteUserProfileImagesCommandHandlerTests
         (await helper.DbContext.TempFiles.Select(file => file.OriginalFileId).ToListAsync())
             .Should().BeEquivalentTo(new[] { attachmentId });
         s3.Verify(client => client.DeleteObjectAsync(It.IsAny<DeleteObjectRequest>(), It.IsAny<CancellationToken>()),
-            Times.Exactly(3));
+            Times.Exactly(5));
     }
 }

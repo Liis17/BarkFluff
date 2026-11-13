@@ -127,6 +127,11 @@ public sealed class UsersEndpointsTests : IDisposable
         Assert.Equal(UserId, _lastRestrictionRequest?.UserId);
         Assert.Equal(expectedAction, _lastRestrictionRequest?.Action);
         Assert.Equal(reason, _lastRestrictionRequest?.Reason);
+        if (expectedAction == AccountRestrictionAction.CancelDeletion)
+        {
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(AccountStatus.Blocked.ToString(), body.RootElement.GetProperty("accountStatus").GetString());
+        }
     }
 
     [Theory]
@@ -209,6 +214,16 @@ public sealed class UsersEndpointsTests : IDisposable
         Assert.True(user.GetProperty("restrictedAt").ValueKind == JsonValueKind.String);
     }
 
+    [Fact]
+    public async Task GetUserDetails_UsesRawEmailForRestrictedAccount()
+    {
+        var response = await _client.GetAsync($"/api/users/{UserId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("restricted@example.com", body.RootElement.GetProperty("contacts").GetProperty("email").GetString());
+    }
+
     private void ConfigureClients()
     {
         _usersClient
@@ -224,12 +239,32 @@ public sealed class UsersEndpointsTests : IDisposable
             .Returns((SearchUsersServerRequest request, Metadata _, DateTime? __, CancellationToken ___) =>
                 UnaryCall(CreateSearchResponse(request.HasStatusFilter ? request.StatusFilter : AccountStatus.Blocked)));
 
+        _usersClient
+            .Setup(client => client.GetUserContactsAsync(It.IsAny<GetUserContactsRequest>(), It.IsAny<Metadata>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            .Returns((GetUserContactsRequest request, Metadata _, DateTime? __, CancellationToken ___) =>
+                UnaryCall(new GetUserContactsResponse { User = new User { Id = request.UserId }, Contact = new UserContact() }));
+
+        _usersClient
+            .Setup(client => client.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), It.IsAny<Metadata>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            .Returns((GetAccountRestrictionRequest request, Metadata _, DateTime? __, CancellationToken ___) =>
+                UnaryCall(new GetAccountRestrictionResponse
+                {
+                    Email = request.UserId == UserId ? "restricted@example.com" : string.Empty,
+                    Restriction = CreateRestriction()
+                }));
+
         _identityClient
             .Setup(client => client.SetAccountRestrictionServerAsync(It.IsAny<SetAccountRestrictionServerRequest>(), It.IsAny<Metadata>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
             .Callback((SetAccountRestrictionServerRequest request, Metadata _, DateTime? __, CancellationToken ___) => _lastRestrictionRequest = request)
-            .Returns((SetAccountRestrictionServerRequest _, Metadata __, DateTime? ___, CancellationToken ____) => UnaryCall(new SetAccountRestrictionServerResponse
+            .Returns((SetAccountRestrictionServerRequest request, Metadata __, DateTime? ___, CancellationToken ____) => UnaryCall(new SetAccountRestrictionServerResponse
             {
-                Restriction = CreateRestriction()
+                Restriction = CreateRestriction(request.Action switch
+                {
+                    AccountRestrictionAction.Unblock => AccountStatus.Active,
+                    AccountRestrictionAction.ScheduleDeletion => AccountStatus.PendingDeletion,
+                    AccountRestrictionAction.CancelDeletion => AccountStatus.Blocked,
+                    _ => AccountStatus.Blocked
+                })
             }));
     }
 
