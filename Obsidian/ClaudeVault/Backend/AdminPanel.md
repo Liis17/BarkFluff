@@ -10,6 +10,12 @@
 - Viewer — пустой базовый набор ролей. Support управляет чтением/сессиями/паролями пользователей и почтой; ContentAdmin — контентом, ботами, зарезервированными именами, S3 просмотром и уведомлениями; OperationsAdmin — Docker, удалёнными серверами, конфигурацией и удалением Seq; SecurityAdmin — 2FA, federation, админами, аудитом и соответствующими пользовательскими действиями. Owner разрешено всё. Источник матрицы: Models/AdminPermissions.cs.
 - Опасные операции дополнительно требуют step-up через Telegram. Подтверждение связано с токеном сессии, ключом действия и хэшем параметров; одноразовое, ожидание и окно после одобрения — по 5 минут. Состояние хранится в памяти процесса.
 
+## Управление статусом аккаунта
+
+`users.block` и `users.delete` разрешены только SecurityAdmin и Owner. Маршруты POST `/api/users/{id}/block`, POST `/unblock`, POST `/deletion` и DELETE `/deletion` проверяют обязательную причину (до 500 символов), привязывают к Telegram step-up `userId`, действие и причину и делегируют изменение `IdentityServerApi.SetAccountRestrictionServer`.
+
+GET `/api/users` передаёт Users фильтр `status=all|blocked|pending_deletion`; Users выполняет фильтрацию до пагинации и считает общий total. Список и карточка пользователя показывают статус, причину, время ограничения и дату окончательного удаления. Tombstone со статусом Deleted отображается без действий. UI и JSON-маршруты находятся в `Pages/v2/users.html` и `Endpoints/UsersEndpoints.cs`.
+
 ## Управление сервисом
 
 При запуске `Program.cs` вызывает `LoadConfiguration(ServiceId.Unknown, requireValidSettings: false)`.

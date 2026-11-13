@@ -18,6 +18,10 @@ Dispatcher polling — 2 секунды, batch до 100, lease 2 минуты; b
 
 `UserChangedNameConsumer` и `UserChangedAvatarConsumer` перечитывают профиль через `UsersServerApi.GetById` перед обновлением `ChatCache`; payload события не является источником значения. Поэтому позднее событие не возвращает прежние имя/аватар после ограничения аккаунта, а потерянное событие может быть повторно опубликовано Users идемпотентным RPC.
 
+## Ограниченные аккаунты
+
+Для личных взаимодействий Messages проверяет `User.account_status` уже получаемого профиля через `Features/Shared/UserAccountStatusGuard`. Неактивного собеседника нельзя вызвать в личном чате/secret-chat, добавить в новую группу, пригласить или принять приглашение; `ImportFederatedChat` также требует Active. Уже существующий групповой участник остаётся в группе с замаскированным профилем; чтение истории и разрешённые операции с ней сохраняются. Запрет возвращает `UserUnavailableException`. Список и сведения о чатах получают настоящее имя/аватар только из `ChatCache`, который name/avatar consumers обновляют актуальным замаскированным Users-профилем.
+
 ## Диапазон прочтения и read outbox
 
 Additive `MessagesApi.MarkChatAsReadUpTo(chat_id, up_to_message_id)` возвращает `has_more`; прежний `MarkAsRead(message_ids)` сохраняет explicit-ID контракт. Новый RPC по умолчанию отвечает `UNIMPLEMENTED` при `Messages:ChatReadRangeEnabled=false` или отсутствующей настройке. При включении проверяются положительный cutoff, доступ к чату, `ChatType.Regular` и принадлежность anchor чату; anchor может быть soft-deleted. Меняются максимум 100 сообщений за вызов по предикату `chat_id + id<=cutoff + !deleted + user not in ReadBy`, без исключения sender/system/imported типов. `has_more` сообщает о следующих непрочитанных строках.

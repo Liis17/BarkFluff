@@ -6,6 +6,8 @@ Consumer notifications-email-handler принимает EmailNotification. Ес�
 
 Identity отправляет SuccessfulLogin/FailedLogin через этот сервис только если выбран Email канал; при Telegram настройке эти login notices идут напрямую из Identity node bot. Другие email события также используют очередь.
 
+Для статуса аккаунта поддерживаются `AccountBlocked=11`, `AccountUnblocked=12`, `AccountDeletionScheduled=13` и `AccountDeletionCancelled=14`. `HtmlEmailTemplateParser` выбирает четыре шаблона в `Templates/` и HTML-экранирует каждое значение payload перед подстановкой. Identity отправляет письмо при каждом из этих четырёх действий; при финальном удалении письмо не отправляется.
+
 Важное текущее ограничение: EmailSender задаёт ServicePointManager.ServerCertificateValidationCallback, принимающий любой сертификат. В коде причина и ограничение на self-signed certificates не заданы, поэтому не считайте SMTP TLS проверенным.
 
 Метрики: rabbitmq_events_consumed, emails_skipped, emails_sent, emails_failed. Ошибка SMTP пробрасывается обратно MassTransit для retry.

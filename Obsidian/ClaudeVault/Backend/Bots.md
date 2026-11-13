@@ -19,6 +19,8 @@
 
 `BotsContext` хранит владельца/профиль бота, `TokenId`, системную роль, `LastConfirmedUpdateId` и команды в JSONB. `BotUpdates` хранит JSONB-обновления; `BotFatherSessions` — временное состояние диалога. `BotsCleanupService` удаляет старые обновления и сессии. `BotRegistryCache` синхронизируется между инстансами событиями об изменении реестра.
 
+У каждого пользовательского бота сохраняется `Bot.OwnerRestricted`. `UserAccountStatusChanged` доставляется в отдельную очередь каждого инстанса; consumer перечитывает текущий статус Users, сохраняет флаг и обновляет локальный `BotRegistryCache`. `BotAccessValidator` отклоняет токен ограниченного владельца, а `GetBotUpdates` не доставляет его обновления. `BotOwnerRestrictionReconciler` сверяет состояние при запуске и затем раз в 10 минут, восстанавливая пропущенные события. `BotsServerApi.DeleteBotsForOwner` удаляет все пользовательские боты владельца при финальной очистке, используя существующую логику удаления бота.
+
 Для загрузки файлов бот вызывает Files server API и подчиняется квоте ботов; `getFile` возвращает временную ссылку вместо прямого доступа к произвольному ID вложения. Настройки находятся в Settings, ServiceId 14: `RunSettings`, `BotsDb`, `Redis`, а также адреса/токены Users, Messages, Files и Identity.
 
 Источники: `Host/BotsExternalApiService.cs`, `Host/BotsServerApiService.cs`, `Host/Http/BotApiEndpoints.cs`, `Services/BotAccessValidator.cs`, `Persistence/BotsContext.cs`, `Persistence/Services/BotUpdatesStorage.cs`, `Consumers/BotUpdateSignalConsumer.cs`. Тесты: `Tests/BarkFluff.Bots.Tests` (путь от корня репозитория).

@@ -19,3 +19,11 @@ Telegram login и Telegram confirmation доступны только при н�
 Email queue producer обслуживает Email notification path. Login notification channel может быть Telegram: Identity отправляет такое уведомление напрямую через node bot, email-события идут через Notification. Нода должна иметь хотя бы один настроенный канал, разрешённый политикой аккаунта.
 
 Security gates для изменения факторов/данных аккаунта требуют proof challenge; recovery codes хранятся как расходуемые credentials. Abuse guard ограничивает рискованные операции в Redis, так что лимиты общие для инстансов. Политики и параметры берутся из IdentitySecurity в Settings.
+
+## Ограничения аккаунта и окончательное удаление
+
+`IdentityServerApi.SetAccountRestrictionServer` сначала меняет статус через Users, затем выполняет отзыв сессий и устройств, отменяет незавершённые authentication challenges, публикует `UserAccountStatusChanged` для Bots и отправляет status email через Notification. Для Block/ScheduleDeletion Identity собирает device IDs из refresh tokens и Users, публикует `SessionRevokedEvent` каждому устройству с сроком access JWT + 2 минуты, затем удаляет refresh tokens и устройства. Для Unblock/CancelDeletion оставшиеся refresh tokens удаляются, поэтому вход всегда начинается заново. Сбой отправки email не отменяет изменение статуса.
+
+Challenge-вход сообщает причину только в `CompleteAuthChallengeResponse` после доказательства фактора: `account_blocked` или `account_pending_deletion`, без выдачи сессии. Начало входа и восстановления пароля состояние не раскрывают. Legacy/session RPC используют `AccountBlockedException` и `AccountPendingDeletionException`.
+
+`Infrastructure/AccountDeletionWorker.cs` раз в 10 минут под Redis lease вызывает атомарный `Users.ClaimAccountsForDeletion`, затем очищает данные Identity транзакцией и последовательно удаляет профильные файлы в Files и ботов владельца в Bots. `Users.CompleteAccountCleanup` отмечает завершение; любой шаг при ошибке повторяется на следующем цикле. Финальное удаление не отправляет email. Запись пользователя, чаты и история собеседников остаются; сообщения и вложения не удаляются. Связанные потоки: [[Backend/Users]], [[Backend/Files]], [[Backend/Bots]], [[Backend/Notification]].

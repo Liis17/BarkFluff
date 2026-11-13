@@ -71,6 +71,12 @@ Identity high-risk RPC используют Redis `IIdentityAbuseGuard` с ат�
 
 SendMessage в Messages сохраняет сообщение и `NewMessageEvent` в одной PostgreSQL-транзакции через `MessagesStorage.AddMessageWithOutboxAsync`. Dispatcher claim-ит строки с lease и публикует со стабильным `EventId`; retry/reclaim дают **at-least-once**. Crash после publish до delivered допускает повтор; exactly-once consumer inbox не подразумевается. Область применения, lease/backoff/cleanup — [[Backend/Messages]]. Другие публикации нельзя автоматически считать transactional outbox.
 
+## Ограничение и удаление аккаунта
+
+AdminPanel (`users.block`/`users.delete`, SecurityAdmin + Owner, причина и Telegram step-up) вызывает Identity `SetAccountRestrictionServer`; Users остаётся источником статуса и маскирования профиля. Block/PendingDeletion закрывают вход, Identity удаляет refresh tokens/устройства и публикует отзыв сессий; Messages и Calls запрещают новые личные взаимодействия, Bots сохраняет owner restriction и отказывает токенам/обновлениям. `PendingDeletion` длится 7 дней. Identity worker под Redis lease забирает только просроченные записи через условный терминальный переход в Users, затем очищает Identity, профильные файлы Files и ботов; сообщения, вложения и история собеседников сохраняются.
+
+Остаточные риски: Users не имеет outbox для `UserChangedName`/`UserChangedAvatar`, а Identity публикует `UserAccountStatusChanged` после остальных шагов без transactional outbox. Ошибка публикации возвращается в RPC; повтор действия идемпотентен и повторяет публикацию, но до повтора имя/аватар в Messages могут оставаться stale. Bots также сверяет owner status при запуске и раз в 10 минут. `TokenRevocationCache` хранится в памяти каждого сервиса; после перезапуска уже выданный JWT заблокированного пользователя может работать до истечения, не дольше `JwtSettings.ExpiryMinutes` (по умолчанию 60 минут). Статус аккаунта между нодами федерации не распространяется.
+
 ## Браузерный поток
 
 Браузер использует gRPC-Web через [[Backend/Web]], а не нативные per-service каналы:
