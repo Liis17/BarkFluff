@@ -18,6 +18,8 @@
                         border-color var(--md-dur-2) var(--md-easing-standard);
         }
         .user-row:hover { background: var(--md-surface-container); border-color: var(--md-primary); }
+        .user-status-badge { display: inline-flex; align-items: center; margin-left: 8px; vertical-align: middle; }
+        .user-status-info { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0; }
         .avatar {
             width: 44px; height: 44px;
             border-radius: 50%;
@@ -357,6 +359,11 @@
         </header>
 
         <div class="md-page">
+            <div id="userStatusFilters" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+                <button type="button" class="md-chip selected" data-status="all" onclick="setUserStatusFilter('all')">Все</button>
+                <button type="button" class="md-chip" data-status="blocked" onclick="setUserStatusFilter('blocked')">Заблокированные</button>
+                <button type="button" class="md-chip" data-status="pending_deletion" onclick="setUserStatusFilter('pending_deletion')">В удалении</button>
+            </div>
             <div class="users-list" id="usersList"></div>
             <div id="emptyState" class="md-empty" style="display:none;">
                 <span class="msr size-48">group_off</span>
@@ -432,7 +439,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=7"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=4"></script>
 <script>
@@ -441,6 +448,7 @@
     let currentOffset = 0;
     let isLoading = false;
     let currentQuery = '';
+    let currentStatusFilter = 'all';
     let searchTimeout = null;
     let allBadges = [];
     let currentUserData = null;
@@ -453,6 +461,14 @@
     function getInitials(f, l) { return ((f?.[0] || '') + (l?.[0] || '')).toUpperCase() || '?'; }
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
     function formatDate(s) { if (!s) return '—'; const d = new Date(s); return d.toLocaleDateString('ru-RU'); }
+    function formatDateTime(s) { if (!s) return '—'; const d = new Date(s); return d.toLocaleString('ru-RU'); }
+    function accountStatusLabel(status) {
+        return ({ Active: 'Активен', Blocked: 'Заблокирован', PendingDeletion: 'В удалении', Deleted: 'Удалён' })[status] || 'Неизвестный статус';
+    }
+    function accountStatusBadge(status) {
+        const level = status === 'Blocked' || status === 'Deleted' ? 'level-error' : status === 'PendingDeletion' ? 'level-warning' : 'level-info';
+        return `<span class="md-chip selected ${level} user-status-badge">${escapeHtml(accountStatusLabel(status))}</span>`;
+    }
 
     async function loadUsers(reset = false) {
         if (isLoading) return;
@@ -463,7 +479,7 @@
         document.getElementById('loadingMore').style.display = '';
 
         try {
-            const params = new URLSearchParams({ query: currentQuery, offset: currentOffset, size: PAGE_SIZE });
+            const params = new URLSearchParams({ query: currentQuery, status: currentStatusFilter, offset: currentOffset, size: PAGE_SIZE });
             const data = await BF.request(`/api/users?${params}`);
             totalCount = data.totalCount;
             users = reset ? data.users : users.concat(data.users);
@@ -483,17 +499,26 @@
             <div class="user-row" onclick="openUserModal(${u.id})">
                 <div class="avatar">
                     ${(u.profilePicturePreview || u.profilePicture)
-                        ? `<img src="${u.profilePicturePreview || u.profilePicture}">`
-                        : getInitials(u.firstName, u.lastName)}
+                        ? `<img src="${escapeHtml(u.profilePicturePreview || u.profilePicture)}" alt="">`
+                        : escapeHtml(getInitials(u.firstName, u.lastName))}
                 </div>
                 <div class="info">
-                    <div class="name">${escapeHtml(u.firstName)} ${escapeHtml(u.lastName)}</div>
+                    <div class="name">${escapeHtml(u.firstName)} ${escapeHtml(u.lastName)} ${accountStatusBadge(u.accountStatus)}</div>
                     <div class="uname">@${escapeHtml(u.username)}</div>
                 </div>
-                <div class="uid">ID: ${u.id}</div>
+                <div class="uid">ID: ${escapeHtml(u.id)}</div>
             </div>
         `).join('');
     }
+
+    window.setUserStatusFilter = function (status) {
+        if (!['all', 'blocked', 'pending_deletion'].includes(status)) return;
+        currentStatusFilter = status;
+        document.querySelectorAll('#userStatusFilters [data-status]').forEach(button => {
+            button.classList.toggle('selected', button.dataset.status === status);
+        });
+        loadUsers(true);
+    };
 
     document.getElementById('searchInput').addEventListener('input', e => {
         clearTimeout(searchTimeout);
@@ -524,7 +549,28 @@
 
     function renderUserModal(data) {
         const p = data.profile;
+        const status = p.accountStatus || 'Active';
+        if (status === 'Deleted') {
+            document.getElementById('modalUserTitle').textContent = 'Удалённый пользователь';
+            document.getElementById('modalContent').innerHTML = `
+                <section class="user-modal-profile">
+                    <div class="user-status-info">${accountStatusBadge(status)}<span>ID: ${escapeHtml(p.id)}</span></div>
+                    <p>Аккаунт окончательно удалён.</p>
+                </section>`;
+            return;
+        }
         const canChangePassword = !window.BF || BF.can('users.password.set');
+        const canChangeBlock = !window.BF || BF.can('users.block');
+        const canScheduleDeletion = !window.BF || BF.can('users.delete');
+        const restrictionActions = [];
+        if (status === 'Active' && canChangeBlock)
+            restrictionActions.push(`<button class="md-btn md-btn-tonal" onclick="changeAccountRestriction(${p.id}, 'block')">Заблокировать</button>`);
+        if (status === 'Blocked' && canChangeBlock)
+            restrictionActions.push(`<button class="md-btn md-btn-tonal" onclick="changeAccountRestriction(${p.id}, 'unblock')">Разблокировать</button>`);
+        if ((status === 'Active' || status === 'Blocked') && canScheduleDeletion)
+            restrictionActions.push(`<button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="changeAccountRestriction(${p.id}, 'deletion')">Удалить аккаунт</button>`);
+        if (status === 'PendingDeletion' && canScheduleDeletion)
+            restrictionActions.push(`<button class="md-btn md-btn-tonal" onclick="changeAccountRestriction(${p.id}, 'cancel-deletion')">Отменить удаление</button>`);
         const unavailableLabels = {
             contacts: 'контакты',
             devices: 'устройства',
@@ -545,6 +591,20 @@
         document.getElementById('modalUserTitle').textContent = `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Пользователь';
 
         let html = `
+        <section class="user-modal-section">
+            <div class="user-status-info">
+                ${accountStatusBadge(status)}
+                ${p.restrictionReason ? `<span>Причина: ${escapeHtml(p.restrictionReason)}</span>` : ''}
+                ${p.deletionScheduledAt ? `<span>Окончательное удаление: ${escapeHtml(formatDateTime(p.deletionScheduledAt))}</span>` : ''}
+            </div>
+            ${restrictionActions.length ? `
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    ${restrictionActions.join('')}
+                </div>
+                <label class="field-label" for="accountRestrictionReason" style="margin-top:10px;">Причина действия</label>
+                <textarea id="accountRestrictionReason" maxlength="500" class="md-input-outlined admin-reason" placeholder="Обязательная причина, до 500 символов"></textarea>
+            ` : ''}
+        </section>
         <section style="position:relative;">
             <div class="user-modal-cover" onclick="document.getElementById('posterFileInput').click()">
                 ${p.profilePosterUrl
@@ -929,6 +989,29 @@
                 successToast: `${name} 2FA отключён`
             });
             await openUserModal(uid);
+        } catch (_) {}
+    };
+    window.changeAccountRestriction = async function (uid, action) {
+        const permission = action === 'block' || action === 'unblock' ? 'users.block' : 'users.delete';
+        if (window.BF && !BF.can(permission)) return;
+        const reason = document.getElementById('accountRestrictionReason')?.value.trim();
+        if (!reason || reason.length > 500) { BF.toast('Укажите причину (не более 500 символов)', 'warning'); return; }
+        const config = {
+            block: { path: 'block', method: 'POST', confirm: 'Заблокировать аккаунт пользователя?', success: 'Аккаунт заблокирован' },
+            unblock: { path: 'unblock', method: 'POST', confirm: 'Разблокировать аккаунт пользователя?', success: 'Аккаунт разблокирован' },
+            deletion: { path: 'deletion', method: 'POST', confirm: 'Поставить аккаунт на удаление через 7 дней?', success: 'Удаление аккаунта запланировано' },
+            'cancel-deletion': { path: 'deletion', method: 'DELETE', confirm: 'Отменить запланированное удаление?', success: 'Удаление аккаунта отменено' }
+        }[action];
+        if (!config || !confirm(config.confirm)) return;
+        try {
+            await BF.request(`/api/users/${uid}/${config.path}`, {
+                method: config.method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason }),
+                successToast: config.success
+            });
+            await openUserModal(uid);
+            await loadUsers(true);
         } catch (_) {}
     };
     window.updateStorageLimit = async function (uid) {

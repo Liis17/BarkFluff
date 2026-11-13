@@ -32,6 +32,10 @@ public static class StepUpActions
     public const string UsersPasswordSet = "users.password.set";
     public const string Users2FaDisable = "users.2fa.disable";
     public const string UsersSessionsRevokeAll = "users.sessions.revoke-all";
+    public const string UsersBlock = "users.block";
+    public const string UsersUnblock = "users.unblock";
+    public const string UsersDeletionSchedule = "users.deletion.schedule";
+    public const string UsersDeletionCancel = "users.deletion.cancel";
     public const string DockerBranch = "docker.branch";
     public const string DockerRestartAll = "docker.restart-all";
     public const string DockerUpdateAll = "docker.update-all";
@@ -59,6 +63,10 @@ public static class StepUpActions
             [UsersPasswordSet] = AdminPermissions.UsersPasswordSet,
             [Users2FaDisable] = AdminPermissions.Users2FaDisable,
             [UsersSessionsRevokeAll] = AdminPermissions.UsersSessionsRevoke,
+            [UsersBlock] = AdminPermissions.UsersBlock,
+            [UsersUnblock] = AdminPermissions.UsersBlock,
+            [UsersDeletionSchedule] = AdminPermissions.UsersDelete,
+            [UsersDeletionCancel] = AdminPermissions.UsersDelete,
             [DockerBranch] = AdminPermissions.DockerDeploy,
             [DockerRestartAll] = AdminPermissions.DockerDeploy,
             [DockerUpdateAll] = AdminPermissions.DockerDeploy,
@@ -93,6 +101,10 @@ public static class StepUpActions
             UsersPasswordSet => "Смена пароля пользователя",
             Users2FaDisable => "Отключение 2FA пользователя",
             UsersSessionsRevokeAll => "Завершение всех сессий пользователя",
+            UsersBlock => "Блокировка пользователя",
+            UsersUnblock => "Разблокировка пользователя",
+            UsersDeletionSchedule => "Постановка пользователя на удаление",
+            UsersDeletionCancel => "Отмена удаления пользователя",
             DockerBranch => "Переключение ветки обновлений",
             DockerRestartAll => "Перезапуск всех сервисов",
             DockerUpdateAll => "Обновление всех сервисов",

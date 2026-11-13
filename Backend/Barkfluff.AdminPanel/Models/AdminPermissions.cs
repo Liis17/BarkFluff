@@ -10,6 +10,8 @@ public static class AdminPermissions
     public const string UsersSessionsRevoke = "users.sessions.revoke";
     public const string UsersPasswordSet = "users.password.set";
     public const string Users2FaDisable = "users.2fa.disable";
+    public const string UsersBlock = "users.block";
+    public const string UsersDelete = "users.delete";
     public const string BadgesManage = "badges.manage";
     public const string StickersManage = "stickers.manage";
     public const string BotsManage = "bots.manage";
@@ -34,6 +36,8 @@ public static class AdminPermissions
         [UsersSessionsRevoke] = new[] { AdminRole.Support, AdminRole.SecurityAdmin },
         [UsersPasswordSet] = new[] { AdminRole.Support, AdminRole.SecurityAdmin },
         [Users2FaDisable] = new[] { AdminRole.SecurityAdmin },
+        [UsersBlock] = new[] { AdminRole.SecurityAdmin },
+        [UsersDelete] = new[] { AdminRole.SecurityAdmin },
         [BadgesManage] = new[] { AdminRole.ContentAdmin },
         [StickersManage] = new[] { AdminRole.ContentAdmin },
         [BotsManage] = new[] { AdminRole.ContentAdmin },
