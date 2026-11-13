@@ -8,6 +8,7 @@ using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Consumers;
+using BarkFluff.Users.Features.ChatFolders;
 using BarkFluff.Users.Host;
 using BarkFluff.Users.Infrastructure;
 using BarkFluff.Users.Persistence.Contexts;
@@ -36,7 +37,11 @@ public class Program
         builder.Services.AddBarkFluffGrpc();
         builder.Services.AddBarkFluffMetrics("BarkFluff.Users");
 
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+        builder.Services.AddMediatR(cfg =>
+        {
+            cfg.RegisterServicesFromAssemblyContaining<Program>();
+            cfg.AddOpenBehavior(typeof(ChatFoldersChangedBehavior<,>));
+        });
 
         if (builder.Environment.IsDevelopment())
             builder.Services.AddGrpcReflection();
