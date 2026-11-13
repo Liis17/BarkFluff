@@ -264,9 +264,6 @@
 
     function rowHtml(chat) {
         var myUserId = deps.getMyUserId();
-        var avatarInitial = (chat.title || '?')[0].toUpperCase();
-        var avatarHtml = chat.picture ? '<img src="' + u.escapeHtml(chat.picture) + '" alt="">' : avatarInitial;
-
         var isPrivate = chat.chatType === 1;
         var lm = chat.lastMessage;
         var hasDraft = chat.chatType === 0 && (chat.hasDraft === true || (BF.drafts && BF.drafts.has(chat.id)));
@@ -317,8 +314,13 @@
         }
         var peerUser = peerUserId ? deps.getCachedUser(peerUserId) : null;
         var isBot = !!(peerUser && peerUser.isBot);
+        var restricted = u.isRestrictedUser(peerUser);
+        var title = restricted ? u.restrictedUserName(peerUser) : chat.title || BF.i18n.t('common.chat');
+        var picture = restricted ? '' : chat.picture;
+        var avatarInitial = (title || '?')[0].toUpperCase();
+        var avatarHtml = picture ? '<img src="' + u.escapeHtml(picture) + '" alt="">' : avatarInitial;
         var onlineDot =
-            peerUser && !isBot
+            peerUser && !isBot && !restricted
                 ? '<div class="online-dot' +
                   (peerUserId && deps.isUserOnline(peerUserId) ? ' visible' : '') +
                   '" data-online-user="' +
@@ -340,7 +342,7 @@
                   BF.icons.html('security') +
                   '</span>'
                 : '') +
-            u.escapeHtml(chat.title || BF.i18n.t('common.chat')) +
+            u.escapeHtml(title) +
             (isBot ? deps.botBadgeMarkup() : '') +
             '</span>' +
             '<span class="chat-time">' +

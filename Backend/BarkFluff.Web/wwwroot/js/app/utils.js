@@ -47,6 +47,15 @@
         return d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
+    function isRestrictedUser(user) {
+        return !!user && Number(user.accountStatus) > 0;
+    }
+
+    function restrictedUserName(user) {
+        if (!isRestrictedUser(user)) return '';
+        return BF.i18n.t(Number(user.accountStatus) === 1 ? 'accountRestriction.userBlocked' : 'accountRestriction.userDeleted');
+    }
+
     function formatFileSize(bytes) {
         if (bytes < 1024) return BF.i18n.t('unit.bytes', { value: bytes });
         if (bytes < 1024 * 1024) return BF.i18n.t('unit.kb', { value: (bytes / 1024).toFixed(1) });
@@ -688,6 +697,8 @@
         formatTime: formatTime,
         formatChatListTime: formatChatListTime,
         formatDate: formatDate,
+        isRestrictedUser: isRestrictedUser,
+        restrictedUserName: restrictedUserName,
         formatFileSize: formatFileSize,
         truncate: truncate,
         escapeHtml: escapeHtml,

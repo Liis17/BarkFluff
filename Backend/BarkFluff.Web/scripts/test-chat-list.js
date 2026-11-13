@@ -155,7 +155,7 @@ function makeEvent(type, extra) {
     return Object.assign(event, extra || {});
 }
 
-function createHarness(chatCount) {
+function createHarness(chatCount, restrictedUser) {
     var document = new FakeElement('#document');
     document.ownerDocument = document;
     document.body = new FakeElement('body', document);
@@ -195,6 +195,11 @@ function createHarness(chatCount) {
     var chats = [];
     for (var i = 0; i < chatCount; i++) {
         chats.push({ id: 1000 + i, title: 'Chat ' + i, chatType: 0, lastMessage: null, countUnread: 0 });
+    }
+    if (restrictedUser && chats.length > 0) {
+        chats[0].isGroupChat = false;
+        chats[0].picture = 'https://example.test/avatar.png';
+        chats[0].members = [{ userId: 1 }, { userId: 2 }];
     }
     var opened = [];
     var mobileShown = 0;
@@ -251,6 +256,12 @@ function createHarness(chatCount) {
             }
         },
         utils: {
+            isRestrictedUser: function (user) { return !!user && Number(user.accountStatus) > 0; },
+            restrictedUserName: function (user) {
+                return BF.i18n.t(Number(user.accountStatus) === 1
+                    ? 'accountRestriction.userBlocked'
+                    : 'accountRestriction.userDeleted');
+            },
             openOverlay: function (overlay) { overlay.classList.add('visible'); },
             closeOverlay: function (overlay) { overlay.classList.remove('visible'); },
             escapeHtml: function (value) {
@@ -307,8 +318,8 @@ function createHarness(chatCount) {
         getMyUserId: function () {
             return 1;
         },
-        getCachedUser: function () {
-            return null;
+        getCachedUser: function (userId) {
+            return restrictedUser && userId === 2 ? restrictedUser : null;
         },
         getUser: function () {
             return Promise.resolve(null);
@@ -396,6 +407,14 @@ test('only the visible window (+overscan) of 200 chats is rendered', function ()
     assert.equal(h.row(1000).getAttribute('aria-setsize'), '200');
     assert.equal(h.row(1000).getAttribute('aria-posinset'), '1');
     assert.equal(h.row(1000).getAttribute('role'), 'option');
+});
+
+test('restricted peers use a local title and have no avatar or online indicator', function () {
+    var h = createHarness(1, { accountStatus: 1 });
+    h.BF.chatList.render();
+    var row = h.row(1000);
+    assert.match(row.innerHTML, /accountRestriction\.userBlocked/);
+    assert.doesNotMatch(row.innerHTML, /avatar\.png|online-dot/);
 });
 
 test('scrolling moves the window and keeps the rover row in the DOM', function () {

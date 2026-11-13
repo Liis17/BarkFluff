@@ -54,9 +54,11 @@ function createHarness(options) {
     });
     var timers = [];
     var opened = [];
+    var toastCalls = [];
     var userSearches = [];
     var pendingSearches = [];
-    var chats = (options && options.chats) || [];
+    var settings = options || {};
+    var chats = settings.chats || [];
     var BF = {
         api: {
             searchUsers: function (query) {
@@ -66,7 +68,9 @@ function createHarness(options) {
                 });
             },
             getPersonChatId: function (userId) {
-                return Promise.resolve({ chatId: 'chat-of-' + userId });
+                return settings.getPersonChatId
+                    ? settings.getPersonChatId(userId)
+                    : Promise.resolve({ chatId: 'chat-of-' + userId });
             }
         },
         i18n: {
@@ -77,6 +81,14 @@ function createHarness(options) {
         utils: {
             escapeHtml: function (value) {
                 return String(value);
+            },
+            isRestrictedUser: function (user) {
+                return !!user && Number(user.accountStatus) > 0;
+            },
+            restrictedUserName: function (user) {
+                return BF.i18n.t(Number(user.accountStatus) === 1
+                    ? 'accountRestriction.userBlocked'
+                    : 'accountRestriction.userDeleted');
             }
         }
     };
@@ -105,6 +117,15 @@ function createHarness(options) {
         getChats: function () {
             return chats;
         },
+        getCachedUser: function (userId) {
+            return (settings.cachedUsers || {})[userId] || null;
+        },
+        getMyUserId: function () {
+            return 1;
+        },
+        showToast: function (message, isError) {
+            toastCalls.push([message, isError]);
+        },
         openChat: function (chatId) {
             opened.push(chatId);
         }
@@ -113,6 +134,7 @@ function createHarness(options) {
         input: input,
         results: results,
         opened: opened,
+        toastCalls: toastCalls,
         userSearches: userSearches,
         type: function (text) {
             input.value = text;
@@ -196,6 +218,30 @@ async function main() {
         h.results.children[1].listeners.click();
         await settle();
         assert.deepEqual(h.opened, [5, 'chat-of-77']);
+    });
+
+    await test('restricted users have a local label and UserUnavailable is shown when opening a chat', async function () {
+        var h = createHarness({
+            getPersonChatId: function () {
+                return Promise.reject({ errorCode: '6BC0E7A1-5117-4910-9717-1784E6921F6F' });
+            }
+        });
+        h.type('blocked');
+        h.fireDebounce();
+        h.answer(0, [{
+            id: 44,
+            username: 'private-name',
+            firstName: 'Private',
+            accountStatus: 1,
+            profilePicturePreview: 'https://example.test/avatar.png'
+        }]);
+        await settle();
+        var result = h.results.children[0].innerHTML;
+        assert.match(result, /accountRestriction\.userBlocked/);
+        assert.doesNotMatch(result, /private-name|avatar\.png/);
+        h.results.children[0].listeners.click();
+        await settle();
+        assert.deepEqual(h.toastCalls, [['accountRestriction.userUnavailable', true]]);
     });
 }
 

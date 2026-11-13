@@ -32,7 +32,10 @@
         OTP_REQUIRED: 'C1576884-12D8-4722-A7EE-9F9789AD1265',
         INVALID_OTP: '803B632C-4457-4B05-9435-9C3DD0F41E00',
         INVALID_CREDENTIALS: '21BFB9B5-C377-45D1-9B15-6B7F3432B397',
-        INVALID_REFRESH_TOKEN: '7E6A31C5-3C4D-412E-87BC-0A387617A5D3'
+        INVALID_REFRESH_TOKEN: '7E6A31C5-3C4D-412E-87BC-0A387617A5D3',
+        ACCOUNT_BLOCKED: 'F34D8C22-C075-4E9C-92AD-C893F192D8FA',
+        ACCOUNT_PENDING_DELETION: '8E6F0F30-98AF-4F96-A63B-20D52AEEFB6A',
+        USER_UNAVAILABLE: '6BC0E7A1-5117-4910-9717-1784E6921F6F'
     };
 
     var refreshPromise = null;
@@ -40,6 +43,18 @@
     function isInvalidRefreshTokenError(err) {
         var errorCode = err && err.metadata && err.metadata['x-error-code'];
         return errorCode === ERROR_CODES.INVALID_REFRESH_TOKEN;
+    }
+
+    function isRestrictedAccountError(err) {
+        var errorCode = err && err.metadata && err.metadata['x-error-code'];
+        return errorCode === ERROR_CODES.ACCOUNT_BLOCKED || errorCode === ERROR_CODES.ACCOUNT_PENDING_DELETION;
+    }
+
+    function leaveRestrictedSession(err) {
+        var errorCode = err && err.metadata && err.metadata['x-error-code'];
+        try { window.sessionStorage.setItem('barkfluff_auth_notice', errorCode); } catch (e) {}
+        BF.tokens.clear();
+        window.location.href = '/';
     }
 
     /**
@@ -74,7 +89,8 @@
         }).catch(function (err) {
             // Сетевая ошибка не означает, что refresh token недействителен.
             // Очищаем сессию только по явному ответу Identity.
-            if (isInvalidRefreshTokenError(err)) BF.tokens.clear();
+            if (isRestrictedAccountError(err)) leaveRestrictedSession(err);
+            else if (isInvalidRefreshTokenError(err)) BF.tokens.clear();
             return null;
         });
 
@@ -128,6 +144,9 @@
             if (!err.errorCode) {
                 var errorCode = err.metadata && err.metadata['x-error-code'];
                 err.errorCode = errorCode || null;
+            }
+            if (err.errorCode === ERROR_CODES.ACCOUNT_BLOCKED || err.errorCode === ERROR_CODES.ACCOUNT_PENDING_DELETION) {
+                leaveRestrictedSession(err);
             }
             throw err;
         });
