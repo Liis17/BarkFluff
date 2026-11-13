@@ -435,4 +435,17 @@
     <x:String x:Key="Error_DevicesLoadFailed">Could not load the device list.</x:String>
     <x:String x:Key="Error_UpdateCheckFailed">Could not check for updates.</x:String>
     <x:String x:Key="Error_LogoutFailed">Could not sign out.</x:String>
+    <x:String x:Key="Error_AccountBlocked">This account is blocked. Only the node administrator can remove the block.</x:String>
+    <x:String x:Key="Error_AccountPendingDeletion">This account is being deleted. Contact the node administrator to cancel deletion before the scheduled date.</x:String>
+    <x:String x:Key="Login_AccountBlockedTitle">Account blocked</x:String>
+    <x:String x:Key="Login_AccountPendingDeletionTitle">Account deletion scheduled</x:String>
+    <x:String x:Key="Login_AccountRestrictionReason">Reason: {0}</x:String>
+    <x:String x:Key="Login_AccountDeletionDate">Final deletion: {0}</x:String>
+    <x:String x:Key="Login_AccountBlockedHelp">Only the node administrator can remove the block.</x:String>
+    <x:String x:Key="Login_AccountPendingDeletionHelp">You can cancel deletion before this date by contacting the node administrator.</x:String>
+    <x:String x:Key="Messenger_UserBlocked">Blocked user</x:String>
+    <x:String x:Key="Messenger_UserDeleted">Deleted user</x:String>
+    <x:String x:Key="Messenger_ReadOnlyBlocked">This user is blocked</x:String>
+    <x:String x:Key="Messenger_ReadOnlyDeleted">This account was deleted</x:String>
+    <x:String x:Key="Messenger_UserUnavailable">This user is blocked or deleted and unavailable.</x:String>
 </ResourceDictionary>

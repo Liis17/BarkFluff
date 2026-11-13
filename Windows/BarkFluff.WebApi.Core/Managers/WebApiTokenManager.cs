@@ -30,6 +30,9 @@ namespace BarkFluff.WebApi.Core.Managers
         // инвалидируют друг друга и приводят к cascade logout.
         private readonly SemaphoreSlim _refreshLock = new(1, 1);
         private Task<bool>? _ongoingRefresh;
+        private string? _lastRefreshErrorResourceKey;
+
+        public string? LastRefreshErrorResourceKey => Volatile.Read(ref _lastRefreshErrorResourceKey);
 
         public WebApiTokenManager(WebApi webApi) : base(webApi)
         {
@@ -89,6 +92,7 @@ namespace BarkFluff.WebApi.Core.Managers
         private async Task<bool> DoRefreshAsync(GlobalParam globalParam)
         {
             var (result, _) = await TokenUpdate(globalParam);
+            Volatile.Write(ref _lastRefreshErrorResourceKey, result.ErrorResourceKey);
             if (!result.IsSuccess) return false;
 
             if (_webApi.ClientManager._initParams.HasValue)
@@ -166,11 +170,20 @@ namespace BarkFluff.WebApi.Core.Managers
         /// </summary>
         public async Task<(ErrorReturner, string)> TokenUpdate(GlobalParam globalParam)
         {
+            Volatile.Write(ref _lastRefreshErrorResourceKey, null);
             try
             {
                 var response = await IdentityAC!.CreateTokenAsync(new BarkFluff.Proto.Identity.CreateTokenRequest { RefreshToken = globalParam.RefreshToken.Value });
                 globalParam.AccessToken = response.AccessToken;
                 return (new ErrorReturner(true), response.AccessToken.Value);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.AccountBlockedException)
+            {
+                return (new ErrorReturner(false, "Account blocked", errorResourceKey: "Error_AccountBlocked"), string.Empty);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.AccountPendingDeletionException)
+            {
+                return (new ErrorReturner(false, "Account pending deletion", errorResourceKey: "Error_AccountPendingDeletion"), string.Empty);
             }
             catch (Exception)
             {
@@ -277,7 +290,7 @@ namespace BarkFluff.WebApi.Core.Managers
                 var staleToken = globalParam.AccessToken?.Value ?? string.Empty;
                 var success = await RefreshOnceAsync(globalParam, staleToken);
                 if (!success)
-                    return new ErrorReturner(false, "Ошибка обновления токена");
+                    return new ErrorReturner(false, "Ошибка обновления токена", errorResourceKey: LastRefreshErrorResourceKey);
             }
 
             return new ErrorReturner(true);
@@ -297,7 +310,7 @@ namespace BarkFluff.WebApi.Core.Managers
             var success = await RefreshOnceAsync(globalParam, staleToken);
             return success
                 ? new ErrorReturner(true)
-                : new ErrorReturner(false, "Ошибка обновления токена");
+                : new ErrorReturner(false, "Ошибка обновления токена", errorResourceKey: LastRefreshErrorResourceKey);
         }
     }
 }

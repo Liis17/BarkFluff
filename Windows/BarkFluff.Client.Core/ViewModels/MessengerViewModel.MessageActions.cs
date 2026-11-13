@@ -510,9 +510,11 @@ public sealed partial class MessengerViewModel
     /// общий запасной вариант нужен, когда сообщение не заполнено.
     /// </summary>
     private string DescribeError(ErrorReturner error) =>
-        string.IsNullOrWhiteSpace(error.ErrorMessage)
-            ? _localization.GetString("Messenger_ActionFailed")
-            : error.ErrorMessage;
+        error.ErrorResourceKey is { Length: > 0 } resourceKey
+            ? _localization.GetString(resourceKey)
+            : string.IsNullOrWhiteSpace(error.ErrorMessage)
+                ? _localization.GetString("Messenger_ActionFailed")
+                : error.ErrorMessage;
 
     /// <summary>
     /// Фоновая операция сообщает об ошибке, только если баннер пуст: она не перетирает

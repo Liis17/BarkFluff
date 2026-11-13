@@ -220,7 +220,7 @@ public sealed class MessengerRealtimeTests
 
         await viewModel.LoadAsync();
         viewModel.SearchText = "ali";
-        var result = new UserSearchResultViewModel(new UserData { Id = 7, FirstName = "Alice", Username = "li_is" });
+        var result = new UserSearchResultViewModel(new UserData { Id = 7, FirstName = "Alice", Username = "li_is" }, new StubLocalizationService());
         await viewModel.OpenSearchResultAsync(result);
 
         Assert.Same(viewModel.Chats.Single(), viewModel.SelectedChat);
@@ -245,7 +245,7 @@ public sealed class MessengerRealtimeTests
         await viewModel.LoadAsync();
         messenger.Chats.Add(MessengerTestDoubles.CreateChat("new", "Alice", peerUserId: 7));
 
-        await viewModel.OpenSearchResultAsync(new UserSearchResultViewModel(messenger.UserData!));
+        await viewModel.OpenSearchResultAsync(new UserSearchResultViewModel(messenger.UserData!, new StubLocalizationService()));
 
         var chat = Assert.Single(viewModel.Chats);
         Assert.Equal("new", chat.Id);
