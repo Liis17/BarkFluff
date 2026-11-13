@@ -93,6 +93,16 @@ class ChatsFragment : Fragment() {
         globalParam = GlobalParam(requireContext())
         initialScrollPending = true
 
+        binding.userAvatarButton.setOnClickListener {
+            startActivity(UserProfileActivity.createIntent(
+                context = requireContext(),
+                chatId = "",
+                otherUserId = globalParam.userId,
+                isGroupChat = false,
+                chatTitle = "${globalParam.firstName} ${globalParam.lastName}".trim(),
+                chatAvatarFileId = globalParam.pictureFileId.ifBlank { globalParam.picturePreviewFileId }.ifBlank { null },
+            ))
+        }
         setupToolbar()
         setupChatList()
         setupFolderTabs()
@@ -532,7 +542,7 @@ class ChatsFragment : Fragment() {
             putExtra("chat_title", displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.chat_title_default) })
             putExtra("chat_avatar_file_id", displayItem?.displayAvatarFileId ?: chat.pictureFileId.ifBlank { null })
             putExtra("is_group_chat", chat.isGroupChat)
-            putExtra("other_user_id", displayItem?.otherUserId ?: 0L)
+            putExtra("other_user_id", if (com.barkfluff.client.utils.isSelfChat(chat.memberIds, globalParam.userId) && !chat.isGroupChat) globalParam.userId else displayItem?.otherUserId ?: 0L)
             putExtra(PerfTrace.EXTRA_CHAT_OPEN, true)
         }
 
