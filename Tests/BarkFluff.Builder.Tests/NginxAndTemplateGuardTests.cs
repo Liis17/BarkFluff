@@ -34,6 +34,8 @@ public sealed class NginxAndTemplateGuardTests
     {
         var root = BuilderTestSupport.FindRepositoryRoot();
         var baselineDirectory = Path.Combine(root, "Docker", "nightly", "nginx", "sites");
+        var baselinePath = Path.Combine(baselineDirectory, "10-subdomains.conf");
+        var baseline = File.ReadAllText(baselinePath);
         var model = BuilderTestSupport.ValidModel();
         model.NginxMode = NginxMode.Compose;
         var generated = NginxGenerator.BuildFiles(model);
@@ -45,10 +47,11 @@ public sealed class NginxAndTemplateGuardTests
 
         foreach (var name in baselineNames)
         {
-            var baseline = File.ReadAllText(Path.Combine(baselineDirectory, name + ".conf"));
+            Assert.True(TryGetNightlySiteSection(baseline, name, out var baselineSection),
+                $"Nightly nginx section '{name}' was not found in '{baselinePath}'.");
             var current = generated[$"nginx/sites/{name}.conf"];
-            Assert.True(LocationSet(baseline).SetEquals(LocationSet(current)), $"Location drift: {name}");
-            Assert.True(UpstreamSet(baseline).SetEquals(UpstreamSet(current)), $"Upstream drift: {name}");
+            Assert.True(LocationSet(baselineSection).SetEquals(LocationSet(current)), $"Location drift: {name}");
+            Assert.True(UpstreamSet(baselineSection).SetEquals(UpstreamSet(current)), $"Upstream drift: {name}");
         }
 
         // The setup site is intentionally new; certificates are builder-owned, and resolver/upstream values vary by nginx mode.
@@ -205,4 +208,27 @@ public sealed class NginxAndTemplateGuardTests
     public static HashSet<string> UpstreamSet(string text) => Regex.Matches(text, @"\b(?:grpc|http)://[A-Za-z0-9._-]+:\d+")
         .Select(match => match.Value)
         .ToHashSet(StringComparer.Ordinal);
+
+    private static bool TryGetNightlySiteSection(string text, string name, out string section)
+    {
+        var headings = Regex.Matches(text, @"(?m)^# -{20} (?<name>.+?) -{20}\r?$")
+            .Cast<Match>()
+            .ToArray();
+        var headingIndex = Array.FindIndex(headings, heading =>
+            string.Equals(heading.Groups["name"].Value, name, StringComparison.Ordinal));
+        if (headingIndex < 0)
+        {
+            section = string.Empty;
+            return false;
+        }
+
+        var heading = headings[headingIndex];
+        var start = heading.Index + heading.Length;
+        if (start < text.Length && text[start] == '\n')
+            start++;
+
+        var end = headingIndex + 1 < headings.Length ? headings[headingIndex + 1].Index : text.Length;
+        section = text[start..end];
+        return true;
+    }
 }
