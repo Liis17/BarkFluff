@@ -9,6 +9,6 @@
 - Services/ — прогрев кеша и очистка старых S3-объектов.
 - Persistence/ — EF Core SQLite и миграции; БД по умолчанию в контейнере /app/data/clientstorage.db.
 - Middleware/TokenAuthMiddleware.cs — проверка UPLOAD_TOKEN для /set/*.
-- Deployment: Docker/nightly/clientstorage/docker-compose.yml; nginx routes: Docker/nightly/nginx/sites/storage.conf; files-media.conf относится к Files.
+- Deployment: Docker/nightly/clientstorage/docker-compose.yml; nginx routes: `Docker/nightly/nginx/sites/10-subdomains.conf` (Storage и Files-media service blocks).
 
 Платформы и каналы определяются перечислениями в Domain.

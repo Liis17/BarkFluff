@@ -193,7 +193,7 @@ object AvatarLoader {
         userId: Long = 0
     ) {
         if (!avatarUrl.isNullOrBlank()) {
-            imageView.load(avatarUrl) {
+            imageView.load(avatarUrl, getImageLoader(imageView.context)) {
                 crossfade(200)
                 transformations(CircleCropTransformation())
                 placeholder(createPlaceholderDrawable(displayName, userId))

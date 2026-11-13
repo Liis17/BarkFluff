@@ -12,6 +12,7 @@
 | [[Backend/Settings]] | Централизованные настройки и setup API | — |
 | [[Backend/Setup]] | Первичная настройка Settings | — |
 | [[Backend/Beacon]] | Адреса сервисов и метаданные ноды | [[Backend/Beacon-Metrics|Метрики]], [[Backend/Beacon-ProjectMap|Карта]] |
+| [[Backend/BftProxy]] | BFTv1 Exit и Relay | — |
 | [[Backend/Navigator]] | Каталог нод | — |
 | [[Backend/GrpcServer]] | Общая backend-инфраструктура, XAuth, health и метрики | [[Backend/GrpcServer-ProjectMap|Карта]] |
 | [[Backend/Identity]] | JWT, challenge auth, OTP и сессии | [[Backend/Identity-Metrics|Метрики]], [[Backend/Identity-ProjectMap|Карта]] |
@@ -38,6 +39,7 @@
 | Компонент | Назначение | Дополнительные заметки |
 |-----------|------------|------------------------|
 | [[Shared/Proto]] | Wire schemas и RPC платформы | [[Shared/Proto-ProjectMap|Карта]] |
+| [[Shared/Bft]] | BFTv1 протокол, криптография и multiplexed tunnels | — |
 | [[Shared/Auth]] | JWT/device client interceptors | [[Shared/Auth-ProjectMap|Карта]] |
 | [[Shared/Exceptions]] | ErrorCode, server exceptions и client mapping | [[Shared/Exceptions-ProjectMap|Карта]] |
 | [[Shared/Identity]] | ServiceId, TokenType и claims | [[Shared/Identity-ProjectMap|Карта]] |

@@ -6,7 +6,7 @@ ASP.NET Core-хост браузерного клиента с режимами 
 
 - `Program.cs` настраивает YARP-маршруты: Node связывает gRPC-Web и HTTP upload с сервисами ноды; Shell оставляет API Navigator для каталога и выбора ноды; Proxy передаёт запросы Node-хосту и релеирует разрешённые media-хосты.
 - Node создаёт `/ping/{service}` для внутренних health probes. `/ping/navigator` использует отдельный `NavigatorService:HealthHost`; Shell не создаёт ping-маршруты, Proxy передаёт их на Node.
-- `Infrastructure/GrpcWebResponseTrailersFeature.cs` сохраняет trailers gRPC-Web. `nginx/web.conf` — конфигурация nginx рядом с приложением; внешний Proxy-деплой описан в `Docker/nightly/proxy/docker-compose.yml` и `Docker/nightly/proxy/nginx/sites/proxy.conf`; основной ingress ноды — `Docker/nightly/nginx/sites/web.conf`.
+- `Infrastructure/GrpcWebResponseTrailersFeature.cs` сохраняет trailers gRPC-Web. `nginx/web.conf` — конфигурация nginx рядом с приложением; внешний Proxy-деплой описан в `Docker/nightly/proxy/docker-compose.yml` и `Docker/nightly/proxy/nginx/sites/proxy.conf`; основной ingress ноды находится в service-блоке Web файла `Docker/nightly/nginx/sites/10-subdomains.conf`.
 - `appsettings*.json`, переменные среды и Settings задают `Web:Mode`, адреса сервисов, CORS, `Web:Proxy:Target` и allowlist media-хостов. Shell и Proxy пропускают загрузку Settings и используют локальную конфигурацию.
 
 ## Browser client

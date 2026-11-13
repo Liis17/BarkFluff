@@ -45,6 +45,15 @@
                 android:textAppearance="?attr/textAppearanceBodyLarge"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/proxySettingsButton"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/bft_proxy_welcome_link"
+                android:textAllCaps="false" />
+
             <TextView
                 android:id="@+id/publicNodesLabel"
                 android:layout_width="wrap_content"

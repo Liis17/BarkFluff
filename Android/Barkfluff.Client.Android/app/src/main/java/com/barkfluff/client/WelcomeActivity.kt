@@ -273,6 +273,10 @@ class WelcomeActivity : AppCompatActivity() {
             if (legalConsentRequired()) requestLegalConsent() else navigateToSelectServer()
         }
 
+        binding.proxySettingsButton.setOnClickListener {
+            startActivity(Intent(this, ProxySettingsActivity::class.java))
+        }
+
         binding.termsLink.setOnClickListener {
             LegalConsentBottomSheet.forReading(LegalConsentBottomSheet.TAB_TERMS)
                 .show(supportFragmentManager, LegalConsentBottomSheet.TAG)

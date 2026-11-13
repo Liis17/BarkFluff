@@ -192,7 +192,7 @@ class CallTileView(context: Context) : FrameLayout(context) {
         if (info.avatarUrl.isNullOrBlank()) {
             avatarImage.setImageDrawable(null)
         } else {
-            avatarImage.load(info.avatarUrl) {
+            avatarImage.load(info.avatarUrl, AvatarLoader.getImageLoader(context)) {
                 crossfade(150)
                 transformations(CircleCropTransformation())
             }

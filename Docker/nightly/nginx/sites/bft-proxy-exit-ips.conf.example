@@ -1,0 +1,4 @@
+# Add each Exit source IP as seen after real-ip processing; these example-only
+# documentation ranges are not live Exit addresses.
+# Include one IPv4 or IPv6 address per line:
+# 203.0.113.10 1;

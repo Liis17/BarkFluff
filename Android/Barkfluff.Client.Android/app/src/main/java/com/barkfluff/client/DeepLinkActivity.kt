@@ -1,6 +1,8 @@
 package com.barkfluff.client
 
 import android.content.Intent
+import android.app.ActivityManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -36,6 +38,7 @@ class DeepLinkActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handleDeepLink(intent)
     }
 
@@ -43,6 +46,21 @@ class DeepLinkActivity : AppCompatActivity() {
         val uri = intent?.data
         if (uri == null) {
             finish()
+            return
+        }
+
+        if (uri.scheme.equals("bft", ignoreCase = true)) {
+            val link = uri.toString()
+            clearBftLinkFromActivityIntent(intent)
+            val shown = BftProxyLinkImporter.confirm(
+                this,
+                link,
+                onImported = { activeSession ->
+                    if (activeSession) finish() else BftProxyLinkImporter.restartAtNodeSelection(this)
+                },
+                onDeclined = { finish() }
+            )
+            if (!shown) finish()
             return
         }
 
@@ -71,6 +89,20 @@ class DeepLinkActivity : AppCompatActivity() {
                     finish()
                 }
             }
+        }
+    }
+
+    private fun clearBftLinkFromActivityIntent(intent: Intent) {
+        intent.data = null
+        intent.clipData = null
+        intent.replaceExtras(null)
+        intent.action = Intent.ACTION_MAIN
+        intent.categories?.toList()?.forEach(intent::removeCategory)
+        intent.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+        setIntent(intent)
+        setTaskDescription(ActivityManager.TaskDescription(getString(R.string.app_name)))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            setRecentsScreenshotEnabled(false)
         }
     }
 

@@ -9,6 +9,7 @@ import com.barkfluff.client.domain.gateway.MessageGateway
 import barkfluff.onliner.OnlinerApiOuterClass
 import barkfluff.updates.UpdatesApiOuterClass
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.bft.BftProxyManager
 import com.barkfluff.client.crypto.CryptoStoreScope
 import com.barkfluff.client.perf.PerfTrace
 import io.grpc.Status
@@ -64,6 +65,7 @@ class RealtimeService(
     private val messageGateway: MessageGateway,
     private val sideEffects: RealtimeSideEffects? = null
 ) {
+    private val bftProxyManager = BftProxyManager.get(context.applicationContext)
 
     data class ScopedSecretChatInvite(
         val scopeId: String,
@@ -285,7 +287,12 @@ class RealtimeService(
         if (previous == null) {
             // Первая сеть процесса (в том числе после старта офлайн): пересоздавать нечего, но стримы
             // в ожидании переподключения пробуют сразу.
-            clientRegistry.onNetworkChanged()
+            if (!bftProxyManager.isEnabled) clientRegistry.onNetworkChanged()
+            return
+        }
+        if (bftProxyManager.isEnabled) {
+            networkChangePending.set(false)
+            networkChangeJob?.cancel()
             return
         }
         // Если pause() отменит отложенное пересоздание, его выполнит resume().

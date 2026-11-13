@@ -221,5 +221,5 @@ class LiveKitCallEngine(
     private fun requireRoom(): Room = room ?: error("LiveKit room is not connected")
 
     private fun buildTlsOkHttpClient(livekitUrl: String): OkHttpClient =
-        TlsTransportFactory(context.applicationContext).createOkHttpClient(livekitUrl.toHttpUrl())
+        TlsTransportFactory(context.applicationContext).createDirectOkHttpClient(livekitUrl.toHttpUrl())
 }

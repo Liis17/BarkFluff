@@ -193,6 +193,7 @@ android {
         resources {
             // libsignal-client desktop JAR кладёт desktop-нативки в корень JAR; выпиливаем их из APK.
             excludes += setOf(
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
                 "libsignal_jni*.dylib",
                 "libsignal_jni*.so",
                 "signal_jni*.dll",

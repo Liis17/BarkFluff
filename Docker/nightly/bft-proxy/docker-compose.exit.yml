@@ -1,0 +1,16 @@
+services:
+  exit:
+    image: docker.barkfluff.com/barkfluff-bftproxy-nightly:latest
+    restart: always
+    env_file:
+      - ./exit.env
+    ports:
+      - "443:8443/tcp"
+      - "7443:7443/tcp"
+    volumes:
+      - ./client-keys:/var/lib/bft-proxy/client-keys
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

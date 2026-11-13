@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       project:
-        description: Test project name; empty runs all backend test projects
+        description: Comma-separated test project names; empty runs all backend test projects
         type: string
         default: ''
 
@@ -28,13 +28,14 @@ jobs:
 
           projects = sorted(p.as_posix() for p in Path('Tests').glob('*/*.csproj')
                             if '-windows' not in p.read_text())
-          selected = os.environ['TEST_PROJECT']
+          selected = [name.strip() for name in os.environ['TEST_PROJECT'].split(',') if name.strip()]
           if selected:
-              target = f'Tests/{selected}/{selected}.csproj'
-              if target not in projects:
-                  raise SystemExit(f'Unknown backend test project: {selected}')
+              targets = {f'Tests/{name}/{name}.csproj' for name in selected}
+              unknown = targets.difference(projects)
+              if unknown:
+                  raise SystemExit(f'Unknown backend test project(s): {", ".join(sorted(unknown))}')
               common = 'Tests/BarkFluff.GrpcServer.Tests/BarkFluff.GrpcServer.Tests.csproj'
-              projects = sorted({target, common})
+              projects = sorted(targets | {common})
           if not projects:
               raise SystemExit('No backend test projects found')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:

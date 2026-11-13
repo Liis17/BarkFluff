@@ -1,7 +1,21 @@
+import org.gradle.api.tasks.bundling.Zip
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     id("com.google.protobuf") version "0.9.4"
+}
+
+val bcprovSource = configurations.create("bcprovSource") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+val filteredBcprovJar = layout.buildDirectory.file("intermediates/bftBcprov/bcprov-jdk18on-bft.jar")
+val filteredBcprov = tasks.register<Zip>("filterBftBcprov") {
+    from(providers.provider { zipTree(bcprovSource.singleFile) })
+    exclude("META-INF/services/java.security.Provider")
+    archiveFileName.set("bcprov-jdk18on-bft.jar")
+    destinationDirectory.set(layout.buildDirectory.dir("intermediates/bftBcprov"))
 }
 
 android {
@@ -13,6 +27,14 @@ android {
         minSdk = 31
         consumerProguardFiles("consumer-rules.pro")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        providers.gradleProperty("bftAndroidTestClass").orNull?.let {
+            testInstrumentationRunnerArguments["class"] = it
+        }
+        providers.gradleProperty("bftConnectionFile").orNull?.let { connectionFile ->
+            val connection = file(connectionFile).readText().trim()
+            require(connection.startsWith("bft://")) { "bftConnectionFile must contain one BFT connection string" }
+            testInstrumentationRunnerArguments["bftConnection"] = connection
+        }
     }
 
     compileOptions {
@@ -24,6 +46,17 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    packaging {
+        resources {
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+        }
+    }
+    sourceSets.getByName("test").java.srcDir("src/testSupport/java")
+    sourceSets.getByName("test").resources.srcDir("src/testSupport/resources")
+    sourceSets.getByName("test").resources.srcDir(rootProject.file("../Docs/bft"))
+    sourceSets.getByName("androidTest").java.srcDir("src/testSupport/java")
+    sourceSets.getByName("androidTest").assets.srcDir("src/testSupport/resources")
+    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("../Docs/bft"))
 }
 
 protobuf {
@@ -60,6 +93,10 @@ protobuf {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // BFT uses BC lightweight X25519 classes, not its JCA provider registry.
+    compileOnly(libs.bouncycastle.crypto)
+    bcprovSource(libs.bouncycastle.crypto)
+    implementation(files(filteredBcprovJar).builtBy(filteredBcprov))
 
     // gRPC — типы stub'ов и proto-сообщений присутствуют в публичном API ядра → api(...)
     api("io.grpc:grpc-okhttp:1.60.0")
@@ -86,6 +123,11 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.conscrypt:conscrypt-openjdk-uber:2.5.2")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation("androidx.test:runner:1.7.0")
+}
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    jvmArgs("--add-opens=java.base/java.net=ALL-UNNAMED")
 }

@@ -49,6 +49,11 @@ class PrTestSelectionTests(unittest.TestCase):
     def test_docs_do_not_start_application_tests(self):
         self.assert_suites(['README.md', 'Obsidian/ClaudeVault/Testing.md'], [])
 
+    def test_bft_spec_and_vectors_select_backend_tests(self):
+        for path in ['Docs/BFTv1.md', 'Docs/bft/bftv1-vectors.json', 'Docs/bft/generate_vectors.py']:
+            with self.subTest(path=path):
+                self.assert_suites([path], ['backend'])
+
     def test_dotnet_sdk_change_runs_backend_and_windows(self):
         self.assert_suites(['global.json'], ['backend', 'windows'])
 
