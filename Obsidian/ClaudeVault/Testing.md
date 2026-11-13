@@ -8,7 +8,11 @@ Backend unit/integration проекты находятся в `Tests/BarkFluff.*
 
 `Tests/BarkFluff.Builder.Tests/` — тестовый проект `net10.0` для модели, генераторов, валидации, записи/повторного открытия конфигурации и guard-проверок против дрейфа Docker/nginx и Lognara agent. `Tools/` и этот проект выбирают backend-набор в `.github/scripts/pr_tests.py`. Отдельный `.github/workflows/build-builder.yml` также запускает тесты на Windows и проверяет сгенерированные примеры на Ubuntu; детали — [[Tools/Builder|BarkFluff Builder]].
 
-`Tests/BarkFluff.BftProxy.Tests/` проверяет Exit/Relay через loopback TCP, TLS, HTTP и gRPC: handshake/pending limits, активные туннельные лимиты, ротацию ключей, мультиплексированные запросы, forwarding заголовков и освобождение Relay соединений по `ManualTimeProvider`. Тесты простоя ждут 9 с реального времени для проверки Kestrel grace period; коллекция отключает параллельный запуск из-за общего fixture.
+`Tests/BarkFluff.Bft.Tests/` проверяет общие протокольные примитивы и `Docs/bft/bftv1-vectors.json`; `.csproj` копирует fixture из репозитория в test output. `Docs/bft/generate_vectors.py` генерирует этот файл.
+
+`Tests/BarkFluff.BftProxy.Tests/` проверяет Exit/Relay через loopback TCP, TLS, HTTP и gRPC: handshake/pending limits, активные туннельные лимиты, ротацию ключей, мультиплексированные запросы, forwarding заголовков и освобождение Relay соединений по `ManualTimeProvider`. Четыре теста намеренно ждут по 9 с реального времени для проверки длительных HTTP/gRPC потоков; общая коллекция запрещает их параллельный запуск, то есть добавляет не менее 36 с к этому набору CI, кроме обычной сборки и тестов. `.github/workflows/build-backend-bftproxy.yml` запускает оба BFT test project перед публикацией образа.
+
+`Tests/BarkFluff.Nginx.Proxy.Tests/run-matrix.ps1` — отдельная PowerShell trust/rate-limit матрица для production Nginx конфигурации: источники Exit/direct, корректный/неверный секрет и валидность IP проверяют фактические forwarded headers и rate-limit keys. Это не `.csproj`, поэтому общий `test-backend.yml` его не обнаруживает. Windows mode скачивает официальный nginx for Windows во временный каталог; Docker mode использует только временные compose-имена и требует работающий Docker daemon.
 
 Выбранный reusable `test-backend.yml` обнаруживает все backend-проекты и запускает каждый отдельной matrix job; Windows-проекты исключаются по Windows TargetFramework. PostgreSQL 16 в service container включает Messages search и Developers concurrent seed через соответствующие env; рабочие БД не используются.
 

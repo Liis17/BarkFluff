@@ -39,6 +39,7 @@
 | Компонент | Назначение | Дополнительные заметки |
 |-----------|------------|------------------------|
 | [[Shared/Proto]] | Wire schemas и RPC платформы | [[Shared/Proto-ProjectMap|Карта]] |
+| [[Shared/Bft]] | BFTv1 протокол, криптография и multiplexed tunnels | — |
 | [[Shared/Auth]] | JWT/device client interceptors | [[Shared/Auth-ProjectMap|Карта]] |
 | [[Shared/Exceptions]] | ErrorCode, server exceptions и client mapping | [[Shared/Exceptions-ProjectMap|Карта]] |
 | [[Shared/Identity]] | ServiceId, TokenType и claims | [[Shared/Identity-ProjectMap|Карта]] |

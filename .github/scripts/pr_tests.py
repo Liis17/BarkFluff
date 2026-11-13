@@ -21,6 +21,8 @@ def select_suites(paths):
             selected['windows' if path.startswith(('Tests/BarkFluff.Client.WinUI.Tests/',
                                                   'Tests/BarkFluff.ClientV2.WPF.Tests/'))
                      else 'backend'] = True
+        if path == 'Docs/BFTv1.md' or path.startswith('Docs/bft/'):
+            selected['backend'] = True
         if path.startswith('Windows/'):
             selected['windows'] = True
         if path.startswith('Android/') or path.startswith('Backend/Barkfluff.WebServer/html/legal/'):
