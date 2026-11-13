@@ -85,14 +85,28 @@ internal object BftTransportTestSupport {
 
     fun tlsProviderName(): String = SSLContext.getInstance("TLS").provider.name
 
-    fun verifyGrpc(identity: TestIdentity) {
+    fun verifyGrpc(identity: TestIdentity) = verifyGrpcWithRoute(identity, { port, opened ->
+        BftSocketFactory {
+            opened.incrementAndGet()
+            openLoopbackPipe(port)
+        }
+    }, {})
+
+    fun verifyGrpcOverBftMux(
+        identity: TestIdentity,
+        routeFactory: (Int, AtomicInteger) -> BftSocketFactory,
+        closeRoute: () -> Unit
+    ) = verifyGrpcWithRoute(identity, routeFactory, closeRoute)
+
+    private fun verifyGrpcWithRoute(
+        identity: TestIdentity,
+        routeFactory: (Int, AtomicInteger) -> BftSocketFactory,
+        closeRoute: () -> Unit
+    ) {
         val server = TestGrpcServer(identity).start()
         val tlsSocketFactory = BftTlsSocketFactory(identity.pin)
         val openedPipes = AtomicInteger()
-        val socketFactory = BftSocketFactory {
-            openedPipes.incrementAndGet()
-            openLoopbackPipe(server.port)
-        }
+        val socketFactory = routeFactory(server.port, openedPipes)
         val channel = createGrpcClient(server.port, socketFactory, tlsSocketFactory)
 
         try {
@@ -145,21 +159,36 @@ internal object BftTransportTestSupport {
             assertTrue("gRPC did not use the BFT socket factory", openedPipes.get() > 0)
         } finally {
             channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS)
+            closeRoute()
             server.close()
         }
     }
 
-    fun verifyOkHttpHttp11(identity: TestIdentity) {
+    fun verifyOkHttpHttp11(identity: TestIdentity) = verifyOkHttpHttp11WithRoute(identity, { port, opened ->
+        BftSocketFactory {
+            opened.incrementAndGet()
+            openLoopbackPipe(port)
+        }
+    }, {})
+
+    fun verifyOkHttpHttp11OverBftMux(
+        identity: TestIdentity,
+        routeFactory: (Int, AtomicInteger) -> BftSocketFactory,
+        closeRoute: () -> Unit
+    ) = verifyOkHttpHttp11WithRoute(identity, routeFactory, closeRoute)
+
+    private fun verifyOkHttpHttp11WithRoute(
+        identity: TestIdentity,
+        routeFactory: (Int, AtomicInteger) -> BftSocketFactory,
+        closeRoute: () -> Unit
+    ) {
         val downloadBytes = payload(5 * 1024 * 1024)
         val uploadBytes = payload(6 * 1024 * 1024)
         val server = TestHttpServer(identity, downloadBytes).start()
         val tlsSocketFactory = BftTlsSocketFactory(identity.pin)
         val openedPipes = AtomicInteger()
         val client = OkHttpClient.Builder()
-            .socketFactory(BftSocketFactory {
-                openedPipes.incrementAndGet()
-                openLoopbackPipe(server.port)
-            })
+            .socketFactory(routeFactory(server.port, openedPipes))
             .dns(BftDns(LOOPBACK))
             .sslSocketFactory(tlsSocketFactory, tlsSocketFactory.trustManager)
             .protocols(listOf(Protocol.HTTP_1_1))
@@ -209,6 +238,7 @@ internal object BftTransportTestSupport {
         } finally {
             client.connectionPool.evictAll()
             client.dispatcher.executorService.shutdown()
+            closeRoute()
             server.close()
         }
     }

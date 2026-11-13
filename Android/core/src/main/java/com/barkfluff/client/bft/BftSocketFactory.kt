@@ -17,6 +17,17 @@ class BftSocketStreams(
     val output: OutputStream,
     private val closeAction: (() -> Unit)? = null
 ) : Closeable {
+    private var setReadTimeoutAction: ((Int) -> Unit)? = null
+
+    internal fun onReadTimeoutChanged(action: (Int) -> Unit) {
+        setReadTimeoutAction = action
+    }
+
+    fun setReadTimeout(timeoutMillis: Int) {
+        require(timeoutMillis >= 0) { "timeout must be non-negative" }
+        setReadTimeoutAction?.invoke(timeoutMillis)
+    }
+
     override fun close() {
         try {
             input.close()
@@ -34,6 +45,8 @@ class BftSocketStreams(
 class BftSocketFactory(
     private val openStreams: () -> BftSocketStreams
 ) : SocketFactory() {
+    constructor(tunnel: BftTunnel, serviceId: Int) : this({ tunnel.openStream(serviceId).asSocketStreams() })
+
     override fun createSocket(): Socket = BftVirtualSocket(openStreams)
 
     override fun createSocket(host: String, port: Int): Socket = connect(InetSocketAddress(host, port))
@@ -82,7 +95,7 @@ internal class BftVirtualSocket(
         val address = endpoint as? InetSocketAddress
             ?: throw SocketException("BFT virtual sockets require an Internet endpoint")
 
-        streams = openStreams()
+        streams = openStreams().also { it.setReadTimeout(soTimeoutMillis) }
         remoteAddress = address
     }
 
@@ -132,6 +145,7 @@ internal class BftVirtualSocket(
     override fun setSoTimeout(timeout: Int) {
         require(timeout >= 0) { "timeout must be non-negative" }
         soTimeoutMillis = timeout
+        streams?.setReadTimeout(timeout)
     }
 
     override fun getSoTimeout(): Int = soTimeoutMillis

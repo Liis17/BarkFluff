@@ -26,6 +26,7 @@ android {
     }
     sourceSets.getByName("test").java.srcDir("src/testSupport/java")
     sourceSets.getByName("test").resources.srcDir("src/testSupport/resources")
+    sourceSets.getByName("test").resources.srcDir(rootProject.file("../Docs/bft"))
 }
 
 protobuf {
@@ -62,6 +63,7 @@ protobuf {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation(libs.bouncycastle.crypto)
 
     // gRPC — типы stub'ов и proto-сообщений присутствуют в публичном API ядра → api(...)
     api("io.grpc:grpc-okhttp:1.60.0")
