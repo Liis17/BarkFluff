@@ -1551,4 +1551,9 @@
     <string name="bft_proxy_enabled_summary">Прокси включён</string>
     <string name="bft_proxy_no_connection_summary">Нет связи с прокси</string>
     <string name="bft_proxy_key_rejected_summary">Ключ прокси неверен или отозван</string>
+    <string name="bft_proxy_status_server_mismatch">Прокси обслуживает другой сервер</string>
+    <string name="bft_proxy_server_mismatch">Этот прокси обслуживает другой сервер. Чтобы пользоваться им, выйдите из аккаунта.</string>
+    <string name="bft_proxy_node_check_failed">Не удалось проверить сервер через прокси. Прокси выключен; проверьте соединение и повторите попытку.</string>
+    <string name="bft_proxy_retry">Повторить подключение</string>
+    <string name="bft_proxy_no_direct_beacon">Не найден прямой адрес Beacon. Прокси выключен; выберите сервер для прямого подключения.</string>
 </resources>

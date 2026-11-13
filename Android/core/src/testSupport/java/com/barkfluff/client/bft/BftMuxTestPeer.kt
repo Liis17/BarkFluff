@@ -1,6 +1,8 @@
 package com.barkfluff.client.bft
 
 import java.io.Closeable
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.EOFException
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
@@ -17,8 +19,11 @@ internal class BftMuxTestPeer(
     private val timeSource: BftTimeSource = BftSystemTimeSource,
     private val keepAliveIdleMillis: Long = 30_000,
     private val keepAliveTimeoutMillis: Long = 20_000,
-    private val upstreamPort: Int? = null
+    private val upstreamPort: Int? = null,
+    private val upstreamPorts: Map<Int, Int> = emptyMap(),
+    tlsSpkiSha256Override: ByteArray? = null
 ) : Closeable {
+    private val tlsSpkiSha256Override = tlsSpkiSha256Override?.copyOf()
     private val clientInput = PipedInputStream(256 * 1024)
     private val serverOutput = PipedOutputStream(clientInput)
     private val serverInput = PipedInputStream(256 * 1024)
@@ -112,6 +117,7 @@ internal class BftMuxTestPeer(
         if (serverThread !== Thread.currentThread()) runCatching { serverThread.join(1_000) }
         outboundNoise?.close()
         keys?.close()
+        tlsSpkiSha256Override?.fill(0)
         proxiedStreams.values.forEach { runCatching { it.socket.close() }; synchronized(it.monitor) { it.monitor.notifyAll() } }
         upstreamThreads.forEach { it.interrupt() }
         upstreamThreads.forEach { if (it !== Thread.currentThread()) runCatching { it.join(1_000) } }
@@ -138,14 +144,18 @@ internal class BftMuxTestPeer(
             val helloRecord = BftVectors.hexAt(transport.single {
                 BftVectors.stringAt(it, "direction") == "s2c" && BftVectors.longAt(it, "noiseN") == 0L
             }, "record")
+            val c2s = BftVectors.hexAt(handshake, "c2sKey")
+            val s2c = BftVectors.hexAt(handshake, "s2cKey")
+            val helloRecordToSend = tlsSpkiSha256Override?.let { pin ->
+                rewriteHelloPin(helloRecord, derived, s2c, pin)
+            } ?: helloRecord
             serverOutput.write(serverFirstRecord)
-            serverOutput.write(helloRecord)
+            serverOutput.write(helloRecordToSend)
             serverOutput.flush()
             serverFirstRecord.fill(0)
             helloRecord.fill(0)
+            if (helloRecordToSend !== helloRecord) helloRecordToSend.fill(0)
 
-            val c2s = BftVectors.hexAt(handshake, "c2sKey")
-            val s2c = BftVectors.hexAt(handshake, "s2cKey")
             clientNoise = BftNoiseCipherState(c2s)
             outboundNoise = BftNoiseCipherState(s2c, initialCounter = 1)
             c2s.fill(0)
@@ -206,9 +216,11 @@ internal class BftMuxTestPeer(
     }
 
     private fun proxyFrame(frame: BftFrame) {
-        val port = upstreamPort ?: return
+        if (upstreamPort == null && upstreamPorts.isEmpty()) return
         when (frame.type) {
             BftFrameType.OPEN -> {
+                val serviceId = frame.body.firstOrNull()?.toInt()?.and(0xff) ?: return
+                val port = upstreamPorts[serviceId] ?: upstreamPort ?: return
                 val socket = Socket().apply {
                     tcpNoDelay = true
                     connect(InetSocketAddress(InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)), port), 5_000)
@@ -318,6 +330,37 @@ internal class BftMuxTestPeer(
             if (count == 0) continue
             offset += count
         }
+    }
+
+    private fun rewriteHelloPin(
+        record: ByteArray,
+        keys: BftObfuscationKeys,
+        s2cKey: ByteArray,
+        pin: ByteArray
+    ): ByteArray {
+        require(pin.size == 32)
+        val encryptedHello = checkNotNull(
+            BftObfuscatedRecordReader(ByteArrayInputStream(record), keys, clientToServer = false, initialSequence = 1).read()
+        )
+        val decodedHello = BftNoiseCipherState(s2cKey).use { it.decrypt(encryptedHello) }
+        encryptedHello.fill(0)
+        val frames = BftFrameCodec.decode(decodedHello)
+        decodedHello.fill(0)
+        val patchedFrames = frames.map { frame ->
+            if (frame.type != BftFrameType.HELLO) frame
+            else {
+                val hello = BftFrameCodec.parseHello(frame.body)
+                BftFrame.hello(hello.copy(tlsSpkiSha256 = pin.copyOf()))
+            }
+        }
+        val patchedHello = BftFrameCodec.encodeMany(patchedFrames)
+        val encryptedPatchedHello = BftNoiseCipherState(s2cKey).use { it.encrypt(patchedHello) }
+        patchedHello.fill(0)
+        val output = ByteArrayOutputStream()
+        BftObfuscatedRecordWriter(output, keys, clientToServer = false, random = ZeroRandom, initialSequence = 1)
+            .write(encryptedPatchedHello, paddingLength = 0)
+        encryptedPatchedHello.fill(0)
+        return output.toByteArray()
     }
 
     private fun readU32(bytes: ByteArray): Long =

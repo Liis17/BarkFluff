@@ -15,6 +15,7 @@ import io.grpc.Metadata
 import io.grpc.okhttp.OkHttpChannelBuilder
 import io.grpc.Status
 import okhttp3.Call
+import okhttp3.Dns
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -46,7 +47,9 @@ import javax.net.SocketFactory
 class TlsTransportFactory internal constructor(
     private val trustStore: TlsPinLookup,
     internal val bftProxyManager: BftProxyManager? = null,
-    private val globalParam: GlobalParam? = null
+    private val globalParam: GlobalParam? = null,
+    private val directSocketFactory: SocketFactory = SocketFactory.getDefault(),
+    private val directDns: Dns = Dns.SYSTEM
 ) {
     constructor(context: Context) : this(
         TlsTrustStore(context.applicationContext),
@@ -95,6 +98,7 @@ class TlsTransportFactory internal constructor(
                 .disableRetry()
         } else {
             OkHttpChannelBuilder.forAddress(endpoint.host, endpoint.port)
+                .socketFactory(directSocketFactory)
                 .let { TlsVariantPolicy.configureGrpcBuilder(it, endpoint, trustStore) }
         }
             .keepAliveTime(GRPC_KEEPALIVE_TIME_SECONDS, TimeUnit.SECONDS)
@@ -134,7 +138,7 @@ class TlsTransportFactory internal constructor(
                     .dns(BftDns(InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1))))
                     .sslSocketFactory(BftLayeredTlsSocketFactory(), BftLayeredTlsTrustManager)
                     // BftTlsSocketFactory validates the internal name bft.internal and the HELLO pin.
-                    .hostnameVerifier(HostnameVerifier { _, _ -> true })
+                    .hostnameVerifier(BftProxyHostnameVerifier)
                     .retryOnConnectionFailure(false)
                 if (logicalService == FILES_SERVICE_ID || logicalService == FILES_MEDIA_SERVICE_ID ||
                     logicalService == STORAGE_SERVICE_ID
@@ -151,6 +155,7 @@ class TlsTransportFactory internal constructor(
                 return builder
             }
         }
+        builder.socketFactory(directSocketFactory).dns(directDns)
         if (uri.scheme.equals(TlsEndpoint.HTTPS, ignoreCase = true)) {
             val config = socketConfig(TlsEndpoint.canonicalHost(uri.host ?: error("URL host is required")))
             builder.sslSocketFactory(config.socketFactory, config.trustManager)
@@ -206,6 +211,11 @@ class TlsTransportFactory internal constructor(
         const val GRPC_KEEPALIVE_TIME_SECONDS = 30L
         const val GRPC_KEEPALIVE_TIMEOUT_SECONDS = 20L
     }
+}
+
+internal object BftProxyHostnameVerifier : HostnameVerifier {
+    override fun verify(hostname: String?, session: SSLSession?): Boolean =
+        session?.peerHost == "bft.internal"
 }
 
 private class TransportGenerationInterceptor(

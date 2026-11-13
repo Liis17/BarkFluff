@@ -1504,4 +1504,9 @@
     <string name="bft_proxy_enabled_summary">Proxy activado</string>
     <string name="bft_proxy_no_connection_summary">Sin conexión con el proxy</string>
     <string name="bft_proxy_key_rejected_summary">La clave del proxy no es válida o fue revocada</string>
+    <string name="bft_proxy_status_server_mismatch">El proxy sirve a otro servidor</string>
+    <string name="bft_proxy_server_mismatch">Este proxy sirve a otro servidor. Cierra sesión para usarlo.</string>
+    <string name="bft_proxy_node_check_failed">No se pudo verificar el servidor a través del proxy. El proxy está desactivado; comprueba la conexión e inténtalo de nuevo.</string>
+    <string name="bft_proxy_retry">Reintentar conexión</string>
+    <string name="bft_proxy_no_direct_beacon">No hay una dirección Beacon directa. El proxy está desactivado; elige un servidor para conectarte directamente.</string>
 </resources>

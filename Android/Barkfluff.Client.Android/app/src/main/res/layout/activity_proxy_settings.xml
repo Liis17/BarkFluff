@@ -100,6 +100,16 @@
                         android:text="@string/bft_proxy_use"
                         app:thumbTint="@color/settings_switch_thumb"
                         app:trackTint="@color/settings_switch_track" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonRetry"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/bft_proxy_retry"
+                        android:textAllCaps="false"
+                        android:visibility="gone" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

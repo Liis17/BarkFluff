@@ -1501,4 +1501,9 @@
     <string name="bft_proxy_enabled_summary">Proxy ist aktiviert</string>
     <string name="bft_proxy_no_connection_summary">Keine Verbindung zum Proxy</string>
     <string name="bft_proxy_key_rejected_summary">Proxy-Schlüssel ungültig oder widerrufen</string>
+    <string name="bft_proxy_status_server_mismatch">Proxy bedient einen anderen Server</string>
+    <string name="bft_proxy_server_mismatch">Dieser Proxy bedient einen anderen Server. Melde dich ab, um ihn zu verwenden.</string>
+    <string name="bft_proxy_node_check_failed">Der Server konnte über den Proxy nicht geprüft werden. Der Proxy ist ausgeschaltet; Verbindung prüfen und erneut versuchen.</string>
+    <string name="bft_proxy_retry">Verbindung erneut versuchen</string>
+    <string name="bft_proxy_no_direct_beacon">Keine direkte Beacon-Adresse verfügbar. Der Proxy ist ausgeschaltet; wähle einen Server für eine direkte Verbindung.</string>
 </resources>

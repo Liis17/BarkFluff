@@ -1500,4 +1500,9 @@
     <string name="bft_proxy_enabled_summary">Proxy is on</string>
     <string name="bft_proxy_no_connection_summary">No connection to proxy</string>
     <string name="bft_proxy_key_rejected_summary">Proxy key is invalid or revoked</string>
+    <string name="bft_proxy_status_server_mismatch">Proxy serves a different server</string>
+    <string name="bft_proxy_server_mismatch">This proxy serves a different server. Sign out to use it.</string>
+    <string name="bft_proxy_node_check_failed">Could not verify the server through the proxy. The proxy is off; check the connection and try again.</string>
+    <string name="bft_proxy_retry">Retry connection</string>
+    <string name="bft_proxy_no_direct_beacon">No direct Beacon address is available. The proxy is off; choose a server for a direct connection.</string>
 </resources>

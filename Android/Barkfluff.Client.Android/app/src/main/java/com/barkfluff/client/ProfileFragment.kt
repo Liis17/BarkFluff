@@ -82,6 +82,7 @@ class ProfileFragment : Fragment() {
                             BftProxyStatus.CONNECTED -> R.string.bft_proxy_status_connected
                             BftProxyStatus.NO_CONNECTION -> R.string.bft_proxy_no_connection_summary
                             BftProxyStatus.KEY_REJECTED -> R.string.bft_proxy_key_rejected_summary
+                            BftProxyStatus.SERVER_MISMATCH -> R.string.bft_proxy_status_server_mismatch
                         }
                     )
                 }

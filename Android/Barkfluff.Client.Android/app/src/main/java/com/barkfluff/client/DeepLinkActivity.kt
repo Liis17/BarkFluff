@@ -55,7 +55,9 @@ class DeepLinkActivity : AppCompatActivity() {
             val shown = BftProxyLinkImporter.confirm(
                 this,
                 link,
-                onImported = { BftProxyLinkImporter.restartAtNodeSelection(this) },
+                onImported = { activeSession ->
+                    if (activeSession) finish() else BftProxyLinkImporter.restartAtNodeSelection(this)
+                },
                 onDeclined = { finish() }
             )
             if (!shown) finish()

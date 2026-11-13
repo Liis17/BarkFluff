@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.ServerAdapter
 import com.barkfluff.client.bft.BftProxyManager
+import com.barkfluff.client.bft.BftProxySessionPolicy
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
 import com.barkfluff.client.databinding.ActivitySelectServerBinding
@@ -377,8 +378,20 @@ class SelectServerActivity : AppCompatActivity() {
                             return@launch
                         }
 
+                        val hasSession = BftProxySessionPolicy.hasSession(
+                            globalParam.accessToken,
+                            globalParam.refreshToken,
+                            globalParam.userId
+                        )
+                        if (!BftProxySessionPolicy.mayApplyServerInfo(proxyEnabled, hasSession)) {
+                            // BftProxyManager already verified this tunnel against the saved endpoints.
+                            // Never replace an authenticated session's cache/crypto scope from this screen.
+                            openMainActivity()
+                            return@launch
+                        }
+
                         // Сохраняем информацию о сервере в GlobalParam
-                        if (!proxyEnabled) globalParam.socketBeacon = address
+                        globalParam.socketBeacon = BftProxySessionPolicy.beaconAddressForSelection(proxyEnabled, address)
                         globalParam.applyServerInfo(effectiveServerInfo)
 
                         Log.d(TAG, "Успешное подключение к серверу: ${effectiveServerInfo.name}")

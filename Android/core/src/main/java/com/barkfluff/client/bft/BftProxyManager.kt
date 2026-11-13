@@ -2,22 +2,33 @@ package com.barkfluff.client.bft
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
+import barkfluff.beacon.BeaconApiGrpcKt
+import barkfluff.beacon.BeaconApiOuterClass
+import com.barkfluff.client.data.GlobalParam
+import io.grpc.okhttp.OkHttpChannelBuilder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import java.io.Closeable
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.Base64
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
 import javax.net.SocketFactory
 
-enum class BftProxyStatus { DISABLED, CONNECTING, CONNECTED, NO_CONNECTION, KEY_REJECTED }
+enum class BftProxyStatus { DISABLED, CONNECTING, CONNECTED, NO_CONNECTION, KEY_REJECTED, SERVER_MISMATCH }
+
+internal fun monotonicTimeMillis(nowNanos: () -> Long = System::nanoTime): Long =
+    TimeUnit.NANOSECONDS.toMillis(nowNanos())
 
 data class BftProxyViewState(
     val configured: Boolean,
@@ -33,8 +44,9 @@ data class BftProxyViewState(
 class BftProxyManager internal constructor(
     private val store: BftProxySettingsStore,
     private val tunnelConnector: (String) -> BftTunnel,
-    private val nowMillis: () -> Long = System::currentTimeMillis,
-    private val retryPolicy: BftReconnectPolicy = BftReconnectPolicy()
+    private val nowMillis: () -> Long = { monotonicTimeMillis() },
+    private val retryPolicy: BftReconnectPolicy = BftReconnectPolicy(),
+    private val connectionValidator: ((BftTunnel) -> Unit)? = null
 ) {
     private data class StoredConfiguration(
         val connectionString: String,
@@ -55,13 +67,19 @@ class BftProxyManager internal constructor(
     @Volatile private var tunnelGeneration = -1L
     @Volatile private var persistentNetworkDemand = false
     @Volatile private var retryAtMillis = 0L
+    @Volatile private var activationPending = false
     @Volatile private var generation = 0L
-    private var stored = readStoredConfiguration()
+    private var stored = try {
+        readStoredConfiguration()
+    } catch (_: Exception) {
+        runCatching { Log.e(TAG, "Encrypted BFT proxy settings could not be read; proxy disabled") }
+        null
+    }
     private val mutableState = MutableStateFlow(viewState(stored, initialStatus(stored)))
     val state: StateFlow<BftProxyViewState> = mutableState
 
     val isEnabled: Boolean
-        get() = mutableState.value.enabled
+        get() = mutableState.value.enabled || activationPending
 
     val transportGeneration: Long
         get() = generation
@@ -89,6 +107,22 @@ class BftProxyManager internal constructor(
         replaceStoredConfiguration(next)
     }
 
+    /** Saves and validates a newly imported link without allowing traffic onto a direct route mid-check. */
+    fun saveConnectionStringAndEnable(connectionString: String) {
+        val parsed = BftConnectionString.parse(connectionString)
+        val canonical = try {
+            parsed.format()
+        } finally {
+            parsed.staticPublicKey.fill(0)
+            parsed.obfsKey.fill(0)
+        }
+        val settings = BftConnectionString.parse(canonical)
+        val next = StoredConfiguration(canonical, settings.name, settings.host, settings.port, enabled = false)
+        settings.staticPublicKey.fill(0)
+        settings.obfsKey.fill(0)
+        activateConfiguration(next)
+    }
+
     fun setEnabled(enabled: Boolean) {
         val current = stored ?: throw IllegalStateException("No BFT proxy is configured")
         if (enabled) {
@@ -98,7 +132,21 @@ class BftProxyManager internal constructor(
             }
         }
         if (current.enabled == enabled) return
+        if (enabled && connectionValidator != null) {
+            activateConfiguration(current)
+            return
+        }
         replaceStoredConfiguration(current.copy(enabled = enabled))
+    }
+
+    fun retryConnection() {
+        if (!isEnabled) return
+        synchronized(stateLock) {
+            retryAtMillis = 0L
+            retryPolicy.networkChanged()
+            mutableState.value = viewState(stored, BftProxyStatus.NO_CONNECTION)
+        }
+        scheduler.execute { runCatching { ensureConnectedTunnel() } }
     }
 
     fun clear() {
@@ -140,7 +188,7 @@ class BftProxyManager internal constructor(
     fun openSocketStreams(serviceId: Int): BftSocketStreams {
         val activeTunnel = ensureConnectedTunnel()
         if (serviceId !in activeTunnel.hello.serviceIds) {
-            throw IOException("Сервис недоступен через прокси")
+            throw BftProxyException(BftProxyErrorCode.SERVICE_UNAVAILABLE)
         }
         val openedGeneration = tunnelGeneration
         val pin = "sha256/${Base64.getEncoder().encodeToString(activeTunnel.hello.tlsSpkiSha256)}"
@@ -166,7 +214,12 @@ class BftProxyManager internal constructor(
                 val current = stored
                 if (current?.enabled != true) throw IOException("BFT proxy is disabled")
                 if (current.connectionString.isBlank()) throw IOException("BFT proxy configuration is invalid")
-                if (retryAtMillis > nowMillis()) throw unavailableError()
+                if (retryAtMillis > nowMillis()) {
+                    if (settings.status == BftProxyStatus.SERVER_MISMATCH) {
+                        throw BftProxyException(BftProxyErrorCode.SERVER_MISMATCH)
+                    }
+                    throw unavailableError()
+                }
                 current to generation
             }
             tunnel?.takeIf { it.state == BftTunnel.State.READY && tunnelGeneration == config.second }?.let { return it }
@@ -174,6 +227,12 @@ class BftProxyManager internal constructor(
             updateStatus(BftProxyStatus.CONNECTING)
             try {
                 val connected = tunnelConnector(config.first.connectionString)
+                try {
+                    connectionValidator?.invoke(connected)
+                } catch (error: Throwable) {
+                    connected.close()
+                    throw error
+                }
                 if (generation != config.second || !isEnabled) {
                     connected.close()
                     throw IOException("BFT proxy configuration changed")
@@ -187,6 +246,11 @@ class BftProxyManager internal constructor(
                 return connected
             } catch (error: Throwable) {
                 if (error is IOException && error.message == "BFT proxy configuration changed") throw error
+                if (error is BftProxyException && error.code == BftProxyErrorCode.SERVER_MISMATCH) {
+                    retryAtMillis = Long.MAX_VALUE
+                    updateStatus(BftProxyStatus.SERVER_MISMATCH)
+                    throw error
+                }
                 val authenticationFailed = (error as? BftTunnelConnectException)?.closeReason?.kind == BftTunnelCloseReason.Kind.AUTH_FAILED
                 val invalidConfiguration = error is IllegalArgumentException
                 val silentClose = error is BftTunnelConnectException && !authenticationFailed
@@ -194,6 +258,7 @@ class BftProxyManager internal constructor(
                 retryAtMillis = nowMillis() + decision.delayMillis
                 updateStatus(if (decision.keyRejected) BftProxyStatus.KEY_REJECTED else BftProxyStatus.NO_CONNECTION)
                 if (persistentNetworkDemand) scheduleReconnect(decision.delayMillis)
+                if (error is BftProxyException && error.code == BftProxyErrorCode.SERVER_IDENTITY_UNAVAILABLE) throw error
                 throw unavailableError(error)
             }
         }
@@ -259,6 +324,65 @@ class BftProxyManager internal constructor(
         invalidateTransport(if (next.enabled) BftProxyStatus.NO_CONNECTION else BftProxyStatus.DISABLED)
     }
 
+    private fun activateConfiguration(configuration: StoredConfiguration) {
+        synchronized(connectionLock) {
+            activationPending = true
+            synchronized(stateLock) {
+                generation++
+                retryAtMillis = 0L
+                mutableState.value = viewState(configuration, BftProxyStatus.CONNECTING)
+            }
+            cancelRetry()
+            closeCurrentTunnel()
+            notifyTransportGeneration()
+
+            var candidate: BftTunnel? = null
+            try {
+                store.write(configuration.connectionString, configuration.name.orEmpty(), enabled = false)
+                stored = configuration.copy(enabled = false)
+                candidate = tunnelConnector(configuration.connectionString)
+                connectionValidator?.invoke(candidate)
+                store.write(configuration.connectionString, configuration.name.orEmpty(), enabled = true)
+                stored = configuration.copy(enabled = true)
+                tunnel = candidate
+                tunnelGeneration = generation
+                retryAtMillis = 0L
+                retryPolicy.connected()
+                activationPending = false
+                updateStatus(BftProxyStatus.CONNECTED)
+                val connected = requireNotNull(candidate)
+                val connectedGeneration = generation
+                connected.completion.thenAccept { reason -> onTunnelClosed(connected, connectedGeneration, reason) }
+            } catch (error: Throwable) {
+                candidate?.close()
+                activationPending = false
+                stored = configuration.copy(enabled = false)
+                runCatching { store.write(configuration.connectionString, configuration.name.orEmpty(), enabled = false) }
+                synchronized(stateLock) {
+                    generation++
+                    retryAtMillis = if (error is BftProxyException && error.code == BftProxyErrorCode.SERVER_MISMATCH) {
+                        Long.MAX_VALUE
+                    } else {
+                        0L
+                    }
+                    mutableState.value = viewState(
+                        stored,
+                        if (error is BftProxyException && error.code == BftProxyErrorCode.SERVER_MISMATCH) {
+                            BftProxyStatus.SERVER_MISMATCH
+                        } else {
+                            BftProxyStatus.NO_CONNECTION
+                        }
+                    )
+                }
+                notifyTransportGeneration()
+                throw when (error) {
+                    is BftProxyException -> error
+                    else -> unavailableError(error)
+                }
+            }
+        }
+    }
+
     private fun invalidateTransport(status: BftProxyStatus) {
         synchronized(stateLock) {
             generation++
@@ -322,14 +446,17 @@ class BftProxyManager internal constructor(
         name = configuration?.name,
         host = configuration?.host?.takeIf(String::isNotBlank),
         port = configuration?.port?.takeIf { it > 0 },
-        status = if (configuration?.enabled == true) status else BftProxyStatus.DISABLED,
+        status = if (configuration?.enabled == true || status == BftProxyStatus.SERVER_MISMATCH) status else BftProxyStatus.DISABLED,
         generation = generation
     )
 
-    private fun unavailableError(cause: Throwable? = null): IOException =
-        IOException(
-            if (settings.status == BftProxyStatus.KEY_REJECTED) "Прокси недоступен: ключ неверен или отозван"
-            else "Прокси включён, но связи нет",
+    private fun unavailableError(cause: Throwable? = null): BftProxyException =
+        BftProxyException(
+            when (settings.status) {
+                BftProxyStatus.KEY_REJECTED -> BftProxyErrorCode.KEY_REJECTED
+                BftProxyStatus.SERVER_MISMATCH -> BftProxyErrorCode.SERVER_MISMATCH
+                else -> BftProxyErrorCode.NO_CONNECTION
+            },
             cause
         )
 
@@ -379,15 +506,89 @@ class BftProxyManager internal constructor(
         }
     }
 
+    private class UnavailableSettingsStore : BftProxySettingsStore {
+        override fun read(): BftProxyStoredSettings? = null
+        override fun write(connectionString: String, name: String, enabled: Boolean) {
+            throw IllegalStateException("Encrypted proxy settings are unavailable")
+        }
+        override fun clear() = Unit
+    }
+
     companion object {
         @Volatile private var processInstance: BftProxyManager? = null
 
         fun get(context: Context): BftProxyManager = processInstance ?: synchronized(this) {
-            processInstance ?: BftProxyManager(EncryptedSettingsStore(context), ::connectTunnel).also {
+            processInstance ?: BftProxyManager(
+                runCatching { EncryptedSettingsStore(context) }.getOrElse {
+                    runCatching { Log.e(TAG, "Encrypted BFT proxy settings could not be opened; proxy disabled") }
+                    UnavailableSettingsStore()
+                },
+                ::connectTunnel,
+                connectionValidator = { tunnel -> validateTunnelForActiveSession(context.applicationContext, tunnel) }
+            ).also {
                 processInstance = it
             }
         }
+
+        private const val TAG = "BftProxyManager"
     }
+
+}
+
+private fun validateTunnelForActiveSession(context: Context, tunnel: BftTunnel) {
+    val globalParam = GlobalParam(context)
+    if (!BftProxySessionPolicy.hasSession(globalParam.accessToken, globalParam.refreshToken, globalParam.userId)) return
+    val endpoints = runCatching { BftBeaconTunnelProbe.getEndpoints(tunnel) }
+        .getOrElse { throw BftProxyException(BftProxyErrorCode.SERVER_IDENTITY_UNAVAILABLE, it) }
+    if (!BftNodeIdentity.matches(globalParam.bftServiceEndpoints, endpoints)) {
+        throw BftProxyException(BftProxyErrorCode.SERVER_MISMATCH)
+    }
+}
+
+internal object BftBeaconTunnelProbe {
+    fun getEndpoints(
+        tunnel: BftTunnel,
+        tlsHostOverride: String = BEACON_AUTHORITY,
+        tlsSpkiPinOverride: String? = null
+    ): Map<Int, String> = runBlocking(Dispatchers.IO) {
+        val tlsFactory = BftTlsSocketFactory(
+            tlsSpkiPinOverride ?: "sha256/${Base64.getEncoder().encodeToString(tunnel.hello.tlsSpkiSha256)}",
+            tlsHostOverride = tlsHostOverride
+        )
+        val channel = OkHttpChannelBuilder.forAddress("127.0.0.1", BEACON_PORT)
+            .overrideAuthority(tlsHostOverride)
+            .socketFactory(BftSocketFactory(tunnel, BEACON_SERVICE_ID))
+            .sslSocketFactory(tlsFactory)
+            .disableRetry()
+            .build()
+        try {
+            val response = withTimeout(PROBE_TIMEOUT_MILLIS) {
+                BeaconApiGrpcKt.BeaconApiCoroutineStub(channel)
+                    .withDeadlineAfter(PROBE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
+                    .getServerInfo(BeaconApiOuterClass.GetServerInfoRequest.newBuilder().build())
+            }
+            buildMap {
+                put(2, endpoint(response.identity.endpoint.host, response.identity.endpoint.port))
+                put(3, endpoint(response.users.endpoint.host, response.users.endpoint.port))
+                put(4, endpoint(response.messages.endpoint.host, response.messages.endpoint.port))
+                put(5, endpoint(response.files.endpoint.host, response.files.endpoint.port))
+                put(7, endpoint(response.updates.endpoint.host, response.updates.endpoint.port))
+                put(8, endpoint(response.onliner.endpoint.host, response.onliner.endpoint.port))
+                put(9, endpoint(response.fastAuth.endpoint.host, response.fastAuth.endpoint.port))
+                if (response.hasCalls()) put(10, endpoint(response.calls.endpoint.host, response.calls.endpoint.port))
+                if (response.filesMediaEndpoint.isNotBlank()) put(6, response.filesMediaEndpoint)
+            }
+        } finally {
+            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS)
+        }
+    }
+
+    private fun endpoint(host: String, port: Int): String = "$host:$port"
+
+    private const val BEACON_AUTHORITY = "bft.internal"
+    private const val BEACON_SERVICE_ID = 1
+    private const val BEACON_PORT = 443
+    private const val PROBE_TIMEOUT_MILLIS = 5_000L
 }
 
 private fun connectTunnel(connectionString: String): BftTunnel {

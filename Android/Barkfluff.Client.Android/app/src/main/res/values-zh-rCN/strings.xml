@@ -1490,4 +1490,9 @@
     <string name="bft_proxy_enabled_summary">代理已启用</string>
     <string name="bft_proxy_no_connection_summary">无法连接代理</string>
     <string name="bft_proxy_key_rejected_summary">代理密钥无效或已撤销</string>
+    <string name="bft_proxy_status_server_mismatch">代理连接到其他服务器</string>
+    <string name="bft_proxy_server_mismatch">此代理连接到其他服务器。请先退出账号再使用。</string>
+    <string name="bft_proxy_node_check_failed">无法通过代理验证服务器。代理已关闭；请检查连接后重试。</string>
+    <string name="bft_proxy_retry">重试连接</string>
+    <string name="bft_proxy_no_direct_beacon">没有可用的 Beacon 直连地址。代理已关闭；请选择服务器以直接连接。</string>
 </resources>

@@ -38,6 +38,46 @@ class BftProxyRoutingTest {
     }
 
     @Test
+    fun `unmapped self hosted subdomain on another port is rejected`() {
+        val endpoints = listOf(
+            BftServiceEndpoint(2, "https://identity.example.test:443"),
+            BftServiceEndpoint(3, "https://users.example.test:443")
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            BftServiceRouter.serviceIdForHttpUrl("https://media.example.test:9443/avatar".toHttpUrl(), endpoints)
+        }
+    }
+
+    @Test
+    fun `saved IP literal is treated as owned but another IP remains direct`() {
+        val endpoints = listOf(BftServiceEndpoint(5, "https://192.0.2.10:8443"))
+        assertThrows(IllegalArgumentException::class.java) {
+            BftServiceRouter.serviceIdForHttpUrl("https://192.0.2.10:9443/file".toHttpUrl(), endpoints)
+        }
+        assertEquals(null, BftServiceRouter.serviceIdForHttpUrl("https://192.0.2.11:9443/file".toHttpUrl(), endpoints))
+    }
+
+    @Test
+    fun `single label service host remains owned on another port`() {
+        val endpoints = listOf(
+            BftServiceEndpoint(2, "https://identity:443"),
+            BftServiceEndpoint(3, "https://users:443")
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            BftServiceRouter.serviceIdForHttpUrl("https://identity:9443/avatar".toHttpUrl(), endpoints)
+        }
+    }
+
+    @Test
+    fun `unmapped foreign domain remains outside the proxy`() {
+        val endpoints = listOf(
+            BftServiceEndpoint(2, "https://identity.example.test:443"),
+            BftServiceEndpoint(3, "https://users.example.test:443")
+        )
+        assertEquals(null, BftServiceRouter.serviceIdForHttpUrl("https://images.example.net/a.png".toHttpUrl(), endpoints))
+    }
+
+    @Test
     fun `enabled proxy failure invokes tunnel connector without resolving origin`() {
         val link = connectionString("Proxy test", "proxy.invalid")
         val store = MemoryStore(link, "Proxy test", true)

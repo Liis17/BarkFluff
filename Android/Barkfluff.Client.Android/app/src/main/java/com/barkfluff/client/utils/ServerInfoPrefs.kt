@@ -3,6 +3,7 @@ package com.barkfluff.client.utils
 import android.content.Context
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.bft.BftProxyManager
+import com.barkfluff.client.bft.BftProxySessionPolicy
 import com.barkfluff.client.domain.gateway.ServerDiscoveryGateway
 import com.barkfluff.client.domain.model.ServerInfo
 import com.barkfluff.client.security.TlsCertificateProbe
@@ -55,6 +56,16 @@ suspend fun refreshServerInfoFromBeacon(
 
     val infoResult = serverDiscoveryGateway.serverInfo()
     val serverInfo = infoResult.getOrNull() ?: return ServerInfoRefreshResult.Unavailable
+    val hasSession = BftProxySessionPolicy.hasSession(
+        globalParam.accessToken,
+        globalParam.refreshToken,
+        globalParam.userId
+    )
+    if (!BftProxySessionPolicy.mayApplyServerInfo(proxyEnabled, hasSession)) {
+        // The proxy manager verifies the tunnel's Beacon response before exposing it to callers.
+        // Updating socket* here could silently move an authenticated cache to another node.
+        return ServerInfoRefreshResult.Refreshed
+    }
     val effectiveServerInfo = if (
         serverInfo.filesMediaEndpoint.isBlank() && globalParam.socketFilesMedia.isNotBlank()
     ) {

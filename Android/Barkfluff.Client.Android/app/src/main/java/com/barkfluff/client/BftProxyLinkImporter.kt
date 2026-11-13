@@ -3,16 +3,24 @@ package com.barkfluff.client
 import android.app.Activity
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.bft.BftConnectionString
+import com.barkfluff.client.bft.BftProxyErrorCode
+import com.barkfluff.client.bft.BftProxyException
 import com.barkfluff.client.bft.BftProxyManager
+import com.barkfluff.client.bft.BftProxySessionPolicy
 import com.barkfluff.client.data.GlobalParam
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal object BftProxyLinkImporter {
     fun confirm(
-        activity: Activity,
+        activity: ComponentActivity,
         value: String,
-        onImported: () -> Unit,
+        onImported: (activeSession: Boolean) -> Unit,
         onDeclined: () -> Unit = {}
     ): Boolean {
         val link = value.trim()
@@ -35,12 +43,33 @@ internal object BftProxyLinkImporter {
             .setTitle(if (manager.settings.configured) R.string.bft_proxy_replace_title else R.string.bft_proxy_import_title)
             .setMessage(message)
             .setPositiveButton(if (manager.settings.configured) R.string.bft_proxy_replace else R.string.bft_proxy_import) { _, _ ->
-                runCatching { manager.saveConnectionString(link, enable = true) }
-                    .onFailure {
-                        Toast.makeText(activity, R.string.bft_proxy_link_invalid, Toast.LENGTH_LONG).show()
-                        return@setPositiveButton
+                val globalParam = GlobalParam(activity.applicationContext)
+                val activeSession = BftProxySessionPolicy.hasSession(
+                    globalParam.accessToken,
+                    globalParam.refreshToken,
+                    globalParam.userId
+                )
+                if (activeSession) {
+                    activity.lifecycleScope.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            runCatching { manager.saveConnectionStringAndEnable(link) }
+                        }
+                        result.onFailure { error ->
+                            Toast.makeText(
+                                activity,
+                                proxyErrorMessage(activity, error) ?: activity.getString(R.string.bft_proxy_link_invalid),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }.onSuccess { onImported(true) }
                     }
-                onImported()
+                } else {
+                    runCatching { manager.saveConnectionString(link, enable = true) }
+                        .onFailure {
+                            Toast.makeText(activity, R.string.bft_proxy_link_invalid, Toast.LENGTH_LONG).show()
+                            return@setPositiveButton
+                        }
+                    onImported(false)
+                }
             }
             .setNegativeButton(R.string.btn_cancel) { _, _ -> onDeclined() }
             .create()
@@ -55,5 +84,18 @@ internal object BftProxyLinkImporter {
         }
         activity.startActivity(intent)
         activity.finish()
+    }
+
+    internal fun proxyErrorMessage(activity: Activity, error: Throwable): String? {
+        val proxyError = generateSequence(error) { it.cause }.filterIsInstance<BftProxyException>().firstOrNull()
+            ?: return null
+        val resource = when (proxyError.code) {
+            BftProxyErrorCode.SERVER_MISMATCH -> R.string.bft_proxy_server_mismatch
+            BftProxyErrorCode.SERVER_IDENTITY_UNAVAILABLE -> R.string.bft_proxy_node_check_failed
+            BftProxyErrorCode.KEY_REJECTED -> R.string.bft_proxy_status_key_rejected
+            BftProxyErrorCode.NO_CONNECTION -> R.string.bft_proxy_status_no_connection
+            BftProxyErrorCode.SERVICE_UNAVAILABLE -> R.string.bft_proxy_status_no_connection
+        }
+        return activity.getString(resource)
     }
 }
