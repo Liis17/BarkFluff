@@ -14,7 +14,9 @@ Files хранит метаданные в PostgreSQL, объекты — в S3-
 
 `FilesServerApi` (`TokenType.Service`) предоставляет метаданные файлов, сведения о хранилище, загрузку badge/avatar/poster/file, временные ссылки и управление стикерами. Bots использует серверную загрузку и временную ссылку.
 
-`FilesServerApi.DeleteUserProfileImages(user_id)` идемпотентно удаляет связанные с владельцем файлы типов avatar и profile poster: записи Files и объекты S3, включая прежние изображения. Остальные типы, прежде всего вложения сообщений, не затрагиваются. Identity вызывает RPC при окончательной очистке аккаунта; Users к этому моменту уже очистил URL профиля.
+`FilesServerApi.DeleteUserProfileImages(user_id)` идемпотентно снимает владельца с файлов типов avatar и profile poster и удаляет неиспользуемые записи Files и объекты S3, включая превью. Фильтр не включает типы изображений бейджей, поэтому очистка аккаунта их не захватывает. Identity вызывает RPC при окончательной очистке; Users к этому моменту уже очистил URL профиля.
+
+`UploadBadgeImage` требует `BadgeImageKind`: FULL принимает только PNG 256×256, MINI — PNG 32×32. Размер ограничен 256 KiB. Handler проверяет kind, формат и размер через ImageSharp до выбора S3 bucket и загрузки; неверный запрос получает gRPC `InvalidArgument`, не записывая объект или метаданные. AdminPanel передаёт kind при создании и обновлении бейджа.
 
 Удалённое вложение также выдаётся по временной capability: Files проверяет право пользователя через Messages, затем получает файл через Federation и передаёт поток/диапазон байтов. `FetchFileStream` отдаёт разрешённые данные Federation; перед этим Messages проверяет доступ узла через `CheckFileFederationAccess`. Снимок метаданных федеративного вложения позволяет рендерить его без запроса в Files исходного узла.
 
@@ -26,6 +28,6 @@ Files хранит метаданные в PostgreSQL, объекты — в S3-
 - `S3BucketRegistry` выбирает бакет по типу файла; инициализатор создаёт отсутствующие бакеты без публичной read-политики.
 - `ImageCompressor`, `FileTypeDetector` и `VideoThumbnailExtractor` выполняют проверку/обработку; размеры графических файлов возвращаются в метаданных.
 
-Источники: `Host/FilesApiService.cs`, `Host/FilesServerApiService.cs`, `Host/FilesController.cs`, `Features/GetUploadUrl/`, `Features/UploadFile/`, `Features/GetTempDownloadUrl/`, `Features/FetchFileStream/`, `Features/DownloadFile/FederatedDownloadService.cs`, `Infrastructure/S3Uploader.cs`, `Persistence/FilesContext.cs`.
+Источники: `Host/FilesApiService.cs`, `Host/FilesServerApiService.cs`, `Host/FilesController.cs`, `Features/UploadBadgeImage/`, `Features/GetUploadUrl/`, `Features/UploadFile/`, `Features/GetTempDownloadUrl/`, `Features/FetchFileStream/`, `Features/DownloadFile/FederatedDownloadService.cs`, `Infrastructure/S3Uploader.cs`, `Persistence/FilesContext.cs`.
 
 Связанные сервисы: [[Backend/Users]], [[Backend/Messages]], [[Backend/Federation]], [[Backend/Beacon]]. Тесты: `Tests/BarkFluff.Files.Tests` (общий helper использует SQLite in-memory).

@@ -465,6 +465,13 @@ class ChatActivity : AppCompatActivity() {
                     resolvePeerAccountStatus(state.otherUserId)
                 }
 
+                if (isSavedMessages) {
+                    binding.chatNameTextView.setText(R.string.saved_messages_title)
+                    if (!renderedSavedMessages) loadChatAvatar()
+                    renderedSavedMessages = true
+                    binding.onlineStatusTextView.visibility = View.GONE
+                }
+
                 if (previousPresence != state.presence) {
                     renderPresenceState(state.presence)
                 }
@@ -474,10 +481,10 @@ class ChatActivity : AppCompatActivity() {
                     renderTypingIndicator(renderedTypingUserIds)
                 }
 
-                val displayTitle = if (!state.isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
-                    accountStatusLabel(peerAccountStatus)
-                } else {
-                    state.chatTitle.ifBlank { getString(R.string.chat_default_title) }
+                val displayTitle = when {
+                    isSavedMessages -> getString(R.string.saved_messages_title)
+                    !state.isGroupChat && peerAccountStatus != AccountStatus.ACTIVE -> accountStatusLabel(peerAccountStatus)
+                    else -> state.chatTitle.ifBlank { getString(R.string.chat_default_title) }
                 }
                 chatTitle = displayTitle
                 chatAvatarFileId = if (!state.isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
@@ -899,7 +906,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
-        binding.chatNameTextView.text = chatTitle.ifBlank { getString(R.string.chat_default_title) }
+        binding.chatNameTextView.text = if (isSavedMessages) getString(R.string.saved_messages_title) else chatTitle.ifBlank { getString(R.string.chat_default_title) }
 
         // Показываем статус онлайна только для личных чатов
         if (!isGroupChat && otherUserId > 0) {
@@ -1000,8 +1007,16 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    private var renderedSavedMessages = false
+
+    private val isSavedMessages: Boolean
+        get() = !isGroupChat && intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR) == KIND_REGULAR && otherUserId > 0 && otherUserId == currentUserId
+
     private fun loadChatAvatar() {
-        if (peerAccountStatus != AccountStatus.ACTIVE) {
+        if (isSavedMessages) {
+            com.barkfluff.client.utils.showSavedMessagesAvatar(binding.chatAvatar, binding.chatAvatarPlaceholder)
+            return
+        } else if (peerAccountStatus != AccountStatus.ACTIVE) {
             AvatarLoader.showPlaceholder(binding.chatAvatarPlaceholder, accountStatusLabel(peerAccountStatus), otherUserId)
             binding.chatAvatar.visibility = View.GONE
         } else if (!chatAvatarFileId.isNullOrBlank()) {
@@ -1546,7 +1561,7 @@ class ChatActivity : AppCompatActivity() {
      * Если никто не печатает — восстанавливает предыдущее содержимое (статус онлайна / скрытие для группы).
      */
     private fun renderTypingIndicator(userIds: Set<Long> = renderedTypingUserIds) {
-        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+        if ((!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) || isSavedMessages) {
             binding.onlineStatusTextView.visibility = View.GONE
             return
         }
@@ -3448,7 +3463,7 @@ class ChatActivity : AppCompatActivity() {
             binding.onlineIndicator.visibility = View.GONE
             return
         }
-        if (isGroupChat) {
+        if (isGroupChat || isSavedMessages) {
             if (presence.typingUserIds.isEmpty()) {
                 binding.onlineStatusTextView.visibility = View.GONE
             }

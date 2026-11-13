@@ -378,6 +378,12 @@ class GrpcUserProfileGateway(private val grpc: GrpcApiTransport) : UserProfileGa
     override suspend fun storageInfo(): Result<StorageInfo> = grpc.getUserStorageInfo().map(::toDomain)
 }
 
+class GrpcUserBadgeGateway(private val grpc: GrpcApiTransport) : UserBadgeGateway {
+    override suspend fun badges(userId: Long): Result<List<UserBadgeInfo>> = grpc.getUserBadges(userId)
+
+    override suspend fun setPrimary(badgeId: Int): Result<UserBadgeInfo?> = grpc.setPrimaryBadge(badgeId)
+}
+
 class GrpcUserSettingsGateway(private val grpc: GrpcApiTransport) : UserSettingsGateway {
     override suspend fun notificationsEnabled(): Result<Boolean> = grpc.getNotificationsEnabled()
     override suspend fun setNotificationsEnabled(enabled: Boolean): Result<Unit> = grpc.setNotificationsEnabled(enabled)

@@ -31,7 +31,8 @@ public class CreateBadgeCommandHandler : IRequestHandler<CreateBadgeCommand, Cre
         {
             Name = request.Name,
             Description = request.Description,
-            ImageUrl = request.ImageUrl
+            ImageUrl = request.ImageUrl,
+            MiniImageUrl = string.IsNullOrWhiteSpace(request.MiniImageUrl) ? null : request.MiniImageUrl
         };
 
         var createdBadge = await _usersStorage.CreateBadgeAsync(badge);

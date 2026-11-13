@@ -36,6 +36,10 @@ public static class StepUpActions
     public const string UsersUnblock = "users.unblock";
     public const string UsersDeletionSchedule = "users.deletion.schedule";
     public const string UsersDeletionCancel = "users.deletion.cancel";
+    public const string UserBadgeAssign = "users.badges.assign";
+    public const string UserBadgeRemove = "users.badges.remove";
+    public const string BadgesUpdate = "badges.update";
+    public const string BadgesDelete = "badges.delete";
     public const string DockerBranch = "docker.branch";
     public const string DockerRestartAll = "docker.restart-all";
     public const string DockerUpdateAll = "docker.update-all";
@@ -67,6 +71,10 @@ public static class StepUpActions
             [UsersUnblock] = AdminPermissions.UsersBlock,
             [UsersDeletionSchedule] = AdminPermissions.UsersDelete,
             [UsersDeletionCancel] = AdminPermissions.UsersDelete,
+            [UserBadgeAssign] = AdminPermissions.BadgesManage,
+            [UserBadgeRemove] = AdminPermissions.BadgesManage,
+            [BadgesUpdate] = AdminPermissions.BadgesManage,
+            [BadgesDelete] = AdminPermissions.BadgesManage,
             [DockerBranch] = AdminPermissions.DockerDeploy,
             [DockerRestartAll] = AdminPermissions.DockerDeploy,
             [DockerUpdateAll] = AdminPermissions.DockerDeploy,
@@ -105,6 +113,10 @@ public static class StepUpActions
             UsersUnblock => "Разблокировка пользователя",
             UsersDeletionSchedule => "Постановка пользователя на удаление",
             UsersDeletionCancel => "Отмена удаления пользователя",
+            UserBadgeAssign => "Назначение бейджа пользователю",
+            UserBadgeRemove => "Удаление бейджа у пользователя",
+            BadgesUpdate => "Изменение бейджа",
+            BadgesDelete => "Удаление бейджа",
             DockerBranch => "Переключение ветки обновлений",
             DockerRestartAll => "Перезапуск всех сервисов",
             DockerUpdateAll => "Обновление всех сервисов",

@@ -61,6 +61,10 @@
 
             <!-- Аватар пользователя справа -->
             <FrameLayout
+                android:id="@+id/userAvatarButton"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="@string/profile_title"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginTop="4dp">

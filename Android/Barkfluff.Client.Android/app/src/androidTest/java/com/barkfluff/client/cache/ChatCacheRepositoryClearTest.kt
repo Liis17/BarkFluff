@@ -7,6 +7,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.gateway.ChatDraftGateway
 import com.barkfluff.client.domain.model.ChatDraftData
 import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.model.UserBadgeInfo
 import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.drafts.ChatDraftSyncState
 import com.barkfluff.client.drafts.ComposerAttachmentStore
@@ -68,6 +69,10 @@ class ChatCacheRepositoryClearTest {
         cache.savePrivateMessages(scope, "chat", listOf(encryptedMessage(2)))
         cache.saveSecretMessage(scope, "secret-chat", "secret-1", "Peer", "secret", 1)
         cache.saveChatDraft(scope, draft("chat", revision = "draft-revision"))
+        cache.replaceUserBadges(
+            userId = 42L,
+            badges = listOf(UserBadgeInfo(7, "Helper", "", "full.png", "mini.png", 1234L, true)),
+        )
         saveComposerAttachment()
         cache.saveOutgoing(scope, outgoing("queued").copy(notificationReadMessageId = 42L))
 
@@ -77,6 +82,7 @@ class ChatCacheRepositoryClearTest {
         assertEquals(0, cache.stats().chatCount)
         assertTrue(cache.latestMessages(scope, "chat", 10).isEmpty())
         assertTrue(cache.latestPrivateMessages(scope, "chat", 10).isEmpty())
+        assertTrue(cache.readUserBadges(42L).isEmpty())
         assertEquals(OutgoingMessageState.QUEUED, cache.outgoing(scope, "queued")?.state)
         assertEquals(42L, cache.readyPendingChatReadRanges(scope, nowMillis = Long.MAX_VALUE).single().upToMessageId)
         assertEquals(1, cache.readChatDrafts(scope).size)

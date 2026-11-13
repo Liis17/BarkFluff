@@ -78,6 +78,12 @@ public class UsersContext : DbContext
             .HasIndex(ub => new { ub.UserId, ub.BadgeId })
             .IsUnique();
 
+        modelBuilder.Entity<UserBadge>()
+            .HasIndex(ub => ub.UserId)
+            .IsUnique()
+            .HasFilter("\"IsPrimary\" = TRUE")
+            .HasDatabaseName("IX_UserBadges_UserId_Primary");
+
         // Настройка связей для UserDevice
         modelBuilder.Entity<UserDevice>()
             .HasOne(ud => ud.User)

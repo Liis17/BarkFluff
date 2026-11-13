@@ -157,6 +157,11 @@
             font-size: 11px;
             line-height: 1.2;
         }
+        .badge-primary-label {
+            color: var(--md-primary);
+            font-size: 10px;
+            font-weight: 600;
+        }
         .badge-tile-add {
             border-style: dashed;
             background: transparent;
@@ -459,7 +464,7 @@
     function checkAuth() { return BF.requireAuth(); }
 
     function getInitials(f, l) { return ((f?.[0] || '') + (l?.[0] || '')).toUpperCase() || '?'; }
-    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML.replace(/\"/g, '&quot;').replace(/'/g, '&#39;'); }
     function formatDate(s) { if (!s) return '—'; const d = new Date(s); return d.toLocaleDateString('ru-RU'); }
     function formatDateTime(s) { if (!s) return '—'; const d = new Date(s); return d.toLocaleString('ru-RU'); }
     function accountStatusLabel(status) {
@@ -615,7 +620,7 @@
             <div class="user-modal-avatar-wrap" onclick="document.getElementById('avatarFileInput').click()">
                 ${p.profilePicture
                     ? `<img src="${escapeHtml(p.profilePicture)}" alt="Аватар профиля">`
-                    : `<span>${getInitials(p.firstName, p.lastName)}</span>`}
+                    : `<span>${escapeHtml(getInitials(p.firstName, p.lastName))}</span>`}
                 <div class="user-modal-avatar-overlay"><span class="msr">photo_camera</span></div>
             </div>
             <input type="file" id="posterFileInput" accept="image/*" style="display:none;" onchange="handlePosterUpload(this, ${p.id})">
@@ -734,13 +739,15 @@
             const badge = userBadge.badge || {};
             const badgeId = Number(badge.id);
             const badgeName = badge.name || 'Бейдж';
-            const image = badge.imageUrl
-                ? `<img src="${escapeHtml(badge.imageUrl)}" alt="">`
+            const imageUrl = badge.miniImageUrl || badge.imageUrl;
+            const image = imageUrl
+                ? `<img src="${escapeHtml(imageUrl)}" alt="">`
                 : '<span class="msr size-32" style="color:var(--md-primary);">workspace_premium</span>';
             return `
                 <div class="badge-tile" title="${escapeHtml(badgeName)}">
                     ${image}
                     <span class="badge-name">${escapeHtml(badgeName)}</span>
+                    ${userBadge.isPrimary ? '<span class="badge-primary-label">Основной</span>' : ''}
                     <button type="button" class="badge-tile-remove" aria-label="Удалить бейдж «${escapeHtml(badgeName)}»"
                         onclick="event.stopPropagation();removeUserBadge(${profile.id}, ${badgeId})">
                         <span class="msr">close</span>

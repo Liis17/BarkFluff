@@ -8,10 +8,17 @@ using BarkFluff.Proto.Files;
 
 using MediatR;
 
+using Grpc.Core;
+
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
+
 namespace BarkFluff.Files.Features.UploadBadgeImage;
 
 public class UploadBadgeImageCommandHandler : IRequestHandler<UploadBadgeImageCommand, UploadBadgeImageResponse>
 {
+    private const int MaxImageSizeBytes = 256 * 1024;
+
     private readonly BadgeImagesStorage _badgeImagesStorage;
     private readonly IS3Uploader _s3Uploader;
     private readonly IS3BucketRegistry _bucketRegistry;
@@ -37,6 +44,8 @@ public class UploadBadgeImageCommandHandler : IRequestHandler<UploadBadgeImageCo
 
     public async Task<UploadBadgeImageResponse> Handle(UploadBadgeImageCommand request, CancellationToken cancellationToken)
     {
+        ValidateImage(request);
+
         var badgeImage = new BadgeImage
         {
             Id = Guid.NewGuid(),
@@ -50,13 +59,11 @@ public class UploadBadgeImageCommandHandler : IRequestHandler<UploadBadgeImageCo
         var bucketName = _bucketRegistry.GetBadgeImageBucketName();
 
         using var stream = new MemoryStream(request.ImageData);
-        var contentType = request.Filename.GetContentType();
-
         var etag = await _s3Uploader.UploadAsync(
             bucketName,
             $"{badgeImage.Id}",
             stream,
-            contentType,
+            "image/png",
             cancellationToken
         );
 
@@ -75,5 +82,52 @@ public class UploadBadgeImageCommandHandler : IRequestHandler<UploadBadgeImageCo
             BadgeImageId = badgeImage.Id.ToString(),
             PermanentUrl = permanentUrl
         };
+    }
+
+    private static void ValidateImage(UploadBadgeImageCommand request)
+    {
+        var expectedSize = request.Kind switch
+        {
+            BadgeImageKind.Full => 256,
+            BadgeImageKind.Mini => 32,
+            BadgeImageKind.Unspecified => throw InvalidImage("kind обязателен"),
+            _ => throw InvalidImage("kind не поддерживается")
+        };
+
+        if (request.ImageData.Length > MaxImageSizeBytes)
+        {
+            throw InvalidImage("Размер изображения не должен превышать 256 КБ");
+        }
+
+        try
+        {
+            var format = Image.DetectFormat(request.ImageData);
+            if (format.DefaultMimeType != "image/png")
+            {
+                throw InvalidImage("Изображение должно быть в формате PNG");
+            }
+
+            var imageInfo = Image.Identify(request.ImageData);
+            if (imageInfo.Width != expectedSize || imageInfo.Height != expectedSize)
+            {
+                throw InvalidImage($"Для этого вида бейджа требуется изображение {expectedSize}×{expectedSize} пикселей");
+            }
+        }
+        catch (ImageFormatException ex)
+        {
+            throw InvalidImage("Не удалось прочитать PNG-изображение", ex);
+        }
+        catch (NotSupportedException ex)
+        {
+            throw InvalidImage("Формат изображения не поддерживается", ex);
+        }
+    }
+
+    private static RpcException InvalidImage(string message, Exception? innerException = null)
+    {
+        var status = new Status(StatusCode.InvalidArgument, message);
+        return innerException is null
+            ? new RpcException(status)
+            : new RpcException(status, innerException.Message);
     }
 }

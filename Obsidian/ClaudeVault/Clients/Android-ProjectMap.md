@@ -32,6 +32,12 @@ MediaHttpTransport обрабатывает Files upload/download отдельн
 
 Точки входа: core/grpc/GrpcClientRegistry.kt, core/grpc/GrpcApiTransport.kt, core/grpc/TokenCoordinator.kt, core/grpc/MediaHttpTransport.kt; core/domain/gateway/DomainGateways.kt и core/domain/gateway/GrpcGatewayAdapters.kt; app/di/AppModule.kt.
 
+### Профиль и бейджи
+
+`ProfileFragment` открывает `BadgesSettingsActivity` для просмотра и выбора primary; `UserProfileActivity` показывает primary у имени и остальные бейджи отдельной карточкой. Оба экрана используют `UserBadgeRepository`: поток Room-кеша отображается первым, полный список пользователя затем обновляется через `UserBadgeGateway`/`GrpcApiTransport`. Успешный SetPrimaryBadge меняет флаги в `cached_user_badges` транзакционно; ошибка сохраняет текущее выделение и показывается Snackbar. `BadgeViewerSheet` общий для профиля и настроек, а Coil использует ImageLoader/OkHttp аватаров с TLS ноды и URL-ключами обоих кешей.
+
+Основные исходники: core/domain/model/UserBadgeInfo.kt, core/domain/gateway/DomainGateways.kt, core/domain/gateway/GrpcGatewayAdapters.kt, core/grpc/GrpcApiTransport.kt; app/BadgesSettingsActivity.kt, app/UserProfileActivity.kt, app/badges/BadgeViewerSheet.kt, app/cache/UserBadgeRepository.kt, app/cache/ChatCacheRepository.kt.
+
 ### Обычный чат
 
 MainActivity → ChatsFragment → ChatActivity. ChatActivity создаёт ChatViewModel; ViewModel управляет ChatUiState через intents/effects и делегирует историю RegularChatSession. MessageRowProjector строит immutable rows для MessageAdapter.
@@ -60,5 +66,5 @@ BarkFluffApplication задаёт process lifecycle. RealtimeService при во
 - ChatViewModel — внешний state/effect/intent контракт регулярного чата; ChatActivity не владеет основным timeline/composer/presence state.
 - MessageAdapter только отображает MessageRowUi и поднимает события через MessageRowEventSink. Projector определяет rows, отдельные контроллеры загружают вложения и воспроизводят audio.
 - UI/background adapters зависят от gateways, не от generated RPC stubs.
-- Room v7 владеет scoped cache (включая AccountStatus профиля чата), draft metadata, composer metadata, outbox и независимым журналом pending read actions. Файлы composer/outbox находятся в app-private noBackup staging.
+- Room v8 владеет scoped cache, AccountStatus профиля чата и `cached_user_badges`, draft/composer metadata, outbox и журналом pending read actions. `MIGRATION_6_7` добавляет кеш бейджей, `MIGRATION_7_8` — статус peer; файлы composer/outbox находятся в app-private noBackup staging.
 - Clear cache (StorageSettingsActivity) — выборочный диалог с подтверждением необратимых категорий. Границы очистки, account/server scope, синхронизация черновиков и сохранение worker для pending reads описаны в [[Clients/Android#Состояние обычного чата и durable отправка|Android — durable отправка]]. Logout использует полную очистку clearAll() и остаётся источником clearedEvents.

@@ -65,7 +65,7 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
         var protoUsers = new List<User>();
         foreach (var user in users)
         {
-            var protoUser = user.ToGrpc(includeRestrictedData: true);
+            var protoUser = user.ToGrpc();
 
             if (user.AccountStatus == Domain.AccountStatus.Active && badgesByUser.TryGetValue(user.Id, out var badges))
             {
@@ -79,11 +79,13 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
                             Name = ub.Badge.Name,
                             Description = ub.Badge.Description ?? string.Empty,
                             ImageUrl = ub.Badge.ImageUrl ?? string.Empty,
+                            MiniImageUrl = ub.Badge.MiniImageUrl ?? string.Empty,
                             IsActive = ub.Badge.IsActive,
                             CreatedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.Badge.CreatedDate, DateTimeKind.Utc))
                         },
                         Priority = ub.Priority,
-                        AssignedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.AssignedDate, DateTimeKind.Utc))
+                        AssignedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.AssignedDate, DateTimeKind.Utc)),
+                        IsPrimary = ub.IsPrimary
                     });
                 }
             }

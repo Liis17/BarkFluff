@@ -14,5 +14,7 @@ public class UpdateBadgeCommand : IRequest<UpdateBadgeResponse>
 
     public string ImageUrl { get; init; }
 
+    public string? MiniImageUrl { get; init; }
+
     public bool IsActive { get; init; }
 }

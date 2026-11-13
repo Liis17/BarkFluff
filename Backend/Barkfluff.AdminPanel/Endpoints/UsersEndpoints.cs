@@ -96,9 +96,12 @@ public static class UsersEndpoints
                             id = b.Badge.Id,
                             name = b.Badge.Name,
                             description = b.Badge.Description,
-                            imageUrl = b.Badge.ImageUrl
+                            imageUrl = b.Badge.ImageUrl,
+                            miniImageUrl = b.Badge.MiniImageUrl
                         },
-                        priority = b.Priority
+                        priority = b.Priority,
+                        assignedDate = b.AssignedDate?.ToDateTime(),
+                        isPrimary = b.IsPrimary
                     })
                 };
             });
@@ -174,10 +177,12 @@ public static class UsersEndpoints
                             id = b.Badge.Id,
                             name = b.Badge.Name,
                             description = b.Badge.Description,
-                            imageUrl = b.Badge.ImageUrl
+                            imageUrl = b.Badge.ImageUrl,
+                            miniImageUrl = b.Badge.MiniImageUrl
                         },
                         priority = b.Priority,
-                        assignedDate = b.AssignedDate?.ToDateTime()
+                        assignedDate = b.AssignedDate?.ToDateTime(),
+                        isPrimary = b.IsPrimary
                     })
                 },
                 contacts = contacts.Value != null || restriction.Value != null ? new
@@ -291,14 +296,18 @@ public static class UsersEndpoints
                     id = response.UserBadge.Badge.Id,
                     name = response.UserBadge.Badge.Name,
                     description = response.UserBadge.Badge.Description,
-                    imageUrl = response.UserBadge.Badge.ImageUrl
+                    imageUrl = response.UserBadge.Badge.ImageUrl,
+                    miniImageUrl = response.UserBadge.Badge.MiniImageUrl
                 },
                 priority = response.UserBadge.Priority,
-                assignedDate = response.UserBadge.AssignedDate?.ToDateTime()
+                assignedDate = response.UserBadge.AssignedDate?.ToDateTime(),
+                isPrimary = response.UserBadge.IsPrimary
             });
         })
         .WithName("AssignUserBadge")
-        .RequirePermission(AdminPermissions.BadgesManage);
+        .RequirePermission(AdminPermissions.BadgesManage)
+        .RequireStepUp(StepUpActions.UserBadgeAssign, context =>
+            "userId=" + context.Request.RouteValues["id"]);
 
         // DELETE /api/users/{id}/badges/{badgeId}
         group.MapDelete("/{id:long}/badges/{badgeId:int}", async (
@@ -315,7 +324,9 @@ public static class UsersEndpoints
             return Results.Ok(new { success = response.Success });
         })
         .WithName("RemoveUserBadge")
-        .RequirePermission(AdminPermissions.BadgesManage);
+        .RequirePermission(AdminPermissions.BadgesManage)
+        .RequireStepUp(StepUpActions.UserBadgeRemove, context =>
+            "userId=" + context.Request.RouteValues["id"] + ";badgeId=" + context.Request.RouteValues["badgeId"]);
 
         // PUT /api/users/{id}/storage-limit
         group.MapPut("/{id:long}/storage-limit", async (

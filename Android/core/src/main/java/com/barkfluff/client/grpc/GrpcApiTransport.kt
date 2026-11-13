@@ -31,6 +31,9 @@ import com.barkfluff.client.domain.model.MessageSearchPage
 import com.barkfluff.client.domain.model.MessageSearchQuery
 import com.barkfluff.client.domain.model.MessageSearchUnavailableException
 import com.barkfluff.client.domain.model.SearchAttachmentPresence
+import com.barkfluff.client.domain.model.BadgeFeatureUnavailableException
+import com.barkfluff.client.domain.model.UserBadgeInfo
+import com.barkfluff.client.domain.model.toDomain
 import com.google.protobuf.Timestamp
 import kotlinx.coroutines.CancellationException
 import com.barkfluff.client.security.TlsTransportFactory
@@ -1053,6 +1056,56 @@ open class GrpcApiTransport(context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения данных пользователя $userId", e)
             Result.failure(Exception("Ошибка получения данных пользователя: ${e.message}"))
+        }
+    }
+
+    suspend fun getUserBadges(userId: Long): Result<List<UserBadgeInfo>> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val response = client.getUserBadges(
+                UsersApiOuterClass.GetUserBadgesRequest.newBuilder()
+                    .setUserId(userId)
+                    .build()
+            )
+            Result.success(response.badgesList.map { badge ->
+                badge.toDomain().copy(
+                    imageUrl = toMediaUrl(badge.badge.imageUrl),
+                    miniImageUrl = toMediaUrl(badge.badge.miniImageUrl),
+                )
+            })
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.e(TAG, "Ошибка получения бейджей пользователя $userId", error)
+            Result.failure(error)
+        }
+    }
+
+    suspend fun setPrimaryBadge(badgeId: Int): Result<UserBadgeInfo?> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val response = client.setPrimaryBadge(
+                UsersApiOuterClass.SetPrimaryBadgeRequest.newBuilder()
+                    .setBadgeId(badgeId)
+                    .build()
+            )
+            val primary = if (response.hasPrimaryBadge()) {
+                response.primaryBadge.toDomain().copy(
+                    imageUrl = toMediaUrl(response.primaryBadge.badge.imageUrl),
+                    miniImageUrl = toMediaUrl(response.primaryBadge.badge.miniImageUrl),
+                )
+            } else {
+                null
+            }
+            Result.success(primary)
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.e(TAG, "Ошибка выбора основного бейджа", error)
+            val mappedError = if (Status.fromThrowable(error).code == Status.Code.UNIMPLEMENTED) {
+                BadgeFeatureUnavailableException(error)
+            } else {
+                error
+            }
+            Result.failure(mappedError)
         }
     }
 

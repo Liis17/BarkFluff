@@ -20,8 +20,8 @@ Parent: [[Clients/Android]]
 | Пакет / вход | Назначение |
 |---|---|
 | grpc | GrpcClientRegistry, GrpcApiTransport, TokenCoordinator, MediaHttpTransport, RealtimeService |
-| domain/gateway | DomainGateways contracts и GrpcGatewayAdapters production mapping |
-| domain/auth, domain/model | Challenge controller, AuthenticationChallengeModels и AccountStatus с маппингом серверных статусов |
+| domain/gateway | DomainGateways contracts, включая UserBadgeGateway, и GrpcGatewayAdapters production mapping |
+| domain/auth, domain/model | Challenge controller, AuthenticationChallengeModels, AccountStatus и UserBadgeInfo с маппингом серверных статусов |
 | security | TlsTransportFactory, TlsTrustStore, TlsCertificateProbe, endpoint policy |
 | data | GlobalParam и локальные настройки сети |
 | repository | ChatRepository, PrivateChatRepository, SecretChatRepository |
@@ -38,7 +38,8 @@ Parent: [[Clients/Android]]
 | ChatViewModel.kt, ChatStateModules.kt | State/effect/intent и reducers обычного чата |
 | chat | RegularChatSession, MessageNavigator и timeline coordination |
 | adapter | MessageRowProjector, MessageAdapter и UI lists |
-| cache | SQLCipher Room v7, статус peer в cached_chat_displays, миграция v6→v7, outbox records и выборочная очистка (ClearCacheOptions, clearHistoryCache/clearSecretHistory/clearOutgoingKeepReads, compact) |
+| cache | SQLCipher Room v8, статус peer в cached_chat_displays, UserBadgeRepository, migrations 6→7→8, outbox records и выборочная очистка (ClearCacheOptions, clearHistoryCache/clearSecretHistory/clearOutgoingKeepReads, compact) |
+| badges | BadgeViewerSheet, BadgeIconAdapter, BadgeGridAdapter и Coil image loading для бейджей |
 | drafts | ChatDraftRepository и ComposerAttachmentStore |
 | send | OutgoingMessageQueue, OutgoingMessageWorker и retry policy; GrpcOutgoingFailure помечает UserUnavailable постоянной ошибкой |
 | auth | Activity-retained challenge state и диалог; AccountRestrictionUi обрабатывает статус входа и завершение сессии |
@@ -64,9 +65,11 @@ Representative test files:
 - Android/core/src/test/java/com/barkfluff/client/grpc/ClientSlotRegistryTest.kt
 - Android/core/src/test/java/com/barkfluff/client/grpc/GrpcTokenCoordinatorTest.kt
 - Android/core/src/test/java/com/barkfluff/client/security/PinnedTrustManagerTest.kt
+- Android/core/src/test/java/com/barkfluff/client/domain/model/UserBadgeInfoTest.kt
 - Android/Barkfluff.Client.Android/app/src/test/java/com/barkfluff/client/ChatStateModulesTest.kt
 - Android/Barkfluff.Client.Android/app/src/test/java/com/barkfluff/client/drafts/ChatDraftJournalTest.kt
 - Android/Barkfluff.Client.Android/app/src/androidTest/java/com/barkfluff/client/cache/OutgoingMessageMigrationTest.kt
+- Android/Barkfluff.Client.Android/app/src/androidTest/java/com/barkfluff/client/cache/UserBadgeMigrationTest.kt
 - Android/Barkfluff.Client.Android/app/src/androidTest/java/com/barkfluff/client/cache/ChatCacheRepositoryClearTest.kt
 
 Локальный UI-resource checker: Android/tools/check_android_ui.py. Полный актуальный список файлов можно получить командой rg --files Android; каталог не должен превращаться в копию этого вывода.
