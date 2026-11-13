@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AuthChallengeReference, AuthChallengeResponse, AuthRequest, AuthResponse, BeginEmailBindingRequest, BeginPasswordRecoveryRequest, BeginReauthenticationRequest, BeginRegistrationRequest, BeginSignInRequest, CompleteAuthChallengeRequest, CompleteAuthChallengeResponse, ConfirmAccountRequest, ConfirmAccountResponse, ConfirmOtpVerificationRequest, ConfirmOtpVerificationResponse, ConfirmResetPasswordRequest, ConfirmResetPasswordResponse, CreateAccountRequest, CreateAccountResponse, CreateBotTokenServerRequest, CreateBotTokenServerResponse, CreateSessionForUserServerRequest, CreateSessionForUserServerResponse, CreateTokenRequest, CreateTokenResponse, DisableOtpVerificationRequest, DisableOtpVerificationResponse, DisableOtpVerificationServerRequest, EnableOtpVerificationRequest, EnableOtpVerificationResponse, FastAuthRequest, ForceSetPasswordServerRequest, ForceSetPasswordServerResponse, GetActiveSessionsRequest, GetActiveSessionsResponse, GetActiveSessionsServerRequest, GetAuthCapabilitiesRequest, GetAuthCapabilitiesResponse, GetBotTokenServerRequest, GetBotTokenServerResponse, GetLoginNotificationSettingsRequest, GetSecuritySettingsRequest, ListOtpVerificationRequest, ListOtpVerificationResponse, ListOtpVerificationServerRequest, LoginNotificationSettingsResponse, LogoutRequest, LogoutResponse, RecoveryCodesResponse, RemoveActiveSessionRequest, RemoveActiveSessionResponse, RemoveActiveSessionServerRequest, ResetPasswordRequest, ResetPasswordResponse, SecurityProofRequest, SecuritySettingsResponse, SetLoginNotificationChannelRequest, SetPasswordRequest, SetPasswordResponse, SetRecoveredPasswordRequest, UpdateSecuritySettingsRequest } from "./identity_api_pb.js";
+import { AuthChallengeReference, AuthChallengeResponse, AuthRequest, AuthResponse, BeginEmailBindingRequest, BeginPasswordRecoveryRequest, BeginReauthenticationRequest, BeginRegistrationRequest, BeginSignInRequest, CompleteAuthChallengeRequest, CompleteAuthChallengeResponse, ConfirmAccountRequest, ConfirmAccountResponse, ConfirmOtpVerificationRequest, ConfirmOtpVerificationResponse, ConfirmResetPasswordRequest, ConfirmResetPasswordResponse, CreateAccountRequest, CreateAccountResponse, CreateBotTokenServerRequest, CreateBotTokenServerResponse, CreateSessionForUserServerRequest, CreateSessionForUserServerResponse, CreateTokenRequest, CreateTokenResponse, DisableOtpVerificationRequest, DisableOtpVerificationResponse, DisableOtpVerificationServerRequest, EnableOtpVerificationRequest, EnableOtpVerificationResponse, FastAuthRequest, ForceSetPasswordServerRequest, ForceSetPasswordServerResponse, GetActiveSessionsRequest, GetActiveSessionsResponse, GetActiveSessionsServerRequest, GetAuthCapabilitiesRequest, GetAuthCapabilitiesResponse, GetBotTokenServerRequest, GetBotTokenServerResponse, GetLoginNotificationSettingsRequest, GetSecuritySettingsRequest, ListOtpVerificationRequest, ListOtpVerificationResponse, ListOtpVerificationServerRequest, LoginNotificationSettingsResponse, LogoutRequest, LogoutResponse, RecoveryCodesResponse, RemoveActiveSessionRequest, RemoveActiveSessionResponse, RemoveActiveSessionServerRequest, ResetPasswordRequest, ResetPasswordResponse, ResolveSignInRequest, ResolveSignInResponse, SecurityProofRequest, SecuritySettingsResponse, SetAccountRestrictionServerRequest, SetAccountRestrictionServerResponse, SetLoginNotificationChannelRequest, SetPasswordRequest, SetPasswordResponse, SetRecoveredPasswordRequest, UpdateSecuritySettingsRequest } from "./identity_api_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -184,6 +184,15 @@ export const IdentityApi = {
       name: "GetAuthCapabilities",
       I: GetAuthCapabilitiesRequest,
       O: GetAuthCapabilitiesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc barkfluff.identity.IdentityApi.ResolveSignIn
+     */
+    resolveSignIn: {
+      name: "ResolveSignIn",
+      I: ResolveSignInRequest,
+      O: ResolveSignInResponse,
       kind: MethodKind.Unary,
     },
     /**
@@ -438,6 +447,17 @@ export const IdentityServerApi = {
       name: "GetBotTokenServer",
       I: GetBotTokenServerRequest,
       O: GetBotTokenServerResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Ограничить или восстановить аккаунт пользователя на этой ноде.
+     *
+     * @generated from rpc barkfluff.identity.IdentityServerApi.SetAccountRestrictionServer
+     */
+    setAccountRestrictionServer: {
+      name: "SetAccountRestrictionServer",
+      I: SetAccountRestrictionServerRequest,
+      O: SetAccountRestrictionServerResponse,
       kind: MethodKind.Unary,
     },
   }
