@@ -1,6 +1,8 @@
 package com.barkfluff.client.adapter
 
+import android.content.Context
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -19,60 +21,89 @@ class DeviceAdapter(
     }
 
     override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(getItem(position), position)
+    }
+
+    override fun onCurrentListChanged(previousList: List<SessionData>, currentList: List<SessionData>) {
+        // Скругления группы зависят от первой и последней строки: при изменении размера
+        // соседние строки, которые DiffUtil не перепривязал, получают новый фон.
+        if (previousList.size != currentList.size && currentList.isNotEmpty()) {
+            notifyItemRangeChanged(0, currentList.size, PAYLOAD_GROUP_SHAPE)
+        }
+    }
+
+    override fun onBindViewHolder(holder: DeviceViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.isNotEmpty() && payloads.all { it == PAYLOAD_GROUP_SHAPE }) {
+            holder.bindGroupShape(position)
+        } else {
+            onBindViewHolder(holder, position)
+        }
     }
 
     inner class DeviceViewHolder(
         private val binding: ItemDeviceBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(session: SessionData) {
-            // Если есть кастомное имя - показываем его, иначе только оригинальное
-            if (session.customName.isNotEmpty()) {
-                binding.textDeviceName.text = session.customName
-                binding.textDeviceOriginalName.text = session.originalName
-                binding.textDeviceOriginalName.visibility = android.view.View.VISIBLE
-                // Показываем appName без версии (первые 2 слова)
-                val appNameWithoutVersion = extractAppNameWithoutVersion(session.appName)
-                binding.textAppVersion.text = appNameWithoutVersion
-                binding.textAppVersion.visibility = android.view.View.VISIBLE
-            } else {
-                binding.textDeviceName.text = session.originalName
-                binding.textDeviceOriginalName.visibility = android.view.View.GONE
-                binding.textAppVersion.visibility = android.view.View.GONE
-            }
-
-            // Выбираем иконку в зависимости от типа устройства
-            binding.imageDeviceIcon.setImageResource(DeviceAdapter.getDeviceIcon(session))
+        fun bind(session: SessionData, position: Int) {
+            val context = binding.root.context
+            binding.textDeviceName.text = displayName(context, session)
+            val details = details(session)
+            binding.textDeviceDetails.text = details
+            binding.textDeviceDetails.visibility = if (details.isEmpty()) View.GONE else View.VISIBLE
+            binding.imageDeviceIcon.setImageResource(getDeviceIcon(session))
+            bindGroupShape(position)
 
             binding.root.setOnClickListener {
                 onItemClick(session)
             }
         }
 
-        /**
-         * Извлекает имя приложения без версии (первые 2 слова)
-         * Например: "BarkFluff Desktop 1.0.0" -> "BarkFluff Desktop"
-         */
-        private fun extractAppNameWithoutVersion(appName: String): String {
-            val words = appName.split(" ")
-            return if (words.size >= 2) {
-                // Проверяем, не является ли последнее слово версией (содержит цифры и точки)
-                val lastWord = words.last()
-                if (lastWord.matches(Regex("^[0-9.]+$"))) {
-                    // Последнее слово - версия, убираем его
-                    words.dropLast(1).joinToString(" ")
-                } else {
-                    // Последнее слово не версия, берем первые 2 слова
-                    words.take(2).joinToString(" ")
-                }
-            } else {
-                appName
-            }
+        fun bindGroupShape(position: Int) {
+            binding.root.setBackgroundResource(groupBackground(position, itemCount))
         }
     }
 
     companion object {
+        private const val PAYLOAD_GROUP_SHAPE = "group_shape"
+
+        /** Фон строки в группе настроек по её позиции. */
+        fun groupBackground(position: Int, count: Int): Int = when {
+            count <= 1 -> R.drawable.bg_settings_item_single
+            position == 0 -> R.drawable.bg_settings_item_top
+            position == count - 1 -> R.drawable.bg_settings_item_bottom
+            else -> R.drawable.bg_settings_item_middle
+        }
+
+        /** Заголовок: пользовательское имя, затем исходное, затем ОС или «Неизвестное устройство». */
+        fun displayName(context: Context, session: SessionData): String =
+            session.customName.ifBlank { session.originalName }.ifBlank { session.os }
+                .ifBlank { context.getString(R.string.device_unknown_name) }
+
+        /** Подпись: исходное имя (если заголовок переименован) и приложение без версии. */
+        fun details(session: SessionData): String = listOfNotNull(
+            session.originalName.takeIf { session.customName.isNotBlank() && it.isNotBlank() },
+            appNameWithoutVersion(session.appName).takeIf { it.isNotBlank() },
+        ).joinToString(" · ")
+
+        /**
+         * Извлекает имя приложения без версии (первые 2 слова)
+         * Например: "BarkFluff Desktop 1.0.0" -> "BarkFluff Desktop"
+         */
+        fun appNameWithoutVersion(appName: String): String {
+            val words = appName.trim().split(" ")
+            return if (words.size >= 2) {
+                // Проверяем, не является ли последнее слово версией (содержит цифры и точки)
+                val lastWord = words.last()
+                if (lastWord.matches(Regex("^[0-9.]+$"))) {
+                    words.dropLast(1).joinToString(" ")
+                } else {
+                    words.take(2).joinToString(" ")
+                }
+            } else {
+                appName.trim()
+            }
+        }
+
         /**
          * Возвращает ID ресурса иконки в зависимости от типа устройства.
          * Доступен извне для использования в DevicesActivity (текущее устройство).

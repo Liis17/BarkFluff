@@ -756,6 +756,7 @@
     <string name="storage_category_avatars">头像</string>
     <string name="security_hero_title">账号受保护</string>
     <string name="security_hero_subtitle">启用双重验证以获得更强保护</string>
+    <string name="security_hero_title_unprotected">账号可以更安全</string>
     <string name="security_section_parameters">设置</string>
     <string name="security_password_step">第 %1$d 步，共 3 步：%2$s</string>
     <string name="security_password_step_request">请求验证码</string>
@@ -1352,11 +1353,9 @@
     <string name="security_link_telegram">绑定 Telegram</string>
     <string name="security_unlink_telegram">解除 Telegram 绑定</string>
     <string name="security_bind_email">绑定电子邮箱</string>
-    <string name="security_bound_email">电子邮箱：%1$s</string>
+    <string name="security_email_title">电子邮箱</string>
     <string name="security_login_policy">登录策略</string>
-    <string name="security_login_policy_value">登录：%1$s</string>
-    <string name="security_2fa_telegram">Telegram 双因素验证</string>
-    <string name="security_recovery_codes_count">恢复代码：%1$d</string>
+    <string name="security_2fa_telegram">Telegram 2FA</string>
     <string name="security_reauthenticate">确认操作</string>
     <string name="security_reauthenticate_message">请使用已配置的登录方式确认操作。</string>
     <string name="security_reauthenticate_password">密码（如适用）</string>

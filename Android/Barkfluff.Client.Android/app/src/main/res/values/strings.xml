@@ -536,6 +536,7 @@
     <string name="security_2fa_email">2FA по email</string>
     <string name="security_hero_title">Аккаунт защищён</string>
     <string name="security_hero_subtitle">Включите 2FA для большей защиты</string>
+    <string name="security_hero_title_unprotected">Аккаунт можно защитить лучше</string>
     <string name="security_section_parameters">Параметры</string>
     <string name="security_password_step">Шаг %1$d из 3: %2$s</string>
     <string name="security_password_step_request">Запрос кода</string>
@@ -1413,11 +1414,9 @@
     <string name="security_link_telegram">Привязать Telegram</string>
     <string name="security_unlink_telegram">Отвязать Telegram</string>
     <string name="security_bind_email">Привязать email</string>
-    <string name="security_bound_email">Email: %1$s</string>
+    <string name="security_email_title">Email</string>
     <string name="security_login_policy">Политика входа</string>
-    <string name="security_login_policy_value">Вход: %1$s</string>
-    <string name="security_2fa_telegram">Двухфакторная аутентификация через Telegram</string>
-    <string name="security_recovery_codes_count">Резервные коды: %1$d</string>
+    <string name="security_2fa_telegram">2FA через Telegram</string>
     <string name="security_reauthenticate">Подтвердите действие</string>
     <string name="security_reauthenticate_message">Подтвердите действие настроенным способом входа.</string>
     <string name="security_reauthenticate_password">Пароль (если используется)</string>

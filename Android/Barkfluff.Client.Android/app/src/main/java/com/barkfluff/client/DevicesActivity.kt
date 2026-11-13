@@ -102,7 +102,7 @@ class DevicesActivity : AppCompatActivity() {
         }
 
         // Обработчик клика на текущее устройство
-        binding.layoutCurrentDevice.setOnClickListener {
+        binding.cardCurrentDevice.setOnClickListener {
             val currentSession = allSessions.find { it.deviceId == globalParam.deviceId }
             currentSession?.let { showDeviceDetailsBottomSheet(it) }
         }
@@ -145,59 +145,28 @@ class DevicesActivity : AppCompatActivity() {
 
         // Заполняем текущее устройство
         if (currentSession != null) {
-            // Устанавливаем иконку устройства
             binding.imageCurrentDeviceIcon.setImageResource(DeviceAdapter.getDeviceIcon(currentSession))
-
-            // Если есть кастомное имя - показываем его, иначе только оригинальное
-            if (currentSession.customName.isNotEmpty()) {
-                binding.textCurrentDeviceName.text = currentSession.customName
-                binding.textCurrentDeviceOriginalName.text = currentSession.originalName
-                binding.textCurrentDeviceOriginalName.visibility = android.view.View.VISIBLE
-            } else {
-                binding.textCurrentDeviceName.text = currentSession.originalName
-                binding.textCurrentDeviceOriginalName.visibility = android.view.View.GONE
-            }
-            // Показываем appName без версии
-            val appNameWithoutVersion = extractAppNameWithoutVersion(currentSession.appName)
-            binding.textCurrentDeviceApp.text = appNameWithoutVersion
-            binding.textCurrentDeviceApp.visibility = android.view.View.VISIBLE
-            binding.cardCurrentDevice.visibility = android.view.View.VISIBLE
+            binding.textCurrentDeviceName.text = DeviceAdapter.displayName(this, currentSession)
+            val details = DeviceAdapter.details(currentSession)
+            binding.textCurrentDeviceDetails.text = details
+            binding.textCurrentDeviceDetails.visibility = if (details.isEmpty()) View.GONE else View.VISIBLE
+            binding.cardCurrentDevice.visibility = View.VISIBLE
         } else {
-            binding.cardCurrentDevice.visibility = android.view.View.GONE
+            binding.cardCurrentDevice.visibility = View.GONE
         }
 
-        // Обновляем кнопку завершения всех сессий
-        binding.buttonTerminateAll.isEnabled = otherSessions.isNotEmpty()
+        // «Завершить другие сессии» — нижняя строка группы текущего устройства.
+        val canTerminateOthers = otherSessions.isNotEmpty()
+        binding.buttonTerminateAll.visibility = if (canTerminateOthers) View.VISIBLE else View.GONE
+        binding.cardCurrentDevice.setBackgroundResource(
+            if (canTerminateOthers) R.drawable.bg_settings_item_top else R.drawable.bg_settings_item_single,
+        )
+        binding.buttonTerminateAll.setBackgroundResource(
+            if (currentSession != null) R.drawable.bg_settings_item_bottom else R.drawable.bg_settings_item_single,
+        )
 
-        // Показываем список других устройств
-        if (otherSessions.isNotEmpty()) {
-            binding.textOtherDevicesTitle.visibility = android.view.View.VISIBLE
-            deviceAdapter.submitList(otherSessions)
-        } else {
-            binding.textOtherDevicesTitle.visibility = android.view.View.GONE
-            deviceAdapter.submitList(emptyList())
-        }
-    }
-
-    /**
-     * Извлекает имя приложения без версии (первые 2 слова)
-     * Например: "BarkFluff Desktop 1.0.0" -> "BarkFluff Desktop"
-     */
-    private fun extractAppNameWithoutVersion(appName: String): String {
-        val words = appName.split(" ")
-        return if (words.size >= 2) {
-            // Проверяем, не является ли последнее слово версией (содержит цифры и точки)
-            val lastWord = words.last()
-            if (lastWord.matches(Regex("^[0-9.]+$"))) {
-                // Последнее слово - версия, убираем его
-                words.dropLast(1).joinToString(" ")
-            } else {
-                // Последнее слово не версия, берем первые 2 слова
-                words.take(2).joinToString(" ")
-            }
-        } else {
-            appName
-        }
+        binding.textOtherDevicesTitle.visibility = if (canTerminateOthers) View.VISIBLE else View.GONE
+        deviceAdapter.submitList(otherSessions)
     }
 
     private fun showDeviceDetailsBottomSheet(session: SessionData) {
@@ -214,7 +183,7 @@ class DevicesActivity : AppCompatActivity() {
             sheetBinding.textDeviceOriginalName.visibility = android.view.View.VISIBLE
         } else {
             // Нет кастомного имени - показываем только оригинальное в заголовке
-            sheetBinding.textDeviceTitle.text = session.originalName
+            sheetBinding.textDeviceTitle.text = DeviceAdapter.displayName(this, session)
             sheetBinding.textDeviceTitle.visibility = android.view.View.VISIBLE
             sheetBinding.textDeviceOriginalName.visibility = android.view.View.GONE
         }
