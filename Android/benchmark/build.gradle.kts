@@ -21,10 +21,6 @@ android {
 
     targetProjectPath = ":app-v1"
     experimentalProperties["android.experimental.self-instrumenting"] = true
-    sourceSets.getByName("main").java.srcDir(rootProject.file("core/src/main/java/com/barkfluff/client/bft"))
-    sourceSets.getByName("main").java.srcDir(rootProject.file("core/src/testSupport/java"))
-    sourceSets.getByName("main").assets.srcDir(rootProject.file("core/src/testSupport/resources"))
-
     buildTypes {
         create("benchmark") {
             isDebuggable = true

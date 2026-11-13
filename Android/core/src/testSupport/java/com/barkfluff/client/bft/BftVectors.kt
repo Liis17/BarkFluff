@@ -3,10 +3,20 @@ package com.barkfluff.client.bft
 import java.io.InputStream
 
 internal object BftVectors {
-    val root: Map<String, Any?> by lazy {
-        val input = checkNotNull(javaClass.getResourceAsStream("/bftv1-vectors.json"))
+    @Volatile private var loadedRoot: Map<String, Any?>? = null
+    private val classpathRoot: Map<String, Any?> by lazy {
+        parse(checkNotNull(javaClass.getResourceAsStream("/bftv1-vectors.json")))
+    }
+
+    val root: Map<String, Any?> get() = loadedRoot ?: classpathRoot
+
+    fun load(input: InputStream) {
+        loadedRoot = parse(input)
+    }
+
+    private fun parse(input: InputStream): Map<String, Any?> {
         @Suppress("UNCHECKED_CAST")
-        (JsonParser(input.bufferedReader(Charsets.UTF_8).use { it.readText() }).parse() as Map<String, Any?>)
+        return JsonParser(input.bufferedReader(Charsets.UTF_8).use { it.readText() }).parse() as Map<String, Any?>
     }
 
     fun objectAt(parent: Map<String, Any?>, key: String): Map<String, Any?> = parent.getValue(key) as Map<String, Any?>

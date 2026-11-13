@@ -18,7 +18,7 @@ internal interface BftTimeSource {
 }
 
 internal object BftSystemTimeSource : BftTimeSource {
-    override fun nowMillis(): Long = System.currentTimeMillis()
+    override fun nowMillis(): Long = TimeUnit.NANOSECONDS.toMillis(System.nanoTime())
     override fun await(condition: Condition, timeoutMillis: Long) {
         condition.await(timeoutMillis, TimeUnit.MILLISECONDS)
     }
@@ -64,6 +64,7 @@ internal class BftMuxConnection(
     private val streams = LinkedHashMap<Long, BftMuxStreamState>()
     private val controlFrames = ArrayDeque<BftFrame>()
     private val roundRobin = ArrayDeque<Long>()
+    private val notifications = ArrayDeque<() -> Unit>()
     private val closedCompletion = CompletableFuture<BftTunnelCloseReason>()
     private var readerThread: Thread? = null
     private var writerThread: Thread? = null
@@ -77,6 +78,9 @@ internal class BftMuxConnection(
     private var pendingPingAt = 0L
     private var lastReceivedAt = time.nowMillis()
     private var closeReason: BftTunnelCloseReason? = null
+    private var pendingAbortCleanup: (() -> Unit)? = null
+    private var pendingAbortReason: BftTunnelCloseReason? = null
+    private var drainingNotifications = false
     private var rrCursor = 0
 
     val completion: CompletableFuture<BftTunnelCloseReason> get() = closedCompletion
@@ -98,18 +102,23 @@ internal class BftMuxConnection(
             keepAliveThread!!.start()
             if (token != null) writerReady.signal()
         }
-        val deadline = time.nowMillis() + helloTimeoutMillis
-        lock.withLock {
-            while (!ready && !closed) {
-                val remaining = deadline - time.nowMillis()
-                if (remaining <= 0) {
-                    abortLocked(BftTunnelCloseReason(BftTunnelCloseReason.Kind.NETWORK_ERROR, SocketTimeoutException("Timed out waiting for BFT HELLO")))
-                    break
+        try {
+            val deadline = time.nowMillis() + helloTimeoutMillis
+            return lock.withLock {
+                while (!ready && !closed) {
+                    val remaining = deadline - time.nowMillis()
+                    if (remaining <= 0) {
+                        abortLocked(BftTunnelCloseReason(BftTunnelCloseReason.Kind.NETWORK_ERROR, SocketTimeoutException("Timed out waiting for BFT HELLO")))
+                        break
+                    }
+                    awaitCondition(changed, remaining)
                 }
-                awaitCondition(changed, remaining)
+                if (!ready) throw IOException("BFT tunnel did not receive HELLO", closeReason?.cause)
+                checkNotNull(hello)
             }
-            if (!ready) throw IOException("BFT tunnel did not receive HELLO", closeReason?.cause)
-            return checkNotNull(hello)
+        } finally {
+            runPendingAbortCleanup()
+            drainNotifications()
         }
     }
 
@@ -280,56 +289,65 @@ internal class BftMuxConnection(
             }
         } catch (error: Throwable) {
             if (error is InterruptedException && Thread.currentThread().isInterrupted) return
-            val kind = if (error is BftProtocolException || error is BftRecordException) {
-                BftTunnelCloseReason.Kind.PROTOCOL_ERROR
-            } else {
-                BftTunnelCloseReason.Kind.NETWORK_ERROR
+            val receivedShutdown = lock.withLock {
+                receivedGoAway?.takeIf { it.code == BftGoAwayCode.SHUTDOWN }
             }
-            abort(BftTunnelCloseReason(kind, error))
+            val reason = when {
+                receivedShutdown != null -> BftTunnelCloseReason(BftTunnelCloseReason.Kind.GOAWAY, error, receivedShutdown)
+                error is BftProtocolException || error is BftRecordException ->
+                    BftTunnelCloseReason(BftTunnelCloseReason.Kind.PROTOCOL_ERROR, error)
+                else -> BftTunnelCloseReason(BftTunnelCloseReason.Kind.NETWORK_ERROR, error)
+            }
+            abort(reason)
         }
     }
 
     private fun processIncoming(frame: BftFrame) {
-        lock.withLock {
-            if (closed) return
-            if (!ready) {
-                when (frame.type) {
-                    BftFrameType.HELLO -> {
-                        hello = BftFrameCodec.parseHello(frame.body)
-                        ready = true
-                        changed.signalAll()
-                        connected?.invoke()
-                    }
-                    BftFrameType.GOAWAY -> {
-                        val goAway = parseGoAway(frame)
-                        receivedGoAway = goAway
-                        val reason = if (goAway.code == BftGoAwayCode.AUTH_FAILED) {
-                            BftTunnelCloseReason(BftTunnelCloseReason.Kind.AUTH_FAILED, IOException("BFT authentication failed"), goAway)
-                        } else {
-                            BftTunnelCloseReason(BftTunnelCloseReason.Kind.GOAWAY, IOException("Exit sent GOAWAY before HELLO"), goAway)
+        try {
+            lock.withLock {
+                if (closed) return
+                if (!ready) {
+                    when (frame.type) {
+                        BftFrameType.HELLO -> {
+                            hello = BftFrameCodec.parseHello(frame.body)
+                            ready = true
+                            changed.signalAll()
+                            connected?.let { callback -> notifications.addLast(callback) }
                         }
-                        abortLocked(reason)
+                        BftFrameType.GOAWAY -> {
+                            val goAway = parseGoAway(frame)
+                            receivedGoAway = goAway
+                            val reason = if (goAway.code == BftGoAwayCode.AUTH_FAILED) {
+                                BftTunnelCloseReason(BftTunnelCloseReason.Kind.AUTH_FAILED, IOException("BFT authentication failed"), goAway)
+                            } else {
+                                BftTunnelCloseReason(BftTunnelCloseReason.Kind.GOAWAY, IOException("Exit sent GOAWAY before HELLO"), goAway)
+                            }
+                            abortLocked(reason)
+                        }
+                        else -> throw BftProtocolException("HELLO must be the first server frame")
                     }
-                    else -> throw BftProtocolException("HELLO must be the first server frame")
+                    return
                 }
-                return
-            }
 
-            when (frame.type) {
-                BftFrameType.AUTH, BftFrameType.HELLO, BftFrameType.OPEN ->
-                    throw BftProtocolException("Unexpected ${frame.type} frame from Exit")
-                BftFrameType.DATA, BftFrameType.WINDOW_UPDATE, BftFrameType.CLOSE, BftFrameType.RESET -> processStreamFrameLocked(frame)
-                BftFrameType.PING -> enqueueControlLocked(BftFrame.pong(frame.body.copyOf()), urgent = true)
-                BftFrameType.PONG -> {
-                    val ping = pendingPing
-                    if (ping != null && MessageDigestSupport.constantTimeEquals(ping, frame.body)) {
-                        ping.fill(0)
-                        pendingPing = null
-                        changed.signalAll()
+                when (frame.type) {
+                    BftFrameType.AUTH, BftFrameType.HELLO, BftFrameType.OPEN ->
+                        throw BftProtocolException("Unexpected ${frame.type} frame from Exit")
+                    BftFrameType.DATA, BftFrameType.WINDOW_UPDATE, BftFrameType.CLOSE, BftFrameType.RESET -> processStreamFrameLocked(frame)
+                    BftFrameType.PING -> enqueueControlLocked(BftFrame.pong(frame.body.copyOf()), urgent = true)
+                    BftFrameType.PONG -> {
+                        val ping = pendingPing
+                        if (ping != null && MessageDigestSupport.constantTimeEquals(ping, frame.body)) {
+                            ping.fill(0)
+                            pendingPing = null
+                            changed.signalAll()
+                        }
                     }
+                    BftFrameType.GOAWAY -> receiveGoAwayLocked(parseGoAway(frame))
                 }
-                BftFrameType.GOAWAY -> receiveGoAwayLocked(parseGoAway(frame))
             }
+        } finally {
+            runPendingAbortCleanup()
+            drainNotifications()
         }
     }
 
@@ -552,6 +570,9 @@ internal class BftMuxConnection(
             Thread.currentThread().interrupt()
         } catch (error: Throwable) {
             abort(BftTunnelCloseReason(BftTunnelCloseReason.Kind.NETWORK_ERROR, error))
+        } finally {
+            runPendingAbortCleanup()
+            drainNotifications()
         }
     }
 
@@ -572,6 +593,8 @@ internal class BftMuxConnection(
 
     private fun abort(reason: BftTunnelCloseReason) {
         lock.withLock { abortLocked(reason) }
+        runPendingAbortCleanup()
+        drainNotifications()
     }
 
     private fun abortLocked(reason: BftTunnelCloseReason) {
@@ -590,12 +613,57 @@ internal class BftMuxConnection(
         pendingPing = null
         changed.signalAll()
         writerReady.signalAll()
-        closedCompletion.complete(reason)
-        try { closeTransport() } catch (_: Exception) { }
-        session.close()
-        readerThread?.takeIf { it !== Thread.currentThread() }?.interrupt()
-        writerThread?.takeIf { it !== Thread.currentThread() }?.interrupt()
-        keepAliveThread?.takeIf { it !== Thread.currentThread() }?.interrupt()
+        val abortingThread = Thread.currentThread()
+        pendingAbortReason = reason
+        pendingAbortCleanup = {
+            runCatching(closeTransport)
+            runCatching { session.close() }
+            readerThread?.takeIf { it !== abortingThread }?.interrupt()
+            writerThread?.takeIf { it !== abortingThread }?.interrupt()
+            keepAliveThread?.takeIf { it !== abortingThread }?.interrupt()
+        }
+    }
+
+    private fun runPendingAbortCleanup() {
+        val pending = lock.withLock {
+            val cleanup = pendingAbortCleanup ?: return
+            val reason = checkNotNull(pendingAbortReason)
+            pendingAbortCleanup = null
+            pendingAbortReason = null
+            cleanup to reason
+        }
+        try {
+            pending.first()
+        } finally {
+            lock.withLock { notifications.addLast { closedCompletion.complete(pending.second) } }
+        }
+    }
+
+    private fun drainNotifications() {
+        val shouldDrain = lock.withLock {
+            if (drainingNotifications) false else {
+                drainingNotifications = true
+                true
+            }
+        }
+        if (!shouldDrain) return
+
+        try {
+            while (true) {
+                val notification = lock.withLock {
+                    if (notifications.isEmpty()) {
+                        drainingNotifications = false
+                        null
+                    } else {
+                        notifications.removeFirst()
+                    }
+                } ?: return
+                notification()
+            }
+        } catch (error: Throwable) {
+            lock.withLock { drainingNotifications = false }
+            throw error
+        }
     }
 
     override fun close() {

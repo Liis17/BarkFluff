@@ -83,7 +83,9 @@ internal object BftTransportTestSupport {
         assertThrows(UnknownHostException::class.java) { InetAddress.getAllByName(ORIGIN) }
     }
 
-    fun tlsProviderName(): String = SSLContext.getInstance("TLS").provider.name
+    fun tlsProviderName(): String = SSLContext.getInstance("TLS").provider.let {
+        "${it.name} (${it.javaClass.name})"
+    }
 
     fun verifyGrpc(identity: TestIdentity) = verifyGrpcWithRoute(identity, { port, opened ->
         BftSocketFactory {
@@ -268,6 +270,114 @@ internal object BftTransportTestSupport {
         }
     }
 
+    fun verifyWrongPinRejectedOverBftTunnel(tunnel: BftTunnel, serviceId: Int) {
+        val wrongPin = "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        val tlsSocketFactory = BftTlsSocketFactory(wrongPin)
+        val client = OkHttpClient.Builder()
+            .socketFactory(BftSocketFactory(tunnel, serviceId))
+            .dns(BftDns(LOOPBACK))
+            .sslSocketFactory(tlsSocketFactory, tlsSocketFactory.trustManager)
+            .protocols(listOf(Protocol.HTTP_1_1))
+            .build()
+
+        try {
+            val request = Request.Builder().url("https://bft.internal:443/").build()
+            val failure = assertThrows(IOException::class.java) {
+                client.newCall(request).execute().use { it.close() }
+            }
+            assertTrue(
+                "wrong pin did not fail during TLS: $failure",
+                failure.causeChain().any { it is SSLHandshakeException || it is CertificateException }
+            )
+            assertEquals(BftTunnel.State.READY, tunnel.state)
+        } finally {
+            client.connectionPool.evictAll()
+            client.dispatcher.executorService.shutdown()
+        }
+    }
+
+    fun verifyWrongPinRejectedOverBftMux(
+        identity: TestIdentity,
+        routeFactory: (Int, AtomicInteger) -> BftSocketFactory,
+        closeRoute: () -> Unit
+    ) {
+        val server = TestHttpServer(identity, payload(128)).start()
+        val wrongPin = "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        val tlsSocketFactory = BftTlsSocketFactory(wrongPin)
+        val client = OkHttpClient.Builder()
+            .socketFactory(routeFactory(server.port, AtomicInteger()))
+            .dns(BftDns(LOOPBACK))
+            .sslSocketFactory(tlsSocketFactory, tlsSocketFactory.trustManager)
+            .protocols(listOf(Protocol.HTTP_1_1))
+            .build()
+
+        try {
+            val request = Request.Builder().url("https://$ORIGIN:${server.port}/download").build()
+            val failure = assertThrows(IOException::class.java) {
+                client.newCall(request).execute().use { it.close() }
+            }
+            assertTrue(
+                "wrong pin did not fail during TLS: $failure",
+                failure.causeChain().any { it is SSLHandshakeException || it is CertificateException }
+            )
+            assertEquals(1, server.acceptedConnections.get())
+        } finally {
+            client.connectionPool.evictAll()
+            client.dispatcher.executorService.shutdown()
+            closeRoute()
+            server.close()
+        }
+    }
+
+    fun verifyExitGrpcUnavailable(tunnel: BftTunnel, serviceId: Int) {
+        val tlsSocketFactory = BftTlsSocketFactory(helloPin(tunnel))
+        val channel = io.grpc.okhttp.OkHttpChannelBuilder
+            .forAddress("127.0.0.1", 443)
+            .overrideAuthority("bft.internal")
+            .socketFactory(BftSocketFactory(tunnel, serviceId))
+            .sslSocketFactory(tlsSocketFactory)
+            .build()
+
+        try {
+            val error = assertThrows(io.grpc.StatusRuntimeException::class.java) {
+                ClientCalls.blockingUnaryCall(
+                    channel,
+                    UNARY_METHOD,
+                    CallOptions.DEFAULT.withDeadlineAfter(10, TimeUnit.SECONDS),
+                    "probe".toByteArray()
+                )
+            }
+            assertEquals(io.grpc.Status.Code.UNAVAILABLE, error.status.code)
+            assertTrue("Exit h2 response did not report upstream HTTP 502: ${error.status.description}",
+                error.status.description?.contains("502") == true)
+            assertEquals(BftTunnel.State.READY, tunnel.state)
+        } finally {
+            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS)
+        }
+    }
+
+    fun verifyExitHttp11ReturnsBadGateway(tunnel: BftTunnel, serviceId: Int) {
+        val tlsSocketFactory = BftTlsSocketFactory(helloPin(tunnel))
+        val client = OkHttpClient.Builder()
+            .socketFactory(BftSocketFactory(tunnel, serviceId))
+            .dns(BftDns(LOOPBACK))
+            .sslSocketFactory(tlsSocketFactory, tlsSocketFactory.trustManager)
+            .protocols(listOf(Protocol.HTTP_1_1))
+            .build()
+
+        try {
+            val request = Request.Builder().url("https://bft.internal:443/").build()
+            client.newCall(request).execute().use { response ->
+                assertEquals(502, response.code)
+                response.body?.close()
+            }
+            assertEquals(BftTunnel.State.READY, tunnel.state)
+        } finally {
+            client.connectionPool.evictAll()
+            client.dispatcher.executorService.shutdown()
+        }
+    }
+
     fun verifyUrlConnectionCannotRoute(identity: TestIdentity) {
         val server = TestHttpServer(identity, payload(128)).start()
         val openedStreams = AtomicInteger()
@@ -383,6 +493,9 @@ internal object BftTransportTestSupport {
             .sslSocketFactory(tlsSocketFactory, tlsSocketFactory.trustManager)
             .protocols(listOf(Protocol.HTTP_1_1))
             .build()
+
+    private fun helloPin(tunnel: BftTunnel): String =
+        "sha256/${java.util.Base64.getEncoder().encodeToString(tunnel.hello.tlsSpkiSha256)}"
 
     private class TestGrpcServer(identity: TestIdentity) : Closeable {
         private val service = ServerServiceDefinition.builder(SERVICE_NAME)

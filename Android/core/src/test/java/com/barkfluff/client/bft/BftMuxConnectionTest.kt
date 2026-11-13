@@ -11,6 +11,7 @@ import java.net.SocketTimeoutException
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.Condition
 
@@ -204,6 +205,38 @@ class BftMuxConnectionTest {
             executor.shutdownNow()
             executor.awaitTermination(2, TimeUnit.SECONDS)
         }
+    }
+
+    @Test
+    fun closeNotificationCanReenterCloseAndOpenStream() = BftMuxTestPeer().use { peer ->
+        val callbackFinished = CountDownLatch(1)
+        val callbackFailure = AtomicReference<Throwable?>()
+        val tunnelReference = AtomicReference<BftTunnel?>()
+        val tunnel = peer.connect { state, _ ->
+            if (state == BftTunnel.State.CLOSED) {
+                try {
+                    val closedTunnel = checkNotNull(tunnelReference.get())
+                    val startedAt = System.nanoTime()
+                    closedTunnel.close()
+                    assertTrue(
+                        "close callback blocked while closing the tunnel",
+                        System.nanoTime() - startedAt < TimeUnit.MILLISECONDS.toNanos(1_500)
+                    )
+                    org.junit.Assert.assertThrows(IOException::class.java) { closedTunnel.openStream(4) }
+                } catch (error: Throwable) {
+                    callbackFailure.set(error)
+                } finally {
+                    callbackFinished.countDown()
+                }
+            }
+        }
+        tunnelReference.set(tunnel)
+
+        peer.send(BftFrame.goAway(0, BftGoAwayCode.PROTOCOL_ERROR))
+
+        assertTrue("close callback did not finish", callbackFinished.await(3, TimeUnit.SECONDS))
+        callbackFailure.get()?.let { throw AssertionError("close callback failed", it) }
+        assertEquals(BftTunnelCloseReason.Kind.PROTOCOL_ERROR, tunnel.completion.get(2, TimeUnit.SECONDS).kind)
     }
 
     @Test

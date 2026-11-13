@@ -27,9 +27,11 @@ internal class BftMuxTestPeer(
     private val closed = AtomicBoolean(false)
     private val writerLock = Any()
     private val ready = java.util.concurrent.CountDownLatch(1)
+    private val outbound = LinkedBlockingQueue<ByteArray>()
     private val proxiedStreams = ConcurrentHashMap<Long, ProxiedStream>()
     private val upstreamThreads = java.util.concurrent.CopyOnWriteArrayList<Thread>()
     private val serverThread = Thread(::serve, "bft-test-peer").apply { isDaemon = true }
+    @Volatile private var outboundWriterThread: Thread? = null
     @Volatile private var failure: Throwable? = null
     @Volatile private var keys: BftObfuscationKeys? = null
     @Volatile private var outboundNoise: BftNoiseCipherState? = null
@@ -39,7 +41,7 @@ internal class BftMuxTestPeer(
         serverThread.start()
     }
 
-    fun connect(): BftTunnel {
+    fun connect(onStateChanged: ((BftTunnel.State, BftTunnelCloseReason?) -> Unit)? = null): BftTunnel {
         val connection = BftVectors.objectAt(BftVectors.root, "connectionString")
         val handshake = BftVectors.objectAt(BftVectors.root, "handshake")
         val keyVector = BftVectors.objectAt(BftVectors.root, "obfsKeys")
@@ -60,7 +62,8 @@ internal class BftMuxTestPeer(
                 randomSource = ZeroRandom,
                 helloTimeoutMillis = 5_000,
                 keepAliveIdleMillis = keepAliveIdleMillis,
-                keepAliveTimeoutMillis = keepAliveTimeoutMillis
+                keepAliveTimeoutMillis = keepAliveTimeoutMillis,
+                onStateChanged = onStateChanged
             ),
             closeTransport = ::close,
             timeSource = timeSource,
@@ -72,19 +75,12 @@ internal class BftMuxTestPeer(
         check(ready.await(2, TimeUnit.SECONDS)) { "BFT test peer did not complete the handshake" }
         check(failure == null) { "BFT test peer failed" }
         val plaintext = BftFrameCodec.encodeMany(frames.toList())
-        try {
-            synchronized(writerLock) {
-                check(!closed.get()) { "BFT test peer is closed" }
-                val encrypted = checkNotNull(outboundNoise).encrypt(plaintext)
+        synchronized(writerLock) {
+            if (closed.get()) {
                 plaintext.fill(0)
-                try {
-                checkNotNull(outboundRecords).write(encrypted, 0)
-                } finally {
-                    encrypted.fill(0)
-                }
+                check(!closed.get()) { "BFT test peer is closed" }
             }
-        } finally {
-            plaintext.fill(0)
+            outbound.put(plaintext)
         }
     }
 
@@ -112,6 +108,7 @@ internal class BftMuxTestPeer(
         runCatching { serverInput.close() }
         runCatching { serverOutput.close() }
         serverThread.interrupt()
+        outboundWriterThread?.interrupt()
         if (serverThread !== Thread.currentThread()) runCatching { serverThread.join(1_000) }
         outboundNoise?.close()
         keys?.close()
@@ -154,6 +151,10 @@ internal class BftMuxTestPeer(
             c2s.fill(0)
             s2c.fill(0)
             outboundRecords = BftObfuscatedRecordWriter(serverOutput, derived, clientToServer = false, random = ZeroRandom, initialSequence = 2)
+            outboundWriterThread = Thread(::writeOutbound, "bft-test-peer-writer").apply {
+                isDaemon = true
+                start()
+            }
             val reader = BftObfuscatedRecordReader(serverInput, derived, clientToServer = true, initialSequence = 1)
             ready.countDown()
 
@@ -177,6 +178,30 @@ internal class BftMuxTestPeer(
             ready.countDown()
             clientNoise?.close()
             proxiedStreams.values.forEach { runCatching { it.socket.close() } }
+        }
+    }
+
+    private fun writeOutbound() {
+        try {
+            while (!closed.get()) {
+                val plaintext = outbound.take()
+                try {
+                    val encrypted = checkNotNull(outboundNoise).encrypt(plaintext)
+                    try {
+                        checkNotNull(outboundRecords).write(encrypted, 0)
+                    } finally {
+                        encrypted.fill(0)
+                    }
+                } finally {
+                    plaintext.fill(0)
+                }
+            }
+        } catch (error: InterruptedException) {
+            Thread.currentThread().interrupt()
+        } catch (error: Throwable) {
+            if (!closed.get()) failure = error
+        } finally {
+            while (outbound.isNotEmpty()) outbound.poll()?.fill(0)
         }
     }
 
