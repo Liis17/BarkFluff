@@ -157,6 +157,13 @@ enum UploadFileType {
 message UploadBadgeImageRequest {
   bytes image_data = 1; // содержимое PNG-файла
   string filename = 2;  // имя файла (например "badge.png")
+  BadgeImageKind kind = 3; // тип изображения и ожидаемый размер
+}
+
+enum BadgeImageKind {
+  BADGE_IMAGE_KIND_UNSPECIFIED = 0;
+  BADGE_IMAGE_KIND_FULL = 1;
+  BADGE_IMAGE_KIND_MINI = 2;
 }
 
 message UploadBadgeImageResponse {

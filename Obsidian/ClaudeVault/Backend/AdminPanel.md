@@ -19,6 +19,14 @@
 
 Endpoint-группы в Program.cs охватывают auth/step-up/admins/audit, Docker и удалённые серверы, конфигурацию, Seq/логи/метрики, пользователей/чаты/файлы, badges/stickers, bots/federation, reserved names, notifications, mail и S3. Точные маршруты и permission checks — в Endpoint-файлах.
 
+## Бейджи профиля
+
+`Endpoints/BadgesEndpoints.cs` управляет каталогом бейджей через UsersServerApi. Создание требует multipart-поля `image` (FULL) и `miniImage` (MINI); Files проверяет PNG, точные размеры и лимит 256 KiB, а `InvalidArgument` возвращается как HTTP 400 с сообщением. При обновлении новые файлы опциональны: без загрузки сохраняются текущие URL, включая необязательный `miniImageUrl` в JSON. Страница `Pages/v2/badges.html` готовит пару из одной картинки через центральный квадратный crop и ступенчатое уменьшение на canvas либо проверяет две отдельные PNG-картинки; обе версии показываются в превью и карточках.
+
+Создание загружает FULL до MINI. Если Files отклонит MINI, загруженный FULL остаётся сиротским объектом в S3; автоматической очистки в этом потоке нет.
+
+`Endpoints/UsersEndpoints.cs` включает `miniImageUrl` и `isPrimary` в сведения о назначенных бейджах пользователя. Страница `Pages/v2/users.html` показывает основной бейдж только для чтения; AdminPanel не меняет выбор пользователя.
+
 Панель опрашивает liveness/readiness, Docker, Seq и инфраструктуру для своей страницы health; собственный HTTP endpoint — /api/health/overview. Это отдельный сборщик, не общий readiness из [[Backend/GrpcServer]]. `HealthCollectorService` опрашивает каждые 30 секунд. Имена контейнеров для health сопоставляются с Compose-сервисами текущего проекта; при отключённом Seq остаются доступны Docker-статусы и HTTP-пробы, но отсутствуют данные о свежести логов. `MetricsCollectorService` строит часовые rollups из Seq каждые 5 минут: общая статистика хранится 24 часа, ServiceMetrics — 30 дней; восстановление пробелов идёт до 72 часов, по 6 часов за цикл. `MetricsCollectorService` и `MetricsLogCompressorService` пропускают Seq-запросы, когда Seq отключён.
 
 `DockerContainerNameResolver` связывает фактические имена контейнеров с Compose service keys. Он читает `com.docker.compose.service` и `com.docker.compose.project` из строкового поля `Labels` вывода `docker ps --format json`; проект панели определяется по labels контейнера из `$HOSTNAME`, с fallback на `admin-panel`. Список контейнеров и проект кэшируются до 10 секунд и инвалидируются после локальных Docker-изменений. Резолвер исключает контейнеры других проектов. Сервисы Compose остаются `postgres`, `admin-panel`, `rabbitmq` и т. д.; для старого nightly-стека сохранён legacy-алиас `postgres` → `postgres_barkfluff`, остальные прежние имена соответствуют Compose service key.

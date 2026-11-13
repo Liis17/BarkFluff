@@ -89,6 +89,9 @@ class ProfileFragment : Fragment() {
         binding.itemAccount.setOnClickListener {
             startActivity(Intent(requireContext(), AccountSettingsActivity::class.java))
         }
+        binding.itemBadges.setOnClickListener {
+            startActivity(Intent(requireContext(), BadgesSettingsActivity::class.java))
+        }
         binding.itemSecurity.setOnClickListener {
             startActivity(Intent(requireContext(), SecuritySettingsActivity::class.java))
         }

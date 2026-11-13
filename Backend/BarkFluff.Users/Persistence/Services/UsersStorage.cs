@@ -1,6 +1,9 @@
 using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Users.Features.Badges;
 using BarkFluff.Users.Domain;
 using BarkFluff.Users.Persistence.Contexts;
+
+using Grpc.Core;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -468,6 +471,72 @@ public class UsersStorage
         return true;
     }
 
+    public async Task<UserBadge?> SetPrimaryBadgeAsync(long userId, int badgeId, CancellationToken cancellationToken = default)
+    {
+        if (badgeId == 0)
+        {
+            await _usersContext.UserBadges
+                .Where(ub => ub.UserId == userId && ub.IsPrimary)
+                .ExecuteUpdateAsync(update => update.SetProperty(ub => ub.IsPrimary, false), cancellationToken);
+
+            return null;
+        }
+
+        var strategy = _usersContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(() => SetPrimaryBadgeWithRetryAsync(userId, badgeId, cancellationToken));
+    }
+
+    private async Task<UserBadge?> SetPrimaryBadgeWithRetryAsync(long userId, int badgeId, CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; attempt <= 2; attempt++)
+        {
+            await using var transaction = await _usersContext.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                // Блокировка строки синхронизирует выбор с параллельной деактивацией бейджа.
+                var activeBadge = await _usersContext.Badges
+                    .FromSqlInterpolated($"SELECT * FROM \"Badges\" WHERE \"Id\" = {badgeId} AND \"IsActive\" = TRUE FOR SHARE")
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+                if (activeBadge.Count == 0)
+                {
+                    throw new BadgeException(StatusCode.NotFound, "Активный бейдж не найден у пользователя");
+                }
+
+                await _usersContext.UserBadges
+                    .Where(ub => ub.UserId == userId && ub.IsPrimary)
+                    .ExecuteUpdateAsync(update => update.SetProperty(ub => ub.IsPrimary, false), cancellationToken);
+
+                var updated = await _usersContext.UserBadges
+                    .Where(ub => ub.UserId == userId && ub.BadgeId == badgeId && ub.Badge.IsActive)
+                    .ExecuteUpdateAsync(update => update.SetProperty(ub => ub.IsPrimary, true), cancellationToken);
+
+                if (updated == 0)
+                {
+                    throw new BadgeException(StatusCode.NotFound, "Активный бейдж не найден у пользователя");
+                }
+
+                var primaryBadge = await _usersContext.UserBadges
+                    .AsNoTracking()
+                    .Include(ub => ub.Badge)
+                    .SingleAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId, cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+                return primaryBadge;
+            }
+            catch (Exception ex) when (IsPrimaryBadgeUniqueViolation(ex))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                if (attempt == 2)
+                {
+                    throw new BadgeException(StatusCode.Aborted, "Основной бейдж изменился параллельно; повторите запрос");
+                }
+            }
+        }
+
+        throw new BadgeException(StatusCode.Aborted, "Не удалось установить основной бейдж");
+    }
+
     public async Task<UserBadge?> UpdateUserBadgePriorityAsync(long userId, int badgeId, int newPriority)
     {
         var userBadge = await _usersContext.UserBadges
@@ -508,20 +577,103 @@ public class UsersStorage
         return await query.OrderBy(b => b.Name).ToListAsync();
     }
 
-    public async Task<Badge?> UpdateBadgeAsync(int id, string name, string description, string imageUrl, bool isActive)
+    public Task<Badge?> UpdateBadgeAsync(
+        int id,
+        string name,
+        string description,
+        string imageUrl,
+        bool isActive,
+        string? miniImageUrl,
+        CancellationToken cancellationToken = default)
     {
-        var badge = await _usersContext.Badges.FindAsync(id);
+        if (!_usersContext.Database.IsRelational())
+        {
+            return UpdateBadgeInMemoryAsync(id, name, description, imageUrl, isActive, miniImageUrl, cancellationToken);
+        }
 
+        var strategy = _usersContext.Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _usersContext.Database.BeginTransactionAsync(cancellationToken);
+            // Читаем состояние под блокировкой, чтобы конкурентное обновление не пропустило сброс основного бейджа.
+            var badges = await _usersContext.Badges
+                .FromSqlInterpolated($"SELECT * FROM \"Badges\" WHERE \"Id\" = {id} FOR UPDATE")
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+            var badge = badges.SingleOrDefault();
+            if (badge is null)
+            {
+                return null;
+            }
+
+            var activeStateChanged = badge.IsActive != isActive;
+
+            var miniImageUrlToSet = string.IsNullOrWhiteSpace(miniImageUrl) ? null : miniImageUrl;
+            var updated = await _usersContext.Badges
+                .Where(candidate => candidate.Id == id)
+                .ExecuteUpdateAsync(update => update
+                    .SetProperty(candidate => candidate.Name, name)
+                    .SetProperty(candidate => candidate.Description, description)
+                    .SetProperty(candidate => candidate.ImageUrl, imageUrl)
+                    .SetProperty(candidate => candidate.IsActive, isActive)
+                    .SetProperty(candidate => candidate.MiniImageUrl, candidate => miniImageUrlToSet ?? candidate.MiniImageUrl),
+                    cancellationToken);
+
+            if (updated == 0)
+            {
+                return null;
+            }
+
+            if (activeStateChanged)
+            {
+                await _usersContext.UserBadges
+                    .Where(userBadge => userBadge.BadgeId == id && userBadge.IsPrimary)
+                    .ExecuteUpdateAsync(update => update.SetProperty(userBadge => userBadge.IsPrimary, false), cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+
+            return await _usersContext.Badges
+                .AsNoTracking()
+                .FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+        });
+    }
+
+    private async Task<Badge?> UpdateBadgeInMemoryAsync(
+        int id,
+        string name,
+        string description,
+        string imageUrl,
+        bool isActive,
+        string? miniImageUrl,
+        CancellationToken cancellationToken)
+    {
+        // Провайдер InMemory используется для быстрых unit-тестов, не для проверки транзакций PostgreSQL.
+        var badge = await _usersContext.Badges.FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
         if (badge is null)
+        {
             return null;
+        }
 
+        var activeStateChanged = badge.IsActive != isActive;
         badge.Name = name;
         badge.Description = description;
         badge.ImageUrl = imageUrl;
         badge.IsActive = isActive;
+        if (!string.IsNullOrWhiteSpace(miniImageUrl))
+        {
+            badge.MiniImageUrl = miniImageUrl;
+        }
 
-        await _usersContext.SaveChangesAsync();
+        if (activeStateChanged)
+        {
+            foreach (var userBadge in _usersContext.UserBadges.Where(userBadge => userBadge.BadgeId == id && userBadge.IsPrimary))
+            {
+                userBadge.IsPrimary = false;
+            }
+        }
 
+        await _usersContext.SaveChangesAsync(cancellationToken);
         return badge;
     }
 
@@ -536,6 +688,19 @@ public class UsersStorage
         await _usersContext.SaveChangesAsync();
 
         return true;
+    }
+
+    private static bool IsPrimaryBadgeUniqueViolation(Exception exception)
+    {
+        var postgresException = exception switch
+        {
+            PostgresException postgres => postgres,
+            DbUpdateException { InnerException: PostgresException postgres } => postgres,
+            _ => null
+        };
+
+        return postgresException?.SqlState == PostgresErrorCodes.UniqueViolation &&
+               postgresException.ConstraintName == "IX_UserBadges_UserId_Primary";
     }
 
     public async Task<(List<User> Users, int TotalCount)> GetAllUsersDescending(int offset, int size)

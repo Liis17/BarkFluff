@@ -108,7 +108,8 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
         var command = new UploadBadgeImageCommand
         {
             ImageData = request.ImageData.ToByteArray(),
-            Filename = request.Filename
+            Filename = request.Filename,
+            Kind = request.Kind
         };
 
         return _mediator.Send(command);

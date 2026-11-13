@@ -24,11 +24,17 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import barkfluff.calls.CallsApiOuterClass
 import com.barkfluff.client.adapter.AttachmentPreviewAdapter
+import com.barkfluff.client.badges.BadgeIconAdapter
+import com.barkfluff.client.badges.BadgeImageLoader
+import com.barkfluff.client.badges.BadgeViewerSheet
+import com.barkfluff.client.cache.UserBadgeRepository
 import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
@@ -40,7 +46,9 @@ import com.barkfluff.client.domain.gateway.MessageGateway
 import com.barkfluff.client.domain.gateway.PresenceGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
+import com.barkfluff.client.domain.model.UserBadgeInfo
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.splitUserBadges
 import coil.load
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
@@ -80,6 +88,7 @@ class UserProfileActivity : AppCompatActivity() {
     @javax.inject.Inject lateinit var presenceGateway: PresenceGateway
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
     @javax.inject.Inject lateinit var userSettingsGateway: UserSettingsGateway
+    @javax.inject.Inject lateinit var userBadgeRepository: UserBadgeRepository
 
     @javax.inject.Inject lateinit var userDirectoryGateway: com.barkfluff.client.domain.gateway.UserDirectoryGateway
 
@@ -92,11 +101,14 @@ class UserProfileActivity : AppCompatActivity() {
     private var chatTitle: String = ""
     private var chatAvatarFileId: String? = null
     private var isChatMuted: Boolean = false
+    private lateinit var badgeIconAdapter: BadgeIconAdapter
+    private var primaryBadge: UserBadgeInfo? = null
 
     private enum class Tab { MEDIA, FILES, VOICE }
 
     companion object {
         private const val TAG = "UserProfileActivity"
+        private const val PROFILE_BADGE_VIEWER_TAG = "profile-badge-viewer"
         private const val EXTRA_CHAT_ID = "chat_id"
         private const val EXTRA_OTHER_USER_ID = "other_user_id"
         private const val EXTRA_IS_GROUP_CHAT = "is_group_chat"
@@ -140,6 +152,7 @@ class UserProfileActivity : AppCompatActivity() {
         binding.backButton.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         setupInfoCard()
+        setupUserBadges()
         setupAvatarExpansion()
         setupActions()
         setupAttachmentsRecycler()
@@ -171,6 +184,44 @@ class UserProfileActivity : AppCompatActivity() {
             )
         }
         updateInfoCardVisibility()
+    }
+
+    private fun setupUserBadges() {
+        badgeIconAdapter = BadgeIconAdapter(::showBadge)
+        binding.profileBadgesRecyclerView.layoutManager =
+            LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        binding.profileBadgesRecyclerView.adapter = badgeIconAdapter
+        binding.profilePrimaryBadge.setOnClickListener { primaryBadge?.let(::showBadge) }
+    }
+
+    private fun loadUserBadges() {
+        if (otherUserId <= 0L) return
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                userBadgeRepository.observe(otherUserId).collect(::renderUserBadges)
+            }
+        }
+        lifecycleScope.launch {
+            val result = userBadgeRepository.refresh(otherUserId)
+            result.exceptionOrNull()?.let { Log.w(TAG, "Не удалось обновить бейджи пользователя $otherUserId", it) }
+        }
+    }
+
+    private fun renderUserBadges(badges: List<UserBadgeInfo>) {
+        val sections = splitUserBadges(badges)
+        primaryBadge = sections.primary
+        binding.profilePrimaryBadge.visibility = if (primaryBadge == null) View.GONE else View.VISIBLE
+        primaryBadge?.let { badge ->
+            BadgeImageLoader.loadMini(binding.profilePrimaryBadge, badge)
+            binding.profilePrimaryBadge.contentDescription = badge.name
+        }
+        badgeIconAdapter.submitList(sections.others)
+        binding.profileBadgesCard.visibility = if (sections.others.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    private fun showBadge(badge: UserBadgeInfo) {
+        BadgeViewerSheet.newInstance(badge)
+            .show(supportFragmentManager, PROFILE_BADGE_VIEWER_TAG)
     }
 
     private fun ItemProfileInfoRowBinding.bind(@DrawableRes icon: Int, label: Int) {
@@ -300,6 +351,7 @@ class UserProfileActivity : AppCompatActivity() {
         val frame = binding.profileAvatarFrame
         val width = binding.profileHeader.width.toFloat()
         if (width <= 0f || frame.width <= 0) return
+        updateProfileNameMaxWidth(width.toInt())
         val p = avatarExpansion
 
         // Рамка уже может быть разложена с прежней растяжкой — учитываем целевую.
@@ -323,6 +375,22 @@ class UserProfileActivity : AppCompatActivity() {
         frame.alpha = 1f - p
         binding.profileAvatarExpandedScrim.alpha = p
         applyHeaderColors(p)
+    }
+
+    private fun updateProfileNameMaxWidth(headerWidth: Int) {
+        val row = binding.profileNameRow
+        val rowMargins = row.layoutParams as android.view.ViewGroup.MarginLayoutParams
+        val availableRowWidth = (headerWidth - rowMargins.marginStart - rowMargins.marginEnd).coerceAtLeast(0)
+        val badgeSpace = if (binding.profilePrimaryBadge.visibility == View.VISIBLE) {
+            val badgeMargins = binding.profilePrimaryBadge.layoutParams as android.view.ViewGroup.MarginLayoutParams
+            badgeMargins.width + badgeMargins.marginStart + badgeMargins.marginEnd
+        } else {
+            0
+        }
+        val maxNameWidth = (availableRowWidth - badgeSpace).coerceAtLeast(0)
+        if (binding.profileNameTextView.maxWidth != maxNameWidth) {
+            binding.profileNameTextView.maxWidth = maxNameWidth
+        }
     }
 
     private var appliedHeaderColorsProgress = 0f
@@ -828,6 +896,7 @@ class UserProfileActivity : AppCompatActivity() {
             loadGroupProfile()
         } else {
             loadUserProfile()
+            loadUserBadges()
         }
     }
 

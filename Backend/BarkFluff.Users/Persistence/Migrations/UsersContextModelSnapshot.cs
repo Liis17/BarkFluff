@@ -46,6 +46,10 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("MiniImageUrl")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -388,6 +392,9 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<int>("BadgeId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
@@ -397,6 +404,11 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BadgeId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserBadges_UserId_Primary")
+                        .HasFilter("\"IsPrimary\" = TRUE");
 
                     b.HasIndex("UserId", "BadgeId")
                         .IsUnique();

@@ -6,6 +6,8 @@ Users владеет локальными профилями и данными �
 
 `Shared/BarkFluff.Proto/users_api.proto` разделяет пользовательский `UsersApi` (`TokenType.User`) и межсервисный `UsersServerApi` (`TokenType.Service`). Клиентский API включает профиль/поиск, настройки, устройства, mute, папки чатов и prekeys. Server API используется для поиска пользователей, операций с аккаунтом, ботами, федеративными UUID/профилями, бейджами, устройствами и административных задач.
 
+`GetUserBadges` возвращает назначенные активные бейджи с полной и мини-картинкой и признаком `is_primary`; пропущенный optional `limit` означает выдачу всего списка. `SetPrimaryBadge` работает только с текущим пользователем из XAuth: `badge_id = 0` снимает выбор, иначе можно выбрать только активный бейдж, уже назначенный этому пользователю. Отсутствующая или неактивная связь возвращает NotFound. Переключение выполняется транзакционно; повторный выбор идемпотентен.
+
 Локальный пользователь имеет постоянный UUID для федерации. Удалённый пользователь представлен UUID и server, не локальным account ID. `ResolveFederatedUser`, `UpsertRemoteUsers`, `GetUsersByUuid` и RPC федеративного профиля реализованы в коде, это не заглушки только в proto.
 
 ## Приватность и состояние клиента
@@ -27,6 +29,10 @@ Users владеет локальными профилями и данными �
 ## Хранение и связи
 
 EF-модель описана в `Persistence/Contexts/UsersContext.cs`, миграции находятся в `Persistence/Migrations/`. `Program.cs` регистрирует PostgreSQL, XAuth, метрики и обработчик отзыва сессий. `Infrastructure/UserInfoQueueSender.cs` публикует события изменения профиля; `Consumers/SessionRevokedConsumer.cs` обновляет локальный cache отзыва токенов.
+
+Бейдж хранит необязательный `MiniImageUrl` для 32×32 PNG; пустое значение при создании совместимо со старыми server API вызовами, а пустое при обновлении сохраняет прежний URL. `UserBadge.IsPrimary` помечает выбор пользователя. Частичный уникальный индекс `IX_UserBadges_UserId_Primary` ограничивает основное назначение одной строкой на пользователя. Установка очищает прежний выбор и условно назначает активный бейдж; при конфликте уникального индекса выполняется одна повторная попытка. Любое изменение `Badge.IsActive` очищает основной выбор этого бейджа в той же транзакции; реактивация его не восстанавливает. Удаление назначения или самого бейджа удаляет отметку вместе со строкой связи. Админские endpoint-ы могут только читать этот признак.
+
+Основные места: `Features/Badges/SetPrimaryBadge/`, `Persistence/Services/UsersStorage.cs`, `Domain/Badge.cs`, `Domain/UserBadge.cs`, `Mapping/BadgeMapping.cs`. Схема и конкурентные сценарии покрыты `Tests/BarkFluff.Users.Tests/Features/Badges/`, PostgreSQL-тесты используют отдельную временную базу и пропускаются без настройки тестового окружения.
 
 Messages, Identity, Files, Bots, Onliner и Federation используют внутренний Users API для профиля, устройств, privacy, prekeys или UUID resolution. Основные файлы: `Host/UsersApiService.cs`, `Host/UsersServerApiService.cs`, `Persistence/Services/PrekeyStorage.cs`, `Features/ResolveFederatedUser/`.
 

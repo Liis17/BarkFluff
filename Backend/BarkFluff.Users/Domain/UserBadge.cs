@@ -17,5 +17,7 @@ public class UserBadge
 
     public int Priority { get; set; } = 1000;
 
+    public bool IsPrimary { get; set; }
+
     public DateTime AssignedDate { get; set; }
 }
