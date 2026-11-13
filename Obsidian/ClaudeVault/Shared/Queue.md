@@ -27,6 +27,7 @@ Private-chat события (`NewEncryptedMessageEvent`, edit/delete, invite/res
 - `SessionRevokedEvent`: UserId, DeviceId и срок действия access token; Identity публикует его для очистки XAuth revocation cache на сервисах.
 - `UserAccountStatusChanged`: UserId и числовой AccountStatus для синхронизации ограничения владельца ботов. Bots использует отдельную временную очередь на каждый инстанс, перечитывает актуальный status из Users, сохраняет флаг в Bots DB и обновляет локальный registry cache.
 - User profile events `UserChangedAvatar/Name/Username/Bio/Password` сообщают изменения подписчикам, в том числе Messages.
+- `ChatFoldersChanged` (UserId) — сигнал без снимка об изменении папок чатов; Updates пересылает его в user-scope стрим.
 - `Notification` задаёт TransportId, ServiceId, OwnerId, CreatedAt, Type и string Payload; `EmailNotification` добавляет Title/Address. `TransportId.Email=1`; значения `NotificationType` 1–10 сохранены, а account status emails используют 11–14 (`AccountBlocked`, `AccountUnblocked`, `AccountDeletionScheduled`, `AccountDeletionCancelled`).
 
 Контракты событий и фактическую маршрутизацию см. в `Shared/BarkFluff.Shared.Queue/Messages/`, `Notifications/`, `Identity/`, `Users/`, `Federation/`, `Onliner/` и в соответствующих consumers.

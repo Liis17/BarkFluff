@@ -856,6 +856,12 @@ class ChatsViewModel @Inject constructor(
                 handleChatHidden(event.chatId, event.contentWiped)
             }
         }
+        // Папки изменились (в том числе на другом устройстве): перечитываем только папки.
+        // collect последователен, а поток сигналов схлопывает повторы — пока идёт обновление,
+        // в очереди остаётся не больше одного сигнала, и последнее изменение не теряется.
+        viewModelScope.launch {
+            realtimeService.chatFoldersChanged.collect { refreshFolders() }
+        }
         viewModelScope.launch {
             realtimeService.privateMessagesRead.collect { event ->
                 if (event.userId == globalParam.userId) {
@@ -933,6 +939,22 @@ class ChatsViewModel @Inject constructor(
     }
 
     /** DeleteChat на другом устройстве: чат исчезает из списка и кеша, как в веб-клиенте. */
+    private suspend fun refreshFolders() {
+        // loadChats тоже читает папки: даём ему завершиться, чтобы его более ранний
+        // снимок не перезаписал свежий результат этого обновления.
+        while (loadChatsJob?.isActive == true) loadChatsJob?.join()
+        val folders = chatFolderGateway.folders().getOrElse {
+            Log.w(TAG, "Не удалось обновить папки после сигнала об изменении", it)
+            return
+        }
+        val state = _uiState.value
+        if (folders == state.folders) return
+        val selectedFolderId = state.selectedFolderId?.takeIf { id -> folders.any { it.folderId == id } }
+        _uiState.value = state.copy(folders = folders, selectedFolderId = selectedFolderId)
+        applyFolderFilter()
+        persistChatList()
+    }
+
     private fun handleChatHidden(chatId: String, contentWiped: Boolean) {
         val state = _uiState.value
         val wasListed = state.allChats.any { it.id == chatId }

@@ -79,7 +79,7 @@
 
 ## `updates_api.proto` — `BarkFluff.Proto.Updates`
 
-- `UpdatesApi`: `SubscribeNewMessages`, `SubscribeMessagesRead`, `SubscribeMessagesEdited`, `SubscribeMessagesDeleted`, `SubscribeMessagesPinned`, `SubscribeMessagesUnpinned`, `SubscribeAllMessagesUnpinned`, `SubscribeChatHidden`, `SubscribePrivateMessages`, `SubscribePrivateMessageEdits`, `SubscribePrivateMessageDeletes`, `SubscribePrivateMessagesRead`, `SubscribePrivateChatInvites`, `SubscribePrivateChatInviteResolutions`, `SubscribeSecretChatInvites`, `SubscribeSecretChatResolutions`, `SubscribeSecretMessages`.
+- `UpdatesApi`: `SubscribeNewMessages`, `SubscribeMessagesRead`, `SubscribeMessagesEdited`, `SubscribeMessagesDeleted`, `SubscribeMessagesPinned`, `SubscribeMessagesUnpinned`, `SubscribeAllMessagesUnpinned`, `SubscribeChatHidden`, `SubscribeChatFoldersChanged`, `SubscribePrivateMessages`, `SubscribePrivateMessageEdits`, `SubscribePrivateMessageDeletes`, `SubscribePrivateMessagesRead`, `SubscribePrivateChatInvites`, `SubscribePrivateChatInviteResolutions`, `SubscribeSecretChatInvites`, `SubscribeSecretChatResolutions`, `SubscribeSecretMessages`.
 
 ## `users_api.proto` — `BarkFluff.Proto.Users`
 

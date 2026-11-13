@@ -4,7 +4,7 @@
 
 ## Данные и синхронизация
 
-`ChatFolderData`: `folder_id` (Guid), `folder_name`, `folder_icon` (пусто, если не задана), `chat_list` (Guid чатов строками), `sort_order` (меньше — выше). `GetChatFolders` возвращает только папки текущего пользователя в порядке `sort_order`, затем внутреннего ID записи. Stream изменений папок нет; для синхронизации с другим устройством вызовите `GetChatFolders`.
+`ChatFolderData`: `folder_id` (Guid), `folder_name`, `folder_icon` (пусто, если не задана), `chat_list` (Guid чатов строками), `sort_order` (меньше — выше). `GetChatFolders` возвращает только папки текущего пользователя в порядке `sort_order`, затем внутреннего ID записи. После каждой успешной мутации (`Create`/`Update`/`Delete`/`AddChatTo`/`RemoveChatFrom`/`Reorder`) Users публикует `ChatFoldersChanged`, а Updates шлёт пустой `ChatFoldersChangedEvent` во все стримы `UpdatesApi.SubscribeChatFoldersChanged` пользователя, включая устройство-инициатор. Событие — только сигнал: получив его, вызовите `GetChatFolders`; повторы и порядок сигналов на результат не влияют. Updates не хранит пропущенные сигналы, поэтому после переподключения и на старте папки нужно перечитать. Ноды без этого RPC отвечают `UNIMPLEMENTED`.
 
 ## Семантика RPC
 
@@ -27,4 +27,4 @@
 - `ChatFolderInvalidNameException`: `8C1A6F4D-1B22-4E1B-8E4D-7E9A5B6C2A11` для пустого имени или имени длиннее 64 после trim.
 - Невалидный chat Guid возвращает Messages `ChatIdNotValidException`.
 
-Код: `Host/UsersApiService.cs`, `Features/ChatFolders/`, `Persistence/Services/ChatFolderStorage.cs`. Связанные заметки: [[Backend/Users]], [[Backend/Messages]].
+Код: `Host/UsersApiService.cs`, `Features/ChatFolders/` (мутации помечены `IChatFoldersMutation`, публикацию делает MediatR behavior `ChatFoldersChangedBehavior`), `Persistence/Services/ChatFolderStorage.cs`. Публикация идёт после записи в БД без outbox; ошибка брокера только логируется, и другие устройства увидят изменение при следующем перечитывании. Связанные заметки: [[Backend/Users]], [[Backend/Messages]].
