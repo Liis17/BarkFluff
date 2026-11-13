@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Space
@@ -30,6 +31,7 @@ import com.barkfluff.client.drafts.ChatDraftRepository
 import com.barkfluff.client.drafts.ComposerAttachmentStore
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.SkeletonPulse
 import com.barkfluff.client.utils.configureImeInsets
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -53,6 +55,8 @@ class StorageSettingsActivity : AppCompatActivity() {
     private lateinit var chatCacheRepository: ChatCacheRepository
     private val autoDownloadRows = linkedMapOf<Shared.MessageAttachmentType, ItemAutoDownloadSettingBinding>()
     private lateinit var autoDownloadLimitRow: ItemAutoDownloadSettingBinding
+    private val serverSkeletonPulse = SkeletonPulse()
+    private val localSkeletonPulse = SkeletonPulse()
 
     companion object {
         private const val TAG = "StorageSettings"
@@ -84,9 +88,71 @@ class StorageSettingsActivity : AppCompatActivity() {
         setupToolbar()
         setupClickListeners()
         setupAutoDownload()
+        showServerSkeleton()
+        showLocalCacheSkeleton()
         loadStorageInfo()
         updateCacheSize()
     }
+
+    override fun onDestroy() {
+        serverSkeletonPulse.stop()
+        localSkeletonPulse.stop()
+        super.onDestroy()
+    }
+
+    /** Заглушки серверного блока: итог, лимит и строки категорий, пока идёт запрос. */
+    private fun showServerSkeleton() {
+        binding.textStorageUsage.visibility = View.GONE
+        binding.textStorageLimit.visibility = View.GONE
+        binding.skeletonStorageUsage.visibility = View.VISIBLE
+        binding.skeletonStorageLimit.visibility = View.VISIBLE
+
+        binding.storageLegendLayout.removeAllViews()
+        val pulseViews = mutableListOf<View>(binding.skeletonStorageUsage, binding.skeletonStorageLimit)
+        val inflater = LayoutInflater.from(this)
+        categories.indices.forEach { index ->
+            val row = inflater.inflate(R.layout.item_storage_legend_skeleton, binding.storageLegendLayout, false) as ViewGroup
+            (0 until row.childCount).map(row::getChildAt).filterNot { it is Space }.forEach(pulseViews::add)
+            addLegendRow(row, index, categories.lastIndex)
+        }
+        serverSkeletonPulse.start(pulseViews)
+    }
+
+    private fun hideServerSkeleton() {
+        serverSkeletonPulse.stop()
+        binding.skeletonStorageUsage.visibility = View.GONE
+        binding.skeletonStorageLimit.visibility = View.GONE
+        binding.textStorageUsage.visibility = View.VISIBLE
+        binding.textStorageLimit.visibility = View.VISIBLE
+    }
+
+    private fun showLocalCacheSkeleton() {
+        val skeletons = listOf(
+            binding.skeletonLocalCacheUsage,
+            binding.skeletonLocalCacheSummary,
+            binding.skeletonImageCacheSize,
+            binding.skeletonChatCacheSize
+        )
+        localCacheValueViews().forEach { it.visibility = View.GONE }
+        skeletons.forEach { it.visibility = View.VISIBLE }
+        localSkeletonPulse.start(skeletons)
+    }
+
+    private fun hideLocalCacheSkeleton() {
+        localSkeletonPulse.stop()
+        binding.skeletonLocalCacheUsage.visibility = View.GONE
+        binding.skeletonLocalCacheSummary.visibility = View.GONE
+        binding.skeletonImageCacheSize.visibility = View.GONE
+        binding.skeletonChatCacheSize.visibility = View.GONE
+        localCacheValueViews().forEach { it.visibility = View.VISIBLE }
+    }
+
+    private fun localCacheValueViews(): List<View> = listOf(
+        binding.textLocalCacheUsage,
+        binding.textLocalCacheSummary,
+        binding.textImageCacheSize,
+        binding.textChatCacheSize
+    )
 
     private fun setupToolbar() {
         binding.toolbar.setNavigationOnClickListener {
@@ -103,6 +169,7 @@ class StorageSettingsActivity : AppCompatActivity() {
     private fun loadStorageInfo() {
         lifecycleScope.launch {
             val result = userProfileGateway.storageInfo()
+            hideServerSkeleton()
             if (result.isSuccess) {
                 val info = result.getOrNull()!!
                 binding.textStorageUsage.text = formatBytes(info.totalUsed)
@@ -117,6 +184,7 @@ class StorageSettingsActivity : AppCompatActivity() {
                 Log.e(TAG, "Ошибка получения данных хранилища", result.exceptionOrNull())
                 binding.textStorageUsage.text = getString(R.string.storage_load_error)
                 binding.textStorageLimit.text = ""
+                binding.storageLegendLayout.removeAllViews()
             }
         }
     }
@@ -247,26 +315,31 @@ class StorageSettingsActivity : AppCompatActivity() {
                 setImageResource(cat.iconRes)
                 setColorFilter(cat.color)
             }
-            itemView.background = getDrawable(
-                when (index) {
-                    0 -> R.drawable.bg_settings_item_top
-                    categoryBytes.lastIndex -> R.drawable.bg_settings_item_bottom
-                    else -> R.drawable.bg_settings_item_middle
-                }
-            )
 
             itemView.findViewById<TextView>(R.id.legendLabel).text = getString(cat.labelRes)
             itemView.findViewById<TextView>(R.id.legendSize).text = formatBytes(bytes)
 
-            binding.storageLegendLayout.addView(itemView)
-            if (index != categoryBytes.lastIndex) {
-                binding.storageLegendLayout.addView(Space(this).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        resources.getDimensionPixelSize(R.dimen.settings_split_gap)
-                    )
-                })
+            addLegendRow(itemView, index, categoryBytes.lastIndex)
+        }
+    }
+
+    /** Добавляет строку в группу категорий: фон по позиции (верх/середина/низ) и зазор между строками. */
+    private fun addLegendRow(row: View, index: Int, lastIndex: Int) {
+        row.background = getDrawable(
+            when (index) {
+                0 -> R.drawable.bg_settings_item_top
+                lastIndex -> R.drawable.bg_settings_item_bottom
+                else -> R.drawable.bg_settings_item_middle
             }
+        )
+        binding.storageLegendLayout.addView(row)
+        if (index != lastIndex) {
+            binding.storageLegendLayout.addView(Space(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    resources.getDimensionPixelSize(R.dimen.settings_split_gap)
+                )
+            })
         }
     }
 
@@ -296,6 +369,7 @@ class StorageSettingsActivity : AppCompatActivity() {
                 calculateCacheSize() to chatCacheRepository.stats()
             }
             renderCacheSize(imageCacheSize, chatCacheStats)
+            hideLocalCacheSkeleton()
         }
     }
 
