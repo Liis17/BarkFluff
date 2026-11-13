@@ -1,7 +1,7 @@
 # BarkFluff Nutzungsbedingungen
 
 **Gültig ab:** 24. Januar 2026  
-**Letzte Aktualisierung:** 29. Juli 2026
+**Letzte Aktualisierung:** 13. November 2026
 
 > Diese Übersetzung dient nur der Bequemlichkeit. Im Falle von Abweichungen ist die russische Fassung maßgebend.
 
@@ -60,8 +60,8 @@ Ein Knotenadministrator darf diese Liste um eigene Regeln ergänzen.
 
 ## 7. Moderation und Sperren
 
-- Bei Verstößen kann der Knotenadministrator den Zugang einschränken, rechtsverletzende Inhalte entfernen, Sitzungen beenden, das Konto sperren oder löschen sowie die zuständigen Behörden einschalten, soweit dies gesetzlich vorgeschrieben ist.
-- Die Moderation wirkt innerhalb des Knotens. Der Administrator Ihres Knotens kann keine Inhalte auf einem fremden Knoten entfernen und ist für die Moderation anderswo nicht verantwortlich.
+- Bei einem Verstoß gegen diese Nutzungsbedingungen oder gesetzliche Anforderungen kann der Knotenadministrator den Zugang beschränken, rechtswidrige Inhalte entfernen, Sitzungen beenden oder das Konto sperren und, soweit gesetzlich erforderlich, die zuständigen Behörden einschalten. Der Administrator löscht ein Konto auf Anfrage des Nutzers gemäß der Richtlinie zur Kontolöschung. Während einer Sperre ist die Anmeldung nicht möglich, alle Sitzungen werden beendet und die Bots des Kontos stellen ihren Betrieb ein; die Kontodaten werden jedoch nicht gelöscht. Der Nutzer erhält eine E-Mail mit dem Grund der Sperre; bei einem Anmeldeversuch zeigt die App diesen Grund an.
+- Die Moderation gilt nur innerhalb des Knotens. Der Administrator Ihres Knotens kann keine Inhalte auf einem fremden Knoten entfernen und ist für die Moderation anderswo nicht verantwortlich. Andere Nutzer sehen das Profil als „Gesperrter Nutzer“ ohne Avatar und letzte Aktivitätszeit; der Chat ist nur lesbar. Nur der Knotenadministrator kann die Sperre aufheben. Ein Einspruch kann per E-Mail an den Knotenadministrator über die im Abschnitt „Kontakte“ angegebenen Kontaktdaten erfolgen. Über die Aufhebung wird der Nutzer per E-Mail informiert.
 - Der Administrator darf einen ganzen Knoten sperren. In diesem Fall endet die Kommunikation mit dessen Nutzern; bereits empfangene Nachrichten verbleiben auf Ihrem Knoten.
 - Ihr Knoten steht nur für seine eigenen Nutzer ein und bestätigt deren Identität gegenüber den Partnerknoten. Für Inhalte von anderen Knoten sind jene Knoten und ihre Nutzer verantwortlich.
 
