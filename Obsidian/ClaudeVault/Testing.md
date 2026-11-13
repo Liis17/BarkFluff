@@ -16,6 +16,8 @@ Android instrumented-тесты локально компилируют как �
 
 `PendingChatReadRangeDaoTest` checks cutoff coalescing and stale completion; migration instrumentation covers Room v5→v6 and v6→v7 (`UserBadgeMigrationTest`). `MessageNotificationTest` covers scoped actions, extras/history roundtrip, hash/legacy collision safety, bounded sender icons, late event/avatar merge, reply/read persistence failures and cold/warm/foreign-scope navigation. `ColdNotificationScenarioTest` covers reply/read-range recovery after process death and independent read retry. Compile/assemble does not execute these instrumented scenarios.
 
+`Android/Barkfluff.Client.Android/app/src/test/.../cache/UserBadgeRepositoryTest.kt` управляет задержкой ответа fake gateway и проверяет, что refresh, начатый до смены primary, не перезаписывает успешный выбор. `Tests/BarkFluff.Users.Tests/Host/UsersApiServiceBadgeTests.cs` проходит через Host-маппинг и handler и проверяет выдачу всех назначенных активных бейджей при пропуске optional limit.
+
 ## Android performance
 
 Измерительная инфраструктура относится к Android V1 (`:app-v1`) и запускается на физическом Pixel 10 Pro с тестовым аккаунтом и одним длинным чатом. Эмулятор не используется. Сборка не запускает задачи установки или подключения к устройству; оба perf-скрипта требуют `--serial` и `--expect-model`, проверяют состояние и модель перед командами замера и всегда добавляют выбранный serial к `adb`.

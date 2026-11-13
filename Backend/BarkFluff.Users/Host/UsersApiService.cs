@@ -215,7 +215,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         var query = new GetUserBadgesQuery
         {
             UserId = request.UserId,
-            Limit = request.Limit
+            Limit = request.HasLimit ? request.Limit : null
         };
 
         return _mediator.Send(query);

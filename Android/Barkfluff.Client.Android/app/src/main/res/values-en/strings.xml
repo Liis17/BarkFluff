@@ -669,6 +669,7 @@
     <string name="badge_received_date">Received %1$s</string>
     <string name="badges_load_error">Could not load badges</string>
     <string name="badge_set_error">Could not change the primary badge</string>
+    <string name="badge_feature_unavailable">This server does not support choosing a primary badge</string>
     <string name="profile_username_label">Username</string>
     <string name="profile_status_label">Status</string>
     <string name="profile_bio_label">Bio</string>

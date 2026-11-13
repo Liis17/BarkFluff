@@ -5,6 +5,8 @@ import com.barkfluff.client.data.AutoDownloadSettingsStore
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.media.AutoDownloadNetworkState
 import com.barkfluff.client.cache.ChatCacheRepository
+import com.barkfluff.client.cache.RoomUserBadgeCache
+import com.barkfluff.client.cache.UserBadgeCache
 import com.barkfluff.client.cache.UserBadgeRepository
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.calls.CallEventsService
@@ -231,8 +233,13 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideUserBadgeCache(cache: ChatCacheRepository): UserBadgeCache =
+        RoomUserBadgeCache(cache)
+
+    @Provides
+    @Singleton
     fun provideUserBadgeRepository(
-        cache: ChatCacheRepository,
+        cache: UserBadgeCache,
         gateway: UserBadgeGateway,
     ): UserBadgeRepository = UserBadgeRepository(cache, gateway)
 

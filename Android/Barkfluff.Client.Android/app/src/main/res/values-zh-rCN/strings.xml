@@ -657,6 +657,7 @@
     <string name="badge_received_date">获得于 %1$s</string>
     <string name="badges_load_error">无法加载徽章</string>
     <string name="badge_set_error">无法更改主要徽章</string>
+    <string name="badge_feature_unavailable">此服务器暂不支持选择主要徽章</string>
     <string name="profile_username_label">用户名</string>
     <string name="profile_status_label">状态</string>
     <string name="profile_bio_label">简介</string>

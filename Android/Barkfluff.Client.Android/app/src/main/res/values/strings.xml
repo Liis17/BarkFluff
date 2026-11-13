@@ -801,6 +801,7 @@
     <string name="badge_received_date">Получен %1$s</string>
     <string name="badges_load_error">Не удалось загрузить бейджи</string>
     <string name="badge_set_error">Не удалось изменить основной бейдж</string>
+    <string name="badge_feature_unavailable">Этот сервер не поддерживает выбор основного бейджа</string>
     <string name="profile_username_label">Имя пользователя</string>
     <string name="profile_status_label">Статус</string>
     <string name="profile_bio_label">О себе</string>

@@ -351,6 +351,7 @@ class UserProfileActivity : AppCompatActivity() {
         val frame = binding.profileAvatarFrame
         val width = binding.profileHeader.width.toFloat()
         if (width <= 0f || frame.width <= 0) return
+        updateProfileNameMaxWidth(width.toInt())
         val p = avatarExpansion
 
         // Рамка уже может быть разложена с прежней растяжкой — учитываем целевую.
@@ -374,6 +375,22 @@ class UserProfileActivity : AppCompatActivity() {
         frame.alpha = 1f - p
         binding.profileAvatarExpandedScrim.alpha = p
         applyHeaderColors(p)
+    }
+
+    private fun updateProfileNameMaxWidth(headerWidth: Int) {
+        val row = binding.profileNameRow
+        val rowMargins = row.layoutParams as android.view.ViewGroup.MarginLayoutParams
+        val availableRowWidth = (headerWidth - rowMargins.marginStart - rowMargins.marginEnd).coerceAtLeast(0)
+        val badgeSpace = if (binding.profilePrimaryBadge.visibility == View.VISIBLE) {
+            val badgeMargins = binding.profilePrimaryBadge.layoutParams as android.view.ViewGroup.MarginLayoutParams
+            badgeMargins.width + badgeMargins.marginStart + badgeMargins.marginEnd
+        } else {
+            0
+        }
+        val maxNameWidth = (availableRowWidth - badgeSpace).coerceAtLeast(0)
+        if (binding.profileNameTextView.maxWidth != maxNameWidth) {
+            binding.profileNameTextView.maxWidth = maxNameWidth
+        }
     }
 
     private var appliedHeaderColorsProgress = 0f

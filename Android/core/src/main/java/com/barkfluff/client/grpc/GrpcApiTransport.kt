@@ -31,6 +31,7 @@ import com.barkfluff.client.domain.model.MessageSearchPage
 import com.barkfluff.client.domain.model.MessageSearchQuery
 import com.barkfluff.client.domain.model.MessageSearchUnavailableException
 import com.barkfluff.client.domain.model.SearchAttachmentPresence
+import com.barkfluff.client.domain.model.BadgeFeatureUnavailableException
 import com.barkfluff.client.domain.model.UserBadgeInfo
 import com.barkfluff.client.domain.model.toDomain
 import com.google.protobuf.Timestamp
@@ -1098,7 +1099,7 @@ open class GrpcApiTransport(context: Context) {
             if (error is CancellationException) throw error
             Log.e(TAG, "Ошибка выбора основного бейджа", error)
             val mappedError = if (Status.fromThrowable(error).code == Status.Code.UNIMPLEMENTED) {
-                IllegalStateException("Сервер пока не поддерживает выбор основного бейджа. Обновите сервер.", error)
+                BadgeFeatureUnavailableException(error)
             } else {
                 error
             }

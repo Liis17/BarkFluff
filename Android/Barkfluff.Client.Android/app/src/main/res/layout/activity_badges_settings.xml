@@ -71,7 +71,8 @@
                         android:layout_height="56dp"
                         android:contentDescription="@null"
                         android:scaleType="fitCenter"
-                        android:src="@drawable/ic_verified" />
+                        android:src="@drawable/ic_badge_none"
+                        app:tint="@color/profile_settings_on_surface_variant" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -100,6 +101,7 @@
                     </LinearLayout>
 
                     <ImageView
+                        android:id="@+id/currentBadgeArrow"
                         android:layout_width="20dp"
                         android:layout_height="20dp"
                         android:contentDescription="@null"

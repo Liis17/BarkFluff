@@ -35,7 +35,8 @@
                 android:layout_gravity="center"
                 android:contentDescription="@null"
                 android:scaleType="fitCenter"
-                android:src="@drawable/ic_verified" />
+                android:src="@drawable/ic_badge_none"
+                app:tint="@color/profile_settings_on_surface_variant" />
 
             <ImageView
                 android:id="@+id/badgeCheck"

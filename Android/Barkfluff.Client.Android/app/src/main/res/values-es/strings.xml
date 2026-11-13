@@ -667,6 +667,7 @@
     <string name="badge_received_date">Obtenida el %1$s</string>
     <string name="badges_load_error">No se pudieron cargar las insignias</string>
     <string name="badge_set_error">No se pudo cambiar la insignia principal</string>
+    <string name="badge_feature_unavailable">Este servidor no permite elegir una insignia principal</string>
     <string name="profile_username_label">Nombre de usuario</string>
     <string name="profile_status_label">Estado</string>
     <string name="profile_bio_label">Biografía</string>

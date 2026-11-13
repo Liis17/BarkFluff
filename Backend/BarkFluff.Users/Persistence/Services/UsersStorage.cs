@@ -495,7 +495,7 @@ public class UsersStorage
             {
                 // Блокировка строки синхронизирует выбор с параллельной деактивацией бейджа.
                 var activeBadge = await _usersContext.Badges
-                    .FromSqlInterpolated($"SELECT * FROM \"Badges\" WHERE \"Id\" = {badgeId} AND \"IsActive\" = TRUE FOR UPDATE")
+                    .FromSqlInterpolated($"SELECT * FROM \"Badges\" WHERE \"Id\" = {badgeId} AND \"IsActive\" = TRUE FOR SHARE")
                     .AsNoTracking()
                     .ToListAsync(cancellationToken);
                 if (activeBadge.Count == 0)

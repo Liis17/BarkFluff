@@ -1,13 +1,12 @@
 package com.barkfluff.client.badges
 
 import android.content.Context
-import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import androidx.core.content.ContextCompat
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemBadgeGridBinding
 import com.barkfluff.client.domain.model.UserBadgeInfo
@@ -24,7 +23,8 @@ internal class BadgeGridAdapter(
 
     fun showBadges(badges: List<UserBadgeInfo>, primaryBadgeId: Int?) {
         submitList(
-            listOf(Item(badge = null, selected = primaryBadgeId == null)) +
+            if (badges.isEmpty()) emptyList()
+            else listOf(Item(badge = null, selected = primaryBadgeId == null)) +
                 badges.map { Item(it, it.badgeId == primaryBadgeId) }
         )
     }
@@ -41,14 +41,10 @@ internal class BadgeGridAdapter(
             if (badge != null) {
                 binding.badgeName.text = badge.name
                 BadgeImageLoader.loadMini(binding.badgeImage, badge)
-                binding.badgeImage.imageTintList = null
                 binding.root.contentDescription = badge.name
             } else {
                 binding.badgeName.setText(R.string.badge_no_primary)
-                binding.badgeImage.setImageResource(R.drawable.ic_verified)
-                binding.badgeImage.imageTintList = ColorStateList.valueOf(
-                    ContextCompat.getColor(binding.root.context, R.color.profile_settings_on_surface_variant)
-                )
+                BadgeImageLoader.showNoBadge(binding.badgeImage)
                 binding.root.contentDescription = binding.root.context.getString(R.string.badge_no_primary)
             }
             binding.badgeCheck.visibility = if (item.selected) android.view.View.VISIBLE else android.view.View.GONE
