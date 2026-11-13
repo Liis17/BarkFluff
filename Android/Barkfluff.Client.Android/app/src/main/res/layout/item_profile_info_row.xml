@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Строка инфо-карты профиля: иконка, значение, подпись и необязательное действие справа -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:minHeight="64dp"
+    android:orientation="horizontal"
+    android:paddingHorizontal="18dp"
+    android:paddingVertical="13dp">
+
+    <ImageView
+        android:id="@+id/rowIcon"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        app:tint="@color/profile_accent"
+        tools:src="@drawable/ic_calendar_month" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/rowValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/profile_text"
+            android:textIsSelectable="false"
+            android:textSize="15sp"
+            tools:text="14 марта 2019" />
+
+        <TextView
+            android:id="@+id/rowLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/profile_text_dim"
+            android:textSize="12sp"
+            tools:text="@string/profile_registration_label" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/rowTrailingIcon"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="12dp"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_copy_content"
+        android:visibility="gone"
+        app:tint="@color/profile_text_dim" />
+</LinearLayout>
