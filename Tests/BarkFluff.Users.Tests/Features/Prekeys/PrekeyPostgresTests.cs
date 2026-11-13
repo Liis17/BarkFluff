@@ -23,6 +23,47 @@ namespace BarkFluff.Users.Tests.Features.Prekeys;
 public class PrekeyPostgresTests
 {
     [PrekeyPostgresFact]
+    public async Task ConcurrentDeletionClaimsLeaveAccountDeletedAndAvailableForIdempotentCleanup()
+    {
+        await using var database = await PrekeyDatabase.Create();
+        var user = new User
+        {
+            Username = $"deletion_{Guid.NewGuid():N}",
+            FirstName = "Deletion",
+            LastName = "Test",
+            RegistrationDate = DateTime.UtcNow,
+            AccountStatus = AccountStatus.PendingDeletion,
+            RestrictionReason = "requested",
+            RestrictedAt = DateTime.UtcNow.AddDays(-7),
+            DeletionScheduledAt = DateTime.UtcNow.AddMinutes(-1),
+            Contact = new UserContact { Email = "deletion@test.invalid" },
+        };
+        database.Context.Users.Add(user);
+        await database.Context.SaveChangesAsync();
+
+        var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var first = ClaimAfterStart();
+        var second = ClaimAfterStart();
+        start.SetResult();
+        var claimed = await Task.WhenAll(first, second);
+
+        claimed.SelectMany(ids => ids).Distinct().Should().ContainSingle().Which.Should().Be(user.Id);
+        await using var verifyContext = database.CreateContext();
+        var deleted = await verifyContext.Users.SingleAsync(item => item.Id == user.Id);
+        deleted.AccountStatus.Should().Be(AccountStatus.Deleted);
+        deleted.Username.Should().Be($"deleted-{deleted.Uuid:N}");
+        deleted.CleanupCompletedAt.Should().BeNull();
+        (await verifyContext.UserContacts.AnyAsync(contact => contact.UserId == user.Id)).Should().BeFalse();
+
+        async Task<List<long>> ClaimAfterStart()
+        {
+            await start.Task;
+            await using var context = database.CreateContext();
+            return await new UsersStorage(context).ClaimAccountsForDeletion(10, CancellationToken.None);
+        }
+    }
+
+    [PrekeyPostgresFact]
     public async Task ConcurrentFetchesConsumeDistinctKeysAndThenUseLastResort()
     {
         await using var database = await PrekeyDatabase.Create();

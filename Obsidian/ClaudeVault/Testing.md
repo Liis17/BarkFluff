@@ -97,6 +97,9 @@ dotnet test Tests/BarkFluff.Messages.Tests/BarkFluff.Messages.Tests.csproj
 | Messages read-range concurrency/outbox | `Tests/BarkFluff.Messages.Tests/Persistence/MessagesStorageReadPostgresTests.cs`: `BARKFLUFF_SEARCH_POSTGRES`, disposable PostgreSQL; concurrent range reads, rollback, persisted retry и приоритет NewMessage |
 | Users handler-тесты | `Tests/BarkFluff.Users.Tests/TestHelper.cs`: EF InMemory |
 | Users device concurrency | `Tests/BarkFluff.Users.Tests/Features/Devices/DevicesStorageConcurrencyTests.cs`: SQLite с несколькими соединениями |
+| Users deletion claim concurrency | `Tests/BarkFluff.Users.Tests/Features/Prekeys/PrekeyPostgresTests.cs`: `BARKFLUFF_PREKEY_POSTGRES`, disposable PostgreSQL; concurrent account deletion claims and idempotent cleanup state |
+| Identity account deletion worker | `Tests/BarkFluff.Identity.Tests/Infrastructure/AccountDeletionWorkerTests.cs`: mocked Redis lease and service RPCs, SQLite for transactional identity cleanup and retry after Identity/Files/Bots failures |
+| Bots account restriction and deletion | `Tests/BarkFluff.Bots.Tests/Consumers/AccountRestrictionTests.cs`: SQLite-backed status reconciliation/consumer idempotency and repeated owner deletion |
 | Messages PostgreSQL search | `Tests/BarkFluff.Messages.Tests/Persistence/SearchMessagesPostgresTests.cs`: `BARKFLUFF_SEARCH_POSTGRES`, disposable DB и право CREATE DATABASE |
 | Developers concurrent seed | `Tests/BarkFluff.Developers.Tests/PostgresConcurrentSeedTests.cs`: `DEVELOPERS_TEST_POSTGRES`; инфраструктура — `TestInfrastructure.cs` |
 

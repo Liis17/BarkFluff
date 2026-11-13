@@ -8,6 +8,8 @@ Identity отправляет SuccessfulLogin/FailedLogin через этот с
 
 Для статуса аккаунта поддерживаются `AccountBlocked=11`, `AccountUnblocked=12`, `AccountDeletionScheduled=13` и `AccountDeletionCancelled=14`. `HtmlEmailTemplateParser` выбирает четыре шаблона в `Templates/` и HTML-экранирует каждое значение payload перед подстановкой. Identity отправляет письмо при каждом из этих четырёх действий; при финальном удалении письмо не отправляется.
 
+Раскатывай Notification раньше Identity: старая версия Notification не знает `NotificationType` 11–14 и должна быть обновлена до того, как Identity начнёт отправлять эти значения.
+
 Важное текущее ограничение: EmailSender задаёт ServicePointManager.ServerCertificateValidationCallback, принимающий любой сертификат. В коде причина и ограничение на self-signed certificates не заданы, поэтому не считайте SMTP TLS проверенным.
 
 Метрики: rabbitmq_events_consumed, emails_skipped, emails_sent, emails_failed. Ошибка SMTP пробрасывается обратно MassTransit для retry.

@@ -46,7 +46,7 @@ public sealed class AccountDeletionWorker(
         }
     }
 
-    private async Task RunLeasedCycle(CancellationToken stoppingToken)
+    internal async Task RunLeasedCycle(CancellationToken stoppingToken)
     {
         var database = redis.GetDatabase();
         var owner = Guid.NewGuid().ToString("N");
