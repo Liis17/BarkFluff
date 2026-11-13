@@ -68,7 +68,9 @@
             var entry = deps.getOnlineEntry(userId);
             profileStatus.textContent = restricted
                 ? ''
-                : online ? BF.i18n.t('status.online') : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
+                : online
+                  ? BF.i18n.t('status.online')
+                  : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
             profileStatus.className = 'profile-status-line' + (!restricted && online ? ' online' : '');
             profileStatus.hidden = restricted || !!user.isBot;
             deps.setCallButtonsVisible(!restricted && !user.isBot);

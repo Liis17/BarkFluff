@@ -103,9 +103,10 @@
                             if (!user) return;
                             if (BF.utils.isRestrictedUser(user)) {
                                 fullName = BF.utils.restrictedUserName(user);
-                                memberName.textContent = member.userId === deps.getMyUserId()
-                                    ? BF.i18n.t('group.member.you', { name: fullName })
-                                    : fullName;
+                                memberName.textContent =
+                                    member.userId === deps.getMyUserId()
+                                        ? BF.i18n.t('group.member.you', { name: fullName })
+                                        : fullName;
                                 return;
                             }
                             var picture = user.profilePicturePreview || user.profilePicture;
