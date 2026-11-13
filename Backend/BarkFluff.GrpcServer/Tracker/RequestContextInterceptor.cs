@@ -30,26 +30,6 @@ public class RequestContextInterceptor : Interceptor
         UnaryServerMethod<TRequest, TResponse> continuation)
         => RunWithRequestContextAsync(context, () => continuation(request, context));
 
-    public override Task<TResponse> ClientStreamingServerHandler<TRequest, TResponse>(
-        IAsyncStreamReader<TRequest> requestStream,
-        ServerCallContext context,
-        ClientStreamingServerMethod<TRequest, TResponse> continuation)
-        => RunWithRequestContextAsync(context, () => continuation(requestStream, context));
-
-    public override Task ServerStreamingServerHandler<TRequest, TResponse>(
-        TRequest request,
-        IServerStreamWriter<TResponse> responseStream,
-        ServerCallContext context,
-        ServerStreamingServerMethod<TRequest, TResponse> continuation)
-        => RunWithRequestContextAsync(context, () => continuation(request, responseStream, context));
-
-    public override Task DuplexStreamingServerHandler<TRequest, TResponse>(
-        IAsyncStreamReader<TRequest> requestStream,
-        IServerStreamWriter<TResponse> responseStream,
-        ServerCallContext context,
-        DuplexStreamingServerMethod<TRequest, TResponse> continuation)
-        => RunWithRequestContextAsync(context, () => continuation(requestStream, responseStream, context));
-
     private async Task<TResponse> RunWithRequestContextAsync<TResponse>(
         ServerCallContext context,
         Func<Task<TResponse>> continuation)
@@ -94,15 +74,6 @@ public class RequestContextInterceptor : Interceptor
         );
 
         return await continuation();
-    }
-
-    private async Task RunWithRequestContextAsync(ServerCallContext context, Func<Task> continuation)
-    {
-        await RunWithRequestContextAsync<bool>(context, async () =>
-        {
-            await continuation();
-            return true;
-        });
     }
 
     /// <summary>

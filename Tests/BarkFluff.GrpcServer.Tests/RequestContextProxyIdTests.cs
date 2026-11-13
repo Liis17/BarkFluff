@@ -83,7 +83,7 @@ public class RequestContextProxyIdTests
     }
 
     [Fact]
-    public async Task ProxyId_IsAvailableForEveryStreamingShape()
+    public async Task ProxyId_IsNotAddedToStreamingRequestContexts()
     {
         var sink = new CaptureSink();
         using var logger = new LoggerConfiguration().Enrich.FromLogContext()
@@ -122,8 +122,9 @@ public class RequestContextProxyIdTests
         Assert.Equal(3, events.Length);
         foreach (var logEvent in events)
         {
-            Assert.Equal("lv-1", ((ScalarValue)logEvent.Properties["ContextProxyId"]).Value);
-            Assert.Equal("lv-1", ((ScalarValue)logEvent.Properties["ProxyId"]).Value);
+            Assert.Null(((ScalarValue)logEvent.Properties["ContextProxyId"]).Value);
+            Assert.False((bool)((ScalarValue)logEvent.Properties["ContextInitialized"]).Value!);
+            Assert.False(logEvent.Properties.ContainsKey("ProxyId"));
         }
     }
 
@@ -146,7 +147,7 @@ public class RequestContextProxyIdTests
         return host;
     }
 
-    public sealed class ProxyIdProbeService(RequestContext requestContext, ILogger<ProxyIdProbeService> logger)
+    public sealed class ProxyIdProbeService(IRequestContextAccessor requestContextAccessor, ILogger<ProxyIdProbeService> logger)
         : TraceProbeApi.TraceProbeApiBase
     {
         public override Task<ProbeReply> Unary(ProbeRequest request, ServerCallContext context)
@@ -179,7 +180,19 @@ public class RequestContextProxyIdTests
 
         private ProbeReply Reply()
         {
-            logger.LogInformation("proxy id probe with context {ContextProxyId}", requestContext.ProxyId);
+            RequestContext? requestContext = null;
+            try
+            {
+                requestContext = requestContextAccessor.Current;
+            }
+            catch (InvalidOperationException)
+            {
+            }
+
+            logger.LogInformation(
+                "proxy id probe with context {ContextProxyId} (initialized={ContextInitialized})",
+                requestContext?.ProxyId,
+                requestContext is not null);
             return new ProbeReply();
         }
     }

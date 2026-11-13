@@ -10,7 +10,7 @@ XAuth читает JWT из plaintext metadata x-auth-token, проверяет 
 
 Client metadata: x-device-name, x-os-name, x-app-name, x-app-version, x-ip-address и x-device-id содержат Base64 от UTF-8. XAuth token не Base64. RequestContextInterceptor разбирает эти значения. IpAddress может включать присланный клиентом x-ip-address; TrustedIpAddress берёт proxy headers/socket peer, без клиентского metadata. Используйте trusted value для security decisions.
 
-`RequestContext.ProxyId` необязателен: интерцептор читает HTTP-заголовок `X-BFT-Proxy-Id` во всех четырёх формах gRPC-вызова, принимает ровно одно значение длиной 1–64 ASCII-символа из `[A-Za-z0-9._-]`, иначе оставляет `null`. Nginx передаёт его только после проверки Exit, секрета и IP клиента; валидный идентификатор добавляется в Serilog `LogContext` как `ProxyId`. Остальные потребители `RequestContext` могут не учитывать это поле. XAuth и клиентские gRPC metadata этим заголовком не меняются.
+`RequestContext.ProxyId` необязателен: `RequestContextInterceptor` читает HTTP-заголовок `X-BFT-Proxy-Id` только для unary gRPC-вызовов, принимает ровно одно значение длиной 1–64 ASCII-символа из `[A-Za-z0-9._-]`, иначе оставляет `null`. Nginx передаёт его только после проверки Exit, секрета и IP клиента; валидный идентификатор добавляется в Serilog `LogContext` как `ProxyId`. Стриминговые вызовы не получают request context — как и до добавления ProxyId. XAuth и клиентские gRPC metadata этим заголовком не меняются.
 
 ## Health
 

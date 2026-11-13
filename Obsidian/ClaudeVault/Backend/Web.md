@@ -18,4 +18,4 @@ YARP перенаправляет gRPC-Web к внутренним gRPC-серв
 
 ## Развёртывание
 
-`Dockerfile.slim` собирает образ Web. Внешний Proxy-режим задаётся в `Docker/nightly/proxy/docker-compose.yml`, а его ingress — в `Docker/nightly/proxy/nginx/sites/proxy.conf`; `Docker/nightly/nginx/sites/web.conf` относится к основному Node ingress. Shell — режим того же Web-хоста; сервисные адреса, CORS и публичная конфигурация берутся из appsettings, переменных среды и Settings там, где он подключён. См. также [[Backend/Navigator]], [[Backend/Files]], [[Backend/Calls]], [[Backend/Updates]].
+`Dockerfile.slim` собирает образ Web. Внешний Proxy-режим задаётся в `Docker/nightly/proxy/docker-compose.yml`, а его ingress — в `Docker/nightly/proxy/nginx/sites/proxy.conf`; основной Node ingress для Web находится в `Docker/nightly/nginx/sites/10-subdomains.conf`. Shell — режим того же Web-хоста; сервисные адреса, CORS и публичная конфигурация берутся из appsettings, переменных среды и Settings там, где он подключён. См. также [[Backend/Navigator]], [[Backend/Files]], [[Backend/Calls]], [[Backend/Updates]].
