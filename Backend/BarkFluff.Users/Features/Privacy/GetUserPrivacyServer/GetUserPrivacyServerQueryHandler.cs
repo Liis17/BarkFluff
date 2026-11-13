@@ -24,7 +24,9 @@ public class GetUserPrivacyServerQueryHandler : IRequestHandler<GetUserPrivacySe
         if (user is null)
             throw new UserNotFoundException();
 
-        var privacy = await _privacyStorage.GetOrCreate(request.UserId);
+        var privacy = user.AccountStatus == Domain.AccountStatus.Active
+            ? await _privacyStorage.GetOrCreate(request.UserId)
+            : await _privacyStorage.Get(request.UserId) ?? new Domain.Privacy();
         if (user.AccountStatus != Domain.AccountStatus.Active)
             privacy.OnlineVisibility = Domain.ProfileFieldVisibility.None;
 

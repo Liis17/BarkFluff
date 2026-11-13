@@ -48,11 +48,10 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, GetUserResponse
             throw new UserNotFoundException();
         }
 
-        _logger.LogInformation(
-            "Информация о пользователе {UserId} ({Username}) успешно получена",
-            userId,
-            user.Username
-        );
+        if (user.AccountStatus == Domain.AccountStatus.Active)
+            _logger.LogInformation("Информация о пользователе {UserId} ({Username}) успешно получена", userId, user.Username);
+        else
+            _logger.LogInformation("Информация о пользователе {UserId} успешно получена", userId);
 
         var personalization = await _personalizationStorage.Get(userId);
 

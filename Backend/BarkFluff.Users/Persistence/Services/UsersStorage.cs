@@ -46,6 +46,12 @@ public class UsersStorage
         _usersContext.Users.AsNoTracking().Include(u => u.Contact)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public Task<AccountStatus?> GetAccountStatus(long id, CancellationToken cancellationToken) =>
+        _usersContext.Users.AsNoTracking()
+            .Where(user => user.Id == id)
+            .Select(user => (AccountStatus?)user.AccountStatus)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public Task<int> TouchAccountRestrictionStatus(long userId, AccountStatus status, CancellationToken cancellationToken) =>
         _usersContext.Users
             .Where(u => u.Id == userId && !u.IsDraft && !u.IsBot && u.AccountStatus == status)
@@ -58,6 +64,9 @@ public class UsersStorage
         string reason,
         DateTime restrictedAt,
         DateTime? deletionScheduledAt,
+        AccountStatus? preDeletionAccountStatus,
+        string? preDeletionRestrictionReason,
+        DateTime? preDeletionRestrictedAt,
         CancellationToken cancellationToken) =>
         _usersContext.Users
             .Where(u => u.Id == userId && !u.IsDraft && !u.IsBot && u.AccountStatus == expectedStatus)
@@ -65,7 +74,10 @@ public class UsersStorage
                 .SetProperty(u => u.AccountStatus, status)
                 .SetProperty(u => u.RestrictionReason, status == AccountStatus.Active ? null : reason)
                 .SetProperty(u => u.RestrictedAt, status == AccountStatus.Active ? null : restrictedAt)
-                .SetProperty(u => u.DeletionScheduledAt, deletionScheduledAt), cancellationToken);
+                .SetProperty(u => u.DeletionScheduledAt, deletionScheduledAt)
+                .SetProperty(u => u.PreDeletionAccountStatus, status == AccountStatus.PendingDeletion ? preDeletionAccountStatus : null)
+                .SetProperty(u => u.PreDeletionRestrictionReason, status == AccountStatus.PendingDeletion ? preDeletionRestrictionReason : null)
+                .SetProperty(u => u.PreDeletionRestrictedAt, status == AccountStatus.PendingDeletion ? preDeletionRestrictedAt : null), cancellationToken);
 
     public async Task<List<User>> GetByIds(List<long> ids)
     {
@@ -123,6 +135,7 @@ public class UsersStorage
             SELECT u.""Id"", u.""Uuid"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
                    u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""StorageLimitGb"",
                    u.""IsBot"", u.""AccountStatus"", u.""RestrictionReason"", u.""RestrictedAt"", u.""DeletionScheduledAt"", u.""CleanupCompletedAt"",
+                   u.""PreDeletionAccountStatus"", u.""PreDeletionRestrictionReason"", u.""PreDeletionRestrictedAt"",
                    u.""AcceptedLegalRevision"", u.""AcceptedLegalAt"",
                    uc.""Email"", uc.""UserId""
             FROM ""Users"" u
@@ -143,14 +156,14 @@ public class UsersStorage
 
         // Получение общего количества результатов для пагинации
         var countSql = @"
-            SELECT COUNT(*) AS ""Value""
+            SELECT COUNT(*)
             FROM ""Users"" u
             WHERE to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username"") @@ plainto_tsquery('russian', @searchTerm)
             AND u.""IsDraft"" = false
             AND u.""AccountStatus"" = 0";
 
-        var totalCount = await _usersContext.Database.SqlQueryRaw<int>(countSql,
-            new NpgsqlParameter("@searchTerm", normalizedSearchTerm)).SingleAsync();
+        var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql,
+            new NpgsqlParameter("@searchTerm", normalizedSearchTerm));
 
         return (users, totalCount);
     }
@@ -188,6 +201,7 @@ public class UsersStorage
             SELECT u.""Id"", u.""Uuid"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
                    u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""IsBot"", u.""StorageLimitGb"",
                    u.""AccountStatus"", u.""RestrictionReason"", u.""RestrictedAt"", u.""DeletionScheduledAt"", u.""CleanupCompletedAt"",
+                   u.""PreDeletionAccountStatus"", u.""PreDeletionRestrictionReason"", u.""PreDeletionRestrictedAt"",
                    uc.""Email"", uc.""UserId"",
                    COUNT(*) OVER() AS ""TotalCount""
             FROM ""Users"" u
@@ -630,6 +644,9 @@ public class UsersStorage
                     && u.DeletionScheduledAt <= now)
                 .ExecuteUpdateAsync(update => update
                     .SetProperty(u => u.AccountStatus, AccountStatus.Deleted)
+                    .SetProperty(u => u.PreDeletionAccountStatus, (AccountStatus?)null)
+                    .SetProperty(u => u.PreDeletionRestrictionReason, (string?)null)
+                    .SetProperty(u => u.PreDeletionRestrictedAt, (DateTime?)null)
                     .SetProperty(u => u.CleanupCompletedAt, (DateTime?)null), cancellationToken);
         }
 
@@ -658,6 +675,9 @@ public class UsersStorage
             user.ProfilePicture = null;
             user.ProfilePicturePreviewUrl = null;
             user.RestrictionReason = null;
+            user.PreDeletionAccountStatus = null;
+            user.PreDeletionRestrictionReason = null;
+            user.PreDeletionRestrictedAt = null;
             user.StorageLimitGb = 1;
             user.AcceptedLegalRevision = null;
             user.AcceptedLegalAt = null;

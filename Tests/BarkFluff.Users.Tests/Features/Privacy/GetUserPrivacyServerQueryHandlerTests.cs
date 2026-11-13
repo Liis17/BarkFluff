@@ -45,5 +45,18 @@ public class GetUserPrivacyServerQueryHandlerTests : IAsyncDisposable
         result.Settings.OnlineVisibility.Should().Be(BarkFluff.Proto.Users.ProfileFieldVisibility.None);
     }
 
+    [Fact]
+    public async Task Handle_DeletedUserDoesNotCreatePrivacy()
+    {
+        var user = await _h.SeedUser();
+        user.AccountStatus = Domain.AccountStatus.Deleted;
+        var handler = new GetUserPrivacyServerQueryHandler(_h.PrivacyStorage, _h.UsersStorage);
+
+        var result = await handler.Handle(new GetUserPrivacyServerQuery { UserId = user.Id }, CancellationToken.None);
+
+        result.Settings.OnlineVisibility.Should().Be(BarkFluff.Proto.Users.ProfileFieldVisibility.None);
+        (await _h.PrivacyStorage.Get(user.Id)).Should().BeNull();
+    }
+
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();
 }
