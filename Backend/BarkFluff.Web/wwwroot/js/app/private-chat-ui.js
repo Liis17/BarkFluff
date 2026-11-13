@@ -190,7 +190,9 @@
                     }
                     deps.setChatTabContext(
                         peerIsRestricted ? BF.utils.restrictedUserName(peer) : deps.chatTabTitle(peer),
-                        peerIsRestricted ? null : peer.profilePicturePreview || peer.profilePicture || chat.picture || null
+                        peerIsRestricted
+                            ? null
+                            : peer.profilePicturePreview || peer.profilePicture || chat.picture || null
                     );
                 })
                 .catch(function () {});

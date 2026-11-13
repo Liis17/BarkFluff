@@ -15,7 +15,7 @@ npm run build
 npm run sync-proto:check
 ```
 
-Build выполняет sync → buf generate → tsc → vite и создаёт `dist/`. `scripts/sync-public-proto.mjs` копирует `developers_api.proto`, `identity_api.proto`, `shared.proto` из канонического `Shared/BarkFluff.Proto/`; check-only сообщает drift без записи. Конфигурация генерации — `buf.yaml`/`buf.gen.yaml`, generated TypeScript — `src/gen/`. Dev proxy `/grpc` → `http://localhost:7020` задаёт `vite.config.ts`.
+Build выполняет sync → buf generate → tsc → vite и создаёт `dist/`. `scripts/sync-public-proto.mjs` копирует `developers_api.proto`, `identity_api.proto`, `shared.proto`, `users_api.proto` из канонического `Shared/BarkFluff.Proto/`; check-only сообщает drift без записи. Конфигурация генерации — `buf.yaml`/`buf.gen.yaml`, generated TypeScript — `src/gen/`. Dev proxy `/grpc` → `http://localhost:7020` задаёт `vite.config.ts`.
 
 ## Авторизация и API
 

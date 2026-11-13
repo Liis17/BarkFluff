@@ -1,0 +1,1287 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Users";
+
+import "google/protobuf/timestamp.proto";
+import "shared.proto";
+
+package barkfluff.users;
+
+service UsersApi {
+
+  
+  // Получить информацию о пользователе
+  rpc GetUser(GetUserRequest) returns(GetUserResponse);
+  
+  // Установить аватарку
+  rpc SetProfilePicture(SetProfilePictureRequest) returns(SetProfilePictureResponse);
+
+  // Проверить существование юзернейма
+  rpc CheckExistUsername(CheckExistUsernameRequest) returns(CheckExistResponse);
+
+  // Проверить существование емейла
+  rpc CheckExistEmail(CheckExistEmailRequest) returns(CheckExistResponse);
+  
+  // Изменить имя или фамилию
+  rpc ChangeName(ChangeNameRequest) returns(ChangeNameResponse);
+  
+  // Изменить юзернейм
+  rpc ChangeUsername(ChangeUsernameRequest) returns(ChangeUsernameResponse);
+  
+  // Изменить био
+  rpc ChangeBio(ChangeBioRequest) returns(ChangeBioResponse);
+  
+  // Найти пользователей по имени/фамилии/юзернейму
+  rpc SearchUsers(SearchUsersRequest) returns(SearchUsersResponse);
+
+  // Резолв федеративного адреса @username:servername (Фаза 2; до неё — Unimplemented)
+  rpc ResolveFederatedUser(ResolveFederatedUserRequest) returns (ResolveFederatedUserResponse);
+
+  // Получить баджи пользователя
+  rpc GetUserBadges(GetUserBadgesRequest) returns(GetUserBadgesResponse);
+
+  // Выбрать основной бейдж текущего пользователя; badge_id=0 снимает выбор.
+  rpc SetPrimaryBadge(SetPrimaryBadgeRequest) returns(SetPrimaryBadgeResponse);
+
+  // Получить список устройств текущего пользователя
+  rpc GetDevices(GetDevicesRequest) returns(GetDevicesResponse);
+
+  // Получить текущее устройство
+  rpc GetCurrentDevice(GetCurrentDeviceRequest) returns(GetCurrentDeviceResponse);
+
+  // Переименовать устройство
+  rpc RenameDevice(RenameDeviceRequest) returns(RenameDeviceResponse);
+
+  // Установить Firebase токен устройства
+  rpc SetFirebaseToken(SetFirebaseTokenRequest) returns(SetFirebaseTokenResponse);
+
+  // Удалить Firebase токен текущего устройства
+  rpc ClearFirebaseToken(ClearFirebaseTokenRequest) returns(ClearFirebaseTokenResponse);
+
+  // Включить или выключить уведомления для текущего устройства
+  rpc SetNotificationsEnabled(SetNotificationsEnabledRequest) returns(SetNotificationsEnabledResponse);
+
+  // Заглушить/включить уведомления для конкретного чата (per-chat mute)
+  rpc SetChatMuted(SetChatMutedRequest) returns(SetChatMutedResponse);
+
+  // Получить список замьюченных чатов текущего пользователя
+  rpc GetMutedChats(GetMutedChatsRequest) returns(GetMutedChatsResponse);
+
+  // Получить настройки приватности текущего пользователя
+  rpc GetPrivacySettings(GetPrivacySettingsRequest) returns(GetPrivacySettingsResponse);
+
+  // Обновить настройки приватности текущего пользователя
+  rpc UpdatePrivacySettings(UpdatePrivacySettingsRequest) returns(UpdatePrivacySettingsResponse);
+
+  // Зафиксировать принятие Пользовательского соглашения и Политики конфиденциальности
+  rpc AcceptLegalConsent(AcceptLegalConsentRequest) returns(AcceptLegalConsentResponse);
+
+  // Получить персонализацию текущего пользователя
+  rpc GetPersonalization(GetPersonalizationRequest) returns(GetPersonalizationResponse);
+
+  // Обновить персонализацию текущего пользователя
+  rpc UpdatePersonalization(UpdatePersonalizationRequest) returns(UpdatePersonalizationResponse);
+
+  // Получить синхронизируемые настройки фонов текущего пользователя
+  rpc GetUserSettings(GetUserSettingsRequest) returns(GetUserSettingsResponse);
+
+  // Установить глобальный фон чатов текущего пользователя
+  rpc SetGlobalChatBackground(SetGlobalChatBackgroundRequest) returns(SetGlobalChatBackgroundResponse);
+
+  // Установить или сбросить фон конкретного чата текущего пользователя
+  rpc SetChatBackground(SetChatBackgroundRequest) returns(SetChatBackgroundResponse);
+
+  // Получить постер профиля текущего пользователя
+  rpc GetProfilePoster(GetProfilePosterRequest) returns(GetProfilePosterResponse);
+
+  // Установить (или удалить) постер профиля текущего пользователя
+  rpc SetProfilePoster(SetProfilePosterRequest) returns(SetProfilePosterResponse);
+
+  // Получить папки чатов текущего пользователя
+  rpc GetChatFolders(GetChatFoldersRequest) returns(GetChatFoldersResponse);
+
+  // Создать новую папку чатов
+  rpc CreateChatFolder(CreateChatFolderRequest) returns(CreateChatFolderResponse);
+
+  // Обновить папку чатов (частичное обновление)
+  rpc UpdateChatFolder(UpdateChatFolderRequest) returns(UpdateChatFolderResponse);
+
+  // Удалить папку чатов
+  rpc DeleteChatFolder(DeleteChatFolderRequest) returns(DeleteChatFolderResponse);
+
+  // Добавить чат в папку
+  rpc AddChatToFolder(AddChatToFolderRequest) returns(AddChatToFolderResponse);
+
+  // Удалить чат из папки
+  rpc RemoveChatFromFolder(RemoveChatFromFolderRequest) returns(RemoveChatFromFolderResponse);
+
+  // Изменить порядок папок
+  rpc ReorderChatFolders(ReorderChatFoldersRequest) returns(ReorderChatFoldersResponse);
+
+  // -- Prekey bundle (X3DH) для секретных чатов ---------------------------------
+  //
+  // Bundle принадлежит устройству (device_id берётся из текущей сессии).
+  // identity_pubkey — Ed25519 (long-term ключ, не меняется).
+  // signed_prekey   — X25519, подписан identity_key, ротируется периодически (~раз в неделю).
+  // one_time_prekey — X25519, пул разовых ключей, расходуется FetchPrekeyBundle.
+  // Сервер НЕ валидирует подпись signed_prekey — это делает клиент-получатель.
+
+  // Зарегистрировать prekey-bundle текущего устройства (вызывается один раз после генерации ключей).
+  rpc RegisterPrekeyBundle(RegisterPrekeyBundleRequest) returns(RegisterPrekeyBundleResponse);
+
+  // Получить prekey-bundle устройства собеседника. Расходует одну one-time prekey (если осталась).
+  rpc FetchPrekeyBundle(FetchPrekeyBundleRequest) returns(FetchPrekeyBundleResponse);
+
+  // Список устройств пользователя c флагом наличия bundle (для выбора целевого устройства секретного чата).
+  rpc ListPeerDevices(ListPeerDevicesRequest) returns(ListPeerDevicesResponse);
+
+  // Пополнить пул one-time prekeys текущего устройства.
+  rpc ReplenishOneTimePrekeys(ReplenishOneTimePrekeysRequest) returns(ReplenishOneTimePrekeysResponse);
+
+  // Сменить signed prekey текущего устройства.
+  rpc RotateSignedPrekey(RotateSignedPrekeyRequest) returns(RotateSignedPrekeyResponse);
+
+  // Получить непотребляющий статус prekey-bundle текущего устройства.
+  rpc GetOwnPrekeyStatus(GetOwnPrekeyStatusRequest) returns(GetOwnPrekeyStatusResponse);
+}
+
+service UsersServerApi {
+  rpc SetVerifiedEmail(SetVerifiedEmailRequest) returns(SetVerifiedEmailResponse);
+
+  // Административное изменение статуса локального аккаунта.
+  rpc SetAccountRestriction(SetAccountRestrictionRequest) returns(SetAccountRestrictionResponse);
+  rpc GetAccountRestriction(GetAccountRestrictionRequest) returns(GetAccountRestrictionResponse);
+  rpc ClaimAccountsForDeletion(ClaimAccountsForDeletionRequest) returns(ClaimAccountsForDeletionResponse);
+  rpc CompleteAccountCleanup(CompleteAccountCleanupRequest) returns(CompleteAccountCleanupResponse);
+  
+  // Найти по логину
+  rpc FindByLogin(FindByLoginRequest) returns(FindByLoginResponse);
+
+  // Проверить существование юзернейма
+  rpc CheckExistUsername(CheckExistUsernameRequest) returns(CheckExistResponse);
+
+  // Проверить существование емейла
+  rpc CheckExistEmail(CheckExistEmailRequest) returns(CheckExistResponse);
+  
+  // Добавить черновик юзера
+  rpc AddDraftUser(AddDraftUserRequest) returns(AddDraftUserResponse);
+
+  // Переопределить черновик пользователя
+  rpc OverrideDraftUser(AddDraftUserRequest) returns(AddDraftUserResponse);
+  
+  // Подтвердить пользователя
+  rpc ConfirmUser(ConfirmUserRequest) returns(ConfirmUserResponse);
+  
+  // Получить пользователя по id
+  rpc GetById(GetByIdRequest) returns(GetByIdResponse);
+  
+  // Получить контакты пользователя по id
+  rpc GetUserContacts(GetUserContactsRequest) returns(GetUserContactsResponse);
+  
+  // Получить пользователей по id
+  rpc ListByIds(ListByIdsRequest) returns(ListByIdsResponse);
+
+  // Назначить бадж пользователю
+  rpc AssignUserBadge(AssignUserBadgeRequest) returns(AssignUserBadgeResponse);
+
+  // Снять бадж с пользователя
+  rpc RemoveUserBadge(RemoveUserBadgeRequest) returns(RemoveUserBadgeResponse);
+
+  // Обновить приоритет баджа пользователя
+  rpc UpdateUserBadgePriority(UpdateUserBadgePriorityRequest) returns(UpdateUserBadgePriorityResponse);
+
+  // Создать новый бадж
+  rpc CreateBadge(CreateBadgeRequest) returns(CreateBadgeResponse);
+
+  // Получить все баджи
+  rpc GetAllBadges(GetAllBadgesRequest) returns(GetAllBadgesResponse);
+
+  // Обновить бадж
+  rpc UpdateBadge(UpdateBadgeRequest) returns(UpdateBadgeResponse);
+
+  // Удалить бадж
+  rpc DeleteBadge(DeleteBadgeRequest) returns(DeleteBadgeResponse);
+
+  // Экспорт всех данных пользователя (для GDPR и других целей)
+  rpc ExportData(ExportDataRequest) returns(ExportDataResponse);
+
+  // Зарегистрировать устройство (вызывается Identity при авторизации)
+  rpc RegisterDevice(RegisterDeviceRequest) returns(RegisterDeviceResponse);
+
+  // Получить устройства пользователя по userId
+  rpc GetUserDevices(GetUserDevicesRequest) returns(GetUserDevicesResponse);
+
+  // Удалить устройство пользователя
+  rpc DeleteUserDevice(DeleteUserDeviceRequest) returns(DeleteUserDeviceResponse);
+
+  // Обновить имя устройства и версию приложения (вызывается Identity при refresh токена)
+  rpc UpdateDeviceAppInfo(UpdateDeviceAppInfoRequest) returns(UpdateDeviceAppInfoResponse);
+
+  // Получить публичную информацию пользователя по юзернейму (для веб-сервера)
+  rpc GetUserByUsername(GetUserByUsernameRequest) returns(GetUserByUsernameResponse);
+
+  // Поиск пользователей (для админ-панели)
+  rpc SearchUsersServer(SearchUsersServerRequest) returns(SearchUsersServerResponse);
+
+  // Обновить лимит хранилища пользователя
+  rpc UpdateStorageLimit(UpdateStorageLimitRequest) returns(UpdateStorageLimitResponse);
+
+  // Установить аватарку пользователю (для админ-панели)
+  rpc SetProfilePictureServer(SetProfilePictureServerRequest) returns(SetProfilePictureServerResponse);
+
+  // Получить устройства с Firebase токенами
+  rpc GetDevicesWithFirebaseTokens(GetDevicesWithFirebaseTokensRequest) returns(GetDevicesWithFirebaseTokensResponse);
+
+  // Получить устройства с Firebase токенами по списку DeviceId (для админ-рассылки)
+  rpc GetDevicesWithFirebaseTokensByDeviceIds(GetDevicesWithFirebaseTokensByDeviceIdsRequest) returns(GetDevicesWithFirebaseTokensResponse);
+
+  // Получить ВСЕ устройства с Firebase токенами (для админ-рассылки на всех)
+  rpc GetAllDevicesWithFirebaseTokens(GetAllDevicesWithFirebaseTokensRequest) returns(GetDevicesWithFirebaseTokensResponse);
+
+  // Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
+  rpc GetUserPrivacy(GetUserPrivacyRequest) returns(GetUserPrivacyResponse);
+
+  // Получить подмножество чатов, замьюченных пользователем (для флага muted в Messages)
+  rpc GetMutedChatIds(GetMutedChatIdsRequest) returns(GetMutedChatIdsResponse);
+
+  // Обновить профиль пользователя (для админ-панели)
+  rpc UpdateProfileServer(UpdateProfileServerRequest) returns(UpdateProfileServerResponse);
+
+  // Установить постер профиля пользователя (для админ-панели)
+  rpc SetProfilePosterServer(SetProfilePosterServerRequest) returns(SetProfilePosterServerResponse);
+
+  // Получить URL постера профиля пользователя (для админ-панели)
+  rpc GetProfilePosterServer(GetProfilePosterServerRequest) returns(GetProfilePosterServerResponse);
+
+  // Создать бот-пользователя (для сервиса Bots). Идемпотентно: если username уже занят ботом — вернуть его id.
+  rpc CreateBotUser(CreateBotUserRequest) returns(CreateBotUserResponse);
+
+  // Удалить бот-аккаунт (для сервиса Bots): освободить username, исключить из поиска. Чаты сохраняются.
+  rpc DeleteBotUser(DeleteBotUserRequest) returns(DeleteBotUserResponse);
+
+  // Федерация: батч-upsert кешей remote-профилей (валидация — правила пиннинга uuid к server_name).
+  // Этап 2.1.
+  rpc UpsertRemoteUsers(UpsertRemoteUsersRequest) returns(UpsertRemoteUsersResponse);
+
+  // Messages: батч-чтение профилей по UUID (локальные и remote вперемешку) для отображения remote-авторов.
+  // Этап 2.1.
+  rpc GetUsersByUuid(GetUsersByUuidRequest) returns(GetUsersByUuidResponse);
+
+  // Федерация: профиль локального пользователя (privacy-фильтрованный) по username или uuid.
+  // Используется S2S GetUserProfile. Этап 2.1.
+  rpc GetFederatedProfile(GetFederatedProfileRequest) returns(GetFederatedProfileResponse);
+
+  // Отдавать ли аватар пользователя в федерацию (этап 3.4). Ровно то же правило, которым
+  // GetFederatedProfile решает, показывать ли avatar_file_id: если профиль наружу аватар
+  // отдал — FetchFile его отдаст, если скрыл — откажет даже по утёкшей ссылке.
+  rpc IsAvatarVisibleToFederation(IsAvatarVisibleToFederationRequest) returns(IsAvatarVisibleToFederationResponse);
+
+  // Anti-open-proxy (этап 3.4): существует ли remote-профиль с такой парой (нода, аватар).
+  // Без этой проверки маршрут /download/fed/ проксировал бы произвольный файл с любой ноды.
+  rpc CheckRemoteAvatarRef(CheckRemoteAvatarRefRequest) returns(CheckRemoteAvatarRefResponse);
+}
+
+// Удаление бот-аккаунта (серверный, для сервиса Bots)
+message DeleteBotUserRequest {
+  int64 user_id = 1; // идентификатор бота
+}
+
+message DeleteBotUserResponse { }
+
+// Создание бот-пользователя (серверный, для сервиса Bots)
+message CreateBotUserRequest {
+  string username = 1;               // юзернейм бота (обязан заканчиваться на "bot", кроме bypass)
+  string first_name = 2;             // отображаемое имя бота
+  bool bypass_username_rules = 3;    // true для системных ботов (напр. botfather): пропустить проверку формата/суффикса
+}
+
+message CreateBotUserResponse {
+  int64 user_id = 1;         // идентификатор созданного (или существующего) бота
+  bool already_existed = 2;  // true если бот с таким username уже существовал
+}
+
+// Установить аватарку (серверный)
+message SetProfilePictureServerRequest {
+  int64 user_id = 1;
+  string profile_picture_url = 2;         // ссылка на полное изображение
+  string profile_picture_preview_url = 3; // ссылка на превью
+}
+
+message SetProfilePictureServerResponse { }
+
+// Обновить профиль пользователя (серверный, для админ-панели)
+message UpdateProfileServerRequest {
+  int64 user_id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string bio = 4;
+  string username = 5;
+}
+
+message UpdateProfileServerResponse { }
+
+// Установить постер профиля (серверный, для админ-панели)
+message SetProfilePosterServerRequest {
+  int64 user_id = 1;
+  string poster_file_id = 2; // пусто — удалить постер
+}
+
+message SetProfilePosterServerResponse { }
+
+// Получить URL постера профиля (серверный, для админ-панели)
+message GetProfilePosterServerRequest {
+  int64 user_id = 1;
+}
+
+message GetProfilePosterServerResponse {
+  string poster_url = 1; // пусто если постер не задан
+}
+
+// Поиск пользователей (серверный)
+message SearchUsersServerRequest {
+  string query = 1;   // Поиск по username или user_id (пустой = все)
+  int32 offset = 2;
+  int32 size = 3;     // макс 50
+  optional AccountStatus status_filter = 4;
+}
+
+message SearchUsersServerResponse {
+  repeated User users = 1;
+  int32 total_count = 2;
+  repeated SearchUserServerResult results = 3;
+}
+
+message SearchUserServerResult {
+  User user = 1;
+  AccountRestrictionInfo restriction = 2;
+}
+
+enum AccountStatus {
+  ACTIVE = 0;
+  BLOCKED = 1;
+  PENDING_DELETION = 2;
+  DELETED = 3;
+}
+
+enum AccountRestrictionAction {
+  ACCOUNT_RESTRICTION_ACTION_UNSPECIFIED = 0;
+  BLOCK = 1;
+  UNBLOCK = 2;
+  SCHEDULE_DELETION = 3;
+  CANCEL_DELETION = 4;
+}
+
+message AccountRestrictionInfo {
+  AccountStatus status = 1;
+  string reason = 2;
+  google.protobuf.Timestamp restricted_at = 3;
+  google.protobuf.Timestamp deletion_scheduled_at = 4;
+}
+
+message SetAccountRestrictionRequest {
+  int64 user_id = 1;
+  AccountRestrictionAction action = 2;
+  string reason = 3;
+}
+
+message SetAccountRestrictionResponse {
+  User user = 1;
+  AccountRestrictionInfo restriction = 2;
+  string email = 3;
+}
+
+message GetAccountRestrictionRequest { int64 user_id = 1; }
+
+message GetAccountRestrictionResponse {
+  AccountRestrictionInfo restriction = 1;
+  string username = 2;
+  string first_name = 3;
+  string email = 4;
+}
+
+message ClaimAccountsForDeletionRequest { int32 limit = 1; }
+
+message ClaimAccountsForDeletionResponse { repeated int64 user_ids = 1; }
+
+message CompleteAccountCleanupRequest { int64 user_id = 1; }
+
+message CompleteAccountCleanupResponse { }
+
+// Обновление лимита хранилища
+message UpdateStorageLimitRequest {
+  int64 user_id = 1;
+  int32 storage_limit_gb = 2; // 1-250
+}
+
+message UpdateStorageLimitResponse {
+  User user = 1;
+}
+
+message SearchUsersRequest {
+  string query = 1; // Поисковой запрос
+  barkfluff.shared.PageRequest pagination = 2; // Пагинация (макс 50 элементов)
+}
+
+message SearchUsersResponse {
+  repeated User users = 1;
+
+  int32 total_count = 2; // Общее количество чатов
+}
+
+
+message ChangeBioRequest {
+  string bio = 1; // Новое био
+}
+
+message ChangeBioResponse { }
+
+message ChangeUsernameRequest {
+  string username = 1; // Имя пользователя
+}
+
+message ChangeUsernameResponse {
+  
+}
+
+message ChangeNameRequest {
+  string first_name = 1; // Имя
+  string last_name = 2; // Фамилия
+}
+
+message ChangeNameResponse { }
+
+message ListByIdsRequest {
+  repeated int64 ids = 1; // айдишники
+}
+
+message ListByIdsResponse {
+  repeated User users = 1; // пользователи
+}
+
+message SetProfilePictureRequest {
+  string file_id = 1; // идетификатор файла
+}
+
+message SetProfilePictureResponse { }
+
+message GetUserContactsRequest {
+  int64 user_id = 1; // идентификатор пользователя
+}
+
+message GetUserContactsResponse {
+  User user = 1; // пользователб
+  UserContact contact = 2; // контакты пользователя
+}
+
+message UserContact {
+  string email = 1; // эл. почта
+}
+
+message GetByIdRequest {
+  int64 user_id = 1; // идентификатор пользователя
+}
+
+message GetByIdResponse {
+  User user = 1; // пользователь
+}
+
+message GetUserRequest {
+  int64 user_id = 1; // идентификатор пользователя
+}
+
+message GetUserResponse {
+  User user = 1; // пользователь
+}
+
+message ConfirmUserRequest {
+  int64 user_id = 1; // идентификатор пользователя
+}
+
+message ConfirmUserResponse { }
+
+
+
+message AddDraftUserRequest {
+  string first_name = 1; // имя 
+  string last_name = 2; // фамилия
+  string username = 3; // имя пользователя
+  string email = 4; // почта
+  string registration_id = 5; // Idempotency key supplied only by Identity.
+}
+
+message SetVerifiedEmailRequest { int64 user_id = 1; string email = 2; }
+message SetVerifiedEmailResponse { }
+
+message AddDraftUserResponse {
+  int64 user_id = 1; // идентификатор пользователя
+}
+
+message CheckExistEmailRequest {
+  string email = 1; // эл. почта
+}
+
+message CheckExistUsernameRequest {
+  string username = 1; // имя пользователя
+}
+
+message CheckExistResponse {
+  bool exist = 1; // существует или нет
+}
+
+
+message FindByLoginRequest {
+  oneof login {
+    string username = 1; // имя пользователя
+    string email = 2; // почта
+  }
+}
+
+message FindByLoginResponse {
+  User user = 1; // пользователь
+}
+
+message User{
+  int64 id = 1; // идентификатор пользователя
+  string first_name = 2; // имя
+  string last_name = 3; // фамилия
+  string username = 4; // юзернейм
+  google.protobuf.Timestamp registration_date = 5; // дата регистрации
+  string profile_picture = 6; // ссылка на аватарку пользователя
+  string bio = 7; // Био
+  string profile_picture_preview = 8; // ссылка на превью аватарки
+  repeated UserBadge badges = 9; // баджи пользователя
+  int32 storage_limit_gb = 10; // лимит хранилища в гигабайтах
+  string profile_poster_file_id = 11; // FileId постера/фона профиля (пусто если не задан)
+  bool is_bot = 12; // является ли пользователь ботом
+  string uuid = 13; // Глобально уникальный идентификатор пользователя (Guid), для федерации
+  AccountStatus account_status = 14;
+}
+
+message ResolveFederatedUserRequest {
+  string fid = 1; // "@username:servername" (допускается без @)
+}
+
+message ResolveFederatedUserResponse {
+  bool found = 1;
+  string uuid = 2;
+  string username = 3;
+  string server_name = 4;
+  string first_name = 5;
+  string last_name = 6;
+  string bio = 7;
+  string avatar_url = 8; // проксируемый URL своей ноды (пусто, если скрыт/нет)
+}
+
+// Сообщения для работы с баджами
+
+message Badge {
+  int32 id = 1; // идентификатор баджа
+  string name = 2; // название баджа
+  string description = 3; // описание баджа
+  string image_url = 4; // ссылка на изображение баджа
+  google.protobuf.Timestamp created_date = 5; // дата создания
+  bool is_active = 6; // активен ли бадж
+  string mini_image_url = 7; // ссылка на миниатюру 32x32 PNG (пусто для устаревших бейджей)
+}
+
+message UserBadge {
+  Badge badge = 1; // информация о бадже
+  int32 priority = 2; // приоритет отображения (меньше = выше приоритет)
+  google.protobuf.Timestamp assigned_date = 3; // дата назначения
+  bool is_primary = 4; // выбран ли бейдж пользователем как основной
+}
+
+message SetPrimaryBadgeRequest {
+  int32 badge_id = 1; // 0 — снять основной бейдж
+}
+
+message SetPrimaryBadgeResponse {
+  UserBadge primary_badge = 1; // отсутствует, если основной бейдж снят
+}
+
+// Запросы и ответы для получения баджей пользователя
+
+message GetUserBadgesRequest {
+  int64 user_id = 1; // идентификатор пользователя
+  optional int32 limit = 2; // лимит количества баджей (1 для списков, 3 для профиля, null для всех)
+}
+
+message GetUserBadgesResponse {
+  repeated UserBadge badges = 1; // баджи пользователя, отсортированные по приоритету
+}
+
+// Запросы и ответы для назначения баджа
+
+message AssignUserBadgeRequest {
+  int64 user_id = 1; // идентификатор пользователя
+  int32 badge_id = 2; // идентификатор баджа
+  optional int32 priority = 3; // приоритет (по умолчанию 1000)
+}
+
+message AssignUserBadgeResponse {
+  UserBadge user_badge = 1; // назначенный бадж
+}
+
+// Запросы и ответы для снятия баджа
+
+message RemoveUserBadgeRequest {
+  int64 user_id = 1; // идентификатор пользователя
+  int32 badge_id = 2; // идентификатор баджа
+}
+
+message RemoveUserBadgeResponse {
+  bool success = 1; // успешность операции
+}
+
+// Запросы и ответы для обновления приоритета баджа
+
+message UpdateUserBadgePriorityRequest {
+  int64 user_id = 1; // идентификатор пользователя
+  int32 badge_id = 2; // идентификатор баджа
+  int32 new_priority = 3; // новый приоритет
+}
+
+message UpdateUserBadgePriorityResponse {
+  UserBadge user_badge = 1; // обновленный бадж
+}
+
+// Запросы и ответы для создания баджа
+
+message CreateBadgeRequest {
+  string name = 1; // название баджа
+  string description = 2; // описание баджа
+  string image_url = 3; // ссылка на изображение баджа
+  string mini_image_url = 4; // ссылка на миниатюру 32x32 PNG
+}
+
+message CreateBadgeResponse {
+  Badge badge = 1; // созданный бадж
+}
+
+// Запросы и ответы для получения всех баджей
+
+message GetAllBadgesRequest {
+  bool include_inactive = 1; // включать ли неактивные баджи
+}
+
+message GetAllBadgesResponse {
+  repeated Badge badges = 1; // список всех баджей
+}
+
+// Запросы и ответы для обновления баджа
+
+message UpdateBadgeRequest {
+  int32 id = 1; // идентификатор баджа
+  string name = 2; // новое название баджа
+  string description = 3; // новое описание баджа
+  string image_url = 4; // новая ссылка на изображение баджа
+  bool is_active = 5; // активен ли бадж
+  string mini_image_url = 6; // новая ссылка на миниатюру (пусто — сохранить текущую)
+}
+
+message UpdateBadgeResponse {
+  Badge badge = 1; // обновлённый бадж
+}
+
+// Запросы и ответы для удаления баджа
+
+message DeleteBadgeRequest {
+  int32 id = 1; // идентификатор баджа
+}
+
+message DeleteBadgeResponse {
+  bool success = 1; // результат удаления
+}
+
+// Экспорт данных пользователя
+
+message ExportDataRequest {
+  int64 user_id = 1; // идентификатор пользователя
+}
+
+message ExportDataResponse {
+  repeated JsonFile files = 1; // массив JSON файлов с данными
+}
+
+message JsonFile {
+  string filename = 1; // имя файла (например, "profile.json", "messages.json")
+  string content = 2; // содержимое файла в формате JSON
+}
+
+// Сообщения для работы с устройствами
+
+message Device {
+  string device_id = 1; // Уникальный идентификатор устройства (GUID)
+  int64 user_id = 2; // Идентификатор пользователя
+  string original_name = 3; // Оригинальное имя устройства
+  string custom_name = 4; // Кастомное имя устройства (задается пользователем)
+  google.protobuf.Timestamp authorized_at = 5; // Дата и время авторизации
+  string app_name = 6; // Имя приложения
+  string operation_system = 7; // Операционная система
+  string location = 8; // Страна/город
+  bool notifications_enabled = 9; // Включены ли push-уведомления на этом устройстве
+}
+
+// Запросы и ответы для получения списка устройств
+
+message GetDevicesRequest { }
+
+message GetDevicesResponse {
+  repeated Device devices = 1; // Список устройств пользователя
+}
+
+// Запросы и ответы для получения текущего устройства
+
+message GetCurrentDeviceRequest { }
+
+message GetCurrentDeviceResponse {
+  Device device = 1; // Текущее устройство
+}
+
+// Запросы и ответы для переименования устройства
+
+message RenameDeviceRequest {
+  string device_id = 1; // Идентификатор устройства
+  string custom_name = 2; // Новое кастомное имя
+}
+
+message RenameDeviceResponse { }
+
+// Запросы и ответы для регистрации устройства (внутренний эндпоинт)
+
+message RegisterDeviceRequest {
+  string device_id = 1; // Уникальный идентификатор устройства (GUID)
+  int64 user_id = 2; // Идентификатор пользователя
+  string original_name = 3; // Оригинальное имя устройства
+  string app_name = 4; // Имя приложения
+  string operation_system = 5; // Операционная система
+  string location = 6; // Страна/город
+}
+
+message RegisterDeviceResponse {
+  Device device = 1; // Зарегистрированное устройство
+}
+
+// Запросы и ответы для обновления имени устройства и версии приложения (внутренний эндпоинт)
+
+message UpdateDeviceAppInfoRequest {
+  string device_id = 1; // Уникальный идентификатор устройства (GUID)
+  int64 user_id = 2; // Идентификатор пользователя
+  string original_name = 3; // Оригинальное имя устройства
+  string app_name = 4; // Имя приложения (с версией)
+}
+
+message UpdateDeviceAppInfoResponse {
+  bool updated = 1; // true — данные отличались и были записаны
+}
+
+// Запросы и ответы для получения устройств пользователя (внутренний эндпоинт)
+
+message GetUserDevicesRequest {
+  int64 user_id = 1; // Идентификатор пользователя
+}
+
+message GetUserDevicesResponse {
+  repeated Device devices = 1; // Список устройств
+}
+
+// Запросы и ответы для удаления устройства пользователя (внутренний эндпоинт)
+
+message DeleteUserDeviceRequest {
+  string device_id = 1; // Идентификатор устройства
+  int64 user_id = 2; // Идентификатор пользователя
+}
+
+message DeleteUserDeviceResponse { }
+
+// Получить публичную информацию пользователя по юзернейму
+
+message GetUserByUsernameRequest {
+  string username = 1; // юзернейм
+}
+
+message GetUserByUsernameResponse {
+  bool found = 1; // найден ли пользователь
+  string first_name = 2; // имя
+  string last_name = 3; // фамилия
+  string username = 4; // юзернейм
+  string bio = 5; // био
+  string profile_picture = 6; // ссылка на аватарку
+  string profile_poster_url = 7; // ссылка на постер/фон профиля (пусто если не задан)
+  bool is_bot = 8; // является ли пользователь ботом
+  int64 id = 9; // идентификатор пользователя
+}
+
+// Запросы и ответы для установки Firebase токена
+
+message SetFirebaseTokenRequest {
+  string firebase_token = 1; // Firebase токен устройства
+  PushPlatform push_platform = 2; // Платформа, которой принадлежит токен
+}
+
+message SetFirebaseTokenResponse { }
+
+message ClearFirebaseTokenRequest { }
+
+message ClearFirebaseTokenResponse { }
+
+enum PushPlatform {
+  PUSH_PLATFORM_UNSPECIFIED = 0;
+  PUSH_PLATFORM_ANDROID = 1;
+  PUSH_PLATFORM_WEB = 2;
+}
+
+// Запросы и ответы для получения устройств с Firebase токенами
+
+message GetDevicesWithFirebaseTokensRequest {
+  repeated int64 user_ids = 1; // идентификаторы пользователей
+  string chat_id = 2; // если задан (Guid-строка) — исключить пользователей, замьютивших этот чат; пусто = без фильтра
+}
+
+message GetDevicesWithFirebaseTokensByDeviceIdsRequest {
+  repeated string device_ids = 1; // идентификаторы устройств (Guid в string-форме)
+}
+
+message GetAllDevicesWithFirebaseTokensRequest {
+}
+
+message GetDevicesWithFirebaseTokensResponse {
+  repeated DeviceFirebaseToken tokens = 1; // список токенов
+}
+
+message DeviceFirebaseToken {
+  int64 user_id = 1; // идентификатор пользователя
+  string device_id = 2; // идентификатор устройства
+  string firebase_token = 3; // Firebase токен
+  PushPlatform push_platform = 4; // платформа токена
+}
+
+// Запросы и ответы для включения/выключения уведомлений на текущем устройстве
+
+message SetNotificationsEnabledRequest {
+  bool enabled = 1; // включить (true) или выключить (false) уведомления
+}
+
+message SetNotificationsEnabledResponse { }
+
+// Заглушить/включить уведомления для конкретного чата
+
+message SetChatMutedRequest {
+  string chat_id = 1;                        // идентификатор чата (Guid-строка)
+  bool muted = 2;                            // true = замьютить; false = снять mute (удалить запись)
+  google.protobuf.Timestamp muted_until = 3; // до какого времени mute (пусто при muted=true => навсегда)
+}
+
+message SetChatMutedResponse { }
+
+message GetMutedChatsRequest { }
+
+message MutedChat {
+  string chat_id = 1;                        // идентификатор чата (Guid-строка)
+  google.protobuf.Timestamp muted_until = 2; // до какого времени mute (пусто => навсегда)
+}
+
+message GetMutedChatsResponse {
+  repeated MutedChat chats = 1; // активные муьюты текущего пользователя
+}
+
+// Батч-запрос замьюченных чатов (внутренний, для сервиса Messages)
+
+message GetMutedChatIdsRequest {
+  int64 user_id = 1;             // идентификатор пользователя
+  repeated string chat_ids = 2;  // проверяемые чаты (Guid-строки)
+}
+
+message GetMutedChatIdsResponse {
+  repeated string muted_chat_ids = 1; // подмножество chat_ids с активным mute
+}
+
+// Настройки приватности пользователя
+
+// Уровень видимости поля профиля:
+//  ALL     — видят все
+//  FRIENDS — видят только друзья (временно трактуется как NONE,
+//            пока в бэкенде нет системы отношений между пользователями)
+//  NONE    — скрыто ото всех
+enum ProfileFieldVisibility {
+  ALL = 0;
+  FRIENDS = 1;
+  NONE = 2;
+}
+
+message PrivacySettings {
+  bool profile_visible_on_site = 1;               // видимость публичной страницы barkfluff.com/{username}
+  ProfileFieldVisibility avatar_visibility = 2;   // видимость аватара
+  ProfileFieldVisibility bio_visibility = 3;      // видимость описания профиля (био)
+  ProfileFieldVisibility email_visibility = 4;    // видимость почты
+  bool search_visible = 5;                        // показывать ли пользователя в выдаче поиска
+  ProfileFieldVisibility online_visibility = 6;   // видимость онлайн-статуса
+  bool deny_federated_dm = 7;                     // Запретить входящие сообщения с других серверов (default false = разрешено)
+}
+
+message GetPrivacySettingsRequest { }
+
+message GetPrivacySettingsResponse {
+  PrivacySettings settings = 1;
+}
+
+message UpdatePrivacySettingsRequest {
+  PrivacySettings settings = 1;
+}
+
+message UpdatePrivacySettingsResponse { }
+
+message AcceptLegalConsentRequest {
+  string revision = 1; // Редакция документов — дата «Последнее обновление» из шапки соглашения
+}
+
+message AcceptLegalConsentResponse { }
+
+message GetUserPrivacyRequest {
+  int64 user_id = 1;
+}
+
+message GetUserPrivacyResponse {
+  PrivacySettings settings = 1;
+}
+
+// Персонализация пользователя
+
+message UserPersonalizationData {
+  string profile_poster_file_id = 1;          // FileId файла-постера профиля (пусто если не задан)
+  repeated string chat_background_file_ids = 2; // FileId фоновых изображений чатов
+}
+
+message GetPersonalizationRequest { }
+
+message GetPersonalizationResponse {
+  UserPersonalizationData personalization = 1;
+}
+
+message UpdatePersonalizationRequest {
+  UserPersonalizationData personalization = 1;
+}
+
+message UpdatePersonalizationResponse { }
+
+// Синхронизируемые настройки фонов
+
+message ChatBackgroundOverride {
+  string chat_id = 1;
+  string chat_background_file_id = 2;
+}
+
+message UserSettingsData {
+  string global_chat_background_file_id = 1;
+  repeated ChatBackgroundOverride chat_backgrounds = 2;
+}
+
+message GetUserSettingsRequest { }
+
+message GetUserSettingsResponse {
+  UserSettingsData settings = 1;
+}
+
+message SetGlobalChatBackgroundRequest {
+  string chat_background_file_id = 1; // пусто = без глобального фона
+}
+
+message SetGlobalChatBackgroundResponse { }
+
+message SetChatBackgroundRequest {
+  string chat_id = 1;
+  string chat_background_file_id = 2; // пусто = использовать глобальный фон
+}
+
+message SetChatBackgroundResponse { }
+
+// Постер профиля
+
+message GetProfilePosterRequest { }
+
+message GetProfilePosterResponse {
+  string profile_poster_file_id = 1; // FileId постера профиля (пусто если не задан)
+}
+
+message SetProfilePosterRequest {
+  string profile_poster_file_id = 1; // FileId нового постера (пусто чтобы удалить)
+}
+
+message SetProfilePosterResponse { }
+
+// Папки чатов
+
+message ChatFolderData {
+  string folder_id = 1;        // публичный идентификатор папки (Guid)
+  string folder_name = 2;      // название папки
+  string folder_icon = 3;      // строка-идентификатор иконки (пусто если не задана)
+  repeated string chat_list = 4; // ID чатов в папке (Guid строкой, тот же формат, что Chat.id из messages_api)
+  int32 sort_order = 5;        // порядок отображения (меньше = выше)
+}
+
+message GetChatFoldersRequest { }
+
+message GetChatFoldersResponse {
+  repeated ChatFolderData folders = 1; // папки текущего пользователя по возрастанию sort_order
+}
+
+message CreateChatFolderRequest {
+  string folder_name = 1; // название (обязательно)
+  string folder_icon = 2; // иконка (опционально, пусто = не задана)
+}
+
+message CreateChatFolderResponse {
+  ChatFolderData folder = 1; // созданная папка
+}
+
+message UpdateChatFolderRequest {
+  string folder_id = 1;                  // публичный Guid папки
+  optional string folder_name = 2;       // новое название (если задано)
+  optional string folder_icon = 3;       // новая иконка (пустая строка = очистить)
+  bool has_chat_list_update = 4;         // если true — заменить ChatList на значения ниже
+  repeated string chat_list = 5;          // Guid'ы чатов; используется только когда has_chat_list_update=true
+}
+
+message UpdateChatFolderResponse {
+  ChatFolderData folder = 1; // обновлённая папка
+}
+
+message DeleteChatFolderRequest {
+  string folder_id = 1; // Guid папки
+}
+
+message DeleteChatFolderResponse { }
+
+message AddChatToFolderRequest {
+  string folder_id = 1; // Guid папки
+  string chat_id = 2;   // Guid чата (тот же формат, что Chat.id из messages_api)
+}
+
+message AddChatToFolderResponse {
+  ChatFolderData folder = 1; // обновлённая папка
+}
+
+message RemoveChatFromFolderRequest {
+  string folder_id = 1; // Guid папки
+  string chat_id = 2;   // Guid чата (тот же формат, что Chat.id из messages_api)
+}
+
+message RemoveChatFromFolderResponse {
+  ChatFolderData folder = 1; // обновлённая папка
+}
+
+message ChatFolderOrder {
+  string folder_id = 1; // Guid папки
+  int32 sort_order = 2; // новый порядок
+}
+
+message ReorderChatFoldersRequest {
+  repeated ChatFolderOrder orders = 1; // новые значения SortOrder для папок
+}
+
+message ReorderChatFoldersResponse { }
+
+// -- Prekey bundle (X3DH) -------------------------------------------------------
+
+// X25519 prekey, подписанный identity-ключом устройства.
+message SignedPreKey {
+  uint32 prekey_id = 1; // ID prekey (генерируется устройством, уникален в рамках устройства)
+  bytes public_key = 2; // X25519 публичный ключ (32 байта)
+  bytes signature = 3;  // Ed25519-подпись public_key, сделанная identity-ключом устройства (64 байта)
+}
+
+// X25519 разовая prekey. Расходуется при первом FetchPrekeyBundle.
+message OneTimePreKey {
+  uint32 prekey_id = 1; // ID prekey (уникален в рамках устройства)
+  bytes public_key = 2; // X25519 публичный ключ (32 байта)
+}
+
+// Bundle для X3DH-инициации сессии Double Ratchet.
+message PrekeyBundle {
+  string device_id = 1;             // Устройство, которому принадлежит bundle
+  uint32 registration_id = 2;       // ID регистрации устройства в libsignal
+  bytes identity_pubkey = 3;        // Ed25519 публичный identity-ключ устройства (32 байта)
+  SignedPreKey signed_prekey = 4;   // Текущий signed prekey
+  OneTimePreKey one_time_prekey = 5; // Разовая prekey (отсутствует если пул исчерпан)
+  bool has_one_time_prekey = 6;     // true если one_time_prekey заполнен — позволяет различать "пусто" и "не задан"
+  SignedKyberPreKey kyber_prekey = 7; // Выбранная разовая Kyber prekey либо last-resort fallback
+  bool kyber_prekey_is_last_resort = 8; // true если kyber_prekey взят из last-resort слота
+}
+
+// Сериализованный libsignal Kyber prekey и подпись identity-ключом. Сервер ограничивает размер полей,
+// но подпись и содержимое криптографически проверяет клиент.
+message SignedKyberPreKey {
+  uint32 prekey_id = 1;
+  bytes public_key = 2;
+  bytes signature = 3;
+}
+
+// Регистрация bundle текущего устройства
+
+message RegisterPrekeyBundleRequest {
+  uint32 registration_id = 1;            // ID регистрации устройства в libsignal
+  bytes identity_pubkey = 2;             // Ed25519 публичный identity-ключ устройства (32 байта)
+  SignedPreKey signed_prekey = 3;        // Начальный signed prekey
+  repeated OneTimePreKey one_time_prekeys = 4; // Стартовый пул разовых prekeys (рекомендуется 100 шт)
+  SignedKyberPreKey last_resort_kyber_prekey = 5; // PQXDH last-resort key; требуется при публикации Kyber pool
+  repeated SignedKyberPreKey one_time_kyber_prekeys = 6; // Стартовый PQXDH pool
+}
+
+message RegisterPrekeyBundleResponse { }
+
+// Получение bundle устройства собеседника
+
+message FetchPrekeyBundleRequest {
+  int64 user_id = 1;       // ID пользователя-собеседника
+  string device_id = 2;    // ID устройства собеседника
+  bool require_pqxdh = 3;  // Если true, не расходовать EC key при отсутствии PQXDH support
+}
+
+message FetchPrekeyBundleResponse {
+  PrekeyBundle bundle = 1;     // Bundle с расходуемой one-time prekey (если осталась)
+  int32 remaining_one_time_prekeys = 2; // Сколько prekey осталось у этого устройства после fetch
+  int32 remaining_one_time_kyber_prekeys = 3; // Доступный PQXDH pool после fetch
+}
+
+// Список устройств пользователя для выбора цели секретного чата
+
+message ListPeerDevicesRequest {
+  int64 user_id = 1; // ID пользователя
+}
+
+message ListPeerDevicesResponse {
+  repeated PeerDeviceInfo devices = 1; // Устройства пользователя
+}
+
+message PeerDeviceInfo {
+  string device_id = 1;   // ID устройства
+  string display_name = 2; // Имя для отображения (custom_name либо original_name)
+  bool has_bundle = 3;    // true если устройство зарегистрировало prekey-bundle (без этого секретный чат с ним невозможен)
+  google.protobuf.Timestamp last_seen_at = 4; // Время последней активности (опционально, для сортировки в UI)
+  bool supports_pqxdh = 5; // true если опубликован last-resort Kyber prekey
+}
+
+// Пополнение пула one-time prekeys текущего устройства
+
+message ReplenishOneTimePrekeysRequest {
+  repeated OneTimePreKey prekeys = 1; // Новые prekeys; ID не должны пересекаться с уже существующими у устройства
+  repeated SignedKyberPreKey kyber_prekeys = 2; // Новые подписанные Kyber prekeys
+}
+
+message ReplenishOneTimePrekeysResponse {
+  int32 total_one_time_prekeys = 1; // Сколько prekey теперь у устройства всего
+  int32 total_one_time_kyber_prekeys = 2; // Сколько неиспользованных Kyber prekey теперь у устройства
+}
+
+// Ротация signed prekey текущего устройства
+
+message RotateSignedPrekeyRequest {
+  SignedPreKey signed_prekey = 1; // Новый signed prekey (старый удерживается на сервере короткое время для in-flight handshakes)
+  SignedKyberPreKey last_resort_kyber_prekey = 2; // Новый Kyber last-resort key; можно ротировать вместе с EC или отдельно
+}
+
+message RotateSignedPrekeyResponse { }
+
+message GetOwnPrekeyStatusRequest { }
+
+message GetOwnPrekeyStatusResponse {
+  int32 remaining_one_time_prekeys = 1;
+  int32 remaining_one_time_kyber_prekeys = 2;
+  bool supports_pqxdh = 3;
+  bytes identity_pubkey = 4;
+  uint32 registration_id = 5;
+  SignedKyberPreKey last_resort_kyber_prekey = 6;
+  bool has_bundle = 7;
+}
+
+// -- Федеративные профили (этап 2.1) --------------------------------------------
+
+// Одна запись батча UpsertRemoteUsers. Federation присылает профиль, полученный с origin-ноды;
+// Users применяет правила пиннинга (uuid↔server_name) и возвращает per-запись результат.
+message UpsertRemoteUserInfo {
+  string uuid = 1;            // UUID с origin-ноды (PK в RemoteUsers)
+  string username = 2;
+  string server_name = 3;     // punycode A-label lowercase
+  string first_name = 4;
+  string last_name = 5;
+  string bio = 6;
+  string avatar_file_id = 7;  // FileId на origin (пусто = нет)
+  bool is_deactivated = 8;
+}
+
+message UpsertRemoteUsersRequest {
+  repeated UpsertRemoteUserInfo records = 1;
+}
+
+message UpsertRemoteUserResult {
+  string uuid = 1;
+  bool ok = 2;
+  // Пусто при ok=true. Возможные значения: "LocalUuidCollision", "ServerNameMismatch".
+  string reject_reason = 3;
+}
+
+message UpsertRemoteUsersResponse {
+  repeated UpsertRemoteUserResult results = 1;
+}
+
+// Профиль пользователя по UUID (локальный или remote). Для рендеринга remote-авторов в Messages.
+message UserProfileByUuid {
+  string uuid = 1;
+  bool found = 2;
+  bool is_remote = 3;        // true — RemoteUser, false — локальный User
+  string server_name = 4;    // punycode A-label lowercase (пусто для локального)
+  string username = 5;
+  string first_name = 6;
+  string last_name = 7;
+  string bio = 8;            // локальный: после privacy-фильтра (None здесь — для межсервисного запроса отдаём как есть)
+  string avatar_file_id = 9; // для локального: ProfilePicture; для remote: AvatarFileId на origin
+  bool is_deactivated = 10;  // только для remote
+  int64 user_id = 11;        // только для локального (для remote = 0): numeric ID для создания ChatMember
+  bool deny_federated_dm = 12; // только для локального (для remote всегда false): privacy-запрет входящих fed-DM (этап 2.5)
+  AccountStatus account_status = 13;
+}
+
+message GetUsersByUuidRequest {
+  repeated string uuids = 1; // Guid в строковой форме
+}
+
+message GetUsersByUuidResponse {
+  repeated UserProfileByUuid users = 1;
+}
+
+// Privacy-фильтрованный профиль локального пользователя для S2S-отдачи (GetUserProfile).
+// bio/avatar_file_id пустые, если скрыты privacy; found=false если профиль скрыт целиком или
+// пользователь деактивирован/черновик.
+message GetFederatedProfileRequest {
+  oneof user {
+    string username = 1; // username без домена
+    string uuid = 2;     // Guid в строковой форме
+  }
+}
+
+message GetFederatedProfileResponse {
+  bool found = 1;
+  string uuid = 2;
+  string username = 3;
+  string first_name = 4;
+  string last_name = 5;
+  string bio = 6;
+  string avatar_file_id = 7; // FileId на этой ноде (пусто если скрыт/нет)
+}
+
+message IsAvatarVisibleToFederationRequest {
+  int64 user_id = 1;
+}
+
+message IsAvatarVisibleToFederationResponse {
+  bool visible = 1;
+}
+
+message CheckRemoteAvatarRefRequest {
+  string server_name = 1;
+  string file_id = 2;
+}
+
+message CheckRemoteAvatarRefResponse {
+  bool exists = 1;
+}
