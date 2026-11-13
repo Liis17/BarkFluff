@@ -666,7 +666,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val currentVersion = GlobalParam.getAppVersion(this@MainActivity)
-                val hasUpdate = UpdateChecker.hasUpdate(currentVersion)
+                val hasUpdate = UpdateChecker.hasUpdate(currentVersion, applicationContext)
                 if (hasUpdate) {
                     profileUpdateAvailable = true
                     if (isPhoneFloatingNavigation()) {

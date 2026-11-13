@@ -2,14 +2,13 @@ package com.barkfluff.client.utils
 
 import android.content.Context
 import com.barkfluff.client.security.TlsTransportFactory
+import com.barkfluff.client.security.TlsCallFactory
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Request
 import java.io.IOException
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 data class ServicePingResult(
@@ -21,9 +20,13 @@ data class ServicePingResult(
 class ServicePingChecker(context: Context) {
 
     private val tlsTransport = TlsTransportFactory(context.applicationContext)
-    private val httpsClients = ConcurrentHashMap<String, OkHttpClient>()
-    private val httpClient: OkHttpClient? = if (tlsTransport.allowsCleartext) createHttpClient() else null
-    private val http2Client: OkHttpClient? = if (tlsTransport.allowsCleartext) createHttp2Client() else null
+    private val tlsCalls = TlsCallFactory(context.applicationContext) {
+        configureTimeouts()
+    }
+    private val directHttp2Calls = TlsCallFactory(context.applicationContext) {
+        configureTimeouts()
+        protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE))
+    }
 
     fun check(address: String, fileEndpoint: Boolean = false): ServicePingResult {
         val startedAt = System.nanoTime()
@@ -37,15 +40,12 @@ class ServicePingChecker(context: Context) {
 
         return try {
             val request = Request.Builder().url(probeUrl).get().build()
-            val client = if (probeUrl.isHttps) {
-                httpsClientFor(probeUrl)
-            } else if (fileEndpoint) {
-                httpClient
+            val callFactory = if (!probeUrl.isHttps && !fileEndpoint && !tlsTransport.proxyEnabled) {
+                directHttp2Calls
             } else {
-                http2Client
+                tlsCalls
             }
-                ?: return ServicePingResult(false, elapsedMs(startedAt))
-            client.newCall(request).execute().use { response ->
+            callFactory.newCall(request).execute().use { response ->
                 val available = if (fileEndpoint) {
                     // A missing random file returns 404, which still proves that the HTTP listener responds.
                     true
@@ -64,11 +64,8 @@ class ServicePingChecker(context: Context) {
     }
 
     fun close() {
-        (httpsClients.values + listOfNotNull(httpClient, http2Client)).forEach { client ->
-            client.connectionPool.evictAll()
-            client.dispatcher.executorService.shutdown()
-        }
-        httpsClients.clear()
+        tlsCalls.close()
+        directHttp2Calls.close()
     }
 
     private fun buildProbeUrl(address: String, path: String): HttpUrl? {
@@ -91,26 +88,7 @@ class ServicePingChecker(context: Context) {
         return probeUrl.takeIf(tlsTransport::isAllowed)
     }
 
-    private fun httpsClientFor(url: HttpUrl): OkHttpClient {
-        val key = "${url.scheme}://${url.host}:${url.port}"
-        return httpsClients[key] ?: synchronized(httpsClients) {
-            httpsClients[key] ?: tlsTransport.createOkHttpClient(url) {
-                configureTimeouts()
-            }.also { httpsClients[key] = it }
-        }
-    }
-
-    private fun createHttpClient(): OkHttpClient = OkHttpClient.Builder()
-        .configureTimeouts()
-        .build()
-
-    private fun createHttp2Client(): OkHttpClient = OkHttpClient.Builder()
-        .configureTimeouts()
-        // The development gRPC listener exposes its liveness route over h2c.
-        .protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE))
-        .build()
-
-    private fun OkHttpClient.Builder.configureTimeouts(): OkHttpClient.Builder = apply {
+    private fun okhttp3.OkHttpClient.Builder.configureTimeouts(): okhttp3.OkHttpClient.Builder = apply {
         connectTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         readTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         writeTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)

@@ -9,15 +9,21 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketAddress
 import java.net.SocketException
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.net.SocketFactory
 
 /** Byte streams supplied by the future BFT multiplexer for one virtual connection. */
 class BftSocketStreams(
     val input: InputStream,
     val output: OutputStream,
+    internal val tlsSpkiPin: String? = null,
     private val closeAction: (() -> Unit)? = null
 ) : Closeable {
+    constructor(input: InputStream, output: OutputStream, closeAction: (() -> Unit)?) :
+        this(input, output, tlsSpkiPin = null, closeAction = closeAction)
+
     private var setReadTimeoutAction: ((Int) -> Unit)? = null
+    private val closed = AtomicBoolean()
 
     internal fun onReadTimeoutChanged(action: (Int) -> Unit) {
         setReadTimeoutAction = action
@@ -29,6 +35,7 @@ class BftSocketStreams(
     }
 
     override fun close() {
+        if (!closed.compareAndSet(false, true)) return
         try {
             input.close()
         } finally {
@@ -87,6 +94,9 @@ internal class BftVirtualSocket(
     private var inputShutdown = false
     private var outputShutdown = false
     private var soTimeoutMillis = 0
+
+    internal val tlsSpkiPin: String?
+        get() = streams?.tlsSpkiPin
 
     @Synchronized
     override fun connect(endpoint: SocketAddress, timeout: Int) {

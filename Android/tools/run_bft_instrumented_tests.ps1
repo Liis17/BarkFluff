@@ -21,6 +21,7 @@ $keysFile = Join-Path $temporaryRoot 'client-keys.txt'
 $connectionFile = Join-Path $temporaryRoot 'connection.txt'
 $proxyStdout = Join-Path $temporaryRoot 'proxy.stdout.log'
 $proxyStderr = Join-Path $temporaryRoot 'proxy.stderr.log'
+$apkBuildLog = Join-Path $temporaryRoot 'apk-build.log'
 $gradleLog = Join-Path $temporaryRoot 'gradle.log'
 $proxyProcess = $null
 $reverseAdded = $false
@@ -67,32 +68,6 @@ try {
     }
     if ($beforePackages -contains "package:$testPackage") {
         throw 'The core instrumentation package is already installed; refusing to replace or remove it.'
-    }
-
-    if (-not (Test-Path -LiteralPath $apkPath)) {
-        throw 'Build :core:assembleDebugAndroidTest before running this script.'
-    }
-    if (-not (Test-Path -LiteralPath $manifestPath)) {
-        throw 'The packaged :core androidTest manifest is missing.'
-    }
-    $manifest = [IO.File]::ReadAllText($manifestPath)
-    if ($manifest -match 'usesCleartextTraffic') {
-        throw 'The :core test APK manifest must not declare usesCleartextTraffic.'
-    }
-
-    $aaptPath = Get-ChildItem (Join-Path $sdkRoot 'build-tools') -Directory |
-        Sort-Object { [version]$_.Name } -Descending |
-        ForEach-Object { Join-Path $_.FullName 'aapt.exe' } |
-        Where-Object { Test-Path -LiteralPath $_ } |
-        Select-Object -First 1
-    if ([string]::IsNullOrWhiteSpace($aaptPath)) { throw 'Android build-tools aapt.exe is unavailable.' }
-    $badging = (& $aaptPath dump badging $apkPath) -join "`n"
-    $packageMatch = [regex]::Match($badging, "package: name='([^']+)'")
-    if (-not $packageMatch.Success) { throw 'Could not read the androidTest APK applicationId.' }
-    $apkPackage = $packageMatch.Groups[1].Value
-    Write-Output "Test APK package: $apkPackage"
-    if ($apkPackage -ne $testPackage -or $ownerPackages -contains $apkPackage) {
-        throw 'Refusing to install an unexpected androidTest APK package.'
     }
 
     $sdkLines = @(& $dotnetPath --list-sdks)
@@ -145,6 +120,36 @@ try {
     $connection = ($linkLines -join '').Trim()
     if (-not $connection.StartsWith('bft://')) { throw 'Exit add-client returned no BFT connection.' }
     [IO.File]::WriteAllText($connectionFile, $connection, [Text.UTF8Encoding]::new($false))
+
+    Push-Location $androidRoot
+    try {
+        & .\gradlew.bat :core:assembleDebugAndroidTest `
+            "-PbftAndroidTestClass=$testClass" "-PbftConnectionFile=$connectionFile" --console=plain *> $apkBuildLog
+        $apkBuildExit = $LASTEXITCODE
+    }
+    finally { Pop-Location }
+    $safeApkBuildLines = Get-Content -LiteralPath $apkBuildLog | Where-Object { $_ -notmatch 'bft://' }
+    $safeApkBuildLines | Select-Object -Last 80 | ForEach-Object { Write-Output $_ }
+    if ($apkBuildExit -ne 0) { throw "Core BFT instrumentation APK build failed (exit $apkBuildExit)." }
+    if (-not (Test-Path -LiteralPath $apkPath)) { throw 'The :core androidTest APK was not produced.' }
+    if (-not (Test-Path -LiteralPath $manifestPath)) { throw 'The packaged :core androidTest manifest is missing.' }
+    $manifest = [IO.File]::ReadAllText($manifestPath)
+    if ($manifest -match 'usesCleartextTraffic') { throw 'The :core test APK manifest must not declare usesCleartextTraffic.' }
+
+    $aaptPath = Get-ChildItem (Join-Path $sdkRoot 'build-tools') -Directory |
+        Sort-Object { [version]$_.Name } -Descending |
+        ForEach-Object { Join-Path $_.FullName 'aapt.exe' } |
+        Where-Object { Test-Path -LiteralPath $_ } |
+        Select-Object -First 1
+    if ([string]::IsNullOrWhiteSpace($aaptPath)) { throw 'Android build-tools aapt.exe is unavailable.' }
+    $badging = (& $aaptPath dump badging $apkPath) -join "`n"
+    $packageMatch = [regex]::Match($badging, "package: name='([^']+)'")
+    if (-not $packageMatch.Success) { throw 'Could not read the androidTest APK applicationId.' }
+    $apkPackage = $packageMatch.Groups[1].Value
+    Write-Output "Test APK package: $apkPackage"
+    if ($apkPackage -ne $testPackage -or $ownerPackages -contains $apkPackage) {
+        throw 'Refusing to install an unexpected androidTest APK package.'
+    }
 
     $env:BFT_MODE = 'Exit'
     $env:BFT_LISTEN = "127.0.0.1:$port"

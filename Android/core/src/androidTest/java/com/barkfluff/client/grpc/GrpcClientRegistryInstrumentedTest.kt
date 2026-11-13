@@ -32,7 +32,7 @@ class GrpcClientRegistryInstrumentedTest {
         val registry = GrpcClientRegistry(
             context = context,
             tlsTransport = TlsTransportFactory(context),
-            channelFactory = {
+            channelFactory = { _, _ ->
                 RecordingManagedChannel().also(createdChannels::add)
             },
         )

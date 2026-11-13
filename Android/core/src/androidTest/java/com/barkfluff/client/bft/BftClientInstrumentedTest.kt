@@ -3,6 +3,7 @@ package com.barkfluff.client.bft
 import android.security.NetworkSecurityPolicy
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.barkfluff.client.data.GlobalParam
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -115,9 +116,37 @@ class BftClientInstrumentedTest {
                 BftTransportTestSupport.verifyWrongPinRejectedOverBftTunnel(tunnel, 1)
                 assertEquals(BftTunnel.State.READY, tunnel.state)
             }
+            BftTransportTestSupport.verifyProductionFactoriesOverExit(checkNotNull(link))
         } finally {
             settings.staticPublicKey.fill(0)
             settings.obfsKey.fill(0)
+        }
+    }
+
+    @Test
+    fun encryptedProxySettingsSurviveAccountDataCleanup() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val store = BftProxyManager.EncryptedSettingsStore(context)
+        val connectionString = BftConnectionString.format(
+            BftConnectionSettings(
+                staticPublicKey = ByteArray(32) { (it + 1).toByte() },
+                obfsKey = ByteArray(32) { (it + 2).toByte() },
+                host = "proxy.invalid",
+                port = 443,
+                token = "instrumentation-test-token",
+                name = "Encrypted store test"
+            )
+        )
+
+        try {
+            store.write(connectionString, "Encrypted store test", enabled = true)
+            GlobalParam(context).clearUserData()
+            val restored = store.read()
+            assertEquals(connectionString, restored?.connectionString)
+            assertEquals("Encrypted store test", restored?.name)
+            assertTrue(restored?.enabled == true)
+        } finally {
+            store.clear()
         }
     }
 

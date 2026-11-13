@@ -20,6 +20,7 @@ import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityUpdateBinding
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.security.TlsTransportFactory
 import com.barkfluff.client.utils.AppVersion
 import com.barkfluff.client.utils.ChannelVersionInfo
 import com.barkfluff.client.utils.SkeletonPulse
@@ -34,7 +35,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.IOException
@@ -71,6 +71,7 @@ class UpdateActivity : AppCompatActivity() {
         private const val UPDATE_FILE_NAME = "update_pending.apk"
         private const val MIN_APK_SIZE_BYTES = 100_000L
         private const val DOWNLOAD_BUFFER_BYTES = 64 * 1024
+        private const val STORAGE_SERVICE_ID = 12
         private const val PROGRESS_INTERVAL_MS = 100L
         private const val CHANNEL_RELEASE = "release"
         private const val CHANNEL_DEV = "dev"
@@ -195,7 +196,7 @@ class UpdateActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             channels.forEach { views ->
-                val info = UpdateChecker.getVersionInfo(views.channel)
+                val info = UpdateChecker.getVersionInfo(views.channel, applicationContext)
                 views.skeleton.visibility = View.GONE
                 views.textVersion.visibility = View.VISIBLE
                 updateChannelUI(views, info)
@@ -348,39 +349,55 @@ class UpdateActivity : AppCompatActivity() {
     }
 
     private suspend fun downloadApk(url: HttpUrl, destFile: File) = withContext(Dispatchers.IO) {
-        UpdateServerTls.withFallback { trust ->
-            downloadApkOnce(url, destFile, trust)
+        val transport = TlsTransportFactory(applicationContext)
+        if (transport.proxyEnabled) {
+            downloadApkOnce(url, destFile, embeddedTrust = null, transport = transport)
+        } else {
+            UpdateServerTls.withFallback { trust ->
+                downloadApkOnce(url, destFile, trust, transport)
+            }
         }
     }
 
     private suspend fun downloadApkOnce(
         url: HttpUrl,
         destFile: File,
-        trust: UpdateServerTls.Trust?
+        embeddedTrust: UpdateServerTls.Trust?,
+        transport: TlsTransportFactory
     ) {
-        val builder = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
+        val client = transport.createOkHttpClientForService(url, STORAGE_SERVICE_ID) {
+            connectTimeout(30, TimeUnit.SECONDS)
+            readTimeout(60, TimeUnit.SECONDS)
             // APK крупный — общий таймаут на вызов выключен, ограничиваемся паузами в чтении.
-            .callTimeout(0, TimeUnit.MILLISECONDS)
-        trust?.let { embeddedTrust ->
-            builder.sslSocketFactory(embeddedTrust.socketFactory, embeddedTrust.trustManager)
+            callTimeout(0, TimeUnit.MILLISECONDS)
+            embeddedTrust?.let { sslSocketFactory(it.socketFactory, it.trustManager) }
         }
-        val client = builder.build()
 
         val request = Request.Builder().url(url).get().build()
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Сервер обновлений вернул HTTP ${response.code}")
-            val body = response.body ?: throw IOException("Пустой ответ сервера обновлений")
+        val expectedGeneration = transport.transportGeneration
+        val call = client.newCall(request)
+        val generationListener = transport.addTransportGenerationListener { generation ->
+            if (generation != expectedGeneration) call.cancel()
+        }
+        try {
+            if (transport.transportGeneration != expectedGeneration) {
+                throw IOException("Transport configuration changed")
+            }
+            call.execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Сервер обновлений вернул HTTP ${response.code}")
+                val body = response.body ?: throw IOException("Пустой ответ сервера обновлений")
 
-            val total = body.contentLength()
-            withContext(Dispatchers.Main) { binding.progressDownload.isIndeterminate = total <= 0 }
+                val total = body.contentLength()
+                withContext(Dispatchers.Main) { binding.progressDownload.isIndeterminate = total <= 0 }
 
-            body.byteStream().use { input ->
-                destFile.outputStream().use { output ->
-                    copyWithProgress(input, output, total)
+                body.byteStream().use { input ->
+                    destFile.outputStream().use { output ->
+                        copyWithProgress(input, output, total)
+                    }
                 }
             }
+        } finally {
+            generationListener?.close()
         }
     }
 

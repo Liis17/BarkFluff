@@ -13,6 +13,7 @@ import barkfluff.onliner.OnlinerApiGrpcKt
 import barkfluff.updates.UpdatesApiGrpcKt
 import barkfluff.users.UsersApiGrpcKt
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.bft.BftServiceRouter
 import com.barkfluff.client.security.TlsTransportFactory
 import io.grpc.Channel
 import io.grpc.ClientInterceptor
@@ -100,6 +101,8 @@ internal data class GrpcClientConfiguration(
     val address: String,
     val includeAuth: Boolean,
     val includeDeviceInfo: Boolean,
+    val serviceId: Int?,
+    val transportGeneration: Long,
 )
 
 internal fun canReuseGrpcClient(
@@ -119,13 +122,13 @@ internal fun canReuseGrpcClient(
 class GrpcClientRegistry internal constructor(
     context: Context,
     private val tlsTransport: TlsTransportFactory,
-    private val channelFactory: (String) -> ManagedChannel,
+    private val channelFactory: (String, Int?) -> ManagedChannel,
 ) {
 
     constructor(
         context: Context,
         tlsTransport: TlsTransportFactory = TlsTransportFactory(context.applicationContext),
-    ) : this(context, tlsTransport, tlsTransport::createGrpcChannel)
+    ) : this(context, tlsTransport, { address, serviceId -> tlsTransport.createGrpcChannel(address, serviceId) })
 
     enum class ClientId {
         NAVIGATOR,
@@ -153,6 +156,15 @@ class GrpcClientRegistry internal constructor(
     private val appContext = context.applicationContext
     private val lock = Any()
     private val entries = EnumMap<ClientId, Entry>(ClientId::class.java)
+    private val proxyManager = tlsTransport.bftProxyManager
+
+    private val transportGenerationListener = proxyManager?.addTransportGenerationListener {
+        if (!shutdownRequested) {
+            if (proxyManager.isEnabled) remove(ClientId.NAVIGATOR)
+            recreateAllClients(GlobalParam(appContext), appContext)
+            onNetworkChanged()
+        }
+    }
 
     @Volatile
     private var shutdownRequested = false
@@ -204,11 +216,20 @@ class GrpcClientRegistry internal constructor(
 
     /** Creates an explicit Navigator client without reading a stale endpoint from storage. */
     fun createNavigatorClient(address: String): Result<Unit> =
-        create(ClientId.NAVIGATOR, address, includeAuth = false, includeDeviceInfo = false)
+        if (tlsTransport.bftProxyManager?.isEnabled == true) {
+            Result.failure(IllegalStateException("Navigator is unavailable while the proxy is enabled"))
+        } else {
+            create(ClientId.NAVIGATOR, address, includeAuth = false, includeDeviceInfo = false)
+        }
 
     /** Creates an explicit Beacon client without reading a stale endpoint from storage. */
     fun createBeaconClient(address: String): Result<Unit> =
-        create(ClientId.BEACON, address, includeAuth = false, includeDeviceInfo = false)
+        create(
+            ClientId.BEACON,
+            if (proxyManager?.isEnabled == true) BEACON_PROXY_ENDPOINT else address,
+            includeAuth = false,
+            includeDeviceInfo = false
+        )
 
     fun createIdentityClient(
         address: String,
@@ -331,6 +352,10 @@ class GrpcClientRegistry internal constructor(
         // Recreate only live slots. Keeping uncreated services lazy is important for workers and
         // killed-app callbacks: a server switch must not eagerly open every channel.
         existing.forEach { id ->
+            if (id == ClientId.NAVIGATOR && proxyManager?.isEnabled == true) {
+                remove(id)
+                return@forEach
+            }
             val address = if (id == ClientId.NAVIGATOR || id == ClientId.BEACON) {
                 synchronized(lock) { entries[id]?.address.orEmpty() }
             } else {
@@ -367,6 +392,7 @@ class GrpcClientRegistry internal constructor(
 
     /** Terminal shutdown. Once called, lazy getters never recreate a channel. */
     fun shutdown() {
+        transportGenerationListener?.close()
         val oldEntries = synchronized(lock) {
             shutdownRequested = true
             entries.values.toList().also { entries.clear() }
@@ -397,7 +423,8 @@ class GrpcClientRegistry internal constructor(
         ClientId.ONLINER -> globalParam.socketOnliner
         ClientId.FAST_AUTH -> globalParam.socketFastAuth
         ClientId.CALLS -> globalParam.socketCalls
-        ClientId.NAVIGATOR, ClientId.BEACON -> ""
+        ClientId.BEACON -> if (proxyManager?.isEnabled == true) BEACON_PROXY_ENDPOINT else globalParam.socketBeacon
+        ClientId.NAVIGATOR -> ""
     }
 
     private fun channel(id: ClientId): Channel? = synchronized(lock) { entries[id]?.channel }
@@ -438,6 +465,9 @@ class GrpcClientRegistry internal constructor(
         force: Boolean = false,
     ): Result<Unit> {
         if (address.isBlank()) return Result.failure(IllegalArgumentException("${id.name} endpoint is blank"))
+        if (id == ClientId.NAVIGATOR && tlsTransport.bftProxyManager?.isEnabled == true) {
+            return Result.failure(IllegalStateException("Navigator is unavailable while the proxy is enabled"))
+        }
         synchronized(lock) {
             if (shutdownRequested) return Result.failure(IllegalStateException("gRPC registry is shut down"))
             val builder: (Channel) -> Any = builderFor(id)
@@ -458,12 +488,20 @@ class GrpcClientRegistry internal constructor(
     ): Entry? {
         val normalized = runCatching { tlsTransport.normalizeGrpcAddress(address) }
             .getOrElse { return null }
+        val serviceId = serviceIdFor(id, address)
+        if (tlsTransport.bftProxyManager?.isEnabled == true && serviceId == null) return null
         val current = entries[id]
-        val configuration = GrpcClientConfiguration(normalized, includeAuth, includeDeviceInfo)
+        val configuration = GrpcClientConfiguration(
+            normalized,
+            includeAuth,
+            includeDeviceInfo,
+            serviceId,
+            proxyManager?.transportGeneration ?: 0L
+        )
         if (canReuseGrpcClient(current?.configuration, configuration, force)) return current
 
         return try {
-            val managed = channelFactory(normalized)
+            val managed = channelFactory(normalized, serviceId)
             val interceptors = buildList {
                 val interceptorContext = context.applicationContext
                 if (includeAuth) add(AuthInterceptor(interceptorContext))
@@ -485,6 +523,26 @@ class GrpcClientRegistry internal constructor(
     private fun remove(id: ClientId) {
         val old = synchronized(lock) { entries.remove(id) }
         old?.let { close(it.managedChannel) }
+    }
+
+    private fun serviceIdFor(id: ClientId, address: String): Int? {
+        if (id == ClientId.NAVIGATOR) return null
+        if (id == ClientId.BEACON) return 1
+        val expected = when (id) {
+            ClientId.IDENTITY -> 2
+            ClientId.USERS -> 3
+            ClientId.MESSAGES -> 4
+            ClientId.FILES -> 5
+            ClientId.UPDATES -> 7
+            ClientId.ONLINER -> 8
+            ClientId.FAST_AUTH -> 9
+            ClientId.CALLS -> 10
+            ClientId.NAVIGATOR, ClientId.BEACON -> return null
+        }
+        return BftServiceRouter.serviceIdForEndpoint(
+            address,
+            GlobalParam(appContext).bftServiceEndpoints.filter { it.serviceId == expected }
+        )
     }
 
     private fun builderFor(id: ClientId): (Channel) -> Any = when (id) {
@@ -514,5 +572,9 @@ class GrpcClientRegistry internal constructor(
     private fun close(channel: ManagedChannel) {
         channel.shutdown()
         if (!channel.isTerminated) channel.shutdownNow()
+    }
+
+    private companion object {
+        const val BEACON_PROXY_ENDPOINT = "https://bft.internal:443"
     }
 }

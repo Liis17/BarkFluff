@@ -55,6 +55,10 @@ import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLHandshakeException
 import javax.net.ssl.HostnameVerifier
 import java.net.URL
+import com.barkfluff.client.security.TlsPin
+import com.barkfluff.client.security.TlsPinLookup
+import com.barkfluff.client.security.TlsTransportFactory
+import okhttp3.HttpUrl.Companion.toHttpUrl
 
 internal object BftTransportTestSupport {
     const val ORIGIN = "bft-origin.invalid"
@@ -376,6 +380,67 @@ internal object BftTransportTestSupport {
             client.connectionPool.evictAll()
             client.dispatcher.executorService.shutdown()
         }
+    }
+
+    fun verifyProductionFactoriesOverExit(connectionString: String) {
+        val settingsStore = MemoryProxySettingsStore(connectionString)
+        val manager = BftProxyManager(settingsStore, tunnelConnector = { link ->
+            val settings = BftConnectionString.parse(link)
+            try {
+                val socket = Socket()
+                socket.connect(InetSocketAddress(settings.host, settings.port), 15_000)
+                BftTunnel.connect(
+                    socket,
+                    link,
+                    BftTunnelOptions(handshakeTimeoutMillis = 15_000, helloTimeoutMillis = 15_000)
+                )
+            } finally {
+                settings.staticPublicKey.fill(0)
+                settings.obfsKey.fill(0)
+            }
+        })
+        manager.setPersistentNetworkDemand(true)
+        val transport = TlsTransportFactory(object : TlsPinLookup {
+            override fun pinFor(host: String): TlsPin? = null
+        }, manager)
+        val channel = transport.createGrpcChannel("https://bft.internal:443", serviceId = 1)
+        try {
+            val error = assertThrows(io.grpc.StatusRuntimeException::class.java) {
+                ClientCalls.blockingUnaryCall(
+                    channel,
+                    UNARY_METHOD,
+                    CallOptions.DEFAULT.withDeadlineAfter(15, TimeUnit.SECONDS),
+                    "android-production-grpc".toByteArray()
+                )
+            }
+            assertEquals(io.grpc.Status.Code.UNAVAILABLE, error.status.code)
+            assertTrue("production gRPC did not receive Exit's upstream response", error.status.description?.contains("502") == true)
+        } finally {
+            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS)
+        }
+
+        val httpClient = transport.createOkHttpClientForService("https://bft.internal:443/".toHttpUrl(), 2) {
+            protocols(listOf(Protocol.HTTP_1_1))
+            retryOnConnectionFailure(false)
+        }
+        try {
+            httpClient.newCall(Request.Builder().url("https://bft.internal:443/").build()).execute().use { response ->
+                assertEquals(502, response.code)
+            }
+        } finally {
+            httpClient.connectionPool.evictAll()
+            httpClient.dispatcher.executorService.shutdownNow()
+        }
+        manager.setPersistentNetworkDemand(false)
+    }
+
+    private class MemoryProxySettingsStore(connectionString: String) : BftProxyManager.BftProxySettingsStore {
+        private var stored = BftProxyManager.BftProxyStoredSettings(connectionString, "Android test", true)
+        override fun read() = stored
+        override fun write(connectionString: String, name: String, enabled: Boolean) {
+            stored = BftProxyManager.BftProxyStoredSettings(connectionString, name, enabled)
+        }
+        override fun clear() { stored = stored.copy(enabled = false) }
     }
 
     fun verifyUrlConnectionCannotRoute(identity: TestIdentity) {

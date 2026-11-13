@@ -2,6 +2,7 @@ package com.barkfluff.client.utils
 
 import android.content.Context
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.bft.BftProxyManager
 import com.barkfluff.client.domain.gateway.ServerDiscoveryGateway
 import com.barkfluff.client.domain.model.ServerInfo
 import com.barkfluff.client.security.TlsCertificateProbe
@@ -42,7 +43,8 @@ suspend fun refreshServerInfoFromBeacon(
     globalParam: GlobalParam,
     context: Context
 ): ServerInfoRefreshResult {
-    if (globalParam.socketBeacon.isBlank()) {
+    val proxyEnabled = BftProxyManager.get(context.applicationContext).isEnabled
+    if (globalParam.socketBeacon.isBlank() && !proxyEnabled) {
         return ServerInfoRefreshResult.Unavailable
     }
 
@@ -61,18 +63,20 @@ suspend fun refreshServerInfoFromBeacon(
     } else {
         serverInfo
     }
-    val approvalRequired = try {
-        withContext(Dispatchers.IO) {
-            TlsServerCertificatePreflight(
-                TlsTrustStore(context.applicationContext),
-                TlsCertificateProbe()
-            ).approvalRequired(effectiveServerInfo)
+    if (!proxyEnabled) {
+        val approvalRequired = try {
+            withContext(Dispatchers.IO) {
+                TlsServerCertificatePreflight(
+                    TlsTrustStore(context.applicationContext),
+                    TlsCertificateProbe()
+                ).approvalRequired(effectiveServerInfo)
+            }
+        } catch (_: TlsEndpointSecurityException) {
+            return ServerInfoRefreshResult.CertificateRejected
         }
-    } catch (_: TlsEndpointSecurityException) {
-        return ServerInfoRefreshResult.CertificateRejected
-    }
-    if (approvalRequired != null) {
-        return ServerInfoRefreshResult.CertificateApprovalRequired
+        if (approvalRequired != null) {
+            return ServerInfoRefreshResult.CertificateApprovalRequired
+        }
     }
     globalParam.applyServerInfo(effectiveServerInfo)
     return ServerInfoRefreshResult.Refreshed

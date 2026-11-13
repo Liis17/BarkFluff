@@ -1,0 +1,406 @@
+package com.barkfluff.client.bft
+
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import java.io.Closeable
+import java.io.IOException
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.util.Base64
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import javax.net.SocketFactory
+
+enum class BftProxyStatus { DISABLED, CONNECTING, CONNECTED, NO_CONNECTION, KEY_REJECTED }
+
+data class BftProxyViewState(
+    val configured: Boolean,
+    val enabled: Boolean,
+    val name: String?,
+    val host: String?,
+    val port: Int?,
+    val status: BftProxyStatus,
+    val generation: Long
+)
+
+/** Process-wide owner for the one BFT tunnel and its transport configuration generation. */
+class BftProxyManager internal constructor(
+    private val store: BftProxySettingsStore,
+    private val tunnelConnector: (String) -> BftTunnel,
+    private val nowMillis: () -> Long = System::currentTimeMillis,
+    private val retryPolicy: BftReconnectPolicy = BftReconnectPolicy()
+) {
+    private data class StoredConfiguration(
+        val connectionString: String,
+        val name: String?,
+        val host: String,
+        val port: Int,
+        val enabled: Boolean
+    )
+
+    private val stateLock = Any()
+    private val connectionLock = Any()
+    private val listeners = CopyOnWriteArrayList<(Long) -> Unit>()
+    private val scheduler = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "bft-proxy-reconnect").apply { isDaemon = true }
+    }
+    private var retryTask: ScheduledFuture<*>? = null
+    @Volatile private var tunnel: BftTunnel? = null
+    @Volatile private var tunnelGeneration = -1L
+    @Volatile private var persistentNetworkDemand = false
+    @Volatile private var retryAtMillis = 0L
+    @Volatile private var generation = 0L
+    private var stored = readStoredConfiguration()
+    private val mutableState = MutableStateFlow(viewState(stored, initialStatus(stored)))
+    val state: StateFlow<BftProxyViewState> = mutableState
+
+    val isEnabled: Boolean
+        get() = mutableState.value.enabled
+
+    val transportGeneration: Long
+        get() = generation
+
+    val settings: BftProxyViewState
+        get() = mutableState.value
+
+    fun addTransportGenerationListener(listener: (Long) -> Unit): Closeable {
+        listeners += listener
+        return Closeable { listeners -= listener }
+    }
+
+    fun saveConnectionString(connectionString: String, enable: Boolean = true) {
+        val parsed = BftConnectionString.parse(connectionString)
+        val canonical = try {
+            parsed.format()
+        } finally {
+            parsed.staticPublicKey.fill(0)
+            parsed.obfsKey.fill(0)
+        }
+        val settings = BftConnectionString.parse(canonical)
+        val next = StoredConfiguration(canonical, settings.name, settings.host, settings.port, enable)
+        settings.staticPublicKey.fill(0)
+        settings.obfsKey.fill(0)
+        replaceStoredConfiguration(next)
+    }
+
+    fun setEnabled(enabled: Boolean) {
+        val current = stored ?: throw IllegalStateException("No BFT proxy is configured")
+        if (enabled) {
+            BftConnectionString.parse(current.connectionString).also {
+                it.staticPublicKey.fill(0)
+                it.obfsKey.fill(0)
+            }
+        }
+        if (current.enabled == enabled) return
+        replaceStoredConfiguration(current.copy(enabled = enabled))
+    }
+
+    fun clear() {
+        if (stored == null) return
+        store.clear()
+        stored = null
+        invalidateTransport(BftProxyStatus.DISABLED)
+    }
+
+    /** Called with the same foreground/realtime demand boundary used by RealtimeService. */
+    fun setPersistentNetworkDemand(needed: Boolean) {
+        persistentNetworkDemand = needed
+        if (!needed) {
+            cancelRetry()
+            closeCurrentTunnel()
+            updateStatus(if (isEnabled) BftProxyStatus.NO_CONNECTION else BftProxyStatus.DISABLED)
+        } else if (isEnabled && tunnel?.state != BftTunnel.State.READY) {
+            scheduleReconnect(0)
+        }
+    }
+
+    /** Closes stale sockets immediately and advances the configuration seen by every factory. */
+    fun onNetworkChanged() {
+        synchronized(stateLock) {
+            generation++
+            retryAtMillis = 0L
+            retryPolicy.networkChanged()
+            mutableState.value = viewState(stored, if (stored?.enabled == true) BftProxyStatus.NO_CONNECTION else BftProxyStatus.DISABLED)
+        }
+        closeCurrentTunnel()
+        notifyTransportGeneration()
+        if (persistentNetworkDemand && isEnabled) scheduleReconnect(0)
+    }
+
+    fun socketFactory(serviceId: Int): SocketFactory = BftSocketFactory {
+        openSocketStreams(serviceId)
+    }
+
+    fun openSocketStreams(serviceId: Int): BftSocketStreams {
+        val activeTunnel = ensureConnectedTunnel()
+        if (serviceId !in activeTunnel.hello.serviceIds) {
+            throw IOException("Сервис недоступен через прокси")
+        }
+        val openedGeneration = tunnelGeneration
+        val pin = "sha256/${Base64.getEncoder().encodeToString(activeTunnel.hello.tlsSpkiSha256)}"
+        val stream = activeTunnel.openStream(serviceId)
+        activeStreams.incrementAndGet()
+        val released = java.util.concurrent.atomic.AtomicBoolean()
+        return stream.asSocketStreams(pin) {
+            if (released.compareAndSet(false, true) && tunnelGeneration == openedGeneration) {
+                val remaining = activeStreams.decrementAndGet()
+                if (!persistentNetworkDemand && remaining <= 0) {
+                    activeStreams.set(0)
+                    closeIfIdle()
+                }
+            }
+        }
+    }
+
+    private val activeStreams = java.util.concurrent.atomic.AtomicInteger()
+
+    private fun ensureConnectedTunnel(): BftTunnel {
+        synchronized(connectionLock) {
+            val config = synchronized(stateLock) {
+                val current = stored
+                if (current?.enabled != true) throw IOException("BFT proxy is disabled")
+                if (current.connectionString.isBlank()) throw IOException("BFT proxy configuration is invalid")
+                if (retryAtMillis > nowMillis()) throw unavailableError()
+                current to generation
+            }
+            tunnel?.takeIf { it.state == BftTunnel.State.READY && tunnelGeneration == config.second }?.let { return it }
+
+            updateStatus(BftProxyStatus.CONNECTING)
+            try {
+                val connected = tunnelConnector(config.first.connectionString)
+                if (generation != config.second || !isEnabled) {
+                    connected.close()
+                    throw IOException("BFT proxy configuration changed")
+                }
+                tunnel = connected
+                tunnelGeneration = config.second
+                retryAtMillis = 0L
+                retryPolicy.connected()
+                updateStatus(BftProxyStatus.CONNECTED)
+                connected.completion.thenAccept { reason -> onTunnelClosed(connected, config.second, reason) }
+                return connected
+            } catch (error: Throwable) {
+                if (error is IOException && error.message == "BFT proxy configuration changed") throw error
+                val authenticationFailed = (error as? BftTunnelConnectException)?.closeReason?.kind == BftTunnelCloseReason.Kind.AUTH_FAILED
+                val invalidConfiguration = error is IllegalArgumentException
+                val silentClose = error is BftTunnelConnectException && !authenticationFailed
+                val decision = retryPolicy.recordFailure(authenticationFailed || invalidConfiguration, silentClose)
+                retryAtMillis = nowMillis() + decision.delayMillis
+                updateStatus(if (decision.keyRejected) BftProxyStatus.KEY_REJECTED else BftProxyStatus.NO_CONNECTION)
+                if (persistentNetworkDemand) scheduleReconnect(decision.delayMillis)
+                throw unavailableError(error)
+            }
+        }
+    }
+
+    private fun onTunnelClosed(closedTunnel: BftTunnel, closedGeneration: Long, reason: BftTunnelCloseReason) {
+        if (tunnel !== closedTunnel || generation != closedGeneration) return
+        tunnel = null
+        val authenticationFailed = reason.kind == BftTunnelCloseReason.Kind.AUTH_FAILED
+        val orderlyShutdown = reason.goAway?.code == BftGoAwayCode.SHUTDOWN
+        val decision = if (orderlyShutdown) {
+            retryPolicy.connected()
+            BftReconnectPolicy.FailureDecision(0L, keyRejected = false)
+        } else {
+            retryPolicy.recordFailure(
+                authenticationFailed,
+                closedWithoutResponse = reason.kind == BftTunnelCloseReason.Kind.NETWORK_ERROR
+            )
+        }
+        retryAtMillis = nowMillis() + decision.delayMillis
+        synchronized(stateLock) {
+            generation++
+            mutableState.value = viewState(
+                stored,
+                when {
+                    decision.keyRejected -> BftProxyStatus.KEY_REJECTED
+                    isEnabled -> BftProxyStatus.NO_CONNECTION
+                    else -> BftProxyStatus.DISABLED
+                }
+            )
+        }
+        notifyTransportGeneration()
+        if (persistentNetworkDemand && isEnabled) scheduleReconnect(decision.delayMillis)
+    }
+
+    private fun scheduleReconnect(delayMillis: Long) {
+        if (!persistentNetworkDemand || !isEnabled) return
+        synchronized(stateLock) {
+            retryTask?.cancel(false)
+            retryTask = scheduler.schedule({
+                if (!persistentNetworkDemand || !isEnabled) return@schedule
+                runCatching { ensureConnectedTunnel() }
+            }, delayMillis.coerceAtLeast(0), TimeUnit.MILLISECONDS)
+        }
+    }
+
+    private fun cancelRetry() = synchronized(stateLock) {
+        retryTask?.cancel(false)
+        retryTask = null
+    }
+
+    private fun closeIfIdle() {
+        if (persistentNetworkDemand) return
+        val old = tunnel ?: return
+        tunnel = null
+        old.close()
+        updateStatus(if (isEnabled) BftProxyStatus.NO_CONNECTION else BftProxyStatus.DISABLED)
+    }
+
+    private fun replaceStoredConfiguration(next: StoredConfiguration) {
+        store.write(next.connectionString, next.name.orEmpty(), next.enabled)
+        stored = next
+        invalidateTransport(if (next.enabled) BftProxyStatus.NO_CONNECTION else BftProxyStatus.DISABLED)
+    }
+
+    private fun invalidateTransport(status: BftProxyStatus) {
+        synchronized(stateLock) {
+            generation++
+            retryAtMillis = 0L
+            retryPolicy.networkChanged()
+            mutableState.value = viewState(stored, status)
+        }
+        cancelRetry()
+        closeCurrentTunnel()
+        notifyTransportGeneration()
+        if (persistentNetworkDemand && isEnabled) scheduleReconnect(0)
+    }
+
+    private fun closeCurrentTunnel() {
+        val old = tunnel
+        tunnel = null
+        tunnelGeneration = -1L
+        old?.close()
+        activeStreams.set(0)
+    }
+
+    private fun notifyTransportGeneration() {
+        val current = generation
+        listeners.forEach { listener -> runCatching { listener(current) } }
+    }
+
+    private fun updateStatus(status: BftProxyStatus) = synchronized(stateLock) {
+        mutableState.value = viewState(stored, status)
+    }
+
+    private fun readStoredConfiguration(): StoredConfiguration? {
+        val value = store.read() ?: return null
+        return try {
+            val parsed = BftConnectionString.parse(value.connectionString)
+            try {
+                StoredConfiguration(
+                    parsed.format(),
+                    value.name.ifBlank { parsed.name.orEmpty() }.ifBlank { null },
+                    parsed.host,
+                    parsed.port,
+                    value.enabled
+                )
+            } finally {
+                parsed.staticPublicKey.fill(0)
+                parsed.obfsKey.fill(0)
+            }
+        } catch (_: IllegalArgumentException) {
+            StoredConfiguration(value.connectionString, value.name.ifBlank { null }, "", 0, value.enabled)
+        }
+    }
+
+    private fun initialStatus(configuration: StoredConfiguration?): BftProxyStatus = when {
+        configuration?.enabled != true -> BftProxyStatus.DISABLED
+        configuration.host.isBlank() -> BftProxyStatus.KEY_REJECTED
+        else -> BftProxyStatus.NO_CONNECTION
+    }
+
+    private fun viewState(configuration: StoredConfiguration?, status: BftProxyStatus) = BftProxyViewState(
+        configured = configuration != null,
+        enabled = configuration?.enabled == true,
+        name = configuration?.name,
+        host = configuration?.host?.takeIf(String::isNotBlank),
+        port = configuration?.port?.takeIf { it > 0 },
+        status = if (configuration?.enabled == true) status else BftProxyStatus.DISABLED,
+        generation = generation
+    )
+
+    private fun unavailableError(cause: Throwable? = null): IOException =
+        IOException(
+            if (settings.status == BftProxyStatus.KEY_REJECTED) "Прокси недоступен: ключ неверен или отозван"
+            else "Прокси включён, но связи нет",
+            cause
+        )
+
+    internal interface BftProxySettingsStore {
+        fun read(): BftProxyStoredSettings?
+        fun write(connectionString: String, name: String, enabled: Boolean)
+        fun clear()
+    }
+
+    internal data class BftProxyStoredSettings(val connectionString: String, val name: String, val enabled: Boolean)
+
+    internal class EncryptedSettingsStore(context: Context) : BftProxySettingsStore {
+        private val preferences: SharedPreferences = EncryptedSharedPreferences.create(
+            PREFERENCES_FILE,
+            MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC),
+            context.applicationContext,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+
+        override fun read(): BftProxyStoredSettings? {
+            val connectionString = preferences.getString(KEY_CONNECTION_STRING, null) ?: return null
+            return BftProxyStoredSettings(
+                connectionString,
+                preferences.getString(KEY_NAME, "").orEmpty(),
+                preferences.getBoolean(KEY_ENABLED, false)
+            )
+        }
+
+        override fun write(connectionString: String, name: String, enabled: Boolean) {
+            preferences.edit()
+                .putString(KEY_CONNECTION_STRING, connectionString)
+                .putString(KEY_NAME, name)
+                .putBoolean(KEY_ENABLED, enabled)
+                .apply()
+        }
+
+        override fun clear() {
+            preferences.edit().clear().apply()
+        }
+
+        private companion object {
+            const val PREFERENCES_FILE = "bft_proxy_secure_prefs"
+            const val KEY_CONNECTION_STRING = "connection_string"
+            const val KEY_NAME = "name"
+            const val KEY_ENABLED = "enabled"
+        }
+    }
+
+    companion object {
+        @Volatile private var processInstance: BftProxyManager? = null
+
+        fun get(context: Context): BftProxyManager = processInstance ?: synchronized(this) {
+            processInstance ?: BftProxyManager(EncryptedSettingsStore(context), ::connectTunnel).also {
+                processInstance = it
+            }
+        }
+    }
+}
+
+private fun connectTunnel(connectionString: String): BftTunnel {
+    val settings = BftConnectionString.parse(connectionString)
+    val socket = Socket()
+    return try {
+        socket.connect(InetSocketAddress(settings.host, settings.port), 10_000)
+        BftTunnel.connect(socket, connectionString)
+    } catch (error: Throwable) {
+        runCatching { socket.close() }
+        throw error
+    } finally {
+        settings.staticPublicKey.fill(0)
+        settings.obfsKey.fill(0)
+    }
+}

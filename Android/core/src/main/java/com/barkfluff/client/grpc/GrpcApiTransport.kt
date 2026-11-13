@@ -1372,8 +1372,7 @@ open class GrpcApiTransport(context: Context) {
             Log.d(TAG, "Avatar upload URL получен, fileId: $fileId")
 
             val boundary = "----BarkFluff${System.currentTimeMillis()}"
-            val url = URL(uploadData.url)
-            val connection = url.openConnection() as HttpURLConnection
+            val connection = mediaTransport.openConnection(uploadData.url)
 
             configureHttpConnection(connection)
 
@@ -2069,8 +2068,7 @@ open class GrpcApiTransport(context: Context) {
             Log.d(TAG, "Profile poster upload URL получен, fileId: $fileId")
 
             val boundary = "----BarkFluff${System.currentTimeMillis()}"
-            val url = java.net.URL(uploadData.url)
-            val connection = url.openConnection() as java.net.HttpURLConnection
+            val connection = mediaTransport.openConnection(uploadData.url)
             configureHttpConnection(connection)
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")

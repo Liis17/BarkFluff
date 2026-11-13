@@ -14,6 +14,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import barkfluff.calls.CallsApiOuterClass
 import com.barkfluff.client.calls.CallEventsService
+import com.barkfluff.client.bft.BftProxyManager
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.calls.IncomingCallActivity
 import com.barkfluff.client.calls.CallRepository
@@ -81,6 +82,8 @@ class BarkFluffApplication : Application() {
 
     @Inject lateinit var realtimeService: RealtimeService
 
+    private val bftProxyManager by lazy { BftProxyManager.get(applicationContext) }
+
     @Inject lateinit var signalStore: BarkFluffSignalStore
 
     @Inject lateinit var prekeyManager: PrekeyManager
@@ -105,8 +108,13 @@ class BarkFluffApplication : Application() {
     private var callEventsUiJob: Job? = null
     private var secretChatEventsJob: Job? = null
     private lateinit var connectivityManager: ConnectivityManager
+    private var defaultNetwork: Network? = null
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
+            if (defaultNetwork != network) {
+                defaultNetwork = network
+                if (bftProxyManager.isEnabled) bftProxyManager.onNetworkChanged()
+            }
             autoDownloadNetworkState.available(network)
             realtimeService.onDefaultNetworkChanged(network)
             applicationScope.launch(Dispatchers.IO) {
@@ -125,6 +133,10 @@ class BarkFluffApplication : Application() {
 
         override fun onLost(network: Network) {
             autoDownloadNetworkState.lost(network)
+            if (defaultNetwork == network) {
+                defaultNetwork = null
+                if (bftProxyManager.isEnabled) bftProxyManager.onNetworkChanged()
+            }
         }
     }
 
@@ -209,6 +221,7 @@ class BarkFluffApplication : Application() {
             override fun onStart(owner: LifecycleOwner) {
                 startSecretChatEventBridge()
                 realtimeService.resume()
+                bftProxyManager.setPersistentNetworkDemand(!GlobalParam(this@BarkFluffApplication).refreshToken.isNullOrBlank())
                 applicationScope.launch(Dispatchers.IO) {
                     chatDraftRepository.flushAll()
                     outgoingMessageQueue.resume()
@@ -225,6 +238,7 @@ class BarkFluffApplication : Application() {
             override fun onStop(owner: LifecycleOwner) {
                 cameFromBackground = true
                 realtimeService.pause()
+                bftProxyManager.setPersistentNetworkDemand(false)
                 stopCallEventsUiBridge()
                 if (!CallTelecomRegistry.hasActiveCall()) {
                     callEventsService.pause()

@@ -34,9 +34,16 @@ class BftTunnelStream internal constructor(
         connection.setReadTimeout(state, timeoutMillis)
     }
 
-    internal fun asSocketStreams(): BftSocketStreams = BftSocketStreams(input, output, ::close).also {
-        it.onReadTimeoutChanged(::setReadTimeout)
-    }
+    internal fun asSocketStreams(tlsSpkiPin: String? = null, onClosed: (() -> Unit)? = null): BftSocketStreams =
+        BftSocketStreams(input, output, tlsSpkiPin = tlsSpkiPin, closeAction = {
+            try {
+                close()
+            } finally {
+                onClosed?.invoke()
+            }
+        }).also {
+            it.onReadTimeoutChanged(::setReadTimeout)
+        }
 
     override fun close() {
         if (!disposed.compareAndSet(false, true)) return

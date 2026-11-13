@@ -17,6 +17,17 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Comparator
 import java.util.concurrent.TimeUnit
+import com.barkfluff.client.security.TlsPin
+import com.barkfluff.client.security.TlsPinLookup
+import com.barkfluff.client.security.TlsTransportFactory
+import io.grpc.CallOptions
+import io.grpc.MethodDescriptor
+import io.grpc.Status
+import io.grpc.StatusRuntimeException
+import io.grpc.stub.ClientCalls
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Protocol
+import okhttp3.Request
 
 class BftExitInteropTest {
     companion object {
@@ -102,6 +113,8 @@ class BftExitInteropTest {
             BftTransportTestSupport.verifyWrongPinRejectedOverBftTunnel(tunnel, 1)
             assertEquals(BftTunnel.State.READY, tunnel.state)
 
+            verifyProductionTransport(validLink, upstreamBeaconPort, managerStore = MemorySettingsStore())
+
             Files.write(keyFile, ByteArray(0))
             val revokedReason = tunnel.completion.get(15, TimeUnit.SECONDS)
             assertEquals(BftTunnelCloseReason.Kind.GOAWAY, revokedReason.kind)
@@ -115,6 +128,94 @@ class BftExitInteropTest {
             }
             deleteTree(temporaryRoot)
         }
+    }
+
+    private fun verifyProductionTransport(
+        link: String,
+        directPort: Int,
+        managerStore: MemorySettingsStore
+    ) {
+        var proxyConnections = 0
+        val manager = BftProxyManager(managerStore, { connectionString ->
+            proxyConnections++
+            val settings = BftConnectionString.parse(connectionString)
+            try {
+                val socket = Socket()
+                socket.connect(InetSocketAddress(settings.host, settings.port), 5_000)
+                BftTunnel.connect(socket, connectionString)
+            } finally {
+                settings.staticPublicKey.fill(0)
+                settings.obfsKey.fill(0)
+            }
+        })
+        manager.saveConnectionString(link, enable = true)
+        manager.setPersistentNetworkDemand(true)
+        val transport = TlsTransportFactory(object : TlsPinLookup {
+            override fun pinFor(host: String): TlsPin? = null
+        }, manager)
+        val descriptor = MethodDescriptor.newBuilder<ByteArray, ByteArray>()
+            .setType(MethodDescriptor.MethodType.UNARY)
+            .setFullMethodName("bft.test.Transport/Unary")
+            .setRequestMarshaller(ByteArrayMarshaller)
+            .setResponseMarshaller(ByteArrayMarshaller)
+            .build()
+        val channel = transport.createGrpcChannel("https://bft.internal:443", serviceId = 1)
+        try {
+            val failure = assertThrows(StatusRuntimeException::class.java) {
+                ClientCalls.blockingUnaryCall(
+                    channel,
+                    descriptor,
+                    CallOptions.DEFAULT.withDeadlineAfter(10, TimeUnit.SECONDS),
+                    "production-grpc".toByteArray()
+                )
+            }
+            assertEquals(Status.Code.UNAVAILABLE, failure.status.code)
+            assertTrue("production gRPC response did not come from Exit", failure.status.description?.contains("502") == true)
+        } finally {
+            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS)
+        }
+
+        val httpUrl = "http://bft.internal:80/".toHttpUrl()
+        val httpClient = transport.createOkHttpClientForService(httpUrl, 2) {
+            protocols(listOf(Protocol.HTTP_1_1))
+            retryOnConnectionFailure(false)
+        }
+        try {
+            httpClient.newCall(Request.Builder().url(httpUrl).build()).execute().use { response ->
+                assertEquals(502, response.code)
+            }
+        } finally {
+            httpClient.connectionPool.evictAll()
+            httpClient.dispatcher.executorService.shutdownNow()
+        }
+        assertEquals("production gRPC and HTTP reused the app's one tunnel", 1, proxyConnections)
+
+        manager.setEnabled(false)
+        val directClient = transport.createOkHttpClient("https://127.0.0.1:$directPort/".toHttpUrl())
+        try {
+            assertThrows(IOException::class.java) {
+                directClient.newCall(Request.Builder().url("https://127.0.0.1:$directPort/").build()).execute()
+            }
+        } finally {
+            directClient.dispatcher.executorService.shutdownNow()
+            directClient.connectionPool.evictAll()
+        }
+        assertEquals("disabled proxy did not open another BFT connection", 1, proxyConnections)
+        manager.setPersistentNetworkDemand(false)
+    }
+
+    private object ByteArrayMarshaller : MethodDescriptor.Marshaller<ByteArray> {
+        override fun stream(value: ByteArray) = java.io.ByteArrayInputStream(value)
+        override fun parse(stream: InputStream) = stream.readBytes()
+    }
+
+    private class MemorySettingsStore : BftProxyManager.BftProxySettingsStore {
+        private var settings: BftProxyManager.BftProxyStoredSettings? = null
+        override fun read() = settings
+        override fun write(connectionString: String, name: String, enabled: Boolean) {
+            settings = BftProxyManager.BftProxyStoredSettings(connectionString, name, enabled)
+        }
+        override fun clear() { settings = null }
     }
 
     private fun assertUnknownKeyGetsNoResponse(port: Int, link: String) {
