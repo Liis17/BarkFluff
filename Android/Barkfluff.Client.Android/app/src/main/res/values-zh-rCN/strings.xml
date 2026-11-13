@@ -643,6 +643,9 @@
     <string name="profile_user_id_label">用户 ID</string>
     <string name="profile_chat_id_label">聊天 ID</string>
     <string name="profile_registration_label">注册日期</string>
+    <string name="profile_username_label">用户名</string>
+    <string name="profile_status_label">状态</string>
+    <string name="profile_bio_label">简介</string>
     <string name="profile_attachments_title">聊天附件</string>
     <string name="profile_tab_media">媒体</string>
     <string name="profile_tab_voice">语音</string>

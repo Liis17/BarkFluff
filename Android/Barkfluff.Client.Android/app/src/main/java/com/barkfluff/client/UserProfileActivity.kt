@@ -4,6 +4,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.animation.ArgbEvaluator
+import android.animation.ValueAnimator
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Bundle
 import com.barkfluff.client.data.AutoDownloadSettingsStore
 import com.barkfluff.client.domain.media.AutoDownloadNetworkState
@@ -11,7 +15,10 @@ import com.barkfluff.client.adapter.AttachmentAutoDownloadViews
 import com.barkfluff.client.adapter.FileMediaAttachmentLoader
 import android.util.Log
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
+import androidx.annotation.DrawableRes
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -26,6 +33,7 @@ import com.barkfluff.client.calls.CallActivity
 import com.barkfluff.client.calls.CallExtras
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityUserProfileBinding
+import com.barkfluff.client.databinding.ItemProfileInfoRowBinding
 import com.barkfluff.client.domain.gateway.CallGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
@@ -39,6 +47,8 @@ import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.OnlineTimeFormatter
 import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
+import com.barkfluff.client.view.M3ContextMenu
+import com.barkfluff.client.view.PullToExpandScrollView
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
@@ -87,6 +97,8 @@ class UserProfileActivity : AppCompatActivity() {
         private const val EXTRA_IS_GROUP_CHAT = "is_group_chat"
         private const val EXTRA_CHAT_TITLE = "chat_title"
         private const val EXTRA_CHAT_AVATAR_FILE_ID = "chat_avatar_file_id"
+        private const val MENU_TOGGLE_MUTE = 1
+        private const val MENU_CHAT_BACKGROUND = 2
 
         fun createIntent(
             context: Context,
@@ -120,9 +132,10 @@ class UserProfileActivity : AppCompatActivity() {
         chatTitle = intent.getStringExtra(EXTRA_CHAT_TITLE) ?: ""
         chatAvatarFileId = intent.getStringExtra(EXTRA_CHAT_AVATAR_FILE_ID)
 
-        binding.backButton.setOnClickListener { finish() }
+        binding.backButton.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         setupInfoCard()
+        setupAvatarExpansion()
         setupActions()
         setupAttachmentsRecycler()
         setupTabs()
@@ -132,25 +145,59 @@ class UserProfileActivity : AppCompatActivity() {
     // ── Инфо-карта ────────────────────────────────────────────────────────────
 
     private fun setupInfoCard() {
+        binding.rowUsername.bind(R.drawable.ic_person, R.string.profile_username_label)
+        binding.rowStatus.bind(R.drawable.ic_history, R.string.profile_status_label)
+        binding.rowBio.bind(R.drawable.ic_info, R.string.profile_bio_label)
+        binding.rowUserId.bind(R.drawable.ic_badge, R.string.profile_user_id_label)
+        binding.rowChatId.bind(R.drawable.ic_forum, R.string.profile_chat_id_label)
+        binding.rowRegistration.bind(R.drawable.ic_calendar_month, R.string.profile_registration_label)
+
         val showIds = globalParam.showIdsInProfile
         val showUserId = showIds && !isGroupChat && otherUserId > 0L
 
-        binding.rowChatId.visibility = if (showIds) View.VISIBLE else View.GONE
-        binding.dividerChatId.visibility = if (showIds) View.VISIBLE else View.GONE
         if (showIds) {
-            binding.profileChatIdValue.text = chatId
-            binding.rowChatId.setOnClickListener { copyToClipboard(getString(R.string.profile_chat_id_label), chatId) }
+            binding.rowChatId.show(chatId, copyLabel = getString(R.string.profile_chat_id_label))
         }
-
         if (showUserId) {
-            binding.rowUserId.visibility = View.VISIBLE
-            binding.dividerUserId.visibility = View.VISIBLE
-            binding.profileUserIdValue.text = formatId(otherUserId)
-            binding.rowUserId.setOnClickListener { copyToClipboard(getString(R.string.profile_user_id_label), otherUserId.toString()) }
-        } else {
-            binding.rowUserId.visibility = View.GONE
-            binding.dividerUserId.visibility = View.GONE
+            binding.rowUserId.show(
+                formatId(otherUserId),
+                copyLabel = getString(R.string.profile_user_id_label),
+                copyText = otherUserId.toString()
+            )
         }
+        updateInfoCardVisibility()
+    }
+
+    private fun ItemProfileInfoRowBinding.bind(@DrawableRes icon: Int, label: Int) {
+        rowIcon.setImageResource(icon)
+        rowLabel.setText(label)
+    }
+
+    /** Показывает строку; при [copyLabel] строка копирует [copyText] (по умолчанию — значение). */
+    private fun ItemProfileInfoRowBinding.show(value: CharSequence, copyLabel: String? = null, copyText: String = value.toString()) {
+        rowValue.text = value
+        root.visibility = View.VISIBLE
+        if (copyLabel != null) {
+            rowTrailingIcon.visibility = View.VISIBLE
+            root.setBackgroundResource(selectableItemBackgroundRes())
+            root.setOnClickListener { copyToClipboard(copyLabel, copyText) }
+        }
+        updateInfoCardVisibility()
+    }
+
+    private fun selectableItemBackgroundRes(): Int {
+        val value = android.util.TypedValue()
+        theme.resolveAttribute(android.R.attr.selectableItemBackground, value, true)
+        return value.resourceId
+    }
+
+    private fun updateInfoCardVisibility() {
+        val rows = listOf(
+            binding.rowUsername, binding.rowStatus, binding.rowBio,
+            binding.rowUserId, binding.rowChatId, binding.rowRegistration
+        )
+        binding.profileInfoCard.visibility =
+            if (rows.any { it.root.visibility == View.VISIBLE }) View.VISIBLE else View.GONE
     }
 
     /** Форматирует число ID с разделением на группы по 3 цифры. */
@@ -164,6 +211,146 @@ class UserProfileActivity : AppCompatActivity() {
         Toast.makeText(this, getString(R.string.profile_copied), Toast.LENGTH_SHORT).show()
     }
 
+    // ── Раскрытие аватара оттягиванием ────────────────────────────────────────
+
+    /** 0 — круглый аватар, 1 — квадратное фото на всю ширину под именем и кнопками. */
+    private var avatarExpansion = 0f
+    private var avatarStretchMax = 0f
+    private var avatarPullStartedExpanded = false
+    private var avatarExpansionAnimator: ValueAnimator? = null
+    private val argbEvaluator = ArgbEvaluator()
+    private val avatarCollapseOnBack = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() = animateAvatarExpansion(0f)
+    }
+
+    private fun setupAvatarExpansion() {
+        onBackPressedDispatcher.addCallback(this, avatarCollapseOnBack)
+        binding.profileHeader.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> applyAvatarMorph() }
+        // AvatarLoader changes GONE to VISIBLE after loading. That changes the photo's
+        // own bounds without changing the header bounds, so refresh its translation too.
+        binding.profileAvatarImageView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> applyAvatarMorph() }
+        binding.profileAvatarFrame.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> applyAvatarMorph() }
+        binding.profileNameRow.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> applyAvatarMorph() }
+        binding.profileScrollView.listener = object : PullToExpandScrollView.Listener {
+            override fun canPull(dy: Float): Boolean =
+                isAvatarExpandable() && (dy > 0f || avatarExpansion > 0f)
+
+            override fun onPull(dy: Float): Boolean {
+                if (avatarExpansionAnimator?.isRunning == true) {
+                    avatarExpansionAnimator?.cancel()
+                } else if (avatarExpansion == 0f && dy > 0f) {
+                    avatarPullStartedExpanded = false
+                }
+                if (avatarStretchMax <= 0f) avatarStretchMax = computeAvatarStretchMax()
+                if (avatarStretchMax <= 0f) return false
+                setAvatarExpansion((avatarExpansion + dy / avatarStretchMax).coerceIn(0f, 1f))
+                return avatarExpansion > 0f || dy > 0f
+            }
+
+            override fun onPullReleased() {
+                // Порог зависит от направления: лёгкий рывок раскрывает, лёгкий возврат — сворачивает.
+                val threshold = if (avatarPullStartedExpanded) 0.8f else 0.2f
+                animateAvatarExpansion(if (avatarExpansion >= threshold) 1f else 0f)
+            }
+        }
+    }
+
+    private fun isAvatarExpandable(): Boolean =
+        binding.profileAvatarImageView.visibility == View.VISIBLE && binding.profileAvatarImageView.drawable != null
+
+    /** Насколько вытянуть шапку, чтобы её низ совпал с низом квадратного фото. */
+    private fun computeAvatarStretchMax(): Float {
+        val header = binding.profileHeader
+        val collapsedHeight = header.height - binding.profileHeaderStretch.height
+        return (header.width - collapsedHeight).toFloat()
+    }
+
+    private fun animateAvatarExpansion(target: Float) {
+        avatarExpansionAnimator?.cancel()
+        if (avatarStretchMax <= 0f) avatarStretchMax = computeAvatarStretchMax()
+        avatarExpansionAnimator = ValueAnimator.ofFloat(avatarExpansion, target).apply {
+            duration = 260L
+            interpolator = DecelerateInterpolator(1.6f)
+            addUpdateListener { setAvatarExpansion(it.animatedValue as Float) }
+            start()
+        }
+        avatarPullStartedExpanded = target == 1f
+    }
+
+    private fun setAvatarExpansion(value: Float) {
+        avatarExpansion = value
+        avatarCollapseOnBack.isEnabled = value > 0f
+        val stretch = (avatarStretchMax * value).toInt().coerceAtLeast(0)
+        val stretchView = binding.profileHeaderStretch
+        if (stretchView.minimumHeight != stretch) {
+            stretchView.minimumHeight = stretch
+            stretchView.requestLayout()
+        }
+        applyAvatarMorph()
+    }
+
+    /** Ставит фото по прогрессу: круг внутри кольца аватара → квадрат на всю ширину. */
+    private fun applyAvatarMorph() {
+        val photo = binding.profileAvatarImageView
+        val frame = binding.profileAvatarFrame
+        val width = binding.profileHeader.width.toFloat()
+        if (width <= 0f || frame.width <= 0) return
+        val p = avatarExpansion
+
+        // Рамка уже может быть разложена с прежней растяжкой — учитываем целевую.
+        val pendingStretch = binding.profileHeaderStretch.minimumHeight - binding.profileHeaderStretch.height
+        val circleSize = (frame.width - frame.paddingLeft - frame.paddingRight).toFloat()
+        val circleLeft = (frame.left + frame.paddingLeft).toFloat()
+        val circleTop = (frame.top + frame.paddingTop + pendingStretch).toFloat()
+
+        val size = lerp(circleSize, width, p)
+        photo.setAvatarBounds(
+            left = lerp(circleLeft, 0f, p) - photo.left,
+            top = lerp(circleTop, 0f, p) - photo.top,
+            size = size,
+            cornerRadius = (1f - p) * size / 2f,
+        )
+
+        val nameRow = binding.profileNameRow
+        val leftInset = 20f * resources.displayMetrics.density
+        nameRow.translationX = (leftInset - nameRow.left) * p
+
+        frame.alpha = 1f - p
+        binding.profileAvatarExpandedScrim.alpha = p
+        applyHeaderColors(p)
+    }
+
+    private var appliedHeaderColorsProgress = 0f
+
+    private fun applyHeaderColors(p: Float) {
+        if (p == appliedHeaderColorsProgress) return
+        appliedHeaderColorsProgress = p
+        val white = Color.WHITE
+        val overlay = 0x40FFFFFF
+        binding.profileNameTextView.setTextColor(blend(ContextCompat.getColor(this, R.color.profile_text), white, p))
+        binding.profileNameTextView.setShadowLayer(4f * p, 0f, 1f, 0x66000000)
+
+        val onAccent = blend(ContextCompat.getColor(this, R.color.profile_on_accent), white, p)
+        binding.actionMessageButton.backgroundTintList =
+            ColorStateList.valueOf(blend(ContextCompat.getColor(this, R.color.profile_accent), overlay, p))
+        binding.actionMessageButton.setTextColor(onAccent)
+        binding.actionMessageButton.iconTint = ColorStateList.valueOf(onAccent)
+
+        binding.actionCallButton.backgroundTintList = if (p == 0f) null else ColorStateList.valueOf(
+            blend(
+                MaterialColors.getColor(binding.actionCallButton, com.google.android.material.R.attr.colorSurfaceContainerHigh),
+                overlay,
+                p
+            )
+        )
+        binding.actionCallIcon.imageTintList =
+            ColorStateList.valueOf(blend(ContextCompat.getColor(this, R.color.profile_accent), white, p))
+    }
+
+    private fun blend(from: Int, to: Int, p: Float): Int = argbEvaluator.evaluate(p, from, to) as Int
+
+    private fun lerp(from: Float, to: Float, p: Float): Float = from + (to - from) * p
+
     // ── Кнопки действий ───────────────────────────────────────────────────────
 
     private fun setupActions() {
@@ -176,9 +363,34 @@ class UserProfileActivity : AppCompatActivity() {
         binding.actionCallButton.setOnClickListener { startCall() }
 
         isChatMuted = chatId in globalParam.mutedChatIds
-        updateNotifyIcon()
-        binding.actionNotifyButton.setOnClickListener { toggleChatMute() }
-        binding.actionBackgroundButton.setOnClickListener { showChatBackgroundDialog() }
+        binding.moreButton.visibility = View.VISIBLE
+        binding.moreButton.setOnClickListener { showProfileMenu(it) }
+    }
+
+    /** Меню «три точки»: уведомления чата и фон чата. */
+    private fun showProfileMenu(anchor: View) {
+        M3ContextMenu.show(
+            anchor = anchor,
+            items = listOf(
+                M3ContextMenu.Item(
+                    id = MENU_TOGGLE_MUTE,
+                    title = getString(if (isChatMuted) R.string.chat_menu_unmute else R.string.chat_menu_mute),
+                    icon = if (isChatMuted) R.drawable.ic_notifications else R.drawable.ic_notifications_off,
+                ),
+                M3ContextMenu.Item(
+                    id = MENU_CHAT_BACKGROUND,
+                    title = getString(R.string.profile_chat_background),
+                    icon = R.drawable.ic_photo_library,
+                ),
+            ),
+            alignEnd = true,
+            onItemSelected = { item ->
+                when (item.id) {
+                    MENU_TOGGLE_MUTE -> toggleChatMute()
+                    MENU_CHAT_BACKGROUND -> showChatBackgroundDialog()
+                }
+            },
+        )
     }
 
     private fun showChatBackgroundDialog() {
@@ -211,16 +423,6 @@ class UserProfileActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateNotifyIcon() {
-        binding.actionNotifyIcon.setImageResource(
-            if (isChatMuted) R.drawable.ic_notifications_off else R.drawable.ic_notifications
-        )
-        binding.actionNotifyButton.contentDescription = getString(
-            if (isChatMuted) R.string.profile_action_notifications_enable
-            else R.string.profile_action_notifications_disable
-        )
-    }
-
     private fun toggleChatMute() {
         val newMuted = !isChatMuted
         lifecycleScope.launch {
@@ -228,7 +430,6 @@ class UserProfileActivity : AppCompatActivity() {
             if (result.isSuccess) {
                 isChatMuted = newMuted
                 globalParam.setChatMutedLocal(chatId, newMuted)
-                updateNotifyIcon()
                 Toast.makeText(
                     this@UserProfileActivity,
                     if (newMuted) getString(R.string.chat_muted) else getString(R.string.chat_unmuted),
@@ -580,13 +781,6 @@ class UserProfileActivity : AppCompatActivity() {
 
     private fun loadGroupProfile() {
         binding.profileNameTextView.text = chatTitle.trim()
-        binding.profileUsernameTextView.visibility = View.GONE
-        binding.profileStatusRow.visibility = View.GONE
-        binding.profileBioTextView.visibility = View.GONE
-        binding.rowUserId.visibility = View.GONE
-        binding.dividerUserId.visibility = View.GONE
-        binding.rowRegistration.visibility = View.GONE
-        binding.dividerChatId.visibility = View.GONE
 
         if (!chatAvatarFileId.isNullOrBlank()) {
             AvatarLoader.loadByFileId(
@@ -594,7 +788,8 @@ class UserProfileActivity : AppCompatActivity() {
                 placeholderView = binding.profileAvatarPlaceholder,
                 fileId = chatAvatarFileId!!,
                 displayName = chatTitle,
-                userId = chatId.hashCode().toLong()
+                userId = chatId.hashCode().toLong(),
+                circleCrop = false
             ) {
                 fileMediaGateway.downloadUrl(chatAvatarFileId!!).getOrNull()
             }
@@ -615,23 +810,22 @@ class UserProfileActivity : AppCompatActivity() {
                     val displayName = "${user.firstName} ${user.lastName}".trim()
 
                     binding.profileNameTextView.text = if (displayName.isNotBlank()) displayName else user.username
-                    binding.profileUsernameTextView.text = getString(R.string.register_username_format, user.username)
-                    binding.profileUsernameTextView.visibility = View.VISIBLE
-
-                    if (user.registrationDate > 0) {
-                        binding.profileRegistrationValue.text = DateFormat.getDateInstance(
-                            DateFormat.LONG,
-                            resources.configuration.locales[0]
-                        ).format(Date(user.registrationDate))
-                        binding.rowRegistration.visibility = View.VISIBLE
-                    } else {
-                        binding.rowRegistration.visibility = View.GONE
-                        binding.dividerChatId.visibility = View.GONE
+                    if (user.username.isNotBlank()) {
+                        val username = getString(R.string.register_username_format, user.username)
+                        binding.rowUsername.show(username, copyLabel = getString(R.string.profile_username_label))
                     }
 
                     if (user.bio.isNotBlank()) {
-                        binding.profileBioTextView.text = user.bio
-                        binding.profileBioTextView.visibility = View.VISIBLE
+                        binding.rowBio.show(user.bio.trim())
+                    }
+
+                    if (user.registrationDate > 0) {
+                        binding.rowRegistration.show(
+                            DateFormat.getDateInstance(
+                                DateFormat.LONG,
+                                resources.configuration.locales[0]
+                            ).format(Date(user.registrationDate))
+                        )
                     }
 
                     val avatarFileId = avatarSourceFor(user)
@@ -641,7 +835,8 @@ class UserProfileActivity : AppCompatActivity() {
                             placeholderView = binding.profileAvatarPlaceholder,
                             fileId = avatarFileId,
                             displayName = displayName.ifBlank { user.username },
-                            userId = otherUserId
+                            userId = otherUserId,
+                            circleCrop = false
                         ) {
                             fileMediaGateway.downloadUrl(avatarFileId).getOrNull()
                         }
@@ -668,31 +863,20 @@ class UserProfileActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val userStatus = presenceGateway.status(listOf(otherUserId)).getOrNull()?.firstOrNull()
-                    if (userStatus != null) {
-                        if (userStatus.isOnline) {
-                            binding.profileOnlineStatusTextView.text = getString(R.string.profile_online)
-                            binding.profileOnlineStatusTextView.setTextColor(
-                                ContextCompat.getColor(this@UserProfileActivity, R.color.profile_presence_online)
-                            )
-                            binding.statusDot.visibility = View.VISIBLE
-                            binding.onlineIndicator.visibility = View.VISIBLE
-                        } else {
-                            binding.profileOnlineStatusTextView.text =
-                                OnlineTimeFormatter.formatLastSeen(this@UserProfileActivity, userStatus.lastSeenEpochMillis)
-                            binding.profileOnlineStatusTextView.setTextColor(
-                                MaterialColors.getColor(
-                                    binding.root,
-                                    com.google.android.material.R.attr.colorOnSurfaceVariant
-                                )
-                            )
-                            binding.statusDot.visibility = View.GONE
-                            binding.onlineIndicator.visibility = View.GONE
-                        }
-                    } else {
-                        binding.profileOnlineStatusTextView.text = getString(R.string.profile_last_seen_recently)
-                        binding.statusDot.visibility = View.GONE
-                        binding.onlineIndicator.visibility = View.GONE
+                val isOnline = userStatus?.isOnline == true
+                binding.rowStatus.show(
+                    when {
+                        userStatus == null -> getString(R.string.profile_last_seen_recently)
+                        isOnline -> getString(R.string.profile_online)
+                        else -> OnlineTimeFormatter.formatLastSeen(this@UserProfileActivity, userStatus.lastSeenEpochMillis)
                     }
+                )
+                binding.rowStatus.rowValue.setTextColor(
+                    ContextCompat.getColor(
+                        this@UserProfileActivity,
+                        if (isOnline) R.color.profile_presence_online else R.color.profile_text
+                    )
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading online status", e)
             }
@@ -702,19 +886,21 @@ class UserProfileActivity : AppCompatActivity() {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun avatarSourceFor(user: UserProfile): String? {
-        return user.profilePicturePreviewUrl
+        // Оригинал важнее превью: аватар раскрывается на всю ширину экрана.
+        return user.profilePictureFileId
             .ifBlank { user.profilePictureUrl }
             .ifBlank { user.profilePicturePreviewFileId }
-            .ifBlank { user.profilePictureFileId }
+            .ifBlank { user.profilePicturePreviewUrl }
             .ifBlank { null }
     }
 
+    // The placeholder stays measured: its bottom anchors the collapsed avatar and header stretch.
     private fun loadPosterImage(posterFileId: String) {
         val cachedUrl = AvatarLoader.urlCache[posterFileId]
             ?: AvatarLoader.getUrlFromCache(posterFileId)
 
         if (cachedUrl != null) {
-            binding.profilePosterPlaceholder.visibility = View.GONE
+            binding.profilePosterPlaceholder.visibility = View.INVISIBLE
             binding.profilePosterImageView.visibility = View.VISIBLE
             binding.profilePosterImageView.load(cachedUrl, AvatarLoader.getImageLoader(this)) {
                 crossfade(true)
@@ -730,7 +916,7 @@ class UserProfileActivity : AppCompatActivity() {
                     AvatarLoader.urlCache[posterFileId] = url
                     AvatarLoader.putUrlInCache(posterFileId, url)
 
-                    binding.profilePosterPlaceholder.visibility = View.GONE
+                    binding.profilePosterPlaceholder.visibility = View.INVISIBLE
                     binding.profilePosterImageView.visibility = View.VISIBLE
                     binding.profilePosterImageView.load(url, AvatarLoader.getImageLoader(this@UserProfileActivity)) {
                         crossfade(true)
@@ -763,6 +949,7 @@ class UserProfileActivity : AppCompatActivity() {
         binding.filesAttachmentsRecyclerView.adapter = null
         binding.voiceAttachmentsRecyclerView.adapter = null
         fileSearchJob?.cancel()
+        avatarExpansionAnimator?.cancel()
         super.onDestroy()
     }
 }

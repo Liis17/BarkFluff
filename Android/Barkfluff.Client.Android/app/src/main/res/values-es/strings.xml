@@ -653,6 +653,9 @@
     <string name="profile_user_id_label">ID de usuario</string>
     <string name="profile_chat_id_label">ID del chat</string>
     <string name="profile_registration_label">Fecha de registro</string>
+    <string name="profile_username_label">Nombre de usuario</string>
+    <string name="profile_status_label">Estado</string>
+    <string name="profile_bio_label">Biografía</string>
     <string name="profile_attachments_title">Adjuntos del chat</string>
     <string name="profile_tab_media">Multimedia</string>
     <string name="profile_tab_voice">Voz</string>
