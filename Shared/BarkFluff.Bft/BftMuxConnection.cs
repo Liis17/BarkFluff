@@ -276,8 +276,15 @@ internal sealed class BftMuxConnection : IAsyncDisposable
         lock (_gate)
         {
             if (state.Reset || _aborted || !_streams.ContainsKey(state.Id)) return;
-            if (state.RemoteClosed && state.BufferedBytes == 0 && state.LocalClosed && state.LocalCloseSent)
+            if (state.RemoteClosed && state.BufferedBytes == 0)
             {
+                if (!state.LocalClosed)
+                {
+                    state.LocalClosed = true;
+                    state.Outgoing.Enqueue(BftFrame.Close(state.Id));
+                    AddToRoundRobinLocked(state);
+                    state.WindowSignal.Release();
+                }
                 CloseIfFinishedLocked(state);
                 return;
             }
@@ -611,7 +618,7 @@ internal sealed class BftMuxConnection : IAsyncDisposable
                 await _writerSignal.WaitAsync(_stop.Token).ConfigureAwait(false);
                 while (!_stop.IsCancellationRequested)
                 {
-                    var message = TakeNextMessage(out var completedData);
+                    var message = TakeNextMessage(out var completedData, out var completedCloses);
                     if (message is null) break;
                     var writeGateHeld = false;
                     try
@@ -619,6 +626,7 @@ internal sealed class BftMuxConnection : IAsyncDisposable
                         await _writeGate.WaitAsync(_stop.Token).ConfigureAwait(false);
                         writeGateHeld = true;
                         await _session.WriteMessageAsync(message, cancellationToken: _stop.Token).ConfigureAwait(false);
+                        MarkClosesSent(completedCloses);
                     }
                     finally
                     {
@@ -633,10 +641,11 @@ internal sealed class BftMuxConnection : IAsyncDisposable
         catch (Exception ex) { Abort(ex); }
     }
 
-    private byte[]? TakeNextMessage(out List<(BftMuxStreamState State, int Length)> completedData)
+    private byte[]? TakeNextMessage(out List<(BftMuxStreamState State, int Length)> completedData, out List<BftMuxStreamState> completedCloses)
     {
         var encoded = new List<byte[]>();
         completedData = [];
+        completedCloses = [];
         var length = 0;
         lock (_gate)
         {
@@ -677,10 +686,7 @@ internal sealed class BftMuxConnection : IAsyncDisposable
                     CryptographicOperations.ZeroMemory(next.Body);
                     completedData.Add((state, next.Body.Length));
                     if (next.Type == BftFrameType.Close)
-                    {
-                        state.LocalCloseSent = true;
-                        CloseIfFinishedLocked(state);
-                    }
+                        completedCloses.Add(state);
                 }
                 if (state.Outgoing.Count == 0)
                 {
@@ -705,6 +711,19 @@ internal sealed class BftMuxConnection : IAsyncDisposable
             CryptographicOperations.ZeroMemory(frame);
         }
         return message;
+    }
+
+    private void MarkClosesSent(List<BftMuxStreamState> completedCloses)
+    {
+        if (completedCloses.Count == 0) return;
+        lock (_gate)
+        {
+            foreach (var state in completedCloses)
+            {
+                state.LocalCloseSent = true;
+                CloseIfFinishedLocked(state);
+            }
+        }
     }
 
     private void ReleasePendingData(List<(BftMuxStreamState State, int Length)> completedData)

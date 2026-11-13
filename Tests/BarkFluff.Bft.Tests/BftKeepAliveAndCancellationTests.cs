@@ -89,7 +89,7 @@ public sealed class BftKeepAliveAndCancellationTests
             Handshake = new BftServerHandshakeOptions
             {
                 StaticPrivateKey = ExitPrivateKey,
-                ObfsKey = ObfsKey,
+                ObfsKeys = [new("keepalive-user", ObfsKey)],
                 TimeProvider = serverTimeProvider,
                 EphemeralPrivateKeyFactory = () => ServerEphemeral.ToArray()
             },

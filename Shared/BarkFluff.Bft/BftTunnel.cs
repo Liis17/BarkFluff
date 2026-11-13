@@ -73,11 +73,13 @@ public sealed class BftServerTunnel : IAsyncDisposable
     private readonly BftMuxConnection _connection;
     internal BftMuxConnection Connection => _connection;
 
-    private BftServerTunnel(BftMuxConnection connection)
+    private BftServerTunnel(BftMuxConnection connection, string matchedObfsKeyLabel)
     {
         _connection = connection;
+        MatchedObfsKeyLabel = matchedObfsKeyLabel;
     }
 
+    public string MatchedObfsKeyLabel { get; }
     public uint LastOpenedStreamId => _connection.MaxOpenedStreamId;
     public Task Completion => _connection.Completion;
 
@@ -96,7 +98,7 @@ public sealed class BftServerTunnel : IAsyncDisposable
         try
         {
             await mux.StartServerAsync(cancellationToken).ConfigureAwait(false);
-            return new BftServerTunnelAcceptResult(new BftServerTunnel(mux), null, false);
+            return new BftServerTunnelAcceptResult(new BftServerTunnel(mux, handshake.MatchedObfsKeyLabel!), null, false);
         }
         catch (BftAuthenticationException)
         {

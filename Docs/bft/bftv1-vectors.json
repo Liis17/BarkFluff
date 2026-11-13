@@ -1,17 +1,24 @@
 {
   "version": 1,
   "connectionString": {
-    "string": "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org:8443?token=t0ken%2F%2B%201",
+    "string": "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org:8443?name=%D0%9F%D1%91%D1%81%20%F0%9F%8C%90&token=t0ken%2F%2B%201",
+    "formattedString": "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org:8443?token=t0ken%2F%2B%201&name=%D0%9F%D1%91%D1%81%20%F0%9F%8C%90",
     "staticPublicKey": "07a37cbc142093c8b755dc1b10e86cb426374ad16aa853ed0bdfc0b2b86d1c7c",
     "obfsKey": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
     "host": "proxy.example.org",
     "port": 8443,
     "token": "t0ken/+ 1",
+    "name": "Пёс 🌐",
     "invalid": [
       "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org",
       "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHH.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org:8443",
       "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw@proxy.example.org:8443",
       "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org:8443?other=1",
+      "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org:8443?name=",
+      "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org:8443?name=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org:8443?name=first&name=second",
+      "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org:8443?token=one&token=two",
+      "bft://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org:8443?name=%00",
       "http://B6N8vBQgk8i3VdwbEOhstCY3StFqqFPtC9_AsrhtHHw.ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8@proxy.example.org:8443"
     ]
   },

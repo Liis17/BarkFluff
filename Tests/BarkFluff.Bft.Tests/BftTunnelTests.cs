@@ -20,6 +20,7 @@ public sealed class BftTunnelTests(ITestOutputHelper output)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await using var pair = await ConnectAsync(null, [] , timeout.Token);
+        Assert.Equal("tunnel-user", pair.Server.MatchedObfsKeyLabel);
         Assert.Equal("lv-1", pair.Client.Hello.ProxyId);
         Assert.Equal(TlsPin, pair.Client.Hello.TlsSpkiSha256);
         Assert.Equal(new byte[] { 1, 4, 5 }, pair.Client.Hello.ServiceIds);
@@ -229,6 +230,34 @@ public sealed class BftTunnelTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task DisposingAfterRemoteEofFlushesQueuedDataAndClosesNormally()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await using var pair = await ConnectAsync(null, [], timeout.Token);
+        var client = await pair.Client.OpenStreamAsync(1, timeout.Token);
+        var server = await pair.Server.AcceptStreamAsync(timeout.Token);
+        var payload = Enumerable.Range(0, 4096).Select(value => (byte)value).ToArray();
+
+        pair.ClientTransport.BlockOutputWrites();
+        await client.WriteAsync(payload, timeout.Token);
+        await pair.ClientTransport.WaitForBlockedOutputAsync(timeout.Token);
+        await server.CompleteWritesAsync();
+        Assert.Equal(0, await client.ReadAsync(new byte[1], timeout.Token));
+
+        await client.DisposeAsync();
+        var streamsClosed = pair.Client.Connection.WaitForStreamsClosedAsync(timeout.Token);
+        Assert.False(streamsClosed.IsCompleted);
+        pair.ClientTransport.AllowOutputWrites();
+
+        var received = new byte[payload.Length];
+        await server.ReadExactlyAsync(received, timeout.Token);
+        Assert.Equal(payload, received);
+        Assert.Equal(0, await server.ReadAsync(new byte[1], timeout.Token));
+        await streamsClosed;
+        await pair.Server.WaitForStreamsClosedAsync(timeout.Token);
+    }
+
+    [Fact]
     public async Task DisposingAfterBothClosesResetsWhenIncomingBytesRemainUnread()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -317,7 +346,7 @@ public sealed class BftTunnelTests(ITestOutputHelper output)
         var serverHandshake = BftServerHandshake.TryAcceptAsync(serverTransport, new BftServerHandshakeOptions
         {
             StaticPrivateKey = ExitPrivateKey,
-            ObfsKey = ObfsKey,
+            ObfsKeys = [new("tunnel-user", ObfsKey)],
             EphemeralPrivateKeyFactory = () => ServerEphemeral.ToArray()
         }, timeout.Token).AsTask();
         var clientHandshake = BftClientHandshake.ConnectAsync(clientTransport, new BftClientHandshakeOptions
@@ -329,6 +358,7 @@ public sealed class BftTunnelTests(ITestOutputHelper output)
         await Task.WhenAll(serverHandshake, clientHandshake);
         var accepted = await serverHandshake;
         Assert.True(accepted.Accepted);
+        Assert.Equal("tunnel-user", accepted.MatchedObfsKeyLabel);
         await using var serverSession = accepted.Session!;
         await using var clientSession = await clientHandshake;
         await clientSession.WriteMessageAsync(BftFrameCodec.Encode(BftFrame.Auth("ignored-token")), cancellationToken: timeout.Token);
@@ -389,7 +419,7 @@ public sealed class BftTunnelTests(ITestOutputHelper output)
         Handshake = new BftServerHandshakeOptions
         {
             StaticPrivateKey = ExitPrivateKey,
-            ObfsKey = ObfsKey,
+            ObfsKeys = [new("tunnel-user", ObfsKey)],
             EphemeralPrivateKeyFactory = () => ServerEphemeral.ToArray()
         },
         ProxyId = "lv-1",
@@ -421,6 +451,7 @@ public sealed class BftTunnelTests(ITestOutputHelper output)
 
         public BftClientTunnel Client { get; }
         public BftServerTunnel Server { get; }
+        public TestDuplexStream ClientTransport => _clientTransport;
         public TestDuplexStream ServerTransport => _serverTransport;
 
         public async ValueTask DisposeAsync()

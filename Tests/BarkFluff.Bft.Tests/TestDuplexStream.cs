@@ -6,6 +6,7 @@ internal sealed class TestDuplexStream(Stream input, Stream output) : Stream
 {
     private readonly object _outputGate = new();
     private readonly TaskCompletionSource _outputBlocked = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private TaskCompletionSource _allowOutput = CompletedSignal();
     private int _writesUntilDrop = -1;
     private int _corruptNextByte = -1;
     private bool _blockOutputWrites;
@@ -40,7 +41,20 @@ internal sealed class TestDuplexStream(Stream input, Stream output) : Stream
 
     public void BlockOutputWrites()
     {
-        lock (_outputGate) _blockOutputWrites = true;
+        lock (_outputGate)
+        {
+            _blockOutputWrites = true;
+            _allowOutput = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+    }
+
+    public void AllowOutputWrites()
+    {
+        lock (_outputGate)
+        {
+            _blockOutputWrites = false;
+            _allowOutput.TrySetResult();
+        }
     }
 
     public Task WaitForBlockedOutputAsync(CancellationToken cancellationToken) => _outputBlocked.Task.WaitAsync(cancellationToken);
@@ -58,17 +72,17 @@ internal sealed class TestDuplexStream(Stream input, Stream output) : Stream
     {
         if (ShouldDropOutput()) return;
         int corruptAt;
-        bool block;
+        Task? allowOutput = null;
         lock (_outputGate)
         {
             corruptAt = _corruptNextByte;
             _corruptNextByte = -1;
-            block = _blockOutputWrites;
+            if (_blockOutputWrites) allowOutput = _allowOutput.Task;
         }
-        if (block)
+        if (allowOutput is not null)
         {
             _outputBlocked.TrySetResult();
-            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            await allowOutput.WaitAsync(cancellationToken);
         }
         if (corruptAt >= 0 && buffer.Length > 0)
         {
@@ -92,6 +106,13 @@ internal sealed class TestDuplexStream(Stream input, Stream output) : Stream
             if (_writesUntilDrop > 0) _writesUntilDrop--;
             return false;
         }
+    }
+
+    private static TaskCompletionSource CompletedSignal()
+    {
+        var signal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        signal.SetResult();
+        return signal;
     }
 
     protected override void Dispose(bool disposing)

@@ -6,6 +6,7 @@ namespace BarkFluff.Bft;
 
 public sealed record BftConnectionSettings(byte[] StaticPublicKey, byte[] ObfsKey, string Host, int Port, string? Token)
 {
+    public string? Name { get; init; }
     public override string ToString() => BftConnectionString.Format(this);
 }
 
@@ -22,12 +23,31 @@ public static class BftConnectionString
         var queryIndex = value.IndexOf('?', 6);
         var authority = queryIndex < 0 ? value[6..] : value[6..queryIndex];
         string? token = null;
+        string? name = null;
         if (queryIndex >= 0)
         {
-            var query = value[(queryIndex + 1)..];
-            if (!query.StartsWith("token=", StringComparison.Ordinal) || query.Length == 6 || query.Contains('&') || query.Contains('?'))
-                throw new FormatException("Invalid BFT connection string query.");
-            token = DecodeToken(query[6..]);
+            var seenToken = false;
+            var seenName = false;
+            foreach (var parameter in value[(queryIndex + 1)..].Split('&'))
+            {
+                var parameterSeparator = parameter.IndexOf('=');
+                if (parameterSeparator <= 0) throw new FormatException("Invalid BFT connection string query.");
+                var key = parameter[..parameterSeparator];
+                var encodedValue = parameter[(parameterSeparator + 1)..];
+                switch (key)
+                {
+                    case "token" when !seenToken:
+                        seenToken = true;
+                        token = DecodeParameter(encodedValue, 1, 256, "Token");
+                        break;
+                    case "name" when !seenName:
+                        seenName = true;
+                        name = DecodeName(encodedValue);
+                        break;
+                    default:
+                        throw new FormatException("Unknown or repeated BFT connection string parameter.");
+                }
+            }
         }
 
         var at = authority.IndexOf('@');
@@ -42,7 +62,7 @@ public static class BftConnectionString
         var staticPublicKey = DecodeKey(keyPart[..separator]);
         var obfsKey = DecodeKey(keyPart[(separator + 1)..]);
         var (host, port) = ParseHostPort(authority[(at + 1)..]);
-        return new BftConnectionSettings(staticPublicKey, obfsKey, host, port, token);
+        return new BftConnectionSettings(staticPublicKey, obfsKey, host, port, token) { Name = name };
     }
 
     public static string Format(BftConnectionSettings settings)
@@ -53,8 +73,11 @@ public static class BftConnectionString
         if (settings.Port is < 1 or > 65535)
             throw new ArgumentOutOfRangeException(nameof(settings));
         var host = settings.Host.Contains(':') ? $"[{settings.Host}]" : settings.Host;
-        var token = settings.Token is null ? string.Empty : $"?token={EncodeToken(settings.Token)}";
-        return $"bft://{EncodeKey(settings.StaticPublicKey)}.{EncodeKey(settings.ObfsKey)}@{host}:{settings.Port}{token}";
+        var parameters = new List<string>(2);
+        if (settings.Token is not null) parameters.Add($"token={EncodeParameter(settings.Token)}");
+        if (settings.Name is not null) parameters.Add($"name={EncodeName(settings.Name)}");
+        var query = parameters.Count == 0 ? string.Empty : $"?{string.Join('&', parameters)}";
+        return $"bft://{EncodeKey(settings.StaticPublicKey)}.{EncodeKey(settings.ObfsKey)}@{host}:{settings.Port}{query}";
     }
 
     private static (string Host, int Port) ParseHostPort(string value)
@@ -102,8 +125,9 @@ public static class BftConnectionString
 
     private static string EncodeKey(byte[] value) => Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-    private static string DecodeToken(string value)
+    private static string DecodeParameter(string value, int minimumBytes, int maximumBytes, string label)
     {
+        if (value.Length > maximumBytes * 3) throw new FormatException($"{label} encoding is too long.");
         using var bytes = new MemoryStream(value.Length);
         for (var i = 0; i < value.Length; i++)
         {
@@ -126,13 +150,36 @@ public static class BftConnectionString
         }
 
         var tokenBytes = bytes.ToArray();
-        if (tokenBytes.Length is < 1 or > 256)
-            throw new FormatException("Token length must be 1–256 UTF-8 bytes.");
+        if (tokenBytes.Length < minimumBytes || tokenBytes.Length > maximumBytes)
+            throw new FormatException($"{label} length is outside the permitted UTF-8 byte range.");
         try { return StrictUtf8.GetString(tokenBytes); }
-        catch (DecoderFallbackException ex) { throw new FormatException("Token is not valid UTF-8.", ex); }
+        catch (DecoderFallbackException ex) { throw new FormatException($"{label} is not valid UTF-8.", ex); }
     }
 
-    private static string EncodeToken(string token)
+    private static string DecodeName(string value)
+    {
+        var name = DecodeParameter(value, 1, 256, "Name");
+        if (!IsValidName(name)) throw new FormatException("Name must contain 1–64 Unicode characters and no control characters.");
+        return name;
+    }
+
+    private static string EncodeName(string name)
+    {
+        if (!IsValidName(name)) throw new ArgumentException("Name must contain 1–64 Unicode characters and no control characters.", nameof(name));
+        return EncodeParameter(name);
+    }
+
+    private static bool IsValidName(string name)
+    {
+        var count = 0;
+        foreach (var rune in name.EnumerateRunes())
+        {
+            if (Rune.IsControl(rune) || ++count > 64) return false;
+        }
+        return count > 0;
+    }
+
+    private static string EncodeParameter(string token)
     {
         var bytes = StrictUtf8.GetBytes(token);
         if (bytes.Length is < 1 or > 256)

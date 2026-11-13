@@ -71,7 +71,7 @@ public sealed class BftMuxSequencesTests
             Handshake = new BftServerHandshakeOptions
             {
                 StaticPrivateKey = exitPrivate,
-                ObfsKey = obfsKey,
+                ObfsKeys = [new("sequence-user", obfsKey)],
                 EphemeralPrivateKeyFactory = () => serverEphemeral.ToArray()
             },
             ProxyId = "lv-1",

@@ -14,6 +14,7 @@ import json
 import struct
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
@@ -302,17 +303,28 @@ def build():
     ]
 
     token = "t0ken/+ 1"
+    name = "Пёс 🌐"
+    encoded_token = quote(token, safe="")
+    encoded_name = quote(name, safe="")
+    connection_string = f"bft://{b64u(exit_pub)}.{b64u(obfs_key)}@proxy.example.org:8443?name={encoded_name}&token={encoded_token}"
+    formatted_connection_string = f"bft://{b64u(exit_pub)}.{b64u(obfs_key)}@proxy.example.org:8443?token={encoded_token}&name={encoded_name}"
     return hx({
         "version": 1,
         "connectionString": {
-            "string": f"bft://{b64u(exit_pub)}.{b64u(obfs_key)}@proxy.example.org:8443?token=t0ken%2F%2B%201",
+            "string": connection_string,
+            "formattedString": formatted_connection_string,
             "staticPublicKey": exit_pub, "obfsKey": obfs_key, "host": "proxy.example.org", "port": 8443,
-            "token": token,
+            "token": token, "name": name,
             "invalid": [
                 f"bft://{b64u(exit_pub)}.{b64u(obfs_key)}@proxy.example.org",
                 f"bft://{b64u(exit_pub)[:-1]}.{b64u(obfs_key)}@proxy.example.org:8443",
                 f"bft://{b64u(exit_pub)}@proxy.example.org:8443",
                 f"bft://{b64u(exit_pub)}.{b64u(obfs_key)}@proxy.example.org:8443?other=1",
+                f"bft://{b64u(exit_pub)}.{b64u(obfs_key)}@proxy.example.org:8443?name=",
+                f"bft://{b64u(exit_pub)}.{b64u(obfs_key)}@proxy.example.org:8443?name={'a' * 65}",
+                f"bft://{b64u(exit_pub)}.{b64u(obfs_key)}@proxy.example.org:8443?name=first&name=second",
+                f"bft://{b64u(exit_pub)}.{b64u(obfs_key)}@proxy.example.org:8443?token=one&token=two",
+                f"bft://{b64u(exit_pub)}.{b64u(obfs_key)}@proxy.example.org:8443?name=%00",
                 f"http://{b64u(exit_pub)}.{b64u(obfs_key)}@proxy.example.org:8443",
             ],
         },

@@ -115,7 +115,7 @@ public sealed class BftMuxFailureTests
         var serverHandshake = BftServerHandshake.TryAcceptAsync(serverTransport, new BftServerHandshakeOptions
         {
             StaticPrivateKey = ExitPrivateKey,
-            ObfsKey = ObfsKey,
+            ObfsKeys = [new("failure-user", ObfsKey)],
             TimeProvider = timeProvider,
             EphemeralPrivateKeyFactory = () => ServerEphemeral.ToArray()
         }, cancellationToken).AsTask();
@@ -143,7 +143,7 @@ public sealed class BftMuxFailureTests
         Handshake = new BftServerHandshakeOptions
         {
             StaticPrivateKey = ExitPrivateKey,
-            ObfsKey = ObfsKey,
+            ObfsKeys = [new("failure-user", ObfsKey)],
             EphemeralPrivateKeyFactory = () => ServerEphemeral.ToArray()
         },
         ProxyId = "lv-1",

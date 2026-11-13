@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using Org.BouncyCastle.Crypto.Engines;
+using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
 
 namespace BarkFluff.Bft;
@@ -17,6 +19,19 @@ public static class BftCrypto
         input[^1] = 1;
         try { return HMACSHA256.HashData(pseudorandomKey, input); }
         finally { CryptographicOperations.ZeroMemory(input); }
+    }
+
+    internal static void DeriveClientToServerLengthKey(ReadOnlySpan<byte> obfsKey, ReadOnlySpan<byte> salt, Span<byte> output)
+    {
+        if (obfsKey.Length != 32 || salt.Length != 32 || output.Length < 32)
+            throw new ArgumentException("The obfs key, salt, and output must be 32 bytes.");
+        Span<byte> pseudorandomKey = stackalloc byte[32];
+        Span<byte> info = stackalloc byte[19];
+        HMACSHA256.HashData(salt, obfsKey, pseudorandomKey);
+        "BFTv1 obfs c2s len"u8.CopyTo(info);
+        info[^1] = 1;
+        HMACSHA256.HashData(pseudorandomKey, info, output[..32]);
+        CryptographicOperations.ZeroMemory(pseudorandomKey);
     }
 
     public static byte[] GetX25519PublicKey(ReadOnlySpan<byte> privateKey)
@@ -99,6 +114,57 @@ public static class BftCrypto
         BinaryPrimitives.WriteUInt64LittleEndian(nonce[4..], nonceCounter);
         try { cipher.Decrypt(nonce, ciphertext, tag, plaintext, associatedData); }
         catch (CryptographicException ex) { throw new BftRecordException("ChaCha20-Poly1305 authentication failed.", ex); }
+    }
+}
+
+internal sealed class BftClientLengthAuthenticator
+{
+    private static readonly byte[] Nonce = new byte[12];
+    private readonly ChaCha7539Engine _cipher = new();
+    private readonly Poly1305 _mac = new();
+    private readonly byte[] _lengthKey = new byte[32];
+    private readonly byte[] _keystream = new byte[64];
+    private readonly byte[] _polyKey = new byte[32];
+    private readonly byte[] _plaintext = new byte[2];
+    private readonly byte[] _macInput = new byte[32];
+    private readonly byte[] _tag = new byte[16];
+    private readonly byte[] _zeros = new byte[64];
+
+    public bool TryAuthenticate(byte[] encryptedLength, ReadOnlySpan<byte> obfsKey, ReadOnlySpan<byte> salt, out ushort length)
+    {
+        BftCrypto.DeriveClientToServerLengthKey(obfsKey, salt, _lengthKey);
+        try
+        {
+            _cipher.Init(true, new ParametersWithIV(new KeyParameter(_lengthKey), Nonce));
+            // Block 0 supplies the Poly1305 key; the next two bytes decrypt the encrypted length.
+            _cipher.ProcessBytes(_zeros, 0, _zeros.Length, _keystream, 0);
+            _cipher.ProcessBytes(encryptedLength, 0, 2, _plaintext, 0);
+            _keystream.AsSpan(0, 32).CopyTo(_polyKey);
+
+            _mac.Init(new KeyParameter(_polyKey));
+            // RFC 8439 MAC input: ciphertext padded to 16 bytes, then empty AAD and ciphertext lengths.
+            _macInput.AsSpan().Clear();
+            encryptedLength.AsSpan(0, 2).CopyTo(_macInput);
+            BinaryPrimitives.WriteUInt64LittleEndian(_macInput.AsSpan(24, 8), 2);
+            _mac.BlockUpdate(_macInput, 0, _macInput.Length);
+            _mac.DoFinal(_tag, 0);
+            if (!CryptographicOperations.FixedTimeEquals(_tag, encryptedLength.AsSpan(2, 16)))
+            {
+                length = 0;
+                return false;
+            }
+            length = BinaryPrimitives.ReadUInt16BigEndian(_plaintext);
+            return true;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(_lengthKey);
+            CryptographicOperations.ZeroMemory(_keystream);
+            CryptographicOperations.ZeroMemory(_polyKey);
+            CryptographicOperations.ZeroMemory(_plaintext);
+            CryptographicOperations.ZeroMemory(_macInput);
+            CryptographicOperations.ZeroMemory(_tag);
+        }
     }
 }
 

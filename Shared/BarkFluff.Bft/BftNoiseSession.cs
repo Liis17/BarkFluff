@@ -109,14 +109,17 @@ public sealed class BftNoiseSession : IAsyncDisposable
     internal Task WaitForReadCounterAsync(ulong counter, CancellationToken cancellationToken) => WaitForCounterAsync(
         () => ReadNoiseCounter, () => _readProgress.Task, counter, cancellationToken);
 
-    public async ValueTask WriteMessageAsync(ReadOnlyMemory<byte> plaintext, int paddingLength = 0, CancellationToken cancellationToken = default)
+    public async ValueTask WriteMessageAsync(ReadOnlyMemory<byte> plaintext, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (plaintext.Length > 16384) throw new ArgumentOutOfRangeException(nameof(plaintext));
         var encrypted = _writeCipher.Encrypt(plaintext.Span);
         try
         {
-            await _recordWriter.WriteAsync(encrypted, paddingLength, cancellationToken).ConfigureAwait(false);
+            if (encrypted.Length < 1024)
+                await _recordWriter.WriteRandomPaddingAsync(encrypted, 255, cancellationToken).ConfigureAwait(false);
+            else
+                await _recordWriter.WriteAsync(encrypted, 0, cancellationToken).ConfigureAwait(false);
             lock (_progressGate)
             {
                 var previous = _writeProgress;
@@ -285,10 +288,12 @@ public sealed class BftClientHandshakeOptions
     public int? FirstRecordPaddingLength { get; init; }
 }
 
+public sealed record BftServerObfsKey(string Label, byte[] Key);
+
 public sealed class BftServerHandshakeOptions
 {
     public required byte[] StaticPrivateKey { get; init; }
-    public required byte[] ObfsKey { get; init; }
+    public required IReadOnlyList<BftServerObfsKey> ObfsKeys { get; init; }
     public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
     public IBftRandomSource RandomSource { get; init; } = BftSystemRandomSource.Shared;
     public Func<byte[]>? EphemeralPrivateKeyFactory { get; init; }
@@ -306,6 +311,7 @@ public enum BftServerHandshakeRejection
 
 public sealed record BftServerHandshakeResult(BftNoiseSession? Session, BftServerHandshakeRejection? Rejection)
 {
+    public string? MatchedObfsKeyLabel { get; init; }
     public bool Accepted => Session is not null;
 }
 
@@ -458,12 +464,19 @@ public static class BftServerHandshake
     public static async ValueTask<BftServerHandshakeResult> TryAcceptAsync(Stream stream, BftServerHandshakeOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(stream);
-        if (options.StaticPrivateKey.Length != 32 || options.ObfsKey.Length != 32)
-            throw new ArgumentException("Exit keys must be 32 bytes.", nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
+        if (options.StaticPrivateKey is null || options.StaticPrivateKey.Length != 32)
+            throw new ArgumentException("Exit static private key must be 32 bytes.", nameof(options));
+        ValidateObfsKeys(options.ObfsKeys);
+        ArgumentNullException.ThrowIfNull(options.TimeProvider);
+        ArgumentNullException.ThrowIfNull(options.RandomSource);
+        ArgumentNullException.ThrowIfNull(options.SaltCache);
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10), options.TimeProvider);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         byte[]? salt = null;
+        byte[]? encryptedLength = null;
+        byte[]? encryptedBody = null;
         byte[]? clientPayload = null;
         byte[]? privateEphemeral = null;
         BftObfuscationKeys? keys = null;
@@ -472,10 +485,25 @@ public static class BftServerHandshake
         {
             salt = new byte[32];
             await stream.ReadExactlyAsync(salt, linked.Token).ConfigureAwait(false);
-            keys = BftObfuscationKeys.Derive(options.ObfsKey, salt);
-            var reader = new BftObfuscatedRecordReader(stream, keys, clientToServer: true);
-            clientPayload = await reader.ReadAsync(linked.Token).ConfigureAwait(false);
-            if (clientPayload is null || clientPayload.Length != 58)
+            encryptedLength = new byte[18];
+            await stream.ReadExactlyAsync(encryptedLength, linked.Token).ConfigureAwait(false);
+            BftServerObfsKey? matchedKey = null;
+            ushort recordLength = 0;
+            var lengthAuthenticator = new BftClientLengthAuthenticator();
+            foreach (var candidate in options.ObfsKeys)
+            {
+                if (!lengthAuthenticator.TryAuthenticate(encryptedLength, candidate.Key, salt, out recordLength)) continue;
+                matchedKey = candidate;
+                break;
+            }
+            if (matchedKey is null) return Reject(BftServerHandshakeRejection.InvalidClientFlight);
+
+            BftObfuscatedRecords.ValidateEncryptedLength(recordLength);
+            keys = BftObfuscationKeys.Derive(matchedKey.Key, salt);
+            encryptedBody = new byte[recordLength];
+            await stream.ReadExactlyAsync(encryptedBody, linked.Token).ConfigureAwait(false);
+            clientPayload = BftObfuscatedRecords.DecryptBody(keys, clientToServer: true, sequence: 0, encryptedBody);
+            if (clientPayload.Length != 58)
                 return Reject(BftServerHandshakeRejection.InvalidClientFlight);
 
             var header = clientPayload.AsSpan(0, 10);
@@ -530,7 +558,7 @@ public static class BftServerHandshake
             var (c2s, s2c) = noise.Split();
             var session = new BftNoiseSession(stream, isClient: false, keys, c2s, s2c, noise.Hash, options.RandomSource);
             keys = null;
-            return new BftServerHandshakeResult(session, null);
+            return new BftServerHandshakeResult(session, null) { MatchedObfsKeyLabel = matchedKey.Label };
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeout.IsCancellationRequested)
         {
@@ -545,6 +573,8 @@ public static class BftServerHandshake
         finally
         {
             if (salt is not null) CryptographicOperations.ZeroMemory(salt);
+            if (encryptedLength is not null) CryptographicOperations.ZeroMemory(encryptedLength);
+            if (encryptedBody is not null) CryptographicOperations.ZeroMemory(encryptedBody);
             if (clientPayload is not null) CryptographicOperations.ZeroMemory(clientPayload);
             if (privateEphemeral is not null) CryptographicOperations.ZeroMemory(privateEphemeral);
             noise?.Dispose();
@@ -552,6 +582,28 @@ public static class BftServerHandshake
         }
 
         static BftServerHandshakeResult Reject(BftServerHandshakeRejection reason) => new(null, reason);
+    }
+
+    private static void ValidateObfsKeys(IReadOnlyList<BftServerObfsKey> obfsKeys)
+    {
+        ArgumentNullException.ThrowIfNull(obfsKeys);
+        if (obfsKeys.Count > 1024) throw new ArgumentOutOfRangeException(nameof(obfsKeys), "Exit can configure no more than 1024 obfs keys.");
+        foreach (var key in obfsKeys)
+        {
+            if (key is null || key.Key is null || key.Key.Length != 32)
+                throw new ArgumentException("Every Exit obfs key must be 32 bytes.", nameof(obfsKeys));
+            if (!IsValidKeyLabel(key.Label))
+                throw new ArgumentException("Every Exit obfs key label must contain 1–64 characters.", nameof(obfsKeys));
+        }
+    }
+
+    private static bool IsValidKeyLabel(string label)
+    {
+        if (string.IsNullOrEmpty(label)) return false;
+        var count = 0;
+        foreach (var _ in label.EnumerateRunes())
+            if (++count > 64) return false;
+        return count > 0;
     }
 
     private static byte[] RandomKey(IBftRandomSource random)

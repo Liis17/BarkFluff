@@ -21,7 +21,8 @@ public sealed class BftVectorsTests
         Assert.Equal(vector.GetProperty("host").GetString(), parsed.Host);
         Assert.Equal(vector.GetProperty("port").GetInt32(), parsed.Port);
         Assert.Equal(vector.GetProperty("token").GetString(), parsed.Token);
-        Assert.Equal(vector.GetProperty("string").GetString(), BftConnectionString.Format(parsed));
+        Assert.Equal(vector.GetProperty("name").GetString(), parsed.Name);
+        Assert.Equal(vector.GetProperty("formattedString").GetString(), BftConnectionString.Format(parsed));
 
         foreach (var invalid in vector.GetProperty("invalid").EnumerateArray())
             Assert.Throws<FormatException>(() => BftConnectionString.Parse(invalid.GetString()!));
@@ -138,23 +139,29 @@ public sealed class BftVectorsTests
         var (clientUnderlying, serverUnderlying) = TestDuplexStream.CreatePair();
         var clientStream = new RecordingStream(clientUnderlying);
         var serverStream = new RecordingStream(serverUnderlying);
-        var random = new RepeatingRandomSource([7, 0, 0, 0]);
+        var random = new SequenceRandomSource(7, 3);
         var serverOptions = new BftServerHandshakeOptions
         {
             StaticPrivateKey = Bytes(handshake.GetProperty("exitStaticPrivate")),
-            ObfsKey = Bytes(keyVector.GetProperty("obfsKey")),
+            ObfsKeys =
+            [
+                new("earlier-user", new byte[32]),
+                new("vector-user", Bytes(keyVector.GetProperty("obfsKey")))
+            ],
             TimeProvider = fixedTime,
             RandomSource = random,
             EphemeralPrivateKeyFactory = () => Bytes(handshake.GetProperty("serverEphemeralPrivate")),
             SaltCache = new BftSaltReplayCache(timeProvider: fixedTime)
         };
-        var clientOptions = ClientHandshakeOptions(handshake, keyVector.GetProperty("obfsKey"), Bytes(keyVector.GetProperty("salt")), fixedTime);
+        var clientOptions = ClientHandshakeOptions(handshake, keyVector.GetProperty("obfsKey"), Bytes(keyVector.GetProperty("salt")), fixedTime,
+            new SequenceRandomSource(0));
 
         var serverTask = BftServerHandshake.TryAcceptAsync(serverStream, serverOptions).AsTask();
         var clientTask = BftClientHandshake.ConnectAsync(clientStream, clientOptions).AsTask();
         await Task.WhenAll(serverTask, clientTask);
         var serverResult = await serverTask;
         Assert.True(serverResult.Accepted, serverResult.Rejection?.ToString());
+        Assert.Equal("vector-user", serverResult.MatchedObfsKeyLabel);
         await using var server = serverResult.Session!;
         await using var client = await clientTask;
         Assert.Equal(Bytes(handshake.GetProperty("handshakeHash")), client.HandshakeHash);
@@ -164,12 +171,58 @@ public sealed class BftVectorsTests
         var transport = root.GetProperty("transport").EnumerateArray().ToArray();
         var c2sAuth = Bytes(transport[0].GetProperty("plaintext"));
         var c2sOffset = clientStream.WrittenBytes.Length;
-        await client.WriteMessageAsync(c2sAuth, 0);
+        await client.WriteMessageAsync(c2sAuth);
         Assert.Equal(Bytes(transport[0].GetProperty("record")), clientStream.WrittenBytes.AsSpan(c2sOffset).ToArray());
         var s2cHello = Bytes(transport[1].GetProperty("plaintext"));
         var s2cOffset = serverStream.WrittenBytes.Length;
-        await server.WriteMessageAsync(s2cHello, 3);
+        await server.WriteMessageAsync(s2cHello);
         Assert.Equal(Bytes(transport[1].GetProperty("record")), serverStream.WrittenBytes.AsSpan(s2cOffset).ToArray());
+    }
+
+    [Fact]
+    public async Task TransportPaddingReachesBothBoundsAndStopsAt1024Bytes()
+    {
+        using var json = Vectors;
+        var root = json.RootElement;
+        var handshake = root.GetProperty("handshake");
+        var keyVector = root.GetProperty("obfsKeys");
+        var fixedTime = new FixedTimeProvider(DateTimeOffset.FromUnixTimeSeconds(handshake.GetProperty("timestamp").GetInt64()));
+        var (clientUnderlying, serverUnderlying) = TestDuplexStream.CreatePair();
+        var clientStream = new RecordingStream(clientUnderlying);
+        var serverStream = new RecordingStream(serverUnderlying);
+        var serverTask = BftServerHandshake.TryAcceptAsync(serverStream, new BftServerHandshakeOptions
+        {
+            StaticPrivateKey = Bytes(handshake.GetProperty("exitStaticPrivate")),
+            ObfsKeys = [new("padding-user", Bytes(keyVector.GetProperty("obfsKey")))],
+            TimeProvider = fixedTime,
+            EphemeralPrivateKeyFactory = () => Bytes(handshake.GetProperty("serverEphemeralPrivate")),
+            SaltCache = new BftSaltReplayCache(timeProvider: fixedTime)
+        }).AsTask();
+        var clientTask = BftClientHandshake.ConnectAsync(clientStream,
+            ClientHandshakeOptions(handshake, keyVector.GetProperty("obfsKey"), Bytes(keyVector.GetProperty("salt")), fixedTime,
+                new SequenceRandomSource(0, 255))).AsTask();
+        await Task.WhenAll(serverTask, clientTask);
+        var serverResult = await serverTask;
+        Assert.True(serverResult.Accepted, serverResult.Rejection?.ToString());
+        await using var server = serverResult.Session!;
+        await using var client = await clientTask;
+
+        var payloadSmall = new byte[1007];
+        var payloadBoundary = new byte[1008];
+        var offset = clientStream.WrittenBytes.Length;
+        await client.WriteMessageAsync(payloadSmall);
+        var afterZeroPadding = clientStream.WrittenBytes.Length;
+        Assert.Equal(18 + 2 + 1023 + 16, afterZeroPadding - offset);
+        await client.WriteMessageAsync(payloadSmall);
+        var afterMaximumPadding = clientStream.WrittenBytes.Length;
+        Assert.Equal(18 + 2 + 1023 + 255 + 16, afterMaximumPadding - afterZeroPadding);
+        await client.WriteMessageAsync(payloadBoundary);
+        var afterThreshold = clientStream.WrittenBytes.Length;
+        Assert.Equal(18 + 2 + 1024 + 16, afterThreshold - afterMaximumPadding);
+
+        Assert.Equal(payloadSmall, await server.ReadMessageAsync());
+        Assert.Equal(payloadSmall, await server.ReadMessageAsync());
+        Assert.Equal(payloadBoundary, await server.ReadMessageAsync());
     }
 
     [Fact]
@@ -192,7 +245,7 @@ public sealed class BftVectorsTests
             var result = await BftServerHandshake.TryAcceptAsync(server, new BftServerHandshakeOptions
             {
                 StaticPrivateKey = Bytes(handshake.GetProperty("exitStaticPrivate")),
-                ObfsKey = Bytes(root.GetProperty("obfsKeys").GetProperty("obfsKey")),
+                ObfsKeys = [new("vector-user", Bytes(root.GetProperty("obfsKeys").GetProperty("obfsKey")))],
                 TimeProvider = clock,
                 SaltCache = cache,
                 EphemeralPrivateKeyFactory = () => Bytes(handshake.GetProperty("serverEphemeralPrivate"))
@@ -206,6 +259,120 @@ public sealed class BftVectorsTests
     }
 
     [Fact]
+    public async Task RevokedObfsKeyIsQuietlyIndistinguishableFromGarbage()
+    {
+        using var json = Vectors;
+        var root = json.RootElement;
+        var handshake = root.GetProperty("handshake");
+        var activeKey = Bytes(root.GetProperty("obfsKeys").GetProperty("obfsKey"));
+        var retiredKey = Enumerable.Range(0xA1, 32).Select(value => (byte)value).ToArray();
+        var timestamp = handshake.GetProperty("timestamp").GetInt64();
+        var clock = new FixedTimeProvider(DateTimeOffset.FromUnixTimeSeconds(timestamp));
+        var retiredFlight = BftClientHandshake.CreateFlight(new BftClientHandshakeOptions
+        {
+            StaticPublicKey = Bytes(handshake.GetProperty("exitStaticPublic")),
+            ObfsKey = retiredKey,
+            Salt = Bytes(root.GetProperty("obfsKeys").GetProperty("salt")),
+            TimeProvider = clock,
+            EphemeralPrivateKeyFactory = () => Bytes(handshake.GetProperty("clientEphemeralPrivate")),
+            TimestampUnixSeconds = timestamp,
+            FirstRecordPaddingLength = 5
+        });
+        var retiredBytes = retiredFlight.Salt.Concat(retiredFlight.Record).ToArray();
+        var activeOptions = new BftServerHandshakeOptions
+        {
+            StaticPrivateKey = Bytes(handshake.GetProperty("exitStaticPrivate")),
+            ObfsKeys = [new("active-user", activeKey)],
+            TimeProvider = clock,
+            SaltCache = new BftSaltReplayCache(timeProvider: clock)
+        };
+
+        async Task<BftServerHandshakeResult> RejectQuietly(byte[] bytes)
+        {
+            var (client, server) = TestDuplexStream.CreatePair();
+            await using var clientScope = client;
+            await using var serverScope = server;
+            var accepting = BftServerHandshake.TryAcceptAsync(server, activeOptions).AsTask();
+            await client.WriteAsync(bytes);
+            var result = await accepting;
+            Assert.Equal(0, server.TotalBytesWritten);
+            return result;
+        }
+
+        var revokedResult = await RejectQuietly(retiredBytes);
+        var garbageResult = await RejectQuietly(Enumerable.Range(0, 50).Select(value => (byte)(value * 17)).ToArray());
+        Assert.Equal(BftServerHandshakeRejection.InvalidClientFlight, revokedResult.Rejection);
+        Assert.Equal(garbageResult.Rejection, revokedResult.Rejection);
+        Assert.Null(revokedResult.MatchedObfsKeyLabel);
+    }
+
+    [Fact]
+    public async Task SaltReplayCacheIsSharedAcrossObfsKeys()
+    {
+        using var json = Vectors;
+        var root = json.RootElement;
+        var handshake = root.GetProperty("handshake");
+        var keyVector = root.GetProperty("obfsKeys");
+        var firstKey = Bytes(keyVector.GetProperty("obfsKey"));
+        var secondKey = Enumerable.Range(0xA1, 32).Select(value => (byte)value).ToArray();
+        var timestamp = handshake.GetProperty("timestamp").GetInt64();
+        var clock = new FixedTimeProvider(DateTimeOffset.FromUnixTimeSeconds(timestamp));
+        var salt = Bytes(keyVector.GetProperty("salt"));
+        var cache = new BftSaltReplayCache(timeProvider: clock);
+        var serverOptions = new BftServerHandshakeOptions
+        {
+            StaticPrivateKey = Bytes(handshake.GetProperty("exitStaticPrivate")),
+            ObfsKeys = [new("first-user", firstKey), new("second-user", secondKey)],
+            TimeProvider = clock,
+            SaltCache = cache,
+            EphemeralPrivateKeyFactory = () => Bytes(handshake.GetProperty("serverEphemeralPrivate"))
+        };
+
+        async Task<BftServerHandshakeResult> AcceptFlight(byte[] key)
+        {
+            var flight = BftClientHandshake.CreateFlight(new BftClientHandshakeOptions
+            {
+                StaticPublicKey = Bytes(handshake.GetProperty("exitStaticPublic")),
+                ObfsKey = key,
+                Salt = salt,
+                TimeProvider = clock,
+                EphemeralPrivateKeyFactory = () => Bytes(handshake.GetProperty("clientEphemeralPrivate")),
+                TimestampUnixSeconds = timestamp,
+                FirstRecordPaddingLength = 5
+            });
+            var (client, server) = TestDuplexStream.CreatePair();
+            await using var clientScope = client;
+            await using var serverScope = server;
+            var accepting = BftServerHandshake.TryAcceptAsync(server, serverOptions).AsTask();
+            await client.WriteAsync(flight.Salt.Concat(flight.Record).ToArray());
+            return await accepting;
+        }
+
+        var accepted = await AcceptFlight(firstKey);
+        Assert.True(accepted.Accepted, accepted.Rejection?.ToString());
+        Assert.Equal("first-user", accepted.MatchedObfsKeyLabel);
+        await accepted.Session!.DisposeAsync();
+
+        var replayed = await AcceptFlight(secondKey);
+        Assert.Equal(BftServerHandshakeRejection.ReplayedSalt, replayed.Rejection);
+        Assert.Null(replayed.MatchedObfsKeyLabel);
+    }
+
+    [Fact]
+    public async Task ServerLimitsConfiguredObfsKeysTo1024()
+    {
+        var options = new BftServerHandshakeOptions
+        {
+            StaticPrivateKey = new byte[32],
+            ObfsKeys = Enumerable.Range(0, 1025).Select(index => new BftServerObfsKey(index.ToString(), new byte[32])).ToArray()
+        };
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
+        {
+            await BftServerHandshake.TryAcceptAsync(Stream.Null, options);
+        });
+    }
+
+    [Fact]
     public async Task ServerHandshakeTimesOutBeforeFirstRecordWithoutClosingTransport()
     {
         var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
@@ -216,7 +383,7 @@ public sealed class BftVectorsTests
         var accepting = BftServerHandshake.TryAcceptAsync(server, new BftServerHandshakeOptions
         {
             StaticPrivateKey = Enumerable.Range(1, 32).Select(value => (byte)value).ToArray(),
-            ObfsKey = Enumerable.Range(0x20, 32).Select(value => (byte)value).ToArray(),
+            ObfsKeys = [new("timeout-user", Enumerable.Range(0x20, 32).Select(value => (byte)value).ToArray())],
             TimeProvider = clock
         }).AsTask();
 
@@ -315,12 +482,14 @@ public sealed class BftVectorsTests
         }
     }
 
-    private static BftClientHandshakeOptions ClientHandshakeOptions(JsonElement handshake, JsonElement obfsKey, byte[] salt, TimeProvider? timeProvider = null) => new()
+    private static BftClientHandshakeOptions ClientHandshakeOptions(JsonElement handshake, JsonElement obfsKey, byte[] salt,
+        TimeProvider? timeProvider = null, IBftRandomSource? randomSource = null) => new()
     {
         StaticPublicKey = Bytes(handshake.GetProperty("exitStaticPublic")),
         ObfsKey = Bytes(obfsKey),
         Salt = salt,
         TimeProvider = timeProvider ?? new FixedTimeProvider(DateTimeOffset.FromUnixTimeSeconds(handshake.GetProperty("timestamp").GetInt64())),
+        RandomSource = randomSource ?? BftSystemRandomSource.Shared,
         EphemeralPrivateKeyFactory = () => Bytes(handshake.GetProperty("clientEphemeralPrivate")),
         TimestampUnixSeconds = handshake.GetProperty("timestamp").GetInt64(),
         FirstRecordPaddingLength = handshake.GetProperty("clientPadLen").GetInt32()
@@ -339,6 +508,18 @@ internal sealed class RepeatingRandomSource(byte[] pattern) : IBftRandomSource
     public void Fill(Span<byte> destination)
     {
         for (var i = 0; i < destination.Length; i++) destination[i] = pattern[i % pattern.Length];
+    }
+}
+
+internal sealed class SequenceRandomSource(params uint[] values) : IBftRandomSource
+{
+    private int _index;
+
+    public void Fill(Span<byte> destination)
+    {
+        if (destination.Length != 4 || _index == values.Length)
+            throw new InvalidOperationException("Unexpected deterministic random request.");
+        BinaryPrimitives.WriteUInt32LittleEndian(destination, values[_index++]);
     }
 }
 
