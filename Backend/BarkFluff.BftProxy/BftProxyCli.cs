@@ -108,9 +108,9 @@ internal static class BftProxyCli
     private static async Task<int> RunServerAsync(CancellationToken cancellationToken)
     {
         var configuration = ProxyConfiguration.FromEnvironment();
-        if (configuration.Mode == ProxyMode.Relay)
-            throw new InvalidOperationException("Relay mode is not available in this build stage.");
-        await using var host = await BftProxyHost.StartExitAsync(configuration.Exit!, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await using IAsyncDisposable host = configuration.Mode == ProxyMode.Relay
+            ? await BftRelayHost.StartAsync(configuration.Relay!, cancellationToken: cancellationToken).ConfigureAwait(false)
+            : await BftProxyHost.StartExitAsync(configuration.Exit!, cancellationToken: cancellationToken).ConfigureAwait(false);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         Console.CancelKeyPress += HandleCancel;
         try { await Task.Delay(Timeout.InfiniteTimeSpan, stop.Token).ConfigureAwait(false); }

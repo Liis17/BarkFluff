@@ -47,21 +47,29 @@ public sealed class BftProxyFixture : IAsyncLifetime
         Proxy = await BftProxyHost.StartExitAsync(config, Time, Random, VerifyUpstreamCertificate);
     }
 
-    internal async Task<BftTestClient> ConnectAsync(CancellationToken cancellationToken = default, byte[]? obfsKey = null)
+    internal async Task<BftTestClient> ConnectAsync(CancellationToken cancellationToken = default, byte[]? salt = null, byte[]? obfsKey = null)
     {
         var socket = new TcpClient();
         await socket.ConnectAsync(Proxy.ListenEndPoint, cancellationToken);
-        return await ConnectAsync(socket, cancellationToken, obfsKey);
+        return await ConnectAsync(socket, cancellationToken, salt, obfsKey);
     }
 
-    private async Task<BftTestClient> ConnectAsync(TcpClient socket, CancellationToken cancellationToken, byte[]? obfsKey)
+    internal async Task<BftTestClient> ConnectViaRelayAsync(BftRelayHost relay, CancellationToken cancellationToken = default, byte[]? salt = null, byte[]? obfsKey = null)
+    {
+        var socket = new TcpClient();
+        await socket.ConnectAsync(relay.ListenEndPoint, cancellationToken);
+        return await ConnectAsync(socket, cancellationToken, salt, obfsKey);
+    }
+
+    private async Task<BftTestClient> ConnectAsync(TcpClient socket, CancellationToken cancellationToken, byte[]? salt, byte[]? obfsKey)
     {
         var tunnel = await BftClientTunnel.ConnectAsync(socket.GetStream(), new BftClientTunnelOptions
         {
             Handshake = new BftClientHandshakeOptions
             {
                 StaticPublicKey = BftCrypto.GetX25519PublicKey(StaticPrivateKey),
-                ObfsKey = obfsKey ?? ObfsKey
+                ObfsKey = obfsKey ?? ObfsKey,
+                Salt = salt
             }
         }, cancellationToken);
         return new BftTestClient(socket, tunnel);

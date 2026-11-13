@@ -95,7 +95,10 @@ internal sealed record ProxyConfiguration(ProxyMode Mode, ExitConfiguration? Exi
                 listen,
                 ParseEndpoint(Required("BFT_NEXT_HOP"), "BFT_NEXT_HOP", allowZero: false),
                 relayId,
-                DecodeBase64UrlKey(Required("BFT_RELAY_KEY"), "BFT_RELAY_KEY")));
+                DecodeBase64UrlKey(Required("BFT_RELAY_KEY"), "BFT_RELAY_KEY"),
+                OptionalPositiveInt(values, "BFT_RELAY_MAX_CONNECTIONS_PER_IP", 64, 4096),
+                OptionalPositiveInt(values, "BFT_RELAY_MAX_CONNECTIONS", 4096, 65536),
+                TimeSpan.FromSeconds(OptionalPositiveInt(values, "BFT_RELAY_CONNECT_TIMEOUT_SECONDS", 15, 120))));
         }
 
         var staticPrivateKey = DecodeBase64UrlKey(Required("BFT_STATIC_PRIVATE_KEY"), "BFT_STATIC_PRIVATE_KEY");
@@ -151,6 +154,14 @@ internal sealed record ProxyConfiguration(ProxyMode Mode, ExitConfiguration? Exi
 
     private static string? Optional(IReadOnlyDictionary<string, string?> values, string name) =>
         values.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value) ? value.Trim() : null;
+
+    private static int OptionalPositiveInt(IReadOnlyDictionary<string, string?> values, string name, int fallback, int maximum)
+    {
+        if (Optional(values, name) is not { } value) return fallback;
+        if (!int.TryParse(value, out var parsed) || parsed is < 1 || parsed > maximum)
+            throw new InvalidOperationException($"{name} must be between 1 and {maximum}.");
+        return parsed;
+    }
 
     private static IReadOnlyList<string> SplitCsv(string? value) => string.IsNullOrWhiteSpace(value)
         ? []
