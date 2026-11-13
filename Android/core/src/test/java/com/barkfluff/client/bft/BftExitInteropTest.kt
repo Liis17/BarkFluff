@@ -67,6 +67,9 @@ class BftExitInteropTest {
 
     companion object {
         private const val UNKNOWN_KEY_TIMEOUT_MILLIS = 12_000
+        private const val ACTIVE_UPLOAD_BYTES = 512 * 1024
+        private const val ACTIVE_UPLOAD_BYTES_BEFORE_GATE = 448 * 1024
+        private const val ACTIVE_UPLOAD_MIN_UPSTREAM_BYTES_BEFORE_GATE = 16 * 1024
 
         @BeforeClass
         @JvmStatic
@@ -266,7 +269,8 @@ class BftExitInteropTest {
             )
             System.out.println(
                 "DotNet Exit HTTPS upstream completed: gRPC requests=${runningGrpcUpstream.requestCount.get()}, " +
-                    "HTTP requests=${runningHttpUpstream.requestCount.get()}, " +
+                    "HTTP requests=${runningHttpUpstream.requestCount.get()}, HTTP body before gate >=$ACTIVE_UPLOAD_MIN_UPSTREAM_BYTES_BEFORE_GATE bytes/request, " +
+                    "direct socket attempts=${directSocketAttempts.get()}, direct DNS attempts=${directDnsAttempts.get()}, " +
                     "100-continue responses=${runningHttpUpstream.expectContinueCount.get()}."
             )
         } finally {
@@ -677,14 +681,12 @@ class BftExitInteropTest {
     private class ActiveUploadUpstream(identity: BftTransportTestSupport.TestIdentity) : Closeable {
         private val running = AtomicBoolean(true)
         private val executor = Executors.newCachedThreadPool()
-        private val requests = LinkedBlockingQueue<Unit>()
-        private val bodyBytes = CountDownLatch(1)
+        private val requests = LinkedBlockingQueue<UploadObservation>()
         private val serverSocket = identity.socketServerContext().serverSocketFactory
             .createServerSocket(0, 16, InetAddress.getByName("127.0.0.1")) as SSLServerSocket
         private val acceptThread = Thread(::acceptConnections, "bft-active-upload-upstream").apply {
             isDaemon = true
         }
-        private val lastRequestFraming = AtomicReference("not received")
         val requestCount = AtomicInteger()
         val expectContinueCount = AtomicInteger()
         val port: Int get() = serverSocket.localPort
@@ -698,15 +700,23 @@ class BftExitInteropTest {
             return this
         }
 
-        fun awaitRequest() {
-            assertNotNull("HTTP upload did not reach the .NET Exit upstream", requests.poll(15, TimeUnit.SECONDS))
+        fun awaitRequest(): UploadObservation = checkNotNull(requests.poll(15, TimeUnit.SECONDS)) {
+            "HTTP upload did not reach the .NET Exit upstream"
         }
 
-        fun awaitBodyByte() {
+        fun awaitBodyBytesBeforeGate(request: UploadObservation) {
+            val reachedUpstream = request.bodyBytes.await(15, TimeUnit.SECONDS)
             assertTrue(
-                "HTTP upload body did not reach the .NET Exit upstream (${lastRequestFraming.get()})",
-                bodyBytes.await(15, TimeUnit.SECONDS)
+                "HTTP upload body did not reach the .NET Exit upstream before the gate " +
+                    "(received=${request.receivedBodyBytes.get()} bytes, required=$ACTIVE_UPLOAD_MIN_UPSTREAM_BYTES_BEFORE_GATE, " +
+                    "client offered $ACTIVE_UPLOAD_BYTES_BEFORE_GATE/$ACTIVE_UPLOAD_BYTES bytes; ${request.framing})",
+                reachedUpstream
             )
+        }
+
+        class UploadObservation(val framing: String) {
+            val bodyBytes = CountDownLatch(1)
+            val receivedBodyBytes = AtomicInteger()
         }
 
         private fun acceptConnections() {
@@ -741,7 +751,7 @@ class BftExitInteropTest {
                         ?.substringAfter(':')?.trim()
                     val transferEncoding = headers.firstOrNull { it.substringBefore(':').equals("Transfer-Encoding", ignoreCase = true) }
                         ?.substringAfter(':')?.trim()
-                    lastRequestFraming.set(
+                    val observation = UploadObservation(
                         "Content-Length=${contentLength ?: "absent"}, Transfer-Encoding=${transferEncoding ?: "absent"}, " +
                             "Expect100Continue=$expectsContinue"
                     )
@@ -751,10 +761,14 @@ class BftExitInteropTest {
                         expectContinueCount.incrementAndGet()
                     }
                     requestCount.incrementAndGet()
-                    requests.offer(Unit)
-                    if (input.read() >= 0) {
-                        bodyBytes.countDown()
-                        while (input.read() >= 0) Unit
+                    requests.offer(observation)
+                    val bodyBuffer = ByteArray(8 * 1024)
+                    var bodyRead = input.read(bodyBuffer)
+                    while (bodyRead >= 0) {
+                        if (bodyRead > 0 && observation.receivedBodyBytes.addAndGet(bodyRead) >= ACTIVE_UPLOAD_MIN_UPSTREAM_BYTES_BEFORE_GATE) {
+                            observation.bodyBytes.countDown()
+                        }
+                        bodyRead = input.read(bodyBuffer)
                     }
                 } catch (_: IOException) {
                     // Closing the proxy tunnel interrupts the deliberately unfinished upload.
@@ -785,25 +799,26 @@ class BftExitInteropTest {
     private class GatedUploadBody(private val release: CountDownLatch) : RequestBody() {
         private val started = CountDownLatch(1)
         override fun contentType() = "application/octet-stream".toMediaType()
-        override fun contentLength() = UPLOAD_BYTES.toLong()
+        override fun contentLength() = ACTIVE_UPLOAD_BYTES.toLong()
 
         override fun writeTo(sink: BufferedSink) {
-            sink.writeByte(0x42).flush()
+            // Keep 64 KiB behind the gate while crossing the BFT 256 KiB window and forwarding buffers.
+            sink.write(ByteArray(ACTIVE_UPLOAD_BYTES_BEFORE_GATE) { 0x42 }).flush()
             started.countDown()
             if (!release.await(30, TimeUnit.SECONDS)) throw IOException("Test upload gate timed out")
-            val remaining = ByteArray(UPLOAD_BYTES - 1) { 0x2a }
+            val remaining = ByteArray(ACTIVE_UPLOAD_BYTES - ACTIVE_UPLOAD_BYTES_BEFORE_GATE) { 0x2a }
             sink.write(remaining)
         }
 
         fun awaitStarted() {
-            assertTrue("HTTP request body did not start", started.await(15, TimeUnit.SECONDS))
+            assertTrue(
+                "HTTP request body did not flush $ACTIVE_UPLOAD_BYTES_BEFORE_GATE bytes before the gate",
+                started.await(15, TimeUnit.SECONDS)
+            )
         }
 
         fun release() = release.countDown()
 
-        private companion object {
-            const val UPLOAD_BYTES = 512 * 1024
-        }
     }
 
     private class ActiveRound(
@@ -820,9 +835,9 @@ class BftExitInteropTest {
     ) {
         fun awaitUpstreamRequests(grpc: ActiveGrpcUpstream, http: ActiveUploadUpstream) {
             grpc.awaitRequest(grpcError.get())
-            http.awaitRequest()
+            val uploadRequest = http.awaitRequest()
             uploadBody.awaitStarted()
-            http.awaitBodyByte()
+            http.awaitBodyBytesBeforeGate(uploadRequest)
         }
 
         fun releaseUpload() = uploadBody.release()
