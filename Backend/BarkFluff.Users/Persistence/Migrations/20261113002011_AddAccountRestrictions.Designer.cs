@@ -343,6 +343,15 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<DateTime?>("DeletionScheduledAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("PreDeletionAccountStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PreDeletionRestrictionReason")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("PreDeletionRestrictedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("text");

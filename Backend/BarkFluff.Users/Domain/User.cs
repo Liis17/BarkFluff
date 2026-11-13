@@ -31,6 +31,12 @@ public class User
 
     public DateTime? DeletionScheduledAt { get; set; }
 
+    public AccountStatus? PreDeletionAccountStatus { get; set; }
+
+    public string? PreDeletionRestrictionReason { get; set; }
+
+    public DateTime? PreDeletionRestrictedAt { get; set; }
+
     public DateTime? CleanupCompletedAt { get; set; }
 
     public string? ProfilePicture { get; set; }

@@ -113,6 +113,11 @@ public sealed class SetAccountRestrictionServerCommandHandler(
         };
         var deletionDate = changed.Restriction.DeletionScheduledAt?.ToDateTime()
             .ToString("dd.MM.yyyy HH:mm:ss") ?? string.Empty;
+        var statusDescription = action == AccountRestrictionAction.CancelDeletion
+            ? changed.Restriction.Status == AccountStatus.Blocked
+                ? $"Удаление отменено. Аккаунт остаётся заблокированным. Причина блокировки: {changed.Restriction.Reason}"
+                : "Удаление отменено. Аккаунт снова активен."
+            : string.Empty;
         var notification = new EmailNotification
         {
             OwnerId = changed.User.Id,
@@ -125,6 +130,7 @@ public sealed class SetAccountRestrictionServerCommandHandler(
             {
                 ["username"] = changed.User.Username,
                 ["reason"] = reason,
+                ["statusdescription"] = statusDescription,
                 ["datetime"] = DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss"),
                 ["deletiondate"] = deletionDate,
             },

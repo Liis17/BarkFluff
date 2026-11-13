@@ -42,6 +42,24 @@ namespace BarkFluff.Users.Persistence.Migrations
                 type: "text",
                 nullable: true);
 
+            migrationBuilder.AddColumn<int>(
+                name: "PreDeletionAccountStatus",
+                table: "Users",
+                type: "integer",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "PreDeletionRestrictionReason",
+                table: "Users",
+                type: "text",
+                nullable: true);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "PreDeletionRestrictedAt",
+                table: "Users",
+                type: "timestamp with time zone",
+                nullable: true);
+
             migrationBuilder.CreateIndex(
                 name: "IX_Users_AccountStatus_DeletionScheduledAt",
                 table: "Users",
@@ -73,6 +91,18 @@ namespace BarkFluff.Users.Persistence.Migrations
 
             migrationBuilder.DropColumn(
                 name: "RestrictionReason",
+                table: "Users");
+
+            migrationBuilder.DropColumn(
+                name: "PreDeletionAccountStatus",
+                table: "Users");
+
+            migrationBuilder.DropColumn(
+                name: "PreDeletionRestrictionReason",
+                table: "Users");
+
+            migrationBuilder.DropColumn(
+                name: "PreDeletionRestrictedAt",
                 table: "Users");
         }
     }

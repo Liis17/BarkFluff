@@ -1004,12 +1004,17 @@
         }[action];
         if (!config || !confirm(config.confirm)) return;
         try {
-            await BF.request(`/api/users/${uid}/${config.path}`, {
+            const result = await BF.request(`/api/users/${uid}/${config.path}`, {
                 method: config.method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reason }),
-                successToast: config.success
+                body: JSON.stringify({ reason })
             });
+            const success = action === 'cancel-deletion'
+                ? result.accountStatus === 'Blocked'
+                    ? 'Удаление отменено, аккаунт остаётся заблокированным'
+                    : 'Удаление отменено, аккаунт активен'
+                : config.success;
+            BF.toast(success, 'success');
             await openUserModal(uid);
             await loadUsers(true);
         } catch (_) {}

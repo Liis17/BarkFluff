@@ -59,8 +59,12 @@ public sealed class SetAccountRestrictionCommandHandler : IRequestHandler<SetAcc
                     idempotent = true;
                     break;
                 case AccountRestrictionAction.Unblock when status == UserAccountStatus.Blocked:
-                case AccountRestrictionAction.CancelDeletion when status == UserAccountStatus.PendingDeletion:
                     targetStatus = UserAccountStatus.Active;
+                    break;
+                case AccountRestrictionAction.CancelDeletion when status == UserAccountStatus.PendingDeletion:
+                    targetStatus = user.PreDeletionAccountStatus == UserAccountStatus.Blocked
+                        ? UserAccountStatus.Blocked
+                        : UserAccountStatus.Active;
                     break;
                 case AccountRestrictionAction.ScheduleDeletion when status == UserAccountStatus.PendingDeletion:
                     targetStatus = status;
@@ -82,13 +86,24 @@ public sealed class SetAccountRestrictionCommandHandler : IRequestHandler<SetAcc
 
             var now = DateTime.UtcNow;
             DateTime? deletionScheduledAt = targetStatus == UserAccountStatus.PendingDeletion ? now.Add(DeletionDelay) : null;
+            var restoringBlock = request.Action == AccountRestrictionAction.CancelDeletion
+                && targetStatus == UserAccountStatus.Blocked;
+            var targetReason = restoringBlock
+                ? user.PreDeletionRestrictionReason ?? user.RestrictionReason ?? string.Empty
+                : reason;
+            var targetRestrictedAt = restoringBlock
+                ? user.PreDeletionRestrictedAt ?? user.RestrictedAt ?? now
+                : now;
             if (await _usersStorage.TrySetAccountRestriction(
                     request.UserId,
                     status,
                     targetStatus,
-                    reason,
-                    now,
+                    targetReason,
+                    targetRestrictedAt,
                     deletionScheduledAt,
+                    targetStatus == UserAccountStatus.PendingDeletion ? status : null,
+                    targetStatus == UserAccountStatus.PendingDeletion && status == UserAccountStatus.Blocked ? user.RestrictionReason : null,
+                    targetStatus == UserAccountStatus.PendingDeletion && status == UserAccountStatus.Blocked ? user.RestrictedAt : null,
                     cancellationToken) > 0)
                 break;
         }

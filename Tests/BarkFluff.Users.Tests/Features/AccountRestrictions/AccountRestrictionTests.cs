@@ -43,9 +43,26 @@ public class AccountRestrictionTests : IAsyncDisposable
         pending.Restriction.DeletionScheduledAt!.ToDateTime().Should().BeCloseTo(DateTime.UtcNow.AddDays(7), TimeSpan.FromSeconds(2));
 
         var cancelled = await handler.Handle(new SetAccountRestrictionCommand(user.Id, AccountRestrictionAction.CancelDeletion, "changed mind"), CancellationToken.None);
+        cancelled.Restriction.Status.Should().Be(BarkFluff.Proto.Users.AccountStatus.Blocked);
+        cancelled.Restriction.Reason.Should().Be("abuse");
+        cancelled.Restriction.RestrictedAt.Should().Be(restrictedAt);
+        cancelled.Restriction.DeletionScheduledAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SetRestriction_CancelActiveDeletionRestoresActiveStatus()
+    {
+        var setup = await CreateSqliteUser();
+        await using var connection = setup.Connection;
+        await using var db = setup.Context;
+        var handler = new SetAccountRestrictionCommandHandler(new UsersStorage(db), _h.QueueSender);
+
+        await handler.Handle(new SetAccountRestrictionCommand(setup.User.Id, AccountRestrictionAction.ScheduleDeletion, "requested"), CancellationToken.None);
+        var cancelled = await handler.Handle(new SetAccountRestrictionCommand(setup.User.Id, AccountRestrictionAction.CancelDeletion, "changed mind"), CancellationToken.None);
+
         cancelled.Restriction.Status.Should().Be(BarkFluff.Proto.Users.AccountStatus.Active);
         cancelled.Restriction.Reason.Should().BeEmpty();
-        cancelled.Restriction.DeletionScheduledAt.Should().BeNull();
+        cancelled.Restriction.RestrictedAt.Should().BeNull();
     }
 
     [Fact]
