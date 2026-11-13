@@ -19,26 +19,36 @@ internal sealed class TestUpstream : IAsyncDisposable
     private readonly WebApplication _app;
     private readonly Channel<string> _cancellations;
     private readonly TaskCompletionSource _firstUploadByte = NewSignal();
+    private readonly TaskCompletionSource _slowUploadFirstByte = NewSignal();
     private readonly TaskCompletionSource _firstDownloadChunk = NewSignal();
     private readonly TaskCompletionSource _downloadGate = NewSignal();
     private readonly TaskCompletionSource _downloadCompleted = NewSignal();
+    private readonly TaskCompletionSource _slowDownloadStarted = NewSignal();
     private readonly TaskCompletionSource _eventsStarted = NewSignal();
+    private readonly TestUpstreamState _grpcState;
 
-    private TestUpstream(WebApplication app, X509Certificate2 certificate, Uri address, Channel<string> cancellations)
+    private TestUpstream(WebApplication app, X509Certificate2 certificate, Uri address, Channel<string> cancellations, TestUpstreamState grpcState)
     {
         _app = app;
         Certificate = certificate;
         Address = address;
         _cancellations = cancellations;
+        _grpcState = grpcState;
     }
 
     public X509Certificate2 Certificate { get; }
     public Uri Address { get; }
     public Task FirstUploadByte => _firstUploadByte.Task;
+    public Task SlowUploadFirstByte => _slowUploadFirstByte.Task;
     public Task FirstDownloadChunk => _firstDownloadChunk.Task;
     public Task DownloadCompleted => _downloadCompleted.Task;
+    public Task SlowDownloadStarted => _slowDownloadStarted.Task;
     public Task EventsStarted => _eventsStarted.Task;
+    public Task LongStreamStarted => _grpcState.LongStreamStarted.Task;
+    public Task SlowStreamStarted => _grpcState.SlowStreamStarted.Task;
+    public Task DuplexStarted => _grpcState.DuplexStarted.Task;
     public void ReleaseDownload() => _downloadGate.TrySetResult();
+    public void PublishLongStreamEvent(string value) => _grpcState.LongStreamEvents.Writer.TryWrite(value);
     public Task<string> WaitForCancellationAsync(CancellationToken cancellationToken) => _cancellations.Reader.ReadAsync(cancellationToken).AsTask();
 
     public static async Task<TestUpstream> StartAsync()
@@ -59,8 +69,10 @@ internal sealed class TestUpstream : IAsyncDisposable
         builder.Services.AddGrpc();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddSingleton(cancellations);
+        var grpcState = new TestUpstreamState();
+        builder.Services.AddSingleton(grpcState);
         var app = builder.Build();
-        var instance = new TestUpstream(app, certificate, new Uri($"https://127.0.0.1:{port}"), cancellations);
+        var instance = new TestUpstream(app, certificate, new Uri($"https://127.0.0.1:{port}"), cancellations, grpcState);
 
         app.MapGrpcService<ProxyTestGrpcService>();
         app.MapGet("/headers", (HttpContext context) => Results.Json(new
@@ -79,6 +91,15 @@ internal sealed class TestUpstream : IAsyncDisposable
             cloudflareIp = context.Request.Headers["CF-Connecting-IP"].ToString(),
             spoofedBft = context.Request.Headers["X-BFT-Spoof"].ToString()
         }));
+        app.MapGet("/response-headers", async context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status418ImATeapot;
+            context.Response.Headers["X-Upstream-Test"] = "preserved";
+            context.Response.Headers.Append("Set-Cookie", "session=one; Path=/; Secure");
+            context.Response.Headers.Append("Set-Cookie", "preference=two; Path=/");
+            context.Response.Headers["Alt-Svc"] = "h3=\":443\"; ma=86400";
+            await context.Response.WriteAsync("upstream response");
+        });
         app.MapPost("/upload", async context =>
         {
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -98,6 +119,19 @@ internal sealed class TestUpstream : IAsyncDisposable
             }
             finally { ArrayPool<byte>.Shared.Return(buffer); }
         });
+        app.MapPost("/upload-slow", async context =>
+        {
+            var buffer = new byte[4096];
+            long length = 0;
+            while (true)
+            {
+                var count = await context.Request.Body.ReadAsync(buffer, context.RequestAborted);
+                if (count == 0) break;
+                instance._slowUploadFirstByte.TrySetResult();
+                length += count;
+            }
+            await context.Response.WriteAsJsonAsync(new { length }, context.RequestAborted);
+        });
         app.MapGet("/download", async context =>
         {
             context.Response.ContentType = "application/octet-stream";
@@ -115,6 +149,18 @@ internal sealed class TestUpstream : IAsyncDisposable
                 }
             }
             instance._downloadCompleted.TrySetResult();
+        });
+        app.MapGet("/download-slow", async context =>
+        {
+            context.Response.ContentType = "application/octet-stream";
+            var buffer = new byte[64 * 1024];
+            Array.Fill(buffer, (byte)0x5A);
+            for (var index = 0; index < 128; index++)
+            {
+                await context.Response.Body.WriteAsync(buffer, context.RequestAborted);
+                await context.Response.Body.FlushAsync(context.RequestAborted);
+                if (index == 0) instance._slowDownloadStarted.TrySetResult();
+            }
         });
         app.MapGet("/events", async context =>
         {
@@ -169,10 +215,15 @@ internal sealed class TestUpstream : IAsyncDisposable
 
     private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    private sealed class ProxyTestGrpcService(IHttpContextAccessor accessor, Channel<string> cancellations) : ProxyTest.ProxyTestBase
+    private sealed class ProxyTestGrpcService(IHttpContextAccessor accessor, Channel<string> cancellations, TestUpstreamState state) : ProxyTest.ProxyTestBase
     {
         public override async Task<EchoReply> Unary(EchoRequest request, ServerCallContext context)
         {
+            if (request.Value == "abort")
+            {
+                accessor.HttpContext!.Abort();
+                await Task.Delay(Timeout.InfiniteTimeSpan, context.CancellationToken);
+            }
             if (request.Value == "failure")
                 throw new RpcException(new Status(StatusCode.ResourceExhausted, "upstream rejected"), new Metadata { { "probe-trailer", "failure" } });
             if (request.Value == "wait")
@@ -190,6 +241,22 @@ internal sealed class TestUpstream : IAsyncDisposable
 
         public override async Task ServerStream(EchoRequest request, IServerStreamWriter<EchoReply> responseStream, ServerCallContext context)
         {
+            if (request.Value == "long")
+            {
+                state.LongStreamStarted.TrySetResult();
+                await responseStream.WriteAsync(new EchoReply { Value = "started" });
+                await foreach (var value in state.LongStreamEvents.Reader.ReadAllAsync(context.CancellationToken))
+                    await responseStream.WriteAsync(new EchoReply { Value = value });
+                return;
+            }
+            if (request.Value == "slow-read")
+            {
+                state.SlowStreamStarted.TrySetResult();
+                var value = new string('x', 32 * 1024);
+                for (var index = 0; index < 128; index++)
+                    await responseStream.WriteAsync(new EchoReply { Value = value });
+                return;
+            }
             if (request.Value == "cancel")
             {
                 await responseStream.WriteAsync(new EchoReply { Value = "first" });
@@ -207,6 +274,8 @@ internal sealed class TestUpstream : IAsyncDisposable
 
         public override async Task Duplex(IAsyncStreamReader<EchoRequest> requestStream, IServerStreamWriter<EchoReply> responseStream, ServerCallContext context)
         {
+            if (context.RequestHeaders.Any(header => header.Key == "x-idle-stream-test"))
+                state.DuplexStarted.TrySetResult();
             while (await requestStream.MoveNext(context.CancellationToken))
             {
                 var request = requestStream.Current;
@@ -215,4 +284,12 @@ internal sealed class TestUpstream : IAsyncDisposable
             context.ResponseTrailers.Add("probe-trailer", "duplex-done");
         }
     }
+}
+
+internal sealed class TestUpstreamState
+{
+    public TaskCompletionSource LongStreamStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource SlowStreamStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource DuplexStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public Channel<string> LongStreamEvents { get; } = Channel.CreateUnbounded<string>();
 }

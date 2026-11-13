@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using BarkFluff.Bft;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Xunit;
 
 namespace BarkFluff.BftProxy.Tests;
@@ -155,6 +156,68 @@ public sealed class ExitPolicyTests(BftProxyFixture fixture)
     }
 
     [Fact]
+    public async Task ReplacingAClientKeyValueDrainsTunnelsUsingTheOldValue()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var directory = Path.Combine(Path.GetTempPath(), $"bftproxy-key-rotation-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var keyFile = Path.Combine(directory, "clients.keys");
+        var replacementKey = Enumerable.Repeat((byte)0xA2, 32).ToArray();
+        try
+        {
+            await File.WriteAllTextAsync(keyFile, $"client {Encode(BftProxyFixture.ObfsKey)}\n");
+            var configuration = new ExitConfiguration(new ProxyEndpoint("127.0.0.1", 0), null,
+                BftProxyFixture.StaticPrivateKey, keyFile,
+                [new BftServerObfsKey("client", BftProxyFixture.ObfsKey)], [], new HashSet<IPAddress>(), null,
+                "rotation-test", fixture.ProxySecret, new Dictionary<byte, Uri>());
+            await using var proxy = await BftProxyHost.StartExitAsync(configuration, fixture.Time, fixture.Random);
+            using var socket = new TcpClient();
+            await socket.ConnectAsync(proxy.ListenEndPoint, timeout.Token);
+            await using var client = new BftTestClient(socket, await BftClientTunnel.ConnectAsync(socket.GetStream(), new BftClientTunnelOptions
+            {
+                Handshake = new BftClientHandshakeOptions
+                {
+                    StaticPublicKey = BftCrypto.GetX25519PublicKey(BftProxyFixture.StaticPrivateKey),
+                    ObfsKey = BftProxyFixture.ObfsKey
+                }
+            }, timeout.Token));
+            var goAway = client.Tunnel.WaitForGoAwayAsync(timeout.Token);
+
+            await File.WriteAllTextAsync(keyFile, $"client {Encode(replacementKey)}\n");
+            fixture.Time.Advance(TimeSpan.FromSeconds(2));
+
+            Assert.Equal(0u, await goAway.WaitAsync(TimeSpan.FromSeconds(5)));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+            CryptographicOperations.ZeroMemory(replacementKey);
+        }
+    }
+
+    [Fact]
+    public async Task EstablishedTunnelLimitsSendGoAwayForPerKeyAndGlobalOverflow()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        await using (var perKeyProxy = await StartExitAsync(maxTunnelsPerKey: 1, maxTunnels: 2))
+        {
+            await using var first = await ConnectAsync(perKeyProxy, BftProxyFixture.ObfsKey, timeout.Token);
+            await using var rejected = await ConnectAsync(perKeyProxy, BftProxyFixture.ObfsKey, timeout.Token);
+            Assert.Equal(0u, await rejected.Tunnel.WaitForGoAwayAsync(timeout.Token));
+            Assert.False(first.Tunnel.Completion.IsCompleted);
+        }
+
+        await using (var globalProxy = await StartExitAsync(maxTunnelsPerKey: 2, maxTunnels: 1))
+        {
+            await using var first = await ConnectAsync(globalProxy, BftProxyFixture.ObfsKey, timeout.Token);
+            await using var rejected = await ConnectAsync(globalProxy, BftProxyFixture.RevocableObfsKey, timeout.Token);
+            Assert.Equal(0u, await rejected.Tunnel.WaitForGoAwayAsync(timeout.Token));
+            Assert.False(first.Tunnel.Completion.IsCompleted);
+        }
+    }
+
+    [Fact]
     public void PendingLimiterEnforcesItsTotalLimitAcrossDistinctAddresses()
     {
         var limiter = new PendingConnectionLimiter(2000, 1024);
@@ -197,6 +260,71 @@ public sealed class ExitPolicyTests(BftProxyFixture fixture)
     }
 
     [Fact]
+    public void ExitConfigUsesDefaultAndConfiguredEstablishedTunnelLimits()
+    {
+        var values = new Dictionary<string, string?>
+        {
+            ["BFT_MODE"] = "Exit",
+            ["BFT_LISTEN"] = "127.0.0.1:8443",
+            ["BFT_STATIC_PRIVATE_KEY"] = Encode(BftProxyFixture.StaticPrivateKey),
+            ["BFT_CLIENT_KEYS_FILE"] = fixture.KeyFile,
+            ["BFT_PROXY_ID"] = "test-proxy",
+            ["BFT_ORIGIN_SECRET"] = fixture.ProxySecret
+        };
+        var defaults = ProxyConfiguration.Parse(values).Exit!;
+        Assert.Equal(16, defaults.MaxTunnelsPerKey);
+        Assert.Equal(4096, defaults.MaxTunnels);
+
+        values["BFT_MAX_TUNNELS_PER_KEY"] = "3";
+        values["BFT_MAX_TUNNELS"] = "17";
+        var configured = ProxyConfiguration.Parse(values).Exit!;
+        Assert.Equal(3, configured.MaxTunnelsPerKey);
+        Assert.Equal(17, configured.MaxTunnels);
+    }
+
+    [Fact]
+    public void ExitConfigRejectsInvalidEstablishedTunnelLimits()
+    {
+        var error = Assert.Throws<InvalidOperationException>(() => ProxyConfiguration.Parse(new Dictionary<string, string?>
+        {
+            ["BFT_MODE"] = "Exit",
+            ["BFT_LISTEN"] = "127.0.0.1:8443",
+            ["BFT_STATIC_PRIVATE_KEY"] = Encode(BftProxyFixture.StaticPrivateKey),
+            ["BFT_CLIENT_KEYS_FILE"] = fixture.KeyFile,
+            ["BFT_PROXY_ID"] = "test-proxy",
+            ["BFT_ORIGIN_SECRET"] = fixture.ProxySecret,
+            ["BFT_MAX_TUNNELS"] = "0"
+        }));
+        Assert.Contains("BFT_MAX_TUNNELS", error.Message);
+    }
+
+    [Fact]
+    public void ExitDisablesKestrelMinimumRequestAndResponseDataRates()
+    {
+        var limits = new KestrelServerLimits();
+        Assert.NotNull(limits.MinRequestBodyDataRate);
+        Assert.NotNull(limits.MinResponseDataRate);
+
+        BftProxyHost.ConfigureKestrelRequestLimits(limits);
+
+        Assert.Null(limits.MinRequestBodyDataRate);
+        Assert.Null(limits.MinResponseDataRate);
+    }
+
+    [Fact]
+    public void ScopedIpv6ClientIpOmitsItsScopeIdentifier()
+    {
+        Assert.Equal("fe80::1", BftForwarder.FormatClientIp(IPAddress.Parse("fe80::1%3")));
+    }
+
+    [Fact]
+    public void UpstreamConnectionPoolExpiresAfterTenMinutes()
+    {
+        using var handler = BftForwarder.CreateUpstreamHandler(null);
+        Assert.Equal(TimeSpan.FromMinutes(10), handler.PooledConnectionLifetime);
+    }
+
+    [Fact]
     public void ExitConfigRejectsProxyIdLongerThanTheBftHelloField()
     {
         var error = Assert.Throws<InvalidOperationException>(() => ProxyConfiguration.Parse(new Dictionary<string, string?>
@@ -213,4 +341,34 @@ public sealed class ExitPolicyTests(BftProxyFixture fixture)
     }
 
     private static string Encode(ReadOnlySpan<byte> value) => Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+    private Task<BftProxyHost> StartExitAsync(int maxTunnelsPerKey, int maxTunnels) => BftProxyHost.StartExitAsync(
+        new ExitConfiguration(new ProxyEndpoint("127.0.0.1", 0), null, BftProxyFixture.StaticPrivateKey, fixture.KeyFile,
+            [new BftServerObfsKey("integration-user", BftProxyFixture.ObfsKey),
+                new BftServerObfsKey("revocable-user", BftProxyFixture.RevocableObfsKey)], [], new HashSet<IPAddress>(), null,
+            "limits-test", fixture.ProxySecret, new Dictionary<byte, Uri>(), maxTunnelsPerKey, maxTunnels),
+        fixture.Time, fixture.Random);
+
+    private static async Task<BftTestClient> ConnectAsync(BftProxyHost proxy, byte[] obfsKey, CancellationToken cancellationToken)
+    {
+        var socket = new TcpClient();
+        try
+        {
+            await socket.ConnectAsync(proxy.ListenEndPoint, cancellationToken);
+            var tunnel = await BftClientTunnel.ConnectAsync(socket.GetStream(), new BftClientTunnelOptions
+            {
+                Handshake = new BftClientHandshakeOptions
+                {
+                    StaticPublicKey = BftCrypto.GetX25519PublicKey(BftProxyFixture.StaticPrivateKey),
+                    ObfsKey = obfsKey
+                }
+            }, cancellationToken);
+            return new BftTestClient(socket, tunnel);
+        }
+        catch
+        {
+            socket.Dispose();
+            throw;
+        }
+    }
 }

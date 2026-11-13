@@ -136,6 +136,132 @@ public sealed class ExitProxyTests(BftProxyFixture fixture)
     }
 
     [Fact]
+    public async Task UpstreamAbortOnMultiplexedChannelDoesNotResetAnotherGrpcStream()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        await using var bft = await fixture.ConnectAsync(timeout.Token);
+        using var channel = bft.CreateGrpcChannel(1);
+        var grpc = new ProxyTest.ProxyTestClient(channel);
+        using var longStream = grpc.ServerStream(new EchoRequest { Value = "long" }, cancellationToken: timeout.Token);
+
+        Assert.True(await longStream.ResponseStream.MoveNext(timeout.Token));
+        Assert.Equal("started", longStream.ResponseStream.Current.Value);
+        await fixture.Upstream.LongStreamStarted.WaitAsync(timeout.Token);
+
+        var unary = grpc.UnaryAsync(new EchoRequest { Value = "abort" }, cancellationToken: timeout.Token);
+        await Assert.ThrowsAnyAsync<RpcException>(() => unary.ResponseAsync);
+        Assert.False(bft.Tunnel.Completion.IsCompleted);
+
+        fixture.Upstream.PublishLongStreamEvent("still-alive");
+        Assert.True(await longStream.ResponseStream.MoveNext(timeout.Token));
+        Assert.Equal("still-alive", longStream.ResponseStream.Current.Value);
+    }
+
+    [Fact]
+    public async Task ResponseStatusAndHeadersArePreservedExceptAltSvc()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await using var bft = await fixture.ConnectAsync(timeout.Token);
+        using var http = bft.CreateHttpClient(2, HttpVersion.Version11);
+        using var upstreamHandler = new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, _, _, _) => true };
+        using var upstreamClient = new HttpClient(upstreamHandler) { BaseAddress = fixture.Upstream.Address };
+        using var upstreamResponse = await upstreamClient.GetAsync("/response-headers", timeout.Token);
+        Assert.True(upstreamResponse.Headers.Contains("Alt-Svc"));
+
+        using var response = await http.GetAsync("/response-headers", timeout.Token);
+
+        Assert.Equal((HttpStatusCode)418, response.StatusCode);
+        Assert.Equal("preserved", Assert.Single(response.Headers.GetValues("X-Upstream-Test")));
+        Assert.Equal(["session=one; Path=/; Secure", "preference=two; Path=/"], response.Headers.GetValues("Set-Cookie"));
+        Assert.False(response.Headers.Contains("Alt-Svc"));
+        Assert.Equal("upstream response", await response.Content.ReadAsStringAsync(timeout.Token));
+    }
+
+    [Fact]
+    public async Task DuplexStreamSurvivesIdleClientLongerThanKestrelGracePeriod()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        await using var bft = await fixture.ConnectAsync(timeout.Token);
+        using var channel = bft.CreateGrpcChannel(1);
+        var grpc = new ProxyTest.ProxyTestClient(channel);
+        var headers = new Metadata { { "x-idle-stream-test", "true" } };
+        using var duplex = grpc.Duplex(headers: headers, cancellationToken: timeout.Token);
+
+        await fixture.Upstream.DuplexStarted.WaitAsync(timeout.Token);
+        await Task.Delay(TimeSpan.FromSeconds(9), timeout.Token);
+        await duplex.RequestStream.WriteAsync(new EchoRequest { Value = "after-idle" });
+        Assert.True(await duplex.ResponseStream.MoveNext(timeout.Token));
+        Assert.Equal("echo:after-idle", duplex.ResponseStream.Current.Value);
+        await duplex.RequestStream.CompleteAsync();
+        Assert.False(await duplex.ResponseStream.MoveNext(timeout.Token));
+    }
+
+    [Fact]
+    public async Task ServerStreamSurvivesClientNotReadingLongerThanKestrelGracePeriod()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var bft = await fixture.ConnectAsync(timeout.Token);
+        using var channel = bft.CreateGrpcChannel(1);
+        var grpc = new ProxyTest.ProxyTestClient(channel);
+        using var stream = grpc.ServerStream(new EchoRequest { Value = "slow-read" }, cancellationToken: timeout.Token);
+
+        await fixture.Upstream.SlowStreamStarted.WaitAsync(timeout.Token);
+        await Task.Delay(TimeSpan.FromSeconds(9), timeout.Token);
+        var count = 0;
+        while (await stream.ResponseStream.MoveNext(timeout.Token))
+        {
+            Assert.Equal(32 * 1024, stream.ResponseStream.Current.Value.Length);
+            count++;
+        }
+        Assert.Equal(128, count);
+    }
+
+    [Fact]
+    public async Task Http11UploadSurvivesClientIdleLongerThanKestrelRequestGracePeriod()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var bft = await fixture.ConnectAsync(timeout.Token);
+        using var http = bft.CreateHttpClient(5, HttpVersion.Version11);
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var upload = new StreamContent(new GeneratedUploadStream(128 * 1024, gate.Task));
+        upload.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        var uploadTask = http.PostAsync("/upload-slow", upload, timeout.Token);
+
+        await fixture.Upstream.SlowUploadFirstByte.WaitAsync(timeout.Token);
+        await Task.Delay(TimeSpan.FromSeconds(9), timeout.Token);
+        gate.TrySetResult();
+
+        using var response = await uploadTask;
+        response.EnsureSuccessStatusCode();
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+        Assert.Equal(128 * 1024, json.RootElement.GetProperty("length").GetInt64());
+    }
+
+    [Fact]
+    public async Task Http11DownloadSurvivesClientNotReadingLongerThanKestrelResponseGracePeriod()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var bft = await fixture.ConnectAsync(timeout.Token);
+        using var http = bft.CreateHttpClient(5, HttpVersion.Version11);
+        using var response = await http.GetAsync("/download-slow", HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+        response.EnsureSuccessStatusCode();
+        await fixture.Upstream.SlowDownloadStarted.WaitAsync(timeout.Token);
+
+        await using var body = await response.Content.ReadAsStreamAsync(timeout.Token);
+        var buffer = new byte[64 * 1024];
+        var total = await body.ReadAsync(buffer.AsMemory(0, 1), timeout.Token);
+        Assert.Equal(1, total);
+        await Task.Delay(TimeSpan.FromSeconds(9), timeout.Token);
+        while (true)
+        {
+            var count = await body.ReadAsync(buffer, timeout.Token);
+            if (count == 0) break;
+            total += count;
+        }
+        Assert.Equal(128 * 64 * 1024, total);
+    }
+
+    [Fact]
     public async Task Http11StreamingTransfers32MiBAndOtherServiceContinuesDuringUpload()
     {
         const int totalBytes = 32 * 1024 * 1024;
@@ -189,12 +315,13 @@ public sealed class ExitProxyTests(BftProxyFixture fixture)
     }
 
     [Fact]
-    public async Task UpstreamAbortResetsOnlyItsStreamAndCliManagesClientLinks()
+    public async Task UpstreamAbortReturnsBadGatewayAndCliManagesClientLinks()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
         await using var bft = await fixture.ConnectAsync(timeout.Token);
         using var http = bft.CreateHttpClient(4, HttpVersion.Version11);
-        await Assert.ThrowsAnyAsync<HttpRequestException>(() => http.GetAsync("/abort", timeout.Token));
+        using var upstreamAbort = await http.GetAsync("/abort", timeout.Token);
+        Assert.Equal(HttpStatusCode.BadGateway, upstreamAbort.StatusCode);
         Assert.False(bft.Tunnel.Completion.IsCompleted);
 
         using var channel = bft.CreateGrpcChannel(1);

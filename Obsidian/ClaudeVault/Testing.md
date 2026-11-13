@@ -8,6 +8,8 @@ Backend unit/integration проекты находятся в `Tests/BarkFluff.*
 
 `Tests/BarkFluff.Builder.Tests/` — тестовый проект `net10.0` для модели, генераторов, валидации, записи/повторного открытия конфигурации и guard-проверок против дрейфа Docker/nginx и Lognara agent. `Tools/` и этот проект выбирают backend-набор в `.github/scripts/pr_tests.py`. Отдельный `.github/workflows/build-builder.yml` также запускает тесты на Windows и проверяет сгенерированные примеры на Ubuntu; детали — [[Tools/Builder|BarkFluff Builder]].
 
+`Tests/BarkFluff.BftProxy.Tests/` проверяет Exit/Relay через loopback TCP, TLS, HTTP и gRPC: handshake/pending limits, активные туннельные лимиты, ротацию ключей, мультиплексированные запросы, forwarding заголовков и освобождение Relay соединений по `ManualTimeProvider`. Тесты простоя ждут 9 с реального времени для проверки Kestrel grace period; коллекция отключает параллельный запуск из-за общего fixture.
+
 Выбранный reusable `test-backend.yml` обнаруживает все backend-проекты и запускает каждый отдельной matrix job; Windows-проекты исключаются по Windows TargetFramework. PostgreSQL 16 в service container включает Messages search и Developers concurrent seed через соответствующие env; рабочие БД не используются.
 
 `test-clients.yml` запускает Windows test projects на Windows, Android JVM tests (`:core:testDebugUnitTest`, `:app-v1:testNightlyDebugUnitTest`) и UI checker на Ubuntu, BFNetworking и BFCore Swift tests на macOS 26. Android instrumented tests с эмулятором, iOS UI и Linux Qt в этот набор не входят. `test-scripts.yml` запускает Python CI helper tests и JavaScript-тесты Web/AdminPanel. TRX и Android XML сохраняются как artifacts.

@@ -38,6 +38,7 @@ internal sealed class BftRelayHost : IAsyncDisposable
 
     public IPEndPoint ListenEndPoint => (IPEndPoint)_listener.LocalEndpoint;
     internal int LastInitialWriteLength => Volatile.Read(ref _lastInitialWriteLength);
+    internal Task WaitForActiveConnectionsAsync() => Task.WhenAll(_connections.Values.Select(connection => connection.Task));
 
     public static Task<BftRelayHost> StartAsync(RelayConfiguration configuration, TimeProvider? timeProvider = null,
         IBftRandomSource? random = null, CancellationToken cancellationToken = default)
@@ -65,6 +66,7 @@ internal sealed class BftRelayHost : IAsyncDisposable
             catch (ObjectDisposedException) when (linked.IsCancellationRequested) { break; }
             catch (SocketException) when (linked.IsCancellationRequested) { break; }
             client.NoDelay = true;
+            client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             var id = Interlocked.Increment(ref _connectionSequence);
             var task = HandleConnectionAsync(client, linked.Token);
             _connections[id] = (client, task);
@@ -122,6 +124,7 @@ internal sealed class BftRelayHost : IAsyncDisposable
             try
             {
                 await ConnectAsync(nextHop, _configuration.NextHop, connect.Token).ConfigureAwait(false);
+                nextHop.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             }
             catch (OperationCanceledException) when (!operation.IsCancellationRequested)
             {
@@ -194,6 +197,14 @@ internal sealed class BftRelayHost : IAsyncDisposable
             var exitToClient = PumpAsync(upstream, client, operation.Token, count => Interlocked.Add(ref toClient, count));
             var first = await Task.WhenAny(clientToExit, exitToClient).ConfigureAwait(false);
             if (first.IsFaulted || first.IsCanceled) operation.Cancel();
+            else
+            {
+                var remaining = ReferenceEquals(first, clientToExit) ? exitToClient : clientToExit;
+                using var halfCloseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(30), _timeProvider);
+                var timeoutTask = Task.Delay(Timeout.InfiniteTimeSpan, halfCloseTimeout.Token);
+                if (await Task.WhenAny(remaining, timeoutTask).ConfigureAwait(false) == timeoutTask)
+                    operation.Cancel();
+            }
             try { await Task.WhenAll(clientToExit, exitToClient).ConfigureAwait(false); }
             catch (OperationCanceledException) when (operation.IsCancellationRequested) { }
             catch (Exception ex) when (ex is IOException or SocketException or ObjectDisposedException)
@@ -218,13 +229,14 @@ internal sealed class BftRelayHost : IAsyncDisposable
         var buffer = ArrayPool<byte>.Shared.Rent(32 * 1024);
         try
         {
+            var destinationSocket = destination.Client;
             var target = destination.GetStream();
             while (true)
             {
                 var read = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false);
                 if (read == 0)
                 {
-                    try { destination.Client.Shutdown(SocketShutdown.Send); }
+                    try { destinationSocket.Shutdown(SocketShutdown.Send); }
                     catch (SocketException) { }
                     catch (ObjectDisposedException) { }
                     return;

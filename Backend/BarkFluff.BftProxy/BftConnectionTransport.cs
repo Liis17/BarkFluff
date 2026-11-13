@@ -28,7 +28,6 @@ public sealed class BftProxyConnectionFeature
     public uint StreamId { get; }
     internal TunnelCounters Counters { get; }
     internal BftTunnelStream Stream { get; }
-    internal ValueTask ResetUpstreamFailureAsync() => Stream.ResetAsync(BftResetCode.UpstreamFailed);
 }
 
 internal sealed class TunnelCounters

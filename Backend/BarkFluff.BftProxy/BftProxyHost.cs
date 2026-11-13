@@ -26,6 +26,7 @@ internal sealed class BftProxyHost : IAsyncDisposable
     private readonly byte[] _tlsSpkiSha256;
     private readonly BftSaltReplayCache _saltCache;
     private readonly PendingConnectionLimiter _pending = new(16, 1024);
+    private readonly ActiveTunnelLimiter _tunnelLimiter;
     private readonly ConcurrentDictionary<long, Task> _connections = new();
     private readonly ConcurrentDictionary<string, ActiveTunnel> _tunnels = new(StringComparer.Ordinal);
     private readonly List<TcpListener> _listeners = [];
@@ -50,6 +51,7 @@ internal sealed class BftProxyHost : IAsyncDisposable
         _tlsSpkiSha256 = tlsSpkiSha256;
         _saltCache = saltCache;
         _forwarder = forwarder;
+        _tunnelLimiter = new ActiveTunnelLimiter(configuration.MaxTunnelsPerKey, configuration.MaxTunnels);
         _clientKeys = configuration.ClientKeys;
         _observedKeyFileHash = HashKeyFile(configuration.ClientKeysFile);
         _logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger<BftProxyHost>();
@@ -77,7 +79,7 @@ internal sealed class BftProxyHost : IAsyncDisposable
         builder.Services.AddSingleton<IConnectionListenerFactory>(transport);
         builder.WebHost.ConfigureKestrel(options =>
         {
-            options.Limits.MaxRequestBodySize = null;
+            ConfigureKestrelRequestLimits(options.Limits);
             options.Limits.Http2.KeepAlivePingDelay = TimeSpan.FromSeconds(30);
             options.Limits.Http2.KeepAlivePingTimeout = TimeSpan.FromSeconds(20);
             options.Listen(new IPEndPoint(IPAddress.Loopback, 0), listen =>
@@ -103,6 +105,13 @@ internal sealed class BftProxyHost : IAsyncDisposable
             await host.DisposeAsync().ConfigureAwait(false);
             throw;
         }
+    }
+
+    internal static void ConfigureKestrelRequestLimits(KestrelServerLimits limits)
+    {
+        limits.MaxRequestBodySize = null;
+        limits.MinRequestBodyDataRate = null;
+        limits.MinResponseDataRate = null;
     }
 
     private static void ConfigureTls(HttpsConnectionAdapterOptions options)
@@ -136,6 +145,7 @@ internal sealed class BftProxyHost : IAsyncDisposable
             catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested) { break; }
             catch (SocketException) when (cancellationToken.IsCancellationRequested) { break; }
             client.NoDelay = true;
+            client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             var id = Interlocked.Increment(ref _connectionSequence);
             var task = HandleConnectionAsync(client, relayPort, cancellationToken);
             _connections[id] = task;
@@ -220,13 +230,15 @@ internal sealed class BftProxyHost : IAsyncDisposable
                 }
 
                 BftServerTunnelAcceptResult result;
+                IReadOnlyList<BftServerObfsKey> handshakeKeys;
                 try
                 {
                     var configuration = _configuration;
+                    handshakeKeys = Volatile.Read(ref _clientKeys);
                     var handshakeOptions = new BftServerHandshakeOptions
                     {
                         StaticPrivateKey = configuration.StaticPrivateKey,
-                        ObfsKeys = Volatile.Read(ref _clientKeys),
+                        ObfsKeys = handshakeKeys,
                         TimeProvider = _timeProvider,
                         RandomSource = _random,
                         SaltCache = _saltCache
@@ -265,8 +277,25 @@ internal sealed class BftProxyHost : IAsyncDisposable
                 pending.Dispose();
                 var tunnel = result.Tunnel!;
                 var tunnelId = Guid.NewGuid().ToString("N");
-                var active = new ActiveTunnel(tunnelId, clientIp, tunnel.MatchedObfsKeyLabel, tunnel);
+                var matchedKey = handshakeKeys.First(key => key.Label == tunnel.MatchedObfsKeyLabel);
+                var tunnelLease = _tunnelLimiter.TryAcquire(matchedKey.Label);
+                if (tunnelLease is null)
+                {
+                    _logger.LogWarning("BFT tunnel rejected from {ClientIp}: established tunnel limit reached for key {KeyLabel}, tunnel {TunnelId}",
+                        clientIp, matchedKey.Label, tunnelId);
+                    try { await tunnel.SendGoAwayAsync(BftGoAwayCode.Overload, cancellationToken).ConfigureAwait(false); }
+                    catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException)
+                    {
+                        _logger.LogDebug("BFT overloaded tunnel {TunnelId} could not send GOAWAY: {Reason}", tunnelId, ex.GetType().Name);
+                    }
+                    finally { await tunnel.DisposeAsync().ConfigureAwait(false); }
+                    return;
+                }
+
+                var active = new ActiveTunnel(tunnelId, clientIp, matchedKey.Label, matchedKey.Key, tunnel, tunnelLease);
                 _tunnels[tunnelId] = active;
+                if (!ContainsKeyPair(Volatile.Read(ref _clientKeys), matchedKey))
+                    _ = RevokeTunnelAsync(active, cancellationToken);
                 var counters = new TunnelCounters();
                 _logger.LogInformation("BFT tunnel accepted from {ClientIp} with key {KeyLabel}, tunnel {TunnelId}", clientIp, tunnel.MatchedObfsKeyLabel, tunnelId);
                 try
@@ -360,11 +389,11 @@ internal sealed class BftProxyHost : IAsyncDisposable
             Volatile.Write(ref _clientKeys, next);
             CryptographicOperations.ZeroMemory(_observedKeyFileHash);
             _observedKeyFileHash = hash;
-            var revoked = prior.Select(key => key.Label).Except(next.Select(key => key.Label), StringComparer.Ordinal).ToArray();
-            foreach (var label in revoked)
+            var revoked = prior.Where(priorKey => !ContainsKeyPair(next, priorKey)).ToArray();
+            foreach (var key in revoked)
             {
-                _logger.LogInformation("BFT client key revoked: {KeyLabel}", label);
-                foreach (var active in _tunnels.Values.Where(tunnel => tunnel.KeyLabel == label))
+                _logger.LogInformation("BFT client key revoked: {KeyLabel}", key.Label);
+                foreach (var active in _tunnels.Values.Where(tunnel => tunnel.Matches(key)))
                     _ = RevokeTunnelAsync(active, cancellationToken);
             }
         }
@@ -372,13 +401,17 @@ internal sealed class BftProxyHost : IAsyncDisposable
 
     private async Task RevokeTunnelAsync(ActiveTunnel active, CancellationToken cancellationToken)
     {
+        if (!active.TryBeginRevocation()) return;
         try { await active.Tunnel.ShutdownAsync(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false); }
         catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException)
         {
             _logger.LogDebug("Revoked BFT tunnel {TunnelId} could not drain: {Reason}", active.Id, ex.GetType().Name);
         }
-        finally { active.Revoked.Cancel(); }
+        finally { active.Cancel(); }
     }
+
+    private static bool ContainsKeyPair(IReadOnlyList<BftServerObfsKey> keys, BftServerObfsKey target) =>
+        keys.Any(key => key.Label == target.Label && CryptographicOperations.FixedTimeEquals(key.Key, target.Key));
 
     private static byte[] HashKeyFile(string path)
     {
@@ -426,14 +459,67 @@ internal sealed class BftProxyHost : IAsyncDisposable
         _shutdown.Dispose();
     }
 
-    private sealed class ActiveTunnel(string id, IPAddress clientIp, string keyLabel, BftServerTunnel tunnel) : IDisposable
+    private sealed class ActiveTunnel(string id, IPAddress clientIp, string keyLabel, byte[] key, BftServerTunnel tunnel,
+        ActiveTunnelLimiter.Lease lease) : IDisposable
     {
+        private int _revocationStarted;
         public string Id { get; } = id;
         public IPAddress ClientIp { get; } = clientIp;
         public string KeyLabel { get; } = keyLabel;
         public BftServerTunnel Tunnel { get; } = tunnel;
+        private byte[] Key { get; } = key;
         public CancellationTokenSource Revoked { get; } = new();
-        public void Dispose() => Revoked.Dispose();
+        public bool Matches(BftServerObfsKey key) => KeyLabel == key.Label && CryptographicOperations.FixedTimeEquals(Key, key.Key);
+        public bool TryBeginRevocation() => Interlocked.Exchange(ref _revocationStarted, 1) == 0;
+        public void Cancel()
+        {
+            try { Revoked.Cancel(); }
+            catch (ObjectDisposedException) { }
+        }
+        public void Dispose()
+        {
+            Revoked.Dispose();
+            lease.Dispose();
+        }
+    }
+}
+
+internal sealed class ActiveTunnelLimiter(int perKeyLimit, int totalLimit)
+{
+    private readonly object _gate = new();
+    private readonly Dictionary<string, int> _byKey = new(StringComparer.Ordinal);
+    private int _total;
+
+    public Lease? TryAcquire(string key)
+    {
+        lock (_gate)
+        {
+            var count = _byKey.GetValueOrDefault(key);
+            if (count >= perKeyLimit || _total >= totalLimit) return null;
+            _byKey[key] = count + 1;
+            _total++;
+            return new Lease(this, key);
+        }
+    }
+
+    private void Release(string key)
+    {
+        lock (_gate)
+        {
+            var count = _byKey[key] - 1;
+            if (count == 0) _byKey.Remove(key);
+            else _byKey[key] = count;
+            _total--;
+        }
+    }
+
+    internal sealed class Lease(ActiveTunnelLimiter owner, string key) : IDisposable
+    {
+        private int _released;
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _released, 1) == 0) owner.Release(key);
+        }
     }
 }
 

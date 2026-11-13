@@ -40,7 +40,9 @@ internal sealed record ExitConfiguration(
     byte[]? RelayKey,
     string ProxyId,
     string OriginSecret,
-    IReadOnlyDictionary<byte, Uri> Upstreams);
+    IReadOnlyDictionary<byte, Uri> Upstreams,
+    int MaxTunnelsPerKey = 16,
+    int MaxTunnels = 4096);
 
 internal sealed record RelayConfiguration(
     ProxyEndpoint Listen,
@@ -147,7 +149,9 @@ internal sealed record ProxyConfiguration(ProxyMode Mode, ExitConfiguration? Exi
         }
 
         return new ProxyConfiguration(mode, new ExitConfiguration(listen, relayListen, staticPrivateKey, keyFile,
-            clientKeys, accessTokens, trustedRelays, relayKey, proxyId, originSecret, upstreams), null);
+            clientKeys, accessTokens, trustedRelays, relayKey, proxyId, originSecret, upstreams,
+            OptionalPositiveInt(values, "BFT_MAX_TUNNELS_PER_KEY", 16, 4096),
+            OptionalPositiveInt(values, "BFT_MAX_TUNNELS", 4096, 65536)), null);
     }
 
     public static string ServiceName(byte serviceId) => ServiceVariables.FirstOrDefault(item => item.Id == serviceId).Name ?? "unknown";

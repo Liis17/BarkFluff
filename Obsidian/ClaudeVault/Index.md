@@ -12,6 +12,7 @@
 | [[Backend/Settings]] | Централизованные настройки и setup API | — |
 | [[Backend/Setup]] | Первичная настройка Settings | — |
 | [[Backend/Beacon]] | Адреса сервисов и метаданные ноды | [[Backend/Beacon-Metrics|Метрики]], [[Backend/Beacon-ProjectMap|Карта]] |
+| [[Backend/BftProxy]] | BFTv1 Exit и Relay | — |
 | [[Backend/Navigator]] | Каталог нод | — |
 | [[Backend/GrpcServer]] | Общая backend-инфраструктура, XAuth, health и метрики | [[Backend/GrpcServer-ProjectMap|Карта]] |
 | [[Backend/Identity]] | JWT, challenge auth, OTP и сессии | [[Backend/Identity-Metrics|Метрики]], [[Backend/Identity-ProjectMap|Карта]] |

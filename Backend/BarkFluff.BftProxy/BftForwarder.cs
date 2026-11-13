@@ -8,6 +8,8 @@ namespace BarkFluff.BftProxy;
 
 internal sealed class BftForwarder : IDisposable
 {
+    internal static readonly TimeSpan UpstreamConnectionLifetime = TimeSpan.FromMinutes(10);
+
     private readonly HttpMessageInvoker _client;
     private readonly IReadOnlyDictionary<byte, Uri> _upstreams;
     private readonly ILogger _logger;
@@ -23,22 +25,7 @@ internal sealed class BftForwarder : IDisposable
         _logger = logger;
         _forwarder = services.GetRequiredService<IHttpForwarder>();
         _transformer = new BftRequestTransformer(configuration.ProxyId, configuration.OriginSecret);
-        _client = new HttpMessageInvoker(new SocketsHttpHandler
-        {
-            UseProxy = false,
-            AllowAutoRedirect = false,
-            AutomaticDecompression = DecompressionMethods.None,
-            UseCookies = false,
-            EnableMultipleHttp2Connections = true,
-            ConnectTimeout = TimeSpan.FromSeconds(15),
-            PooledConnectionLifetime = TimeSpan.FromHours(24),
-            KeepAlivePingDelay = TimeSpan.FromSeconds(30),
-            KeepAlivePingTimeout = TimeSpan.FromSeconds(20),
-            KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always,
-            SslOptions = testCertificateValidation is null
-                ? null
-                : new System.Net.Security.SslClientAuthenticationOptions { RemoteCertificateValidationCallback = testCertificateValidation }
-        }, disposeHandler: true);
+        _client = new HttpMessageInvoker(CreateUpstreamHandler(testCertificateValidation), disposeHandler: true);
     }
 
     public async Task ForwardAsync(HttpContext context)
@@ -65,8 +52,6 @@ internal sealed class BftForwarder : IDisposable
             var errorFeature = context.Features.Get<IForwarderErrorFeature>();
             _logger.LogWarning(errorFeature?.Exception, "BFT upstream forwarding failed for {ServiceId} ({ServiceName}) from {ClientIp}; tunnel {TunnelId}, stream {StreamId}, error {ForwarderError}",
                 feature.ServiceId, ProxyConfiguration.ServiceName(feature.ServiceId), feature.ClientIp, feature.TunnelId, feature.StreamId, error);
-            if (!context.RequestAborted.IsCancellationRequested)
-                await feature.ResetUpstreamFailureAsync().ConfigureAwait(false);
         }
     }
 
@@ -118,9 +103,38 @@ internal sealed class BftForwarder : IDisposable
             var feature = httpContext.Features.Get<BftProxyConnectionFeature>()!;
             proxyRequest.RequestUri = RequestUtilities.MakeDestinationAddress(destinationPrefix, httpContext.Request.Path, httpContext.Request.QueryString);
             proxyRequest.Headers.Host = null;
-            proxyRequest.Headers.TryAddWithoutValidation("X-BFT-Client-IP", feature.ClientIp.ToString());
+            proxyRequest.Headers.TryAddWithoutValidation("X-BFT-Client-IP", FormatClientIp(feature.ClientIp));
             proxyRequest.Headers.TryAddWithoutValidation("X-BFT-Proxy-Id", _proxyId);
             proxyRequest.Headers.TryAddWithoutValidation("X-BFT-Proxy-Secret", _originSecret);
         }
+
+        public override async ValueTask<bool> TransformResponseAsync(HttpContext httpContext, HttpResponseMessage? proxyResponse,
+            CancellationToken cancellationToken)
+        {
+            var shouldProxy = await base.TransformResponseAsync(httpContext, proxyResponse, cancellationToken).ConfigureAwait(false);
+            httpContext.Response.Headers.Remove("Alt-Svc");
+            return shouldProxy;
+        }
     }
+
+    internal static string FormatClientIp(IPAddress address) => address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6
+        ? new IPAddress(address.GetAddressBytes()).ToString()
+        : address.ToString();
+
+    internal static SocketsHttpHandler CreateUpstreamHandler(RemoteCertificateValidationCallback? testCertificateValidation) => new()
+    {
+        UseProxy = false,
+        AllowAutoRedirect = false,
+        AutomaticDecompression = DecompressionMethods.None,
+        UseCookies = false,
+        EnableMultipleHttp2Connections = true,
+        ConnectTimeout = TimeSpan.FromSeconds(15),
+        PooledConnectionLifetime = UpstreamConnectionLifetime,
+        KeepAlivePingDelay = TimeSpan.FromSeconds(30),
+        KeepAlivePingTimeout = TimeSpan.FromSeconds(20),
+        KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always,
+        SslOptions = testCertificateValidation is null
+            ? null
+            : new System.Net.Security.SslClientAuthenticationOptions { RemoteCertificateValidationCallback = testCertificateValidation }
+    };
 }

@@ -180,6 +180,53 @@ public sealed class RelayProxyTests(BftProxyFixture fixture)
         Assert.Equal(0, await client.GetStream().ReadAsync(new byte[1], timeout.Token));
     }
 
+    [Fact]
+    public async Task RelayClosesStalledHalfClosedConnectionAfterThirtySecondsAndReleasesLimit()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(25));
+        var time = new ManualTimeProvider(DateTimeOffset.UtcNow);
+        var exitListener = new TcpListener(IPAddress.Loopback, 0);
+        exitListener.Start();
+        var exitPort = ((IPEndPoint)exitListener.LocalEndpoint).Port;
+        var configuration = new RelayConfiguration(new ProxyEndpoint("127.0.0.1", 0), new ProxyEndpoint("127.0.0.1", exitPort),
+            "relay-drain", fixture.RelayKey, 1, 2, TimeSpan.FromSeconds(3));
+        await using var relay = await BftRelayHost.StartAsync(configuration, time, fixture.Random);
+        try
+        {
+            using var firstClient = new TcpClient();
+            await firstClient.ConnectAsync(relay.ListenEndPoint, timeout.Token);
+            var firstFlight = new byte[] { 1, 2, 3, 4 };
+            await firstClient.GetStream().WriteAsync(new byte[32].Concat(firstFlight).ToArray(), timeout.Token);
+            using (var firstExit = await exitListener.AcceptTcpClientAsync(timeout.Token))
+            {
+                var forwarded = new byte[BftRelayPreamble.Length + 32 + firstFlight.Length];
+                await firstExit.GetStream().ReadExactlyAsync(forwarded, timeout.Token);
+            }
+
+            Assert.Equal(0, await firstClient.GetStream().ReadAsync(new byte[1], timeout.Token));
+            using (var limitedClient = new TcpClient())
+            {
+                await limitedClient.ConnectAsync(relay.ListenEndPoint, timeout.Token);
+                Assert.Equal(0, await limitedClient.GetStream().ReadAsync(new byte[1], timeout.Token));
+            }
+
+            await time.WaitForTimerAsync(TimeSpan.FromSeconds(30), timeout.Token);
+            time.Advance(TimeSpan.FromSeconds(30));
+            await relay.WaitForActiveConnectionsAsync().WaitAsync(timeout.Token);
+
+            using var nextClient = new TcpClient();
+            await nextClient.ConnectAsync(relay.ListenEndPoint, timeout.Token);
+            await nextClient.GetStream().WriteAsync(new byte[32].Concat(firstFlight).ToArray(), timeout.Token);
+            using var nextExit = await exitListener.AcceptTcpClientAsync(timeout.Token);
+            var nextForwarded = new byte[BftRelayPreamble.Length + 32 + firstFlight.Length];
+            await nextExit.GetStream().ReadExactlyAsync(nextForwarded, timeout.Token);
+        }
+        finally
+        {
+            exitListener.Stop();
+        }
+    }
+
     private Task<BftRelayHost> StartRelayAsync(int maxConnectionsPerIp = 8, int maxConnections = 32) =>
         BftRelayHost.StartAsync(new RelayConfiguration(
             new ProxyEndpoint("127.0.0.1", 0),
