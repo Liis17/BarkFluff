@@ -23,6 +23,16 @@ public class User
 
     public bool IsBot { get; set; }
 
+    public AccountStatus AccountStatus { get; set; } = AccountStatus.Active;
+
+    public string? RestrictionReason { get; set; }
+
+    public DateTime? RestrictedAt { get; set; }
+
+    public DateTime? DeletionScheduledAt { get; set; }
+
+    public DateTime? CleanupCompletedAt { get; set; }
+
     public string? ProfilePicture { get; set; }
 
     public string? Bio { get; set; }

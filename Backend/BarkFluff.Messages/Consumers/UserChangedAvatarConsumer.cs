@@ -1,6 +1,7 @@
 namespace BarkFluff.Messages.Consumers;
 
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.Proto.Users;
 
 using MassTransit;
 
@@ -14,13 +15,15 @@ public class UserChangedAvatarConsumer : IConsumer<UserChangedAvatar>
 {
     private readonly ChatsStorage _chatsStorage;
     private readonly ChatCache _chatCache;
+    private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly ILogger<UserChangedAvatarConsumer> _logger;
     private readonly MetricsCollector _metrics;
 
-    public UserChangedAvatarConsumer(ChatsStorage chatsStorage, ChatCache chatCache, ILogger<UserChangedAvatarConsumer> logger, MetricsCollector metrics)
+    public UserChangedAvatarConsumer(ChatsStorage chatsStorage, ChatCache chatCache, UsersServerApi.UsersServerApiClient usersClient, ILogger<UserChangedAvatarConsumer> logger, MetricsCollector metrics)
     {
         _chatsStorage = chatsStorage;
         _chatCache = chatCache;
+        _usersClient = usersClient;
         _logger = logger;
         _metrics = metrics;
     }
@@ -29,7 +32,8 @@ public class UserChangedAvatarConsumer : IConsumer<UserChangedAvatar>
     {
         _metrics.Increment("rabbitmq_avatar_consumed");
         var userId = context.Message.UserId;
-        var profilePictureUrl = context.Message.ProfilePictureUrl;
+        var user = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = userId }, cancellationToken: context.CancellationToken);
+        var profilePictureUrl = user.User.ProfilePicture;
 
         _logger.LogInformation(
             "Получено событие изменения аватара пользователя {UserId}: '{ProfilePictureUrl}'",

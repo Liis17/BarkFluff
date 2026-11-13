@@ -144,6 +144,12 @@ service UsersApi {
 
 service UsersServerApi {
   rpc SetVerifiedEmail(SetVerifiedEmailRequest) returns(SetVerifiedEmailResponse);
+
+  // Административное изменение статуса локального аккаунта.
+  rpc SetAccountRestriction(SetAccountRestrictionRequest) returns(SetAccountRestrictionResponse);
+  rpc GetAccountRestriction(GetAccountRestrictionRequest) returns(GetAccountRestrictionResponse);
+  rpc ClaimAccountsForDeletion(ClaimAccountsForDeletionRequest) returns(ClaimAccountsForDeletionResponse);
+  rpc CompleteAccountCleanup(CompleteAccountCleanupRequest) returns(CompleteAccountCleanupResponse);
   
   // Найти по логину
   rpc FindByLogin(FindByLoginRequest) returns(FindByLoginResponse);
@@ -333,12 +339,70 @@ message SearchUsersServerRequest {
   string query = 1;   // Поиск по username или user_id (пустой = все)
   int32 offset = 2;
   int32 size = 3;     // макс 50
+  optional AccountStatus status_filter = 4;
 }
 
 message SearchUsersServerResponse {
   repeated User users = 1;
   int32 total_count = 2;
+  repeated SearchUserServerResult results = 3;
 }
+
+message SearchUserServerResult {
+  User user = 1;
+  AccountRestrictionInfo restriction = 2;
+}
+
+enum AccountStatus {
+  ACTIVE = 0;
+  BLOCKED = 1;
+  PENDING_DELETION = 2;
+  DELETED = 3;
+}
+
+enum AccountRestrictionAction {
+  ACCOUNT_RESTRICTION_ACTION_UNSPECIFIED = 0;
+  BLOCK = 1;
+  UNBLOCK = 2;
+  SCHEDULE_DELETION = 3;
+  CANCEL_DELETION = 4;
+}
+
+message AccountRestrictionInfo {
+  AccountStatus status = 1;
+  string reason = 2;
+  google.protobuf.Timestamp restricted_at = 3;
+  google.protobuf.Timestamp deletion_scheduled_at = 4;
+}
+
+message SetAccountRestrictionRequest {
+  int64 user_id = 1;
+  AccountRestrictionAction action = 2;
+  string reason = 3;
+}
+
+message SetAccountRestrictionResponse {
+  User user = 1;
+  AccountRestrictionInfo restriction = 2;
+  string email = 3;
+}
+
+message GetAccountRestrictionRequest { int64 user_id = 1; }
+
+message GetAccountRestrictionResponse {
+  AccountRestrictionInfo restriction = 1;
+  string username = 2;
+  string first_name = 3;
+  string email = 4;
+}
+
+message ClaimAccountsForDeletionRequest { int32 limit = 1; }
+
+message ClaimAccountsForDeletionResponse { repeated int64 user_ids = 1; }
+
+message CompleteAccountCleanupRequest { int64 user_id = 1; }
+
+message CompleteAccountCleanupResponse { }
 
 // Обновление лимита хранилища
 message UpdateStorageLimitRequest {
@@ -487,6 +551,7 @@ message User{
   string profile_poster_file_id = 11; // FileId постера/фона профиля (пусто если не задан)
   bool is_bot = 12; // является ли пользователь ботом
   string uuid = 13; // Глобально уникальный идентификатор пользователя (Guid), для федерации
+  AccountStatus account_status = 14;
 }
 
 message ResolveFederatedUserRequest {
@@ -1158,6 +1223,7 @@ message UserProfileByUuid {
   bool is_deactivated = 10;  // только для remote
   int64 user_id = 11;        // только для локального (для remote = 0): numeric ID для создания ChatMember
   bool deny_federated_dm = 12; // только для локального (для remote всегда false): privacy-запрет входящих fed-DM (этап 2.5)
+  AccountStatus account_status = 13;
 }
 
 message GetUsersByUuidRequest {

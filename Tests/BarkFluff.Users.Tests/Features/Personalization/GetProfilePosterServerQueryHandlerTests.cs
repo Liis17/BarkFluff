@@ -20,7 +20,7 @@ public class GetProfilePosterServerQueryHandlerTests : IAsyncDisposable
     {
         var user = await _h.SeedUser();
         var filesClient = new Mock<FilesServerApi.FilesServerApiClient>();
-        var handler = new GetProfilePosterServerQueryHandler(_h.PersonalizationStorage, filesClient.Object, TestHelper.CreateLogger<GetProfilePosterServerQueryHandler>());
+        var handler = new GetProfilePosterServerQueryHandler(_h.PersonalizationStorage, _h.UsersStorage, filesClient.Object, TestHelper.CreateLogger<GetProfilePosterServerQueryHandler>());
 
         var result = await handler.Handle(new GetProfilePosterServerQuery { UserId = user.Id }, CancellationToken.None);
 
@@ -38,7 +38,7 @@ public class GetProfilePosterServerQueryHandlerTests : IAsyncDisposable
             .Returns(new AsyncUnaryCall<GetFileDataResponse>(
                 Task.FromResult(new GetFileDataResponse { FileInfo = new UploadFileInfo { FileUrl = "https://files.com/poster.png" } }),
                 Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => Metadata.Empty, () => { }));
-        var handler = new GetProfilePosterServerQueryHandler(_h.PersonalizationStorage, filesClient.Object, TestHelper.CreateLogger<GetProfilePosterServerQueryHandler>());
+        var handler = new GetProfilePosterServerQueryHandler(_h.PersonalizationStorage, _h.UsersStorage, filesClient.Object, TestHelper.CreateLogger<GetProfilePosterServerQueryHandler>());
 
         var result = await handler.Handle(new GetProfilePosterServerQuery { UserId = user.Id }, CancellationToken.None);
 
@@ -54,7 +54,7 @@ public class GetProfilePosterServerQueryHandlerTests : IAsyncDisposable
         filesClient
             .Setup(c => c.GetFileDataAsync(It.IsAny<GetFileDataRequest>(), null, null, CancellationToken.None))
             .Throws(new Exception("gRPC error"));
-        var handler = new GetProfilePosterServerQueryHandler(_h.PersonalizationStorage, filesClient.Object, TestHelper.CreateLogger<GetProfilePosterServerQueryHandler>());
+        var handler = new GetProfilePosterServerQueryHandler(_h.PersonalizationStorage, _h.UsersStorage, filesClient.Object, TestHelper.CreateLogger<GetProfilePosterServerQueryHandler>());
 
         var result = await handler.Handle(new GetProfilePosterServerQuery { UserId = user.Id }, CancellationToken.None);
 

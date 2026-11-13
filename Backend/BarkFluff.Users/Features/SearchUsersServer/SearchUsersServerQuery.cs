@@ -11,4 +11,6 @@ public class SearchUsersServerQuery : IRequest<SearchUsersServerResponse>
     public int Offset { get; set; }
 
     public int Size { get; set; }
+
+    public BarkFluff.Proto.Users.AccountStatus? StatusFilter { get; set; }
 }

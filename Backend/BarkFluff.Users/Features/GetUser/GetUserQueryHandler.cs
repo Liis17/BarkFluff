@@ -57,7 +57,9 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, GetUserResponse
         var personalization = await _personalizationStorage.Get(userId);
 
         var grpcUser = user.ToGrpc();
-        grpcUser.ProfilePosterFileId = personalization?.ProfilePosterFileId ?? string.Empty;
+        grpcUser.ProfilePosterFileId = user.AccountStatus == Domain.AccountStatus.Active
+            ? personalization?.ProfilePosterFileId ?? string.Empty
+            : string.Empty;
 
         return new GetUserResponse { User = grpcUser };
     }

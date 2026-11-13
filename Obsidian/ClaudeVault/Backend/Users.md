@@ -24,10 +24,18 @@ Users владеет локальными профилями и данными �
 - `GetOwnPrekeyStatus` возвращает непотребляющий статус только текущего авторизованного устройства: доступные размеры обоих пулов, `supports_pqxdh`, identity key, registration ID и last-resort key. `PeerDeviceInfo.supports_pqxdh` не меняет существующий смысл `has_bundle`. Это хранилище prekeys для настройки секретных чатов, а не общий KeyStore API.
 - `ExportData` собирает профиль, сообщения и чаты через Messages, а сведения о связанных файлах — через Files; файл-экспорт содержит метаданные, а не бинарное содержимое. Users координирует агрегированный экспорт, но владение данными остаётся у сервисов-источников (`Features/ExportData/ExportDataCommandHandler.cs`).
 
+## Статус аккаунта
+
+`Domain/AccountStatus.cs` задаёт `Active`, `Blocked`, `PendingDeletion`, `Deleted`; статус, причина, время ограничения, дата удаления и отметка завершённой очистки хранятся в `User`. `users_api.proto` добавляет `User.account_status=14` и service-only RPC `SetAccountRestriction`, `GetAccountRestriction`, `ClaimAccountsForDeletion`, `CompleteAccountCleanup`. `SearchUsersServer` возвращает raw профиль и `AccountRestrictionInfo`; обычные `User`-ответы маскируют неактивный профиль. `FindByLogin` сохраняет raw username/имя для Identity, но исключает Deleted. Клиентский поиск и публичные/федеративные lookup скрывают неактивные аккаунты; регистрационные проверки продолжают считать Blocked/PendingDeletion занятыми, а Deleted освобождает username и email.
+
+`UsersStorage.ClaimAccountsForDeletion` условно переводит просроченные PendingDeletion в Deleted и в одной транзакции анонимизирует профиль, удаляет контакт, устройства/prekeys, настройки, privacy, personalization, папки, mute и user badges. Username получает уникальное значение с дефисом, запрещённое username regex. Сообщения и их файлы принадлежат Messages/Files и Users ими не удаляет. Запись остаётся как tombstone до `CompleteAccountCleanup` после очистки Identity/Files/Bots.
+
+У Users нет outbox для этих изменений: статус/анонимизация фиксируются раньше публикации `UserChangedName` и `UserChangedAvatar`. Ошибка публикации возвращает ошибку RPC, и повтор идемпотентной операции публикует события снова; удаление повторно возвращает Deleted-аккаунты с незавершённой очисткой. Между фиксацией БД и успешной публикацией остаётся окно рассинхронизации до повтора операции.
+
 ## Хранение и связи
 
 EF-модель описана в `Persistence/Contexts/UsersContext.cs`, миграции находятся в `Persistence/Migrations/`. `Program.cs` регистрирует PostgreSQL, XAuth, метрики и обработчик отзыва сессий. `Infrastructure/UserInfoQueueSender.cs` публикует события изменения профиля; `Consumers/SessionRevokedConsumer.cs` обновляет локальный cache отзыва токенов.
 
-Messages, Identity, Files, Bots, Onliner и Federation используют внутренний Users API для профиля, устройств, privacy, prekeys или UUID resolution. Основные файлы: `Host/UsersApiService.cs`, `Host/UsersServerApiService.cs`, `Persistence/Services/PrekeyStorage.cs`, `Features/ResolveFederatedUser/`.
+Messages, Identity, Files, Bots, Onliner и Federation используют внутренний Users API для профиля, устройств, privacy, prekeys или UUID resolution. Onliner не кеширует `GetUserPrivacy`: фильтр спрашивает Users при проверке, поэтому скрытие online/last seen для неактивного локального пользователя начинает действовать сразу. Основные файлы: `Host/UsersApiService.cs`, `Host/UsersServerApiService.cs`, `Persistence/Services/PrekeyStorage.cs`, `Persistence/Services/UsersStorage.cs`, `Features/AccountRestrictions/`, `Features/ResolveFederatedUser/`.
 
 Связанные заметки: [[Backend/Identity]], [[Backend/Messages]], [[Backend/Files]], [[Backend/Bots]], [[Backend/Onliner]], [[Backend/Federation]]. Метрики: [[Backend/Users-Metrics]]. Тесты: `Tests/BarkFluff.Users.Tests`.

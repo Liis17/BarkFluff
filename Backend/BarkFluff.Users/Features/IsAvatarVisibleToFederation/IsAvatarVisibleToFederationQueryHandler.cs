@@ -35,7 +35,7 @@ public class IsAvatarVisibleToFederationQueryHandler
     {
         var user = await _usersStorage.GetById(request.UserId);
 
-        if (user is null || user.IsDraft)
+        if (user is null || user.IsDraft || user.AccountStatus != Domain.AccountStatus.Active)
         {
             return new IsAvatarVisibleToFederationResponse { Visible = false };
         }

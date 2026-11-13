@@ -328,8 +328,17 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<string>("AcceptedLegalRevision")
                         .HasColumnType("text");
 
+                    b.Property<int>("AccountStatus")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Bio")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("CleanupCompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletionScheduledAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -354,6 +363,12 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<DateTime>("RegistrationDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("RestrictedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RestrictionReason")
+                        .HasColumnType("text");
+
                     b.Property<int>("StorageLimitGb")
                         .HasColumnType("integer");
 
@@ -370,6 +385,8 @@ namespace BarkFluff.Users.Persistence.Migrations
 
                     b.HasIndex("Uuid")
                         .IsUnique();
+
+                    b.HasIndex("AccountStatus", "DeletionScheduledAt");
 
                     b.ToTable("Users");
                 });

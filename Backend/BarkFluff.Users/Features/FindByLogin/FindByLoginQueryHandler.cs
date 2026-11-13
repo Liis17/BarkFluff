@@ -41,7 +41,7 @@ public class FindByLoginQueryHandler : IRequestHandler<FindByLoginQuery, FindByL
             user = await _usersStorage.GetUserByEmail(email);
         }
 
-        if (user is null || user.IsDraft)
+        if (user is null || user.IsDraft || user.AccountStatus == Domain.AccountStatus.Deleted)
         {
             _logger.LogWarning(
                 "Пользователь не найден. Username: {Username}, Email: {Email}",
@@ -57,6 +57,6 @@ public class FindByLoginQueryHandler : IRequestHandler<FindByLoginQuery, FindByL
             user.Username
         );
 
-        return new FindByLoginResponse { User = user.ToGrpc() };
+        return new FindByLoginResponse { User = user.ToGrpc(includeRestrictedData: true) };
     }
 }

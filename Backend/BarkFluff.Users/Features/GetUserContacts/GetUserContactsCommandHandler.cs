@@ -45,7 +45,9 @@ public class GetUserContactsCommandHandler : IRequestHandler<GetUserContactsComm
             User = user.ToGrpc(),
             Contact = new UserContact()
             {
-                Email = user.Contact?.Email ?? string.Empty
+                Email = user.AccountStatus == Domain.AccountStatus.Active
+                    ? user.Contact?.Email ?? string.Empty
+                    : string.Empty
             }
         };
     }
