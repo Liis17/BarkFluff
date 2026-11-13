@@ -334,7 +334,7 @@ public class PrekeyPostgresTests
     public async Task LegacySchemaUpgradePreservesEcBundleAndCreatesNullablePqState()
     {
         await using var database = await PrekeyDatabase.Create("20260802000000_AddDevicePushPlatform");
-        var (user, device) = await SeedDeviceAsync(database.Context);
+        var (user, device) = await SeedLegacyDeviceAsync(database.Context);
         var identity = EcKey(1);
         var ec = EcKey(2);
         var signature = Signature(3);
@@ -406,6 +406,38 @@ public class PrekeyPostgresTests
         };
         context.UserDevices.Add(device);
         await context.SaveChangesAsync();
+        return (user, device);
+    }
+
+    // На legacy-схеме ещё нет колонок текущей модели User (например AccountStatus),
+    // поэтому пользователь и устройство вставляются SQL-запросом с колонками той миграции.
+    private static async Task<(User User, UserDevice Device)> SeedLegacyDeviceAsync(UsersContext context)
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var user = new User
+        {
+            Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Uuid = Guid.NewGuid(),
+            Username = $"prekey_{suffix}",
+            FirstName = "Prekey",
+            LastName = "Test",
+            RegistrationDate = DateTime.UtcNow,
+        };
+        await context.Database.ExecuteSqlInterpolatedAsync($@"
+            INSERT INTO ""Users""
+                (""Id"", ""Uuid"", ""Username"", ""FirstName"", ""LastName"", ""RegistrationDate"", ""IsDraft"", ""IsBot"", ""StorageLimitGb"")
+            VALUES ({user.Id}, {user.Uuid}, {user.Username}, {user.FirstName}, {user.LastName}, {user.RegistrationDate}, {false}, {false}, {1})");
+
+        var device = new UserDevice
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            OriginalName = "Prekey Test Device",
+            AuthorizedAt = DateTime.UtcNow,
+        };
+        await context.Database.ExecuteSqlInterpolatedAsync($@"
+            INSERT INTO ""UserDevices"" (""Id"", ""UserId"", ""OriginalName"", ""AuthorizedAt"")
+            VALUES ({device.Id}, {device.UserId}, {device.OriginalName}, {device.AuthorizedAt})");
         return (user, device);
     }
 

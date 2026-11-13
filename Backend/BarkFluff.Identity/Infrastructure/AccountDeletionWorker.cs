@@ -84,8 +84,10 @@ public sealed class AccountDeletionWorker(
         {
             using var scope = scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<IdentityContext>();
-            await using (var transaction = await context.Database.BeginTransactionAsync(cancellationToken))
+            // EnableRetryOnFailure требует выполнять пользовательскую транзакцию через execution strategy.
+            await context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
             {
+                await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
                 await context.RefreshTokens.Where(item => item.UserId == userId).ExecuteDeleteAsync(cancellationToken);
                 await context.AuthUserProperties.Where(item => item.UserId == userId).ExecuteDeleteAsync(cancellationToken);
                 await context.ConfirmationCodes.Where(item => item.OwnerId == userId).ExecuteDeleteAsync(cancellationToken);
@@ -94,7 +96,7 @@ public sealed class AccountDeletionWorker(
                 await context.RecoveryCodes.Where(item => item.UserId == userId).ExecuteDeleteAsync(cancellationToken);
                 await context.ResetPasswords.Where(item => item.UserId == userId).ExecuteDeleteAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
-            }
+            });
 
             var files = scope.ServiceProvider.GetRequiredService<FilesServerApi.FilesServerApiClient>();
             await files.DeleteUserProfileImagesAsync(new DeleteUserProfileImagesRequest { UserId = userId },

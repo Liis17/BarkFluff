@@ -798,6 +798,15 @@ public class UsersStorage
         if (limit <= 0)
             return [];
 
+        // В Program.cs включён EnableRetryOnFailure: пользовательская транзакция допустима
+        // только внутри execution strategy, повтор выполняет весь блок заново.
+        var strategy = _usersContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(() => ClaimAccountsForDeletionCore(limit, cancellationToken));
+    }
+
+    private async Task<List<long>> ClaimAccountsForDeletionCore(int limit, CancellationToken cancellationToken)
+    {
+        _usersContext.ChangeTracker.Clear();
         await using var transaction = await _usersContext.Database.BeginTransactionAsync(cancellationToken);
         var now = DateTime.UtcNow;
         var candidateIds = await _usersContext.Users
