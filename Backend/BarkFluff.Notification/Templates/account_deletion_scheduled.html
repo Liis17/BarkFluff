@@ -1,16 +1,85 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head><meta charset="UTF-8"><title>Удаление аккаунта запланировано</title></head>
-<body style="margin:0;padding:24px;background:#f5f7fa;font-family:Arial,sans-serif;color:#2e2e2e">
-  <main style="max-width:520px;margin:auto;padding:32px;background:#fff;border-radius:12px">
-    <h1>Удаление аккаунта BarkFluff запланировано</h1>
-    <p>Здравствуйте, ꟿꟿꟿusernameꟿꟿꟿ.</p>
-    <p>В течение семи дней вы не сможете войти в аккаунт. После указанного срока данные профиля будут анонимизированы.</p>
-    <p><strong>Причина:</strong> ꟿꟿꟿreasonꟿꟿꟿ</p>
-    <p><strong>Запрошено:</strong> ꟿꟿꟿdatetimeꟿꟿꟿ UTC</p>
-    <p><strong>Окончательное удаление:</strong> ꟿꟿꟿdeletiondateꟿꟿꟿ UTC</p>
-    <p>Администратор ноды может отменить удаление в течение этого срока.</p>
-    <footer style="margin-top:28px;color:#888">BarkFluff</footer>
-  </main>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Удаление аккаунта запланировано</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f7fa;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      color: #2e2e2e;
+    }
+    .container {
+      max-width: 520px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 16px;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    .highlight {
+      font-weight: 600;
+      color: #000;
+    }
+    .info-box {
+      background-color: #fff9e6;
+      border-left: 4px solid #ffb300;
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+    .info-box p {
+      margin: 8px 0;
+      font-size: 15px;
+      color: #7a5600;
+    }
+    .device-info {
+      background-color: #f9fafb;
+      border-left: 4px solid #007bff;
+      padding: 16px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #444;
+      margin-bottom: 24px;
+    }
+    .device-info p {
+      margin: 4px 0;
+    }
+    .footer {
+      font-size: 13px;
+      color: #999;
+      text-align: center;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚠️ Удаление аккаунта BarkFluff запланировано</h1>
+    <p>Здравствуйте, <span class="highlight">ꟿꟿꟿusernameꟿꟿꟿ</span>!</p>
+    <div class="info-box">
+      <p><strong>В течение семи дней вы не сможете войти в аккаунт.</strong></p>
+      <p>После указанного срока данные профиля будут анонимизированы.</p>
+      <p>Администратор ноды может отменить удаление в течение этого срока.</p>
+    </div>
+    <div class="device-info">
+      <p><strong>Причина:</strong> ꟿꟿꟿreasonꟿꟿꟿ</p>
+      <p><strong>Запрошено (UTC):</strong> ꟿꟿꟿdatetimeꟿꟿꟿ</p>
+      <p><strong>Окончательное удаление (UTC):</strong> ꟿꟿꟿdeletiondateꟿꟿꟿ</p>
+    </div>
+    <div class="footer"> ꟿꟿꟿcurrentyearꟿꟿꟿ BarkFluff</div>
+  </div>
 </body>
 </html>
