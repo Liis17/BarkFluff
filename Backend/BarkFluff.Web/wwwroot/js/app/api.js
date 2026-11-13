@@ -169,6 +169,7 @@
             profilePicturePreview: mediaUrl(u.getProfilePicturePreview()),
             profilePosterFileId: u.getProfilePosterFileId ? u.getProfilePosterFileId() : '',
             isBot: u.getIsBot ? u.getIsBot() : false,
+            accountStatus: u.getAccountStatus ? u.getAccountStatus() : 0,
             bio: u.getBio(),
             registrationDate: tsToMs(u.getRegistrationDate()),
             badges: u.getBadgesList().map(function (b) {

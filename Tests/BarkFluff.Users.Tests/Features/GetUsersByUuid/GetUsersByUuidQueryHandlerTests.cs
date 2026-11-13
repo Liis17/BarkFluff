@@ -77,4 +77,32 @@ public class GetUsersByUuidQueryHandlerTests
         user.IsRemote.Should().BeTrue();
         user.DenyFederatedDm.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task Handle_RestrictedLocalUser_ReturnsMaskedProfileAndStatus()
+    {
+        var uuid = Guid.NewGuid();
+        var user = await SeedLocalUserWithUuid(uuid, "hidden-name");
+        user.AccountStatus = BarkFluff.Users.Domain.AccountStatus.PendingDeletion;
+        user.FirstName = "Private";
+        user.LastName = "Person";
+        user.Bio = "private bio";
+        user.ProfilePicture = "private-avatar";
+        await _h.DbContext.SaveChangesAsync();
+
+        var response = await CreateHandler().Handle(new GetUsersByUuidQuery
+        {
+            Request = new GetUsersByUuidRequest { Uuids = { uuid.ToString() } },
+        }, CancellationToken.None);
+
+        var profile = response.Users.Should().ContainSingle().Subject;
+        profile.Found.Should().BeTrue();
+        profile.AccountStatus.Should().Be(BarkFluff.Proto.Users.AccountStatus.PendingDeletion);
+        profile.FirstName.Should().Be("Удалённый пользователь");
+        profile.LastName.Should().BeEmpty();
+        profile.Username.Should().BeEmpty();
+        profile.Bio.Should().BeEmpty();
+        profile.AvatarFileId.Should().BeEmpty();
+        profile.UserId.Should().Be(user.Id);
+    }
 }

@@ -1457,4 +1457,16 @@
     <string name="voice_sender_you">Du</string>
     <string name="cd_voice_player_close">Player schließen</string>
     <string name="voice_player_error">Audio konnte nicht abgespielt werden</string>
+    <string name="account_blocked_title">Konto gesperrt</string>
+    <string name="account_pending_deletion_title">Konto wird gelöscht</string>
+    <string name="account_blocked_user">Gesperrter Benutzer</string>
+    <string name="account_deleted_user">Gelöschter Benutzer</string>
+    <string name="account_restriction_reason">Grund: %1$s</string>
+    <string name="account_blocked_explanation">Nur der Serveradministrator kann diese Sperre aufheben.</string>
+    <string name="account_deletion_date">Endgültige Löschung: %1$s</string>
+    <string name="account_pending_deletion_explanation">Sie können die Löschung vor diesem Datum beim Serveradministrator abbrechen.</string>
+    <string name="account_restricted_chat_read_only">Dieser Chat ist schreibgeschützt, weil das andere Konto vom Server eingeschränkt wurde.</string>
+    <string name="account_session_blocked">Ihre Sitzung wurde beendet, weil das Konto gesperrt ist. Nur der Serveradministrator kann diese Einschränkung aufheben.</string>
+    <string name="account_session_pending_deletion">Ihre Sitzung wurde beendet, weil das Konto gelöscht werden soll. Wenden Sie sich an den Serveradministrator.</string>
+    <string name="account_user_unavailable">Dieser Benutzer ist nicht verfügbar. Das Konto ist möglicherweise vom Server eingeschränkt.</string>
 </resources>

@@ -48,12 +48,16 @@ import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.domain.model.UserBadgeInfo
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.domain.model.splitUserBadges
 import coil.load
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.OnlineTimeFormatter
+import com.barkfluff.client.utils.accountStatusLabel
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
 import com.barkfluff.client.view.M3ContextMenu
 import com.barkfluff.client.view.PullToExpandScrollView
@@ -101,6 +105,7 @@ class UserProfileActivity : AppCompatActivity() {
     private var chatTitle: String = ""
     private var chatAvatarFileId: String? = null
     private var isChatMuted: Boolean = false
+    private var profileRestricted: Boolean = false
     private lateinit var badgeIconAdapter: BadgeIconAdapter
     private var primaryBadge: UserBadgeInfo? = null
 
@@ -187,6 +192,7 @@ class UserProfileActivity : AppCompatActivity() {
     }
 
     private fun setupUserBadges() {
+        binding.profileBadgesCard.visibility = View.GONE
         badgeIconAdapter = BadgeIconAdapter(::showBadge)
         binding.profileBadgesRecyclerView.layoutManager =
             LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -436,13 +442,9 @@ class UserProfileActivity : AppCompatActivity() {
             binding.actionMessageButton.setOnClickListener { openSavedMessages() }
             return
         }
-        if (chatId.isBlank()) {
+        if (isGroupChat || chatId.isBlank()) {
             binding.profileActionsRow.visibility = View.GONE
             binding.moreButton.visibility = View.GONE
-            return
-        }
-        if (isGroupChat) {
-            binding.profileActionsRow.visibility = View.GONE
             return
         }
 
@@ -586,7 +588,12 @@ class UserProfileActivity : AppCompatActivity() {
                 })
             }.onFailure { error ->
                 Log.e(TAG, "Failed to start call", error)
-                Toast.makeText(this@UserProfileActivity, R.string.call_start_failed, Toast.LENGTH_SHORT).show()
+                if (exitToLoginIfAccountRestricted(error)) return@onFailure
+                Toast.makeText(
+                    this@UserProfileActivity,
+                    accountRestrictionRpcMessage(error) ?: getString(R.string.call_start_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -896,7 +903,6 @@ class UserProfileActivity : AppCompatActivity() {
             loadGroupProfile()
         } else {
             loadUserProfile()
-            loadUserBadges()
         }
     }
 
@@ -928,16 +934,27 @@ class UserProfileActivity : AppCompatActivity() {
                 val userResult = userProfileGateway.user(otherUserId)
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()!!
-                    val displayName = "${user.firstName} ${user.lastName}".trim()
-
-                    binding.profileNameTextView.text = if (displayName.isNotBlank()) displayName else user.username
-                    if (user.username.isNotBlank()) {
-                        val username = getString(R.string.register_username_format, user.username)
-                        binding.rowUsername.show(username, copyLabel = getString(R.string.profile_username_label))
+                    profileRestricted = user.accountStatus != AccountStatus.ACTIVE
+                    val displayName = if (profileRestricted) {
+                        accountStatusLabel(user.accountStatus)
+                    } else {
+                        "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
                     }
 
-                    if (user.bio.isNotBlank()) {
+                    binding.profileNameTextView.text = displayName
+                    if (!profileRestricted && user.username.isNotBlank()) {
+                        binding.rowUsername.show(
+                            getString(R.string.register_username_format, user.username),
+                            copyLabel = getString(R.string.profile_username_label)
+                        )
+                    } else {
+                        binding.rowUsername.root.visibility = View.GONE
+                    }
+
+                    if (!profileRestricted && user.bio.isNotBlank()) {
                         binding.rowBio.show(user.bio.trim())
+                    } else {
+                        binding.rowBio.root.visibility = View.GONE
                     }
 
                     if (user.registrationDate > 0) {
@@ -947,9 +964,20 @@ class UserProfileActivity : AppCompatActivity() {
                                 resources.configuration.locales[0]
                             ).format(Date(user.registrationDate))
                         )
+                    } else {
+                        binding.rowRegistration.root.visibility = View.GONE
                     }
 
-                    val avatarFileId = avatarSourceFor(user)
+                    if (profileRestricted) {
+                        primaryBadge = null
+                        badgeIconAdapter.submitList(emptyList())
+                        binding.profilePrimaryBadge.visibility = View.GONE
+                        binding.profileBadgesCard.visibility = View.GONE
+                    } else {
+                        loadUserBadges()
+                    }
+
+                    val avatarFileId = if (profileRestricted) null else avatarSourceFor(user)
                     if (!avatarFileId.isNullOrBlank()) {
                         AvatarLoader.loadByFileId(
                             imageView = binding.profileAvatarImageView,
@@ -964,32 +992,39 @@ class UserProfileActivity : AppCompatActivity() {
                     } else {
                         AvatarLoader.showPlaceholder(
                             binding.profileAvatarPlaceholder,
-                            displayName.ifBlank { user.username },
+                            displayName,
                             otherUserId
                         )
                         binding.profileAvatarImageView.visibility = View.GONE
                     }
 
-                    val posterFileId = user.profilePosterFileId
+                    val posterFileId = user.profilePosterFileId.takeUnless { profileRestricted }.orEmpty()
                     if (posterFileId.isNotBlank()) {
                         loadPosterImage(posterFileId)
+                    } else if (profileRestricted) {
+                        binding.profilePosterImageView.visibility = View.GONE
+                        binding.profilePosterPlaceholder.visibility = View.GONE
+                        binding.profilePosterScrim.visibility = View.GONE
+                    }
+
+                    if (profileRestricted) {
+                        binding.actionCallButton.visibility = View.GONE
+                        binding.rowStatus.root.visibility = View.GONE
                     }
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading user profile", e)
-            }
-        }
+                if (profileRestricted) {
+                    updateInfoCardVisibility()
+                    return@launch
+                }
 
-        // Собственный профиль не показывает presence и не запрашивает его.
-        if (isOwnProfile) {
-            binding.rowStatus.root.visibility = View.GONE
-            updateInfoCardVisibility()
-            return
-        }
+                // Собственный профиль не показывает presence и не запрашивает его.
+                if (isOwnProfile) {
+                    binding.rowStatus.root.visibility = View.GONE
+                    updateInfoCardVisibility()
+                    return@launch
+                }
 
-        // Онлайн-статус
-        lifecycleScope.launch {
-            try {
+                // Онлайн-статус
                 val userStatus = presenceGateway.status(listOf(otherUserId)).getOrNull()?.firstOrNull()
                 val isOnline = userStatus?.isOnline == true
                 binding.rowStatus.show(
@@ -1006,7 +1041,7 @@ class UserProfileActivity : AppCompatActivity() {
                     )
                 )
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading online status", e)
+                Log.e(TAG, "Error loading user profile or online status", e)
             }
         }
     }

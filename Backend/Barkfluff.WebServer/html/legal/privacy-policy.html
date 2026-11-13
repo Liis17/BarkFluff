@@ -86,7 +86,7 @@
 
     <section class="hero">
       <h1><span lang="ru">Политика конфиденциальности</span><span lang="en">Privacy Policy</span></h1>
-      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</span></p>
+      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 13 ноября 2026 г.</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> November 13, 2026.</span></p>
     </section>
 
   <section class="sec">
@@ -134,7 +134,7 @@
       <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Данные</th><th>Где используются</th><th>Хранение</th></tr></thead>
         <tbody>
-          <tr><td>Email</td><td>Регистрация, вход, подтверждения, восстановление доступа, уведомления</td><td>Users / Identity</td></tr>
+          <tr><td>Email</td><td>Регистрация, вход, подтверждения, восстановление доступа, уведомления, включая письма о блокировке и удалении аккаунта</td><td>Users / Identity; причина и дата ограничения хранятся вместе с аккаунтом</td></tr>
           <tr><td>Username</td><td>Вход, поиск, публичная страница профиля, отображение в чатах</td><td>Users</td></tr>
           <tr><td>Хеш пароля</td><td>Проверка пароля; пароль в открытом виде не хранится</td><td>Identity</td></tr>
           <tr><td>Имя, фамилия, био</td><td>Профиль пользователя и публичные данные профиля</td><td>Users</td></tr>
@@ -180,7 +180,7 @@
       <div class="scroll-x" tabindex="0"><table>
         <thead><tr><th>Data</th><th>Where used</th><th>Storage</th></tr></thead>
         <tbody>
-          <tr><td>Email</td><td>Registration, login, confirmations, access recovery, notifications</td><td>Users / Identity</td></tr>
+          <tr><td>Email</td><td>Registration, login, confirmations, access recovery, notifications, including account blocking and deletion emails</td><td>Users / Identity; restriction reason and date are kept with the account</td></tr>
           <tr><td>Username</td><td>Login, search, public profile page, display in chats</td><td>Users</td></tr>
           <tr><td>Password hash</td><td>Password verification; the plaintext password is not stored</td><td>Identity</td></tr>
           <tr><td>First name, last name, bio</td><td>User profile and public profile data</td><td>Users</td></tr>
@@ -286,7 +286,7 @@
         <li>доставка сообщений, файлов, read receipts, realtime-обновлений и push-уведомлений;</li>
         <li>обмен сообщениями с пользователями других нод, когда федерация включена;</li>
         <li>экспорт данных пользователя через <code>Users.ExportData</code>;</li>
-        <li>поддержка пользователей средствами, которые настроил администратор ноды;</li>
+        <li>поддержка пользователей средствами, которые настроил администратор ноды; обработка запросов об ограничении и удалении аккаунта, отправка уведомлений о них на email аккаунта; хранение причины и даты ограничения вместе с аккаунтом, при этом причина удаляется при окончательном удалении аккаунта;</li>
         <li>логирование ошибок, метрик и событий безопасности.</li>
       </ul>
       </div>
@@ -296,7 +296,7 @@
         <li>delivery of messages, files, read receipts, realtime updates and push notifications;</li>
         <li>messaging with users of other nodes when federation is enabled;</li>
         <li>user data export via <code>Users.ExportData</code>;</li>
-        <li>user support through the channels configured by the node administrator;</li>
+        <li>user support through the channels configured by the node administrator; handling account restriction and deletion requests, sending related notices to the account email, and storing the reason and date of a restriction with the account; the reason is removed when the account is permanently deleted;</li>
         <li>logging of errors, metrics and security events.</li>
       </ul>
       </div>
@@ -387,7 +387,7 @@
       <ul>
         <li><strong>Доступ и экспорт:</strong> экспорт возвращает JSON-файлы <code>profile.json</code>, <code>messages.json</code> и <code>files.json</code>.</li>
         <li><strong>Исправление:</strong> профиль, био, аватар, постер, приватность, устройства и пароль можно менять через клиентские функции, где они доступны.</li>
-        <li><strong>Удаление:</strong> см. страницу <a href="/legal/account-deletion">«Удаление аккаунта»</a>.</li>
+        <li><strong>Удаление:</strong> после обработки запроса администратором ноды аккаунт окончательно удаляется через 7 дней; подробности см. на странице <a href="/legal/account-deletion">«Удаление аккаунта»</a>.</li>
         <li><strong>Отзыв сессии:</strong> активную сессию можно завершить через функции управления устройствами.</li>
         <li><strong>Ограничение федерации:</strong> входящие федеративные личные чаты можно запретить в настройках приватности.</li>
       </ul>
@@ -396,7 +396,7 @@
       <ul>
         <li><strong>Access and export:</strong> export returns the JSON files <code>profile.json</code>, <code>messages.json</code> and <code>files.json</code>.</li>
         <li><strong>Correction:</strong> profile, bio, avatar, poster, privacy, devices and password can be changed through client features where available.</li>
-        <li><strong>Deletion:</strong> see the <a href="/legal/account-deletion">“Account Deletion”</a> page.</li>
+        <li><strong>Deletion:</strong> after the node administrator processes the request, the account is permanently deleted after 7 days; see the <a href="/legal/account-deletion">“Account Deletion”</a> page for details.</li>
         <li><strong>Session revocation:</strong> an active session can be terminated via device management features.</li>
         <li><strong>Limiting federation:</strong> incoming federated private chats can be refused in the privacy settings.</li>
       </ul>
@@ -411,7 +411,7 @@
         <li>Приватные encrypted-сообщения при удалении помечаются как удаленные, а шифротекст очищается.</li>
         <li>Секретные сообщения удаляются из временного буфера после подтверждения доставки или истечения TTL.</li>
         <li>Удаление действует в пределах вашей ноды. Копии, уже доставленные на другую ноду, удаляет только ее администратор.</li>
-        <li>Для удаления аккаунта и данных, не покрытых клиентскими функциями, обратитесь к администратору ноды.</li>
+        <li>Для удаления аккаунта и данных, не покрытых клиентскими функциями, обратитесь к администратору ноды. После обработки запроса начинается 7-дневный период до окончательного удаления.</li>
       </ul>
       </div>
       <div lang="en"><ul>
@@ -419,7 +419,7 @@
         <li>Private encrypted messages are marked as deleted on deletion, and the ciphertext is cleared.</li>
         <li>Secret messages are removed from the temporary buffer after delivery confirmation or TTL expiry.</li>
         <li>Deletion applies within your node. Copies already delivered to another node can only be deleted by that node's administrator.</li>
-        <li>For deletion of an account and data not covered by client features, contact the node administrator.</li>
+        <li>For deletion of an account and data not covered by client features, contact the node administrator. After the request is processed, a 7-day period begins before final deletion.</li>
       </ul>
       </div>
     </div>

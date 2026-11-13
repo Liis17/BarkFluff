@@ -379,7 +379,8 @@ namespace BarkFluff.WebApi.Core.Managers
                         Id = getUser.User.Id,
                         ProfilePictureUrl = getUser.User.ProfilePicture,
                         Description = getUser.User.Bio,
-                        ProfilePicturePreviewUrl = getUser.User.ProfilePicturePreview
+                        ProfilePicturePreviewUrl = getUser.User.ProfilePicturePreview,
+                        AccountStatus = getUser.User.AccountStatus
                     });
                 }, globalParam);
             }
@@ -406,7 +407,8 @@ namespace BarkFluff.WebApi.Core.Managers
                 Id = response.User.Id,
                 ProfilePictureUrl = response.User.ProfilePicture,
                 Description = response.User.Bio,
-                ProfilePicturePreviewUrl = response.User.ProfilePicturePreview
+                ProfilePicturePreviewUrl = response.User.ProfilePicturePreview,
+                AccountStatus = response.User.AccountStatus
             });
         }
 

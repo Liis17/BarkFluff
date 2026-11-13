@@ -1,6 +1,7 @@
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Proto.Shared;
+using BarkFluff.Proto.Users;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 namespace BarkFluff.Client.WinUI.Tests;
@@ -84,6 +85,38 @@ public sealed class ProfileViewModelTests
         Assert.Equal(string.Empty, viewModel.Email);
         Assert.Equal("Messenger_StatusOnline", viewModel.PresenceLabel);
         Assert.True(viewModel.HasAttachments);
+    }
+
+    [Fact]
+    public async Task LoadForPeerAsync_RestrictedAccountUsesLocalLabelAndHidesProfileDetailsAndPresence()
+    {
+        var messenger = new FakeMessengerService
+        {
+            UserData = new UserData
+            {
+                Id = 7,
+                AccountStatus = AccountStatus.Blocked,
+                Username = "private-user",
+                FirstName = "Private",
+                LastName = "Name",
+                ProfilePicturePreviewUrl = "https://example.test/avatar.png",
+                Description = "private bio",
+                RegistrationDate = new DateTime(2025, 5, 12, 0, 0, 0, DateTimeKind.Utc)
+            }
+        };
+        var presence = new FakeOnlinePresenceService();
+        presence.Seed(new UserPresence(7, IsOnline: true, DateTimeOffset.UtcNow));
+        var viewModel = new ProfileViewModel(messenger, presence, new StubLocalizationService());
+
+        await viewModel.LoadForPeerAsync(7, "chat-with-bob");
+
+        Assert.True(viewModel.IsRestricted);
+        Assert.Equal("Messenger_UserBlocked", viewModel.DisplayName);
+        Assert.Equal(string.Empty, viewModel.Username);
+        Assert.Equal(string.Empty, viewModel.Description);
+        Assert.Equal(string.Empty, viewModel.AvatarUrl);
+        Assert.Equal(string.Empty, viewModel.RegisteredAtLabel);
+        Assert.Equal(string.Empty, viewModel.PresenceLabel);
     }
 
     [Fact]

@@ -8,6 +8,8 @@ Onliner отвечает за presence и typing. Текущие статусы 
 
 `SetOnlineStatus` записывает heartbeat через `RedisPresenceStore`. `OfflineDetectionService` снимает устаревшие статусы, используя распределённый single-runner; `DatabasePersistenceService` сохраняет снимки в PostgreSQL. `OnlineVisibilityFilter` получает privacy settings из Users. Значение `FRIENDS` трактуется как скрытый статус, потому что в Onliner нет графа отношений; при недоступности Users фильтр закрывает доступ.
 
+Users возвращает полностью скрытую online visibility для локального аккаунта со статусом != Active. `OnlineVisibilityFilter` не кеширует privacy, поэтому после изменения статуса Onliner перестаёт раскрывать presence и last seen при следующей проверке.
+
 Typing временный: `SetTypingStatus` проверяет членство через Messages (`ChatMembershipFilter`, fail-closed), публикует событие локальным подписчикам и best-effort передаёт его федерации. Неизвестное действие считается typing. Локальная доставка не зависит от доступности федерации.
 
 ## Несколько инстансов и федерация

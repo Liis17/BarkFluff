@@ -331,6 +331,15 @@ private fun IdentityApiOuterClass.CompleteAuthChallengeResponse.toDomain(): Auth
         securityProof = securityProof.takeIf { hasSecurityProof() && it.id.isNotBlank() }?.toDomain(),
         recoveryCodes = recoveryCodesList,
         errorCode = errorCode,
+        accountRestriction = takeIf { hasAccountRestriction() }?.accountRestriction?.let { restriction ->
+            AccountRestriction(
+                status = restriction.status.toDomain(),
+                reason = restriction.reason,
+                deletionScheduledAtMillis = restriction.deletionScheduledAt
+                    .takeIf { restriction.hasDeletionScheduledAt() }
+                    ?.let { it.seconds * 1_000L + it.nanos / 1_000_000L },
+            )
+        },
     )
 
 private fun IdentityApiOuterClass.SecuritySettingsResponse.toDomain(): SecuritySettings =

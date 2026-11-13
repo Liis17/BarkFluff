@@ -3,6 +3,7 @@ using BarkFluff.Identity.Features.CreateToken;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Services;
+using BarkFluff.Identity.Settings;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
@@ -13,6 +14,8 @@ using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 
 using MediatR;
+using MassTransit;
+using BarkFluff.Shared.Queue.Identity;
 
 namespace BarkFluff.Identity.Features.CreateSessionForUserServer;
 
@@ -22,6 +25,8 @@ public class CreateSessionForUserServerCommandHandler(
     LoginNotificationService loginNotifications,
     RefreshTokensStorage refreshTokensStorage,
     LocationClient locationClient,
+    IPublishEndpoint publishEndpoint,
+    JwtSettings jwtSettings,
     MetricsCollector metrics,
     ILogger<CreateSessionForUserServerCommandHandler> logger)
     : IRequestHandler<CreateSessionForUserServerCommand, CreateSessionForUserServerResponse>
@@ -68,6 +73,9 @@ public class CreateSessionForUserServerCommandHandler(
             throw new RpcException(new Status(StatusCode.FailedPrecondition,
                 "Bot accounts cannot create user sessions"));
         }
+        var accountRestriction = await usersClient.GetAccountRestrictionAsync(
+            new GetAccountRestrictionRequest { UserId = request.UserId }, cancellationToken: cancellationToken);
+        AccountRestrictionStatusGuard.ThrowIfInactive(accountRestriction.Restriction.Status);
 
         logger.LogInformation(
             "Создание серверной сессии для пользователя {UserId} на устройстве {DeviceId} ({DeviceName})",
@@ -98,6 +106,25 @@ public class CreateSessionForUserServerCommandHandler(
         {
             logger.LogWarning(ex, "Не удалось зарегистрировать устройство {DeviceId} для пользователя {UserId}",
                 deviceId, request.UserId);
+        }
+
+        accountRestriction = await usersClient.GetAccountRestrictionAsync(
+            new GetAccountRestrictionRequest { UserId = request.UserId }, cancellationToken: cancellationToken);
+        if (accountRestriction.Restriction.Status != AccountStatus.Active)
+        {
+            await publishEndpoint.Publish(new SessionRevokedEvent
+            {
+                UserId = request.UserId,
+                DeviceId = deviceId,
+                AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes + 2),
+            }, cancellationToken);
+            await usersClient.DeleteUserDeviceAsync(new DeleteUserDeviceRequest
+            {
+                UserId = request.UserId,
+                DeviceId = deviceId,
+            }, cancellationToken: cancellationToken);
+            await refreshTokensStorage.DeleteRefreshTokenByValueSafe(refreshTokenString);
+            AccountRestrictionStatusGuard.ThrowIfInactive(accountRestriction.Restriction.Status);
         }
 
         try

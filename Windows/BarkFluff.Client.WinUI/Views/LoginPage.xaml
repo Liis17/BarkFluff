@@ -103,6 +103,7 @@
                     <TextBlock Margin="0,14,0,0"
                                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                                Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                               TextWrapping="Wrap"
                                Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
                     <TextBlock Margin="0,14,0,0"
                                Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"

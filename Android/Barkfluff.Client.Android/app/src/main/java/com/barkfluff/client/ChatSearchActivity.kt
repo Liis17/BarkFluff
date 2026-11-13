@@ -171,14 +171,20 @@ class ChatSearchActivity : AppCompatActivity() {
         val chatIntent = when (chat.chatType) {
             Shared.ChatType.CHAT_TYPE_PRIVATE -> ChatActivity.privateChatIntent(
                 this, chat.id, title, chat.privateInviteState.number, chat.privateInviterUserId,
+                otherUserId = result.otherUserId,
+                accountStatus = result.accountStatus,
             )
-            Shared.ChatType.CHAT_TYPE_SECRET -> ChatActivity.secretChatIntent(this, chat.id)
+            Shared.ChatType.CHAT_TYPE_SECRET -> ChatActivity.secretChatIntent(this, chat.id).apply {
+                putExtra("other_user_id", result.otherUserId)
+                putExtra("account_status", result.accountStatus.ordinal)
+            }
             else -> Intent(this, ChatActivity::class.java).apply {
                 putExtra("chat_id", chat.id)
                 putExtra("chat_title", title)
                 putExtra("chat_avatar_file_id", result.avatarFileId)
                 putExtra("is_group_chat", chat.isGroupChat)
                 putExtra("other_user_id", result.otherUserId)
+                putExtra("account_status", result.accountStatus.ordinal)
             }
         }
         startActivity(chatIntent)

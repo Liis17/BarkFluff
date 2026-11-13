@@ -63,6 +63,7 @@ class LoginActivity : AppCompatActivity() {
         private val EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
         private const val MIN_PASSWORD_LENGTH = 6
         private const val MEDIUM_WINDOW_MIN_WIDTH_DP = 600
+        const val EXTRA_ACCOUNT_RESTRICTION_NOTICE = "account_restriction_notice"
         /** Отступы hero-блока; складываются с системными инсетами. */
         private const val LOGIN_TOP_PADDING_DP = 20
         private const val LOGIN_BOTTOM_PADDING_DP = 16
@@ -121,6 +122,7 @@ class LoginActivity : AppCompatActivity() {
         initIdentityClient()
         setupClickListeners()
         setupLoginFields()
+        intent.getStringExtra(EXTRA_ACCOUNT_RESTRICTION_NOTICE)?.let(::showError)
     }
 
     override fun onResume() {
@@ -407,6 +409,11 @@ class LoginActivity : AppCompatActivity() {
                 failure is AuthenticationChallengeErrorException &&
                     failure.errorCode == AuthenticationErrorCodes.LOGIN_MODE_DISABLED ->
                     handleLoginModeMismatch()
+                failure is AuthenticationChallengeErrorException &&
+                    failure.errorCode in setOf(
+                        AuthenticationErrorCodes.ACCOUNT_BLOCKED,
+                        AuthenticationErrorCodes.ACCOUNT_PENDING_DELETION,
+                    ) -> resetSignInFlow(clearError = true)
                 failure is java.util.concurrent.CancellationException -> Unit
                 else -> showError(failure.message ?: getString(R.string.auth_error))
             }

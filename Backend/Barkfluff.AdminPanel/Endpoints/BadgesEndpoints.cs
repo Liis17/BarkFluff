@@ -207,7 +207,9 @@ public static class BadgesEndpoints
                 createdDate = response.Badge.CreatedDate?.ToDateTime()
             });
         })
-        .WithName("UpdateBadge");
+        .WithName("UpdateBadge")
+        .RequireStepUp(StepUpActions.BadgesUpdate, context =>
+            "badgeId=" + context.Request.RouteValues["id"]);
 
         // DELETE /api/badges/{id} — удалить бейдж
         group.MapDelete("/{id:int}", async (
@@ -221,7 +223,9 @@ public static class BadgesEndpoints
 
             return Results.Ok(new { success = response.Success });
         })
-        .WithName("DeleteBadge");
+        .WithName("DeleteBadge")
+        .RequireStepUp(StepUpActions.BadgesDelete, context =>
+            "badgeId=" + context.Request.RouteValues["id"]);
     }
 
     private static async Task<UploadBadgeImageResponse> UploadBadgeImageAsync(

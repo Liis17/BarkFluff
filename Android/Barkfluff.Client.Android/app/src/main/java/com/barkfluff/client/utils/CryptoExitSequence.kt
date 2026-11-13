@@ -11,7 +11,10 @@ enum class SessionGate { CONTINUE, LOGIN, CLEANUP_FAILED }
 suspend fun gateTokenValidity(validity: TokenValidity, exitRejectedSession: suspend () -> Boolean): SessionGate =
     when (validity) {
         TokenValidity.VALID, TokenValidity.UNAVAILABLE -> SessionGate.CONTINUE
-        TokenValidity.REJECTED -> if (exitRejectedSession()) SessionGate.LOGIN else SessionGate.CLEANUP_FAILED
+        TokenValidity.REJECTED,
+        TokenValidity.ACCOUNT_BLOCKED,
+        TokenValidity.ACCOUNT_PENDING_DELETION ->
+            if (exitRejectedSession()) SessionGate.LOGIN else SessionGate.CLEANUP_FAILED
     }
 
 class BoundedNetworkStep(val timeoutMillis: Long, val call: suspend () -> Unit)

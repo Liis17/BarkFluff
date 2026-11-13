@@ -21,7 +21,7 @@ public class GetProfilePosterQueryHandlerTests : IAsyncDisposable
         var user = await _h.SeedUser();
         await _h.PersonalizationStorage.Update(user.Id, "poster-abc", []);
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new GetProfilePosterQueryHandler(ctx, _h.PersonalizationStorage);
+        var handler = new GetProfilePosterQueryHandler(ctx, _h.PersonalizationStorage, _h.UsersStorage);
 
         var result = await handler.Handle(new GetProfilePosterQuery(), CancellationToken.None);
 
@@ -33,7 +33,7 @@ public class GetProfilePosterQueryHandlerTests : IAsyncDisposable
     {
         var user = await _h.SeedUser();
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new GetProfilePosterQueryHandler(ctx, _h.PersonalizationStorage);
+        var handler = new GetProfilePosterQueryHandler(ctx, _h.PersonalizationStorage, _h.UsersStorage);
 
         var result = await handler.Handle(new GetProfilePosterQuery(), CancellationToken.None);
 

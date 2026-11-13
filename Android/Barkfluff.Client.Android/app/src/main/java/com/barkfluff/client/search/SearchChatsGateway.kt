@@ -9,8 +9,10 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.resolveOtherUserId
 import com.barkfluff.client.repository.SecretChatRepository
+import com.barkfluff.client.utils.accountStatusLabel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +23,7 @@ data class SearchChat(
     val title: String = chat.title,
     val avatarFileId: String? = chat.picturePreviewFileId.ifBlank { chat.pictureFileId }.ifBlank { null },
     val otherUserId: Long = 0L,
+    val accountStatus: AccountStatus = AccountStatus.ACTIVE,
 )
 
 data class SearchChatPage(val chats: List<SearchChat>, val totalCount: Int)
@@ -38,7 +41,8 @@ class GrpcSearchChatsGateway @Inject constructor(
     private val cache: ChatCacheRepository,
     private val secretChats: SecretChatRepository,
 ) : SearchChatsGateway {
-    private val globalParam = GlobalParam(context)
+    private val appContext = context.applicationContext
+    private val globalParam = GlobalParam(appContext)
     private val scope = CacheScope.from(globalParam)
     private val userId = globalParam.userId
     private var displays = emptyMap<String, CachedChatDisplay>()
@@ -48,14 +52,26 @@ class GrpcSearchChatsGateway @Inject constructor(
         displays = cached?.displays.orEmpty()
         val chats = cached?.chats.orEmpty().map { chat ->
             val display = displays[chat.id]
-            SearchChat(chat, display?.title ?: chat.title, display?.avatarFileId ?: avatar(chat), peer(chat))
+            val restricted = display?.accountStatus?.let { it != AccountStatus.ACTIVE } == true
+            SearchChat(
+                chat,
+                if (restricted) appContext.accountStatusLabel(display!!.accountStatus) else display?.title ?: chat.title,
+                if (restricted) null else display?.avatarFileId ?: avatar(chat),
+                peer(chat),
+                display?.accountStatus ?: AccountStatus.ACTIVE,
+            )
         }
         if (!globalParam.secretChatsEnabled) return chats
         // Decrypting the encrypted crypto snapshot is disk I/O; keep it off the caller's Main dispatcher.
         val secrets = withContext(Dispatchers.IO) { secretChats.listChats() }
         return chats + secrets.map { secret ->
             val profile = userProfiles.user(secret.peerUserId).getOrNull()
-            val title = profile?.let { "${it.firstName} ${it.lastName}".trim().ifBlank { it.username } }.orEmpty()
+            val restricted = profile?.accountStatus?.let { it != AccountStatus.ACTIVE } == true
+            val title = if (restricted) {
+                appContext.accountStatusLabel(profile!!.accountStatus)
+            } else {
+                profile?.let { "${it.firstName} ${it.lastName}".trim().ifBlank { it.username } }.orEmpty()
+            }
             SearchChat(
                 chat = ChatSummary(
                     id = secret.id, title = title, picture = "", isGroupChat = false,
@@ -63,8 +79,10 @@ class GrpcSearchChatsGateway @Inject constructor(
                     firstUnreadMessageId = 0L, chatType = Shared.ChatType.CHAT_TYPE_SECRET,
                 ),
                 title = title,
-                avatarFileId = profile?.profilePicturePreviewFileId?.ifBlank { profile.profilePictureFileId }?.ifBlank { null },
+                avatarFileId = if (restricted) null else profile?.profilePicturePreviewFileId
+                    ?.ifBlank { profile.profilePictureFileId }?.ifBlank { null },
                 otherUserId = secret.peerUserId,
+                accountStatus = profile?.accountStatus ?: AccountStatus.ACTIVE,
             )
         }
     }
@@ -73,7 +91,15 @@ class GrpcSearchChatsGateway @Inject constructor(
         chatDirectory.chats(offset, size).map { page ->
             SearchChatPage(page.chats.map { chat ->
                 val display = displays[chat.id]
-                SearchChat(chat, chat.title.ifBlank { display?.title.orEmpty() }, avatar(chat), peer(chat))
+                val restricted = display?.accountStatus?.let { it != AccountStatus.ACTIVE } == true
+                SearchChat(
+                    chat,
+                    if (restricted) appContext.accountStatusLabel(display!!.accountStatus)
+                    else chat.title.ifBlank { display?.title.orEmpty() },
+                    if (restricted) null else avatar(chat),
+                    peer(chat),
+                    display?.accountStatus ?: AccountStatus.ACTIVE,
+                )
             }, page.totalCount)
         }
 

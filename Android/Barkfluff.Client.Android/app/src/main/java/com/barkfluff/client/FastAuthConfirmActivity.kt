@@ -8,6 +8,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.databinding.ActivityFastAuthConfirmBinding
 import com.barkfluff.client.domain.gateway.FastAuthGateway
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -73,11 +75,14 @@ class FastAuthConfirmActivity : AppCompatActivity() {
                 setResult(RESULT_OK)
                 finish()
             } else {
-                val msg = result.exceptionOrNull()?.message ?: getString(R.string.error)
+                val error = result.exceptionOrNull()
+                if (error != null && exitToLoginIfAccountRestricted(error)) return@launch
+                val msg = error?.let { accountRestrictionRpcMessage(it) ?: it.message }
+                    ?: getString(R.string.error)
                 Log.e(TAG, "Ошибка acceptFastAuth: $msg")
                 Toast.makeText(
                     this@FastAuthConfirmActivity,
-                    getString(R.string.fast_auth_error, msg),
+                    if (error?.let(::accountRestrictionRpcMessage) != null) msg else getString(R.string.fast_auth_error, msg),
                     Toast.LENGTH_LONG
                 ).show()
                 setButtonsEnabled(true)
@@ -90,9 +95,17 @@ class FastAuthConfirmActivity : AppCompatActivity() {
         binding.progressLoading.visibility = View.VISIBLE
 
         lifecycleScope.launch {
-            fastAuthGateway.reject(fastAuthId, confirmationCode)
-            setResult(RESULT_OK)
-            finish()
+            val result = fastAuthGateway.reject(fastAuthId, confirmationCode)
+            result.onSuccess {
+                setResult(RESULT_OK)
+                finish()
+            }.onFailure { error ->
+                if (exitToLoginIfAccountRestricted(error)) return@onFailure
+                val msg = accountRestrictionRpcMessage(error) ?: error.message ?: getString(R.string.error)
+                Toast.makeText(this@FastAuthConfirmActivity, msg, Toast.LENGTH_LONG).show()
+                setButtonsEnabled(true)
+                binding.progressLoading.visibility = View.GONE
+            }
         }
     }
 

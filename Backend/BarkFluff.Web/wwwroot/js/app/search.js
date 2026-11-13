@@ -49,14 +49,19 @@
             matchedChats.forEach(function (chat) {
                 var el = document.createElement('div');
                 el.className = 'search-result-item';
-                var initial = (chat.title || '?')[0].toUpperCase();
-                var avHtml = chat.picture ? '<img src="' + u.escapeHtml(chat.picture) + '" alt="">' : initial;
+                var peer = !chat.isGroupChat && chat.members && chat.members.length
+                    ? deps.getCachedUser && deps.getCachedUser(chat.members.find(function (member) { return member.userId !== deps.getMyUserId(); })?.userId)
+                    : null;
+                var restricted = u.isRestrictedUser(peer);
+                var title = restricted ? u.restrictedUserName(peer) : chat.title || BF.i18n.t('common.chat');
+                var initial = (title || '?')[0].toUpperCase();
+                var avHtml = !restricted && chat.picture ? '<img src="' + u.escapeHtml(chat.picture) + '" alt="">' : initial;
                 el.innerHTML =
                     '<div class="chat-avatar">' +
                     avHtml +
                     '</div>' +
                     '<div class="search-result-info"><div class="user-name">' +
-                    u.escapeHtml(chat.title || BF.i18n.t('common.chat')) +
+                    u.escapeHtml(title) +
                     '</div></div>';
                 el.addEventListener('click', function () {
                     clearSearch();
@@ -68,8 +73,11 @@
                 users.forEach(function (user) {
                     var el = document.createElement('div');
                     el.className = 'search-result-item';
-                    var initial = (user.firstName || user.username || '?')[0].toUpperCase();
-                    var avHtml = user.profilePicturePreview
+                    var restricted = u.isRestrictedUser(user);
+                    var name = restricted ? u.restrictedUserName(user) :
+                        ((user.firstName || '') + ' ' + (user.lastName || '')).trim() || user.username;
+                    var initial = (name || '?')[0].toUpperCase();
+                    var avHtml = !restricted && user.profilePicturePreview
                         ? '<img src="' + u.escapeHtml(user.profilePicturePreview) + '" alt="">'
                         : initial;
                     el.innerHTML =
@@ -77,15 +85,18 @@
                         avHtml +
                         '</div>' +
                         '<div class="search-result-info"><div class="user-name">' +
-                        u.escapeHtml(((user.firstName || '') + ' ' + (user.lastName || '')).trim() || user.username) +
+                        u.escapeHtml(name) +
                         '</div>' +
-                        '<div class="user-username">@' +
-                        u.escapeHtml(user.username || '') +
-                        '</div></div>';
+                        (restricted ? '' : '<div class="user-username">@' + u.escapeHtml(user.username || '') + '</div>') +
+                        '</div>';
                     el.addEventListener('click', function () {
                         clearSearch();
                         BF.api.getPersonChatId(user.id).then(function (d) {
                             if (d && d.chatId) deps.openChat(d.chatId);
+                        }).catch(function (error) {
+                            if (error && error.errorCode === '6BC0E7A1-5117-4910-9717-1784E6921F6F' && deps.showToast) {
+                                deps.showToast(BF.i18n.t('accountRestriction.userUnavailable'), true);
+                            }
                         });
                     });
                     searchResults.appendChild(el);

@@ -397,7 +397,8 @@ open class GrpcApiTransport(context: Context) {
                     profilePictureFileId = profilePictureFileId,
                     profilePicturePreviewFileId = profilePicturePreviewFileId,
                     profilePosterFileId = user.profilePosterFileId,
-                    registrationDate = user.registrationDate.seconds * 1000
+                    registrationDate = user.registrationDate.seconds * 1000,
+                    accountStatus = user.accountStatus,
                 )
             )
         } catch (e: Exception) {
@@ -1048,7 +1049,8 @@ open class GrpcApiTransport(context: Context) {
                     profilePictureFileId = extractGuidFromUrl(user.profilePicture),
                     profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview),
                     profilePosterFileId = user.profilePosterFileId,
-                    registrationDate = user.registrationDate.seconds * 1000
+                    registrationDate = user.registrationDate.seconds * 1000,
+                    accountStatus = user.accountStatus,
                 )
             )
         } catch (e: Exception) {
@@ -1181,7 +1183,8 @@ open class GrpcApiTransport(context: Context) {
                     profilePicturePreviewUrl = toMediaUrl(user.profilePicturePreview),
                     profilePictureFileId = extractGuidFromUrl(user.profilePicture),
                     profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview),
-                    registrationDate = user.registrationDate.seconds * 1000
+                    registrationDate = user.registrationDate.seconds * 1000,
+                    accountStatus = user.accountStatus,
                 )
             }
 
@@ -1210,7 +1213,7 @@ open class GrpcApiTransport(context: Context) {
             Result.success(response.chatId)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения ID чата с пользователем $userId", e)
-            Result.failure(Exception("Ошибка получения ID чата: ${e.message}"))
+            Result.failure(Exception("Ошибка получения ID чата: ${e.message}", e))
         }
     }
 
@@ -1749,7 +1752,8 @@ open class GrpcApiTransport(context: Context) {
         val profilePictureFileId: String = "",
         val profilePicturePreviewFileId: String = "",
         val profilePosterFileId: String = "",
-        val registrationDate: Long
+        val registrationDate: Long,
+        val accountStatus: UsersApiOuterClass.AccountStatus = UsersApiOuterClass.AccountStatus.ACTIVE,
     )
 
     data class ServerInfo(

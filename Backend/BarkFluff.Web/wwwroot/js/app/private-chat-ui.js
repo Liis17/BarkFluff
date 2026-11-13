@@ -29,6 +29,7 @@
     var messageInput;
     var sendButton;
     var scrollToBottomButton;
+    var peerIsRestricted = false;
 
     function $(selector) {
         return document.querySelector(selector);
@@ -143,6 +144,8 @@
     }
 
     function open(chat) {
+        peerIsRestricted = false;
+        if (deps.setChatReadOnly) deps.setChatReadOnly(null);
         deps.stopTypingSend(true);
         if (BF.pinned && BF.pinned.closeForChat) BF.pinned.closeForChat();
 
@@ -177,9 +180,17 @@
             deps.getUser(privatePeer.userId)
                 .then(function (peer) {
                     if (deps.getCurrentChatId() !== chat.id || !peer) return;
+                    peerIsRestricted = BF.utils.isRestrictedUser(peer);
+                    if (deps.setChatReadOnly) deps.setChatReadOnly(peer);
+                    if (peerIsRestricted) {
+                        var name = BF.utils.restrictedUserName(peer);
+                        chatHeaderName.textContent = '\u{1F512} ' + name;
+                        chatHeaderAvatar.replaceChildren();
+                        chatHeaderAvatar.textContent = name[0] || '?';
+                    }
                     deps.setChatTabContext(
-                        deps.chatTabTitle(peer),
-                        peer.profilePicturePreview || peer.profilePicture || chat.picture || null
+                        peerIsRestricted ? BF.utils.restrictedUserName(peer) : deps.chatTabTitle(peer),
+                        peerIsRestricted ? null : peer.profilePicturePreview || peer.profilePicture || chat.picture || null
                     );
                 })
                 .catch(function () {});
@@ -293,6 +304,8 @@
     }
 
     function close() {
+        peerIsRestricted = false;
+        if (deps.setChatReadOnly) deps.setChatReadOnly(null);
         deps.setCurrentChatId(null);
         deps.setCurrentChatType(0);
         deps.setMessages([]);
@@ -349,6 +362,7 @@
     }
 
     function send(text) {
+        if (peerIsRestricted) return;
         var sentChatId = deps.getCurrentChatId();
         sendButton.disabled = true;
         BF.privateChat
@@ -395,6 +409,9 @@
             .catch(function (error) {
                 console.error('[privateChat] send failed', error);
                 sendButton.disabled = false;
+                if (error && error.errorCode === '6BC0E7A1-5117-4910-9717-1784E6921F6F') {
+                    deps.showToast(BF.i18n.t('accountRestriction.userUnavailable'), true);
+                }
             });
     }
 

@@ -57,6 +57,9 @@ public class UsersContext : DbContext
             .Property(u => u.Uuid)
             .HasDefaultValueSql("gen_random_uuid()");
 
+        modelBuilder.Entity<User>()
+            .HasIndex(u => new { u.AccountStatus, u.DeletionScheduledAt });
+
         // Настройка связей для UserBadge
         modelBuilder.Entity<UserBadge>()
             .HasOne(ub => ub.User)

@@ -31,6 +31,10 @@
         var chatId = deps.getCurrentChatId();
         var chatInfo = deps.getCurrentChatInfo();
         if (isInitiatingCall || !chatId || !chatInfo) return;
+        if (deps.getPeerIsRestricted && deps.getPeerIsRestricted()) {
+            deps.showToast(BF.i18n.t('accountRestriction.userUnavailable'), true);
+            return;
+        }
         if (!chatInfo.isGroupChat && deps.getPeerIsBot()) return;
         var target;
         if (chatInfo.isGroupChat) {
@@ -50,7 +54,9 @@
                 return BF.calls.initiate(target, media);
             })
             .catch(function (e) {
-                if (!e || e.code !== 'media-permission-dismissed') console.error('call start failed:', e);
+                if (e && e.errorCode === '6BC0E7A1-5117-4910-9717-1784E6921F6F') {
+                    deps.showToast(BF.i18n.t('accountRestriction.userUnavailable'), true);
+                } else if (!e || e.code !== 'media-permission-dismissed') console.error('call start failed:', e);
             })
             .finally(function () {
                 isInitiatingCall = false;

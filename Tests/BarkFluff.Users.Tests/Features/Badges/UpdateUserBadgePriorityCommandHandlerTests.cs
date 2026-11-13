@@ -33,11 +33,12 @@ public class UpdateUserBadgePriorityCommandHandlerTests : IAsyncDisposable
     [Fact]
     public async Task Handle_NonExistingBadge_ThrowsArgumentException()
     {
+        var user = await _h.SeedUser();
         var handler = new UpdateUserBadgePriorityCommandHandler(_h.UsersStorage, TestHelper.CreateLogger<UpdateUserBadgePriorityCommandHandler>());
 
         var act = () => handler.Handle(new UpdateUserBadgePriorityCommand
         {
-            UserId = 1, BadgeId = 999, NewPriority = 1
+            UserId = user.Id, BadgeId = 999, NewPriority = 1
         }, CancellationToken.None);
 
         await act.Should().ThrowAsync<ArgumentException>();

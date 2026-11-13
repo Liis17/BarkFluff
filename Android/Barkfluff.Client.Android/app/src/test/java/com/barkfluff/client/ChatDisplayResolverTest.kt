@@ -2,6 +2,7 @@ package com.barkfluff.client
 
 import com.barkfluff.client.cache.CachedChatDisplay
 import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.domain.model.UserProfile
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -19,7 +20,7 @@ class ChatDisplayResolverTest {
         )
         resolver.loadCachedDisplays(mapOf(CHAT_ID to CachedChatDisplay("Алиса", "avatar-2", 2L)), 1L)
 
-        val item = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат").single()
+        val item = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат", "Заблокированный пользователь", "Удалённый пользователь").single()
 
         assertEquals("Алиса", item.displayTitle)
         assertEquals("avatar-2", item.displayAvatarFileId)
@@ -37,7 +38,7 @@ class ChatDisplayResolverTest {
         )
 
         resolver.cacheChatList(listOf(chat(title = "Серверная Алиса", avatar = "server-avatar")), 1L)
-        val fromList = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат").single()
+        val fromList = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат", "Заблокированный пользователь", "Удалённый пользователь").single()
         assertEquals("Серверная Алиса", fromList.displayTitle)
         assertEquals("server-avatar", fromList.displayAvatarFileId)
         assertEquals(0, userCalls)
@@ -54,9 +55,9 @@ class ChatDisplayResolverTest {
         )
 
         resolver.resolveMissingProfiles(listOf(chat()), 1L)
-        val firstResolution = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат").single()
+        val firstResolution = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат", "Заблокированный пользователь", "Удалённый пользователь").single()
         resolver.resolveMissingProfiles(listOf(chat()), 1L)
-        val repeatedResolution = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат").single()
+        val repeatedResolution = resolver.resolveCachedChats(listOf(chat()), 1L, "Чат", "Заблокированный пользователь", "Удалённый пользователь").single()
 
         assertEquals("Алиса Тест", firstResolution.displayTitle)
         assertEquals("preview-2", firstResolution.displayAvatarFileId)
@@ -74,7 +75,7 @@ class ChatDisplayResolverTest {
         )
 
         resolver.resolveMissingProfiles(listOf(chat(memberIds = listOf(1L))), 1L)
-        val item = resolver.resolveCachedChats(listOf(chat(memberIds = listOf(1L))), 1L, "Чат").single()
+        val item = resolver.resolveCachedChats(listOf(chat(memberIds = listOf(1L))), 1L, "Чат", "Заблокированный пользователь", "Удалённый пользователь").single()
 
         assertNull(requestedUserId)
         assertEquals(0L, item.otherUserId)
@@ -91,7 +92,7 @@ class ChatDisplayResolverTest {
         val chat = chat(title = "Имя из списка")
 
         resolver.resolveMissingProfiles(listOf(chat), 1L)
-        val item = resolver.resolveCachedChats(listOf(chat), 1L, "Чат").single()
+        val item = resolver.resolveCachedChats(listOf(chat), 1L, "Чат", "Заблокированный пользователь", "Удалённый пользователь").single()
 
         assertEquals("Имя из списка", item.displayTitle)
         assertEquals("preview-2", item.displayAvatarFileId)
@@ -135,7 +136,29 @@ class ChatDisplayResolverTest {
         resolver.resolveMissingProfiles(listOf(chat), 1L)
 
         assertEquals(2, userCalls)
-        assertEquals("preview-2", resolver.resolveCachedChats(listOf(chat), 1L, "Чат").single().displayAvatarFileId)
+        assertEquals("preview-2", resolver.resolveCachedChats(listOf(chat), 1L, "Чат", "Заблокированный пользователь", "Удалённый пользователь").single().displayAvatarFileId)
+    }
+
+    @Test
+    fun `restricted peer uses localized label and never reuses cached avatar`() = runTest {
+        val saved = linkedMapOf<String, CachedChatDisplay>()
+        val resolver = ChatDisplayResolver(
+            loadUser = { Result.success(profile().copy(accountStatus = AccountStatus.BLOCKED)) },
+            saveDisplay = { chatId, display -> saved[chatId] = display },
+        )
+        resolver.loadCachedDisplays(mapOf(CHAT_ID to CachedChatDisplay("Алиса", "old-avatar", 2L)), 1L)
+
+        resolver.beginChatListRefresh()
+        resolver.resolveMissingProfiles(listOf(chat()), 1L)
+        val item = resolver.resolveCachedChats(
+            listOf(chat()), 1L, "Чат", "Заблокированный пользователь", "Удалённый пользователь"
+        ).single()
+
+        assertEquals("Заблокированный пользователь", item.displayTitle)
+        assertNull(item.displayAvatarFileId)
+        assertEquals(AccountStatus.BLOCKED, item.accountStatus)
+        assertEquals(AccountStatus.BLOCKED, saved[CHAT_ID]?.accountStatus)
+        assertNull(saved[CHAT_ID]?.avatarFileId)
     }
 
     private fun chat(

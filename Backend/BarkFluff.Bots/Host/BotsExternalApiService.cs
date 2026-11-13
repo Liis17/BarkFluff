@@ -36,6 +36,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
     private readonly BotCallerContext _callerContext;
     private readonly BotUpdateNotifier _notifier;
     private readonly IBotPollingGuard _pollingGuard;
+    private readonly BotRegistryCache _registryCache;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly MetricsCollector _metrics;
     private readonly ILogger<BotsExternalApiService> _logger;
@@ -45,6 +46,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
         BotCallerContext callerContext,
         BotUpdateNotifier notifier,
         IBotPollingGuard pollingGuard,
+        BotRegistryCache registryCache,
         IServiceScopeFactory scopeFactory,
         MetricsCollector metrics,
         ILogger<BotsExternalApiService> logger)
@@ -53,6 +55,7 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
         _callerContext = callerContext;
         _notifier = notifier;
         _pollingGuard = pollingGuard;
+        _registryCache = registryCache;
         _scopeFactory = scopeFactory;
         _metrics = metrics;
         _logger = logger;
@@ -145,6 +148,9 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
 
             while (!context.CancellationToken.IsCancellationRequested)
             {
+                if (_registryCache.Get(bot.Id)?.OwnerRestricted == true)
+                    throw new RpcException(new Status(StatusCode.Unauthenticated, "Bot owner account is restricted"));
+
                 // Продлеваем распределённый лок — долгоживущий стрим держит слот дольше его TTL.
                 await _pollingGuard.RenewAsync(bot.Id);
 
@@ -165,6 +171,8 @@ public class BotsExternalApiService : BotsExternalApi.BotsExternalApiBase
 
                 foreach (var update in batch)
                 {
+                    if (_registryCache.Get(bot.Id)?.OwnerRestricted == true)
+                        throw new RpcException(new Status(StatusCode.Unauthenticated, "Bot owner account is restricted"));
                     await responseStream.WriteAsync(UpdateJsonMapper.ToGrpcUpdate(update.Id, update.Payload));
                     nextFromId = update.Id + 1;
                 }

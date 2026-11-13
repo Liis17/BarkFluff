@@ -71,5 +71,24 @@ public class GetUserQueryHandlerTests : IAsyncDisposable
         result.User.ProfilePosterFileId.Should().Be("poster-file-123");
     }
 
+    [Fact]
+    public async Task Handle_RestrictedUser_ReturnsMaskedProfileWithoutPoster()
+    {
+        var user = await _h.SeedUser(username: "hidden-profile", firstName: "Private", profilePicture: "avatar");
+        await _h.PersonalizationStorage.Update(user.Id, "poster-file", []);
+        user.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Blocked;
+        await _h.DbContext.SaveChangesAsync();
+        var ctx = _h.CreateUserContext(user.Id);
+        var handler = new GetUserQueryHandler(_h.UsersStorage, _h.PersonalizationStorage, ctx, TestHelper.CreateLogger<GetUserQueryHandler>());
+
+        var result = await handler.Handle(new GetUserQuery { UserId = user.Id }, CancellationToken.None);
+
+        result.User.AccountStatus.Should().Be(BarkFluff.Proto.Users.AccountStatus.Blocked);
+        result.User.FirstName.Should().Be("Заблокированный пользователь");
+        result.User.Username.Should().BeEmpty();
+        result.User.ProfilePicture.Should().BeEmpty();
+        result.User.ProfilePosterFileId.Should().BeEmpty();
+    }
+
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();
 }

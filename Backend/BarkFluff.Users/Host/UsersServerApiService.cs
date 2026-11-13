@@ -3,6 +3,7 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Users.Features.CheckRemoteAvatarRef;
 using BarkFluff.Users.Features.IsAvatarVisibleToFederation;
 using BarkFluff.Shared.Identity;
+using BarkFluff.Users.Features.AccountRestrictions;
 using BarkFluff.Users.Features.AddDraftUser;
 using BarkFluff.Users.Features.Badges.AssignUserBadge;
 using BarkFluff.Users.Features.Badges.Commands;
@@ -55,6 +56,21 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 {
     public override Task<SetVerifiedEmailResponse> SetVerifiedEmail(SetVerifiedEmailRequest request, ServerCallContext context) =>
         _mediator.Send(new Features.SetVerifiedEmail.SetVerifiedEmailCommand(request.UserId, request.Email), context.CancellationToken);
+
+    public override Task<SetAccountRestrictionResponse> SetAccountRestriction(SetAccountRestrictionRequest request, ServerCallContext context) =>
+        _mediator.Send(new SetAccountRestrictionCommand(request.UserId, request.Action, request.Reason), context.CancellationToken);
+
+    public override Task<GetAccountRestrictionResponse> GetAccountRestriction(GetAccountRestrictionRequest request, ServerCallContext context) =>
+        _mediator.Send(new GetAccountRestrictionQuery(request.UserId), context.CancellationToken);
+
+    public override Task<ClaimAccountsForDeletionResponse> ClaimAccountsForDeletion(ClaimAccountsForDeletionRequest request, ServerCallContext context) =>
+        _mediator.Send(new ClaimAccountsForDeletionCommand(request.Limit), context.CancellationToken);
+
+    public override async Task<CompleteAccountCleanupResponse> CompleteAccountCleanup(CompleteAccountCleanupRequest request, ServerCallContext context)
+    {
+        await _mediator.Send(new CompleteAccountCleanupCommand(request.UserId), context.CancellationToken);
+        return new CompleteAccountCleanupResponse();
+    }
     private readonly IMediator _mediator;
     private readonly MetricsCollector _metrics;
 
@@ -385,7 +401,8 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         {
             Query = request.Query,
             Offset = request.Offset,
-            Size = request.Size
+            Size = request.Size,
+            StatusFilter = request.HasStatusFilter ? request.StatusFilter : null,
         };
 
         return _mediator.Send(query);

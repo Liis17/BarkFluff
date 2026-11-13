@@ -1460,4 +1460,16 @@
     <string name="voice_sender_you">Tú</string>
     <string name="cd_voice_player_close">Cerrar reproductor</string>
     <string name="voice_player_error">No se pudo reproducir el audio</string>
+    <string name="account_blocked_title">Cuenta bloqueada</string>
+    <string name="account_pending_deletion_title">Cuenta pendiente de eliminación</string>
+    <string name="account_blocked_user">Usuario bloqueado</string>
+    <string name="account_deleted_user">Usuario eliminado</string>
+    <string name="account_restriction_reason">Motivo: %1$s</string>
+    <string name="account_blocked_explanation">Solo el administrador del servidor puede quitar este bloqueo.</string>
+    <string name="account_deletion_date">Eliminación definitiva: %1$s</string>
+    <string name="account_pending_deletion_explanation">Puedes cancelar la eliminación antes de esta fecha contactando con el administrador del servidor.</string>
+    <string name="account_restricted_chat_read_only">Este chat es de solo lectura porque el servidor ha restringido la otra cuenta.</string>
+    <string name="account_session_blocked">La sesión terminó porque la cuenta está bloqueada. Solo el administrador del servidor puede quitar esta restricción.</string>
+    <string name="account_session_pending_deletion">La sesión terminó porque la cuenta está pendiente de eliminación. Contacta con el administrador del servidor.</string>
+    <string name="account_user_unavailable">Este usuario no está disponible. Es posible que el servidor haya restringido su cuenta.</string>
 </resources>

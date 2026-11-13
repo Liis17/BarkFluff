@@ -4,6 +4,7 @@ using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
 
 using Grpc.Core;
@@ -14,11 +15,15 @@ public class CreateGroupChatCommandHandlerTests
 {
     private readonly TestHelper _h = new();
     private readonly Mock<FilesServerApi.FilesServerApiClient> _filesClient;
+    private readonly Mock<UsersServerApi.UsersServerApiClient> _usersClient;
     private readonly MessageQueueSender _queueSender;
 
     public CreateGroupChatCommandHandlerTests()
     {
         _filesClient = new Mock<FilesServerApi.FilesServerApiClient>();
+        _usersClient = new Mock<UsersServerApi.UsersServerApiClient>();
+        _usersClient.Setup(c => c.ListByIdsAsync(It.IsAny<ListByIdsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(TestHelper.CreateAsyncCall(new ListByIdsResponse()));
         _queueSender = new MessageQueueSender(_h.PublishEndpointMock.Object);
     }
 
@@ -26,12 +31,29 @@ public class CreateGroupChatCommandHandlerTests
     {
         return new CreateGroupChatCommandHandler(
             _h.CreateUserContext(userId),
+            _usersClient.Object,
             _filesClient.Object,
             _h.ChatsStorage,
             _h.MessagesStorage,
             _queueSender,
             _h.Metrics,
             TestHelper.CreateLogger<CreateGroupChatCommandHandler>());
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedParticipant_RejectsGroupCreation()
+    {
+        _usersClient.Setup(c => c.ListByIdsAsync(It.IsAny<ListByIdsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(TestHelper.CreateAsyncCall(new ListByIdsResponse
+            {
+                Users = { new User { Id = 2, AccountStatus = AccountStatus.PendingDeletion } }
+            }));
+        var handler = CreateHandler(1);
+
+        var act = () => handler.Handle(new CreateGroupChatCommand { Title = "Group", UserIds = [2] }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BarkFluff.Shared.Exceptions.Users.UserUnavailableException>();
+        _h.DbContext.Chats.Should().BeEmpty();
     }
 
     [Fact]

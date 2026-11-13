@@ -28,12 +28,19 @@
         OTP_REQUIRED: 'C1576884-12D8-4722-A7EE-9F9789AD1265',
         INVALID_OTP: '803B632C-4457-4B05-9435-9C3DD0F41E00',
         INVALID_CREDENTIALS: '21BFB9B5-C377-45D1-9B15-6B7F3432B397',
-        INVALID_REFRESH_TOKEN: '7E6A31C5-3C4D-412E-87BC-0A387617A5D3'
+        INVALID_REFRESH_TOKEN: '7E6A31C5-3C4D-412E-87BC-0A387617A5D3',
+        ACCOUNT_BLOCKED: 'F34D8C22-C075-4E9C-92AD-C893F192D8FA',
+        ACCOUNT_PENDING_DELETION: '8E6F0F30-98AF-4F96-A63B-20D52AEEFB6A'
     };
 
     function isInvalidRefreshTokenError(err) {
         var errorCode = err && err.metadata && err.metadata['x-error-code'];
         return errorCode === ERROR_CODES.INVALID_REFRESH_TOKEN;
+    }
+
+    function isRestrictedAccountError(err) {
+        var errorCode = err && err.metadata && err.metadata['x-error-code'];
+        return errorCode === ERROR_CODES.ACCOUNT_BLOCKED || errorCode === ERROR_CODES.ACCOUNT_PENDING_DELETION;
     }
 
     /**
@@ -65,7 +72,10 @@
                 BF.tokens.save(stored);
                 return at.getValue();
             }).catch(function (err) {
-                if (isInvalidRefreshTokenError(err)) BF.tokens.clear();
+                if (isRestrictedAccountError(err)) {
+                    try { window.sessionStorage.setItem('barkfluff_auth_notice', err.metadata['x-error-code']); } catch (e) {}
+                    BF.tokens.clear();
+                } else if (isInvalidRefreshTokenError(err)) BF.tokens.clear();
                 return null;
             });
     }

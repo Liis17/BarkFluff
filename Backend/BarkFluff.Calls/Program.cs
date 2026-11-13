@@ -9,6 +9,7 @@ using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
@@ -77,6 +78,12 @@ public class Program
             {
                 o.Address = new Uri(builder.Configuration["MessagesService:Host"]);
             }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["MessagesService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
+
+        builder.Services.AddGrpcClient<UsersServerApi.UsersServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["UsersService:Host"]);
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"]))
             .AddInterceptor(() => new ExceptionClientInterceptor());
 
         builder.Services.AddMassTransit(x =>

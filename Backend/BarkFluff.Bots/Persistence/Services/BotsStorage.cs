@@ -25,6 +25,14 @@ public class BotsStorage
     public Task<List<Bot>> GetByOwner(long ownerUserId)
         => _context.Bots.AsNoTracking().Where(b => b.OwnerUserId == ownerUserId).OrderBy(b => b.CreatedAt).ToListAsync();
 
+    public Task<List<long>> GetDistinctOwnerIds()
+        => _context.Bots.AsNoTracking().Where(bot => bot.OwnerUserId.HasValue)
+            .Select(bot => bot.OwnerUserId!.Value).Distinct().ToListAsync();
+
+    public Task<int> SetOwnerRestricted(long ownerUserId, bool restricted, CancellationToken cancellationToken = default)
+        => _context.Bots.Where(bot => bot.OwnerUserId == ownerUserId && bot.OwnerRestricted != restricted)
+            .ExecuteUpdateAsync(update => update.SetProperty(bot => bot.OwnerRestricted, restricted), cancellationToken);
+
     public async Task<Bot> Add(Bot bot)
     {
         await _context.Bots.AddAsync(bot);

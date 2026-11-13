@@ -61,6 +61,10 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Пользователь не найден"), null, false, null);
             }
+            catch (BarkFluff.Shared.Exceptions.Users.UserUnavailableException)
+            {
+                return (new ErrorReturner(false, errorResourceKey: "Messenger_UserUnavailable"), null, false, null);
+            }
             catch (Exception)
             {
                 return (new ErrorReturner(false, "Ошибка создания приватного чата"), null, false, null);
@@ -173,6 +177,10 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
             {
                 return (new ErrorReturner(false, "Нет доступа к чату"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserUnavailableException)
+            {
+                return (new ErrorReturner(false, errorResourceKey: "Messenger_UserUnavailable"), null);
             }
             catch (Exception)
             {

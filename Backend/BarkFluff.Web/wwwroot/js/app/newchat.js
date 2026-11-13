@@ -92,6 +92,7 @@
     }
 
     function displayName(user) {
+        if (u().isRestrictedUser(user)) return u().restrictedUserName(user);
         return ((user.firstName || '') + ' ' + (user.lastName || '')).trim() || ('@' + (user.username || ''));
     }
 
@@ -105,13 +106,15 @@
         users.forEach(function (user) {
             var el = document.createElement('div');
             el.className = 'search-result-item' + (selected.has(user.id) ? ' selected' : '');
-            var initial = (user.firstName || user.username || '?')[0].toUpperCase();
-            var avHtml = user.profilePicturePreview
+            var restricted = u().isRestrictedUser(user);
+            var name = displayName(user);
+            var initial = (name || '?')[0].toUpperCase();
+            var avHtml = !restricted && user.profilePicturePreview
                 ? '<img src="' + u().escapeHtml(user.profilePicturePreview) + '" alt="">'
                 : u().escapeHtml(initial);
             el.innerHTML = '<div class="chat-avatar">' + avHtml + '</div>' +
                 '<div class="search-result-info"><div class="user-name">' + u().escapeHtml(displayName(user)) + '</div>' +
-                '<div class="user-username">@' + u().escapeHtml(user.username || '') + '</div></div>';
+                (restricted ? '' : '<div class="user-username">@' + u().escapeHtml(user.username || '') + '</div>') + '</div>';
             el.addEventListener('click', function () { onUserClick(user); });
             resultsEl.appendChild(el);
         });
@@ -126,7 +129,11 @@
                     opts.openChat(d.chatId);
                     if (window.__mobileShowChat) window.__mobileShowChat();
                 }
-            }).catch(function (e) { console.error('[newchat] getPersonChatId failed', e); });
+            }).catch(function (e) {
+                if (e && e.errorCode === '6BC0E7A1-5117-4910-9717-1784E6921F6F') {
+                    opts.showToast(BF.i18n.t('accountRestriction.userUnavailable'), true);
+                } else console.error('[newchat] getPersonChatId failed', e);
+            });
             return;
         }
         if (mode === 'private') {
@@ -210,7 +217,9 @@
         }).catch(function (e) {
             console.error('[newchat] createPrivateChat failed', e);
             clearBusy();
-            errorEl.textContent = BF.i18n.t('newchat.error.privateFailed');
+            errorEl.textContent = e && e.errorCode === '6BC0E7A1-5117-4910-9717-1784E6921F6F'
+                ? BF.i18n.t('accountRestriction.userUnavailable')
+                : BF.i18n.t('newchat.error.privateFailed');
         });
     }
 

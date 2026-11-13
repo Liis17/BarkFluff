@@ -96,6 +96,12 @@ function createHarness(options) {
             }
         },
         utils: {
+            isRestrictedUser: function (user) {
+                return !!user && Number(user.accountStatus) > 0;
+            },
+            restrictedUserName: function (user) {
+                return user && Number(user.accountStatus) === 1 ? 'accountRestriction.userBlocked' : 'accountRestriction.userDeleted';
+            },
             openOverlay: function (overlay) {
                 log.opened.push(overlay.id);
             },
@@ -239,6 +245,31 @@ async function main() {
         assert.deepEqual(h.log.callButtons, [false]);
         assert.equal(h.els['#profileBio'].style.display, 'none');
         assert.equal(h.els['#profileRegDate'].textContent, '—', 'no registration date');
+    });
+
+    await test('a restricted profile shows a local label and hides identifying details and presence', async function () {
+        var h = createHarness({ online: [11] });
+        h.BF.profile.open(11);
+        h.answer(0, {
+            id: 11,
+            accountStatus: 1,
+            username: 'private-name',
+            firstName: 'Private',
+            profilePicture: 'https://example.test/avatar.png',
+            profilePosterFileId: 4,
+            bio: 'private bio',
+            registrationDate: 1234,
+            badges: [{ name: 'Private badge' }]
+        });
+        await settle();
+        assert.equal(h.els['#profileName'].textContent, 'accountRestriction.userBlocked');
+        assert.equal(h.els['#profileUsername'].textContent, '');
+        assert.equal(h.els['#profileBio'].textContent, '');
+        assert.equal(h.els['#profileStatus'].hidden, true);
+        assert.equal(h.els['#profileRegDate'].textContent, '—');
+        assert.equal(h.els['#profileBadges'].children.length, 0);
+        assert.equal(h.els['#profileAvatar'].children.length, 0, 'restricted avatars use the text placeholder');
+        assert.deepEqual(h.log.callButtons, [false]);
     });
 
     await test('an offline user shows the last seen time', async function () {

@@ -1,6 +1,7 @@
 namespace BarkFluff.Messages.Consumers;
 
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.Proto.Users;
 
 using MassTransit;
 
@@ -14,13 +15,15 @@ public class UserChangedNameConsumer : IConsumer<UserChangedName>
 {
     private readonly ChatsStorage _chatsStorage;
     private readonly ChatCache _chatCache;
+    private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly ILogger<UserChangedNameConsumer> _logger;
     private readonly MetricsCollector _metrics;
 
-    public UserChangedNameConsumer(ChatsStorage chatsStorage, ChatCache chatCache, ILogger<UserChangedNameConsumer> logger, MetricsCollector metrics)
+    public UserChangedNameConsumer(ChatsStorage chatsStorage, ChatCache chatCache, UsersServerApi.UsersServerApiClient usersClient, ILogger<UserChangedNameConsumer> logger, MetricsCollector metrics)
     {
         _chatsStorage = chatsStorage;
         _chatCache = chatCache;
+        _usersClient = usersClient;
         _logger = logger;
         _metrics = metrics;
     }
@@ -29,13 +32,14 @@ public class UserChangedNameConsumer : IConsumer<UserChangedName>
     {
         _metrics.Increment("rabbitmq_name_consumed");
         var userId = context.Message.UserId;
-        var newName = $"{context.Message.NewFirstName} {context.Message.NewLastName}";
+        var user = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = userId }, cancellationToken: context.CancellationToken);
+        var newName = $"{user.User.FirstName} {user.User.LastName}".Trim();
 
         _logger.LogInformation(
             "Получено событие изменения имени пользователя {UserId}: '{FirstName} {LastName}'",
             userId,
-            context.Message.NewFirstName,
-            context.Message.NewLastName
+            user.User.FirstName,
+            user.User.LastName
         );
 
         try

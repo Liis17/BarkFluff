@@ -51,7 +51,7 @@ public class ResolveFederatedUserQueryHandler : IRequestHandler<ResolveFederated
         if (fid.IsLocal)
         {
             var local = await _usersStorage.GetUserByUsername(fid.Username);
-            if (local is null || local.IsDraft)
+            if (local is null || local.IsDraft || local.AccountStatus != Domain.AccountStatus.Active)
             {
                 _metrics.Increment("federated_resolves.not_found");
                 return new ResolveFederatedUserResponse();

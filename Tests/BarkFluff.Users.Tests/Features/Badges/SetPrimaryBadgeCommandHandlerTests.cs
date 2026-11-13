@@ -1,5 +1,6 @@
 using BarkFluff.Users.Features.Badges;
 using BarkFluff.Users.Features.Badges.SetPrimaryBadge;
+using BarkFluff.Shared.Exceptions.Identity;
 
 using Grpc.Core;
 
@@ -24,6 +25,25 @@ public class SetPrimaryBadgeCommandHandlerTests : IAsyncDisposable
             .Should().ThrowAsync<BadgeException>();
 
         exception.Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
+    }
+
+    [Theory]
+    [InlineData(BarkFluff.Users.Domain.AccountStatus.Blocked)]
+    [InlineData(BarkFluff.Users.Domain.AccountStatus.PendingDeletion)]
+    [InlineData(BarkFluff.Users.Domain.AccountStatus.Deleted)]
+    public async Task Handle_RestrictedAccountCannotClearPrimaryBadge(BarkFluff.Users.Domain.AccountStatus status)
+    {
+        var user = await _helper.SeedUser();
+        user.AccountStatus = status;
+        await _helper.DbContext.SaveChangesAsync();
+        var handler = new SetPrimaryBadgeCommandHandler(
+            _helper.UsersStorage,
+            _helper.CreateUserContext(user.Id),
+            TestHelper.CreateLogger<SetPrimaryBadgeCommandHandler>());
+
+        await FluentActions.Awaiting(() => handler.Handle(
+                new SetPrimaryBadgeCommand { BadgeId = 0 }, CancellationToken.None))
+            .Should().ThrowAsync<InvalidAccountRestrictionTransitionException>();
     }
 
     [Fact]

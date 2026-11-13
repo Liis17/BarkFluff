@@ -267,7 +267,9 @@ public sealed partial class AuthenticationService
 
                 if (!string.IsNullOrWhiteSpace(response.ErrorCode))
                 {
-                    return AuthenticationOperationResult.Failure(ErrorKeyForCode(response.ErrorCode));
+                    return AuthenticationOperationResult.Failure(
+                        ErrorKeyForCode(response.ErrorCode),
+                        response.AccountRestriction);
                 }
 
                 if (response.State != BarkFluff.Proto.Identity.AuthChallengeState.Completed || response.Session is null)
@@ -800,6 +802,8 @@ public sealed partial class AuthenticationService
 
     private static string ErrorKeyForCode(string errorCode) => errorCode switch
     {
+        "account_blocked" => "Error_AccountBlocked",
+        "account_pending_deletion" => "Error_AccountPendingDeletion",
         "account_not_found" => "Error_LoginAccountNotFound",
         "login_mode_disabled" => "Error_LoginModeChanged",
         "invalid_code" => "Error_LoginInvalidCode",
@@ -811,6 +815,8 @@ public sealed partial class AuthenticationService
 
     private static string ErrorKeyForException(Exception exception) => exception switch
     {
+        BarkFluff.Shared.Exceptions.Identity.AccountBlockedException => "Error_AccountBlocked",
+        BarkFluff.Shared.Exceptions.Identity.AccountPendingDeletionException => "Error_AccountPendingDeletion",
         BarkFluff.Shared.Exceptions.Identity.InvalidLoginOrPasswordException => "Error_LoginFailed",
         BarkFluff.Shared.Exceptions.Identity.IdentityRateLimitExceededException => "Error_LoginRateLimited",
         BarkFluff.Shared.Exceptions.Identity.IdentityLockoutException => "Error_LoginLocked",

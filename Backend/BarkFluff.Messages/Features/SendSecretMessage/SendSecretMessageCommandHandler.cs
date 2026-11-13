@@ -1,8 +1,10 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Infrastructure;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
 
 using Google.Protobuf.WellKnownTypes;
@@ -20,17 +22,23 @@ public class SendSecretMessageCommandHandler : IRequestHandler<SendSecretMessage
     private readonly SecretMessageQueueSender _queueSender;
     private readonly UserContext _userContext;
     private readonly MetricsCollector _metrics;
+    private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly UserAccountStatusCache _userAccountStatusCache;
     private readonly ILogger<SendSecretMessageCommandHandler> _logger;
 
     public SendSecretMessageCommandHandler(
         SecretMessageBuffer buffer,
         SecretMessageQueueSender queueSender,
+        UsersServerApi.UsersServerApiClient usersClient,
+        UserAccountStatusCache userAccountStatusCache,
         UserContext userContext,
         MetricsCollector metrics,
         ILogger<SendSecretMessageCommandHandler> logger)
     {
         _buffer = buffer;
         _queueSender = queueSender;
+        _usersClient = usersClient;
+        _userAccountStatusCache = userAccountStatusCache;
         _userContext = userContext;
         _metrics = metrics;
         _logger = logger;
@@ -47,6 +55,9 @@ public class SendSecretMessageCommandHandler : IRequestHandler<SendSecretMessage
         {
             throw new InvalidEncryptedPayloadException();
         }
+
+        UserAccountStatusGuard.EnsureActive(await _userAccountStatusCache.GetStatusAsync(
+            request.RecipientUserId, _usersClient, cancellationToken));
 
         var (messageId, expiresAt) = await _buffer.EnqueueMessageAsync(
             _userContext.UserId,

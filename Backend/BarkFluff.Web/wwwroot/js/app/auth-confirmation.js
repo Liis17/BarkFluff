@@ -42,6 +42,9 @@
         if (error?.code === 8) return t('security.rateLimited');
         var code = error?.metadata?.['x-error-code'];
         if (code === '21BFB9B5-C377-45D1-9B15-6B7F3432B397') return t('auth.error.badCredentials');
+        if (code === BF.clients?.ERROR_CODES?.ACCOUNT_BLOCKED) return t('accountRestriction.rpcBlocked');
+        if (code === BF.clients?.ERROR_CODES?.ACCOUNT_PENDING_DELETION) return t('accountRestriction.rpcPendingDeletion');
+        if (code === BF.clients?.ERROR_CODES?.USER_UNAVAILABLE) return t('accountRestriction.userUnavailable');
         return error?.message || t('auth.error.network');
     }
     function modal(title) {

@@ -13,6 +13,7 @@
         public string ProfilePictureUrl { get; set; } = string.Empty;
         public string ProfilePicturePreviewUrl { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public BarkFluff.Proto.Users.AccountStatus AccountStatus { get; set; }
 
     }
 }

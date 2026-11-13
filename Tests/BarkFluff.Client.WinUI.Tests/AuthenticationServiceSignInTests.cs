@@ -102,6 +102,43 @@ public sealed class AuthenticationServiceSignInTests
         await viewModel.CleanupAsync();
     }
 
+    [Theory]
+    [InlineData("account_blocked", "Error_AccountBlocked", AccountStatus.Blocked)]
+    [InlineData("account_pending_deletion", "Error_AccountPendingDeletion", AccountStatus.PendingDeletion)]
+    public async Task CompleteChallenge_RestrictedResponsePreservesAccountReasonAndDeletionDate(
+        string errorCode,
+        string errorKey,
+        AccountStatus status)
+    {
+        var deletionAt = Timestamp.FromDateTime(DateTime.UtcNow.AddDays(4));
+        var restriction = new IdentityAccountRestrictionInfo
+        {
+            Status = status,
+            Reason = "server reason",
+            DeletionScheduledAt = deletionAt
+        };
+        await using var node = await TestIdentityNode.StartAsync(
+            "restricted-complete",
+            completeErrorCode: errorCode,
+            accountRestriction: restriction);
+        using var mainWebApi = new BarkFluff.WebApi.Core.WebApi();
+        var store = new TestSessionStore();
+        var authentication = new AuthenticationService(mainWebApi,
+            new TestClientSession(CreateConnection(node.Address, "device")), store);
+        var attempt = Assert.IsType<AuthenticationAttempt>(authentication.CreateAuthenticationAttempt());
+        var reference = await BeginChallengeAsync(authentication, attempt);
+
+        var result = await authentication.CompleteAuthChallengeAsync(attempt, reference, string.Empty, false);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(errorKey, result.ErrorResourceKey);
+        Assert.Equal(status, result.AccountRestriction?.Status);
+        Assert.Equal("server reason", result.AccountRestriction?.Reason);
+        Assert.Equal(deletionAt, result.AccountRestriction?.DeletionScheduledAt);
+        Assert.Null(store.Value);
+        await authentication.CancelAuthenticationAttemptAsync(attempt);
+    }
+
     [Fact]
     public async Task FlowCancelledDuringSaveThatIgnoresCancellation_RollsBackWithoutApplying()
     {
@@ -641,6 +678,8 @@ public sealed class AuthenticationServiceSignInTests
         public bool FailFirstProfile { get; init; }
         public bool InvalidPassword { get; init; }
         public bool BeginUnavailable { get; init; }
+        public string? CompleteErrorCode { get; init; }
+        public IdentityAccountRestrictionInfo? AccountRestriction { get; init; }
         public ConcurrentQueue<string> ResolvedLogins { get; } = new();
         public ConcurrentQueue<AuthRequest> AuthRequests { get; } = new();
         public ConcurrentQueue<BeginSignInRequest> BeginRequests { get; } = new();
@@ -668,7 +707,9 @@ public sealed class AuthenticationServiceSignInTests
             bool omitRefreshToken = false,
             bool failFirstProfile = false,
             bool invalidPassword = false,
-            bool beginUnavailable = false)
+            bool beginUnavailable = false,
+            string? completeErrorCode = null,
+            IdentityAccountRestrictionInfo? accountRestriction = null)
         {
             var builder = WebApplication.CreateBuilder();
             builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0, listenOptions =>
@@ -768,6 +809,16 @@ public sealed class AuthenticationServiceSignInTests
                 if (node.BlockComplete)
                 {
                     await node._releaseComplete.Task.WaitAsync(context.RequestAborted);
+                }
+
+                if (node.CompleteErrorCode is not null)
+                {
+                    await WriteGrpcResponseAsync(context, new CompleteAuthChallengeResponse
+                    {
+                        ErrorCode = node.CompleteErrorCode,
+                        AccountRestriction = node.AccountRestriction
+                    });
+                    return;
                 }
 
                 var session = new AuthResponse();
@@ -873,7 +924,9 @@ public sealed class AuthenticationServiceSignInTests
                 OmitRefreshToken = omitRefreshToken,
                 FailFirstProfile = failFirstProfile,
                 InvalidPassword = invalidPassword,
-                BeginUnavailable = beginUnavailable
+                BeginUnavailable = beginUnavailable,
+                CompleteErrorCode = completeErrorCode,
+                AccountRestriction = accountRestriction
             };
             return node;
         }

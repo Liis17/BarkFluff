@@ -60,4 +60,35 @@ public class UserMappingTests
         grpc.ProfilePicturePreview.Should().BeEmpty();
         grpc.Bio.Should().BeEmpty();
     }
+
+    [Theory]
+    [InlineData(AccountStatus.Blocked, "Заблокированный пользователь")]
+    [InlineData(AccountStatus.PendingDeletion, "Удалённый пользователь")]
+    [InlineData(AccountStatus.Deleted, "Удалённый пользователь")]
+    public void ToGrpc_RestrictedAccount_HidesProfile(AccountStatus status, string displayName)
+    {
+        var user = new User
+        {
+            Id = 10,
+            Uuid = Guid.NewGuid(),
+            Username = "private_name",
+            FirstName = "Private",
+            LastName = "Name",
+            RegistrationDate = DateTime.UtcNow,
+            Bio = "private bio",
+            ProfilePicture = "private-avatar",
+            ProfilePicturePreviewUrl = "private-preview",
+            AccountStatus = status,
+        };
+
+        var grpc = user.ToGrpc();
+
+        grpc.AccountStatus.Should().Be((BarkFluff.Proto.Users.AccountStatus)(int)status);
+        grpc.FirstName.Should().Be(displayName);
+        grpc.LastName.Should().BeEmpty();
+        grpc.Username.Should().BeEmpty();
+        grpc.Bio.Should().BeEmpty();
+        grpc.ProfilePicture.Should().BeEmpty();
+        grpc.ProfilePicturePreview.Should().BeEmpty();
+    }
 }
