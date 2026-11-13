@@ -37,6 +37,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     private readonly IConfiguration _configuration;
     private readonly MetricsCollector _metrics;
     private readonly ReplyPreviewResolver _replyPreviewResolver;
+    private readonly UserAccountStatusCache _userAccountStatusCache;
     private readonly ILogger<SendMessageCommandHandler> _logger;
 
     private readonly Dictionary<UploadFileType, Domain.MessageAttachmentType> _attachmentMap =
@@ -54,9 +55,11 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     public SendMessageCommandHandler(ChatsStorage chatsStorage, UsersServerApi.UsersServerApiClient usersServerApiClient,
         UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient, ChatCache chatCache, MessagesStorage messagesStorage,
         MessageQueueSender messageQueueSender, IConfiguration configuration, MetricsCollector metrics,
-        ReplyPreviewResolver replyPreviewResolver, ILogger<SendMessageCommandHandler> logger)
+        ReplyPreviewResolver replyPreviewResolver, UserAccountStatusCache userAccountStatusCache,
+        ILogger<SendMessageCommandHandler> logger)
     {
         _replyPreviewResolver = replyPreviewResolver;
+        _userAccountStatusCache = userAccountStatusCache;
         _chatsStorage = chatsStorage;
         _usersServerApiClient = usersServerApiClient;
         _userContext = userContext;
@@ -241,12 +244,12 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         {
             _logger.LogDebug("Проверка доступа пользователя {UserId} к чату {ChatId}", senderId, chatId.Value);
 
-            var hasAccess = await _chatsStorage.CheckAccessToChat(
+            var chat = await _chatsStorage.GetChatForUser(
                 chatId.Value,
                 senderId,
                 cancellationToken);
 
-            if (!hasAccess)
+            if (chat is null)
             {
                 _logger.LogWarning(
                     "Пользователь {UserId} не имеет доступа к чату {ChatId}",
@@ -256,16 +259,13 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 throw new NoAccessToChatException();
             }
 
-            var chat = await _chatsStorage.GetChat(chatId.Value, cancellationToken);
             if (chat is { Type: ChatType.Regular, IsGroupChat: false, IsFederated: false })
             {
                 var peerId = chat.Members?.FirstOrDefault(member => member.UserId != senderId)?.UserId;
                 if (peerId.HasValue)
                 {
-                    var peer = await _usersServerApiClient.GetByIdAsync(
-                        new GetByIdRequest { UserId = peerId.Value },
-                        cancellationToken: cancellationToken);
-                    UserAccountStatusGuard.EnsureActive(peer.User.AccountStatus);
+                    UserAccountStatusGuard.EnsureActive(await _userAccountStatusCache.GetStatusAsync(
+                        peerId.Value, _usersServerApiClient, cancellationToken));
                 }
             }
 

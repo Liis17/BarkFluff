@@ -23,12 +23,14 @@ public class SendSecretMessageCommandHandler : IRequestHandler<SendSecretMessage
     private readonly UserContext _userContext;
     private readonly MetricsCollector _metrics;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly UserAccountStatusCache _userAccountStatusCache;
     private readonly ILogger<SendSecretMessageCommandHandler> _logger;
 
     public SendSecretMessageCommandHandler(
         SecretMessageBuffer buffer,
         SecretMessageQueueSender queueSender,
         UsersServerApi.UsersServerApiClient usersClient,
+        UserAccountStatusCache userAccountStatusCache,
         UserContext userContext,
         MetricsCollector metrics,
         ILogger<SendSecretMessageCommandHandler> logger)
@@ -36,6 +38,7 @@ public class SendSecretMessageCommandHandler : IRequestHandler<SendSecretMessage
         _buffer = buffer;
         _queueSender = queueSender;
         _usersClient = usersClient;
+        _userAccountStatusCache = userAccountStatusCache;
         _userContext = userContext;
         _metrics = metrics;
         _logger = logger;
@@ -53,10 +56,8 @@ public class SendSecretMessageCommandHandler : IRequestHandler<SendSecretMessage
             throw new InvalidEncryptedPayloadException();
         }
 
-        var recipient = await _usersClient.GetByIdAsync(
-            new GetByIdRequest { UserId = request.RecipientUserId },
-            cancellationToken: cancellationToken);
-        UserAccountStatusGuard.EnsureActive(recipient.User.AccountStatus);
+        UserAccountStatusGuard.EnsureActive(await _userAccountStatusCache.GetStatusAsync(
+            request.RecipientUserId, _usersClient, cancellationToken));
 
         var (messageId, expiresAt) = await _buffer.EnqueueMessageAsync(
             _userContext.UserId,

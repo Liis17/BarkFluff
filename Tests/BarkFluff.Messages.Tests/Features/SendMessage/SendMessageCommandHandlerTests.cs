@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Features.SendMessage;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
@@ -47,6 +48,7 @@ public class SendMessageCommandHandlerTests
             TestHelper.CreateConfiguration(),
             _h.Metrics,
             _h.CreateReplyPreviewResolver(),
+            new UserAccountStatusCache(),
             TestHelper.CreateLogger<SendMessageCommandHandler>());
     }
 
@@ -70,6 +72,11 @@ public class SendMessageCommandHandlerTests
                 () => Status.DefaultSuccess,
                 () => new Metadata(),
                 () => { }));
+        _usersClient.Setup(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(TestHelper.CreateAsyncCall(new GetAccountRestrictionResponse
+            {
+                Restriction = new AccountRestrictionInfo { Status = accountStatus }
+            }));
     }
 
     [Fact]
@@ -418,6 +425,7 @@ public class SendMessageCommandHandlerTests
             TestHelper.CreateConfiguration(),
             _h.Metrics,
             _h.CreateReplyPreviewResolver(),
+            new UserAccountStatusCache(),
             TestHelper.CreateLogger<SendMessageCommandHandler>());
 
         await handler.Handle(new SendMessageCommand

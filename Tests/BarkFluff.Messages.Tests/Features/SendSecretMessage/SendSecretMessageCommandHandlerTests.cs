@@ -1,5 +1,6 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Features.SendSecretMessage;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
@@ -25,9 +26,11 @@ public class SendSecretMessageCommandHandlerTests
 
     private void SetupUserStatus(AccountStatus status)
     {
-        _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Returns((GetByIdRequest request, Grpc.Core.Metadata? _, DateTime? _, CancellationToken _) =>
-                TestHelper.CreateAsyncCall(new GetByIdResponse { User = new User { Id = request.UserId, AccountStatus = status } }));
+        _usersClient.Setup(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(TestHelper.CreateAsyncCall(new GetAccountRestrictionResponse
+            {
+                Restriction = new AccountRestrictionInfo { Status = status }
+            }));
     }
 
     private SendSecretMessageCommandHandler CreateHandler(long userId, string? deviceId = "00000000-0000-0000-0000-000000000001")
@@ -36,6 +39,7 @@ public class SendSecretMessageCommandHandlerTests
             _buffer.Object,
             _queueSender.Object,
             _usersClient.Object,
+            new UserAccountStatusCache(),
             _h.CreateUserContext(userId, deviceId),
             _h.Metrics,
             TestHelper.CreateLogger<SendSecretMessageCommandHandler>());

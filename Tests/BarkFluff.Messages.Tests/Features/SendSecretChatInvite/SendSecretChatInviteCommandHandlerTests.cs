@@ -1,5 +1,6 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Features.SendSecretChatInvite;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
@@ -27,9 +28,11 @@ public class SendSecretChatInviteCommandHandlerTests
 
     private void SetupUserStatus(AccountStatus status)
     {
-        _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Returns((GetByIdRequest request, Metadata? _, DateTime? _, CancellationToken _) =>
-                TestHelper.CreateAsyncCall(new GetByIdResponse { User = new User { Id = request.UserId, AccountStatus = status } }));
+        _usersClient.Setup(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(TestHelper.CreateAsyncCall(new GetAccountRestrictionResponse
+            {
+                Restriction = new AccountRestrictionInfo { Status = status }
+            }));
     }
 
     private SendSecretChatInviteCommandHandler CreateHandler(long userId, string? deviceId = "00000000-0000-0000-0000-000000000001")
@@ -38,6 +41,7 @@ public class SendSecretChatInviteCommandHandlerTests
             _buffer.Object,
             _queueSender.Object,
             _usersClient.Object,
+            new UserAccountStatusCache(),
             _h.CreateUserContext(userId, deviceId),
             _h.Metrics,
             TestHelper.CreateLogger<SendSecretChatInviteCommandHandler>());

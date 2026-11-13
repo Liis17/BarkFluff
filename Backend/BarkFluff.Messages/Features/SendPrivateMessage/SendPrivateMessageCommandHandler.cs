@@ -26,6 +26,7 @@ public class SendPrivateMessageCommandHandler : IRequestHandler<SendPrivateMessa
     private readonly UserContext _userContext;
     private readonly MetricsCollector _metrics;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly UserAccountStatusCache _userAccountStatusCache;
     private readonly ILogger<SendPrivateMessageCommandHandler> _logger;
 
     public SendPrivateMessageCommandHandler(
@@ -33,6 +34,7 @@ public class SendPrivateMessageCommandHandler : IRequestHandler<SendPrivateMessa
         EncryptedMessagesStorage storage,
         EncryptedMessageQueueSender queueSender,
         UsersServerApi.UsersServerApiClient usersClient,
+        UserAccountStatusCache userAccountStatusCache,
         UserContext userContext,
         MetricsCollector metrics,
         ILogger<SendPrivateMessageCommandHandler> logger)
@@ -41,6 +43,7 @@ public class SendPrivateMessageCommandHandler : IRequestHandler<SendPrivateMessa
         _storage = storage;
         _queueSender = queueSender;
         _usersClient = usersClient;
+        _userAccountStatusCache = userAccountStatusCache;
         _userContext = userContext;
         _metrics = metrics;
         _logger = logger;
@@ -92,8 +95,8 @@ public class SendPrivateMessageCommandHandler : IRequestHandler<SendPrivateMessa
         var peerId = chat.Members?.FirstOrDefault(member => member.UserId != _userContext.UserId)?.UserId;
         if (peerId.HasValue)
         {
-            var peer = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = peerId.Value }, cancellationToken: cancellationToken);
-            UserAccountStatusGuard.EnsureActive(peer.User.AccountStatus);
+            UserAccountStatusGuard.EnsureActive(await _userAccountStatusCache.GetStatusAsync(
+                peerId.Value, _usersClient, cancellationToken));
         }
 
         var saved = await _storage.AddAsync(
