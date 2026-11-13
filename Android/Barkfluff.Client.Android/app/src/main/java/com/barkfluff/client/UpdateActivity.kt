@@ -22,6 +22,7 @@ import com.barkfluff.client.databinding.ActivityUpdateBinding
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.AppVersion
 import com.barkfluff.client.utils.ChannelVersionInfo
+import com.barkfluff.client.utils.SkeletonPulse
 import com.barkfluff.client.utils.UpdateChecker
 import com.barkfluff.client.utils.UpdateServerTls
 import kotlinx.coroutines.CancellationException
@@ -60,6 +61,7 @@ class UpdateActivity : AppCompatActivity() {
     private var currentVersion: AppVersion? = null
 
     private var pendingDownloadChannel: String? = null
+    private val skeletonPulse = SkeletonPulse()
     private var installTriggered = false
 
     companion object {
@@ -100,6 +102,11 @@ class UpdateActivity : AppCompatActivity() {
         if (!handleInstallStatusIntent(intent)) {
             checkUpdates()
         }
+    }
+
+    override fun onDestroy() {
+        skeletonPulse.stop()
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -156,35 +163,44 @@ class UpdateActivity : AppCompatActivity() {
                 textVersion = binding.textReleaseVersion,
                 textDate = binding.textReleaseDate,
                 textStatus = binding.textReleaseStatus,
-                button = binding.buttonUpdateRelease
+                button = binding.buttonUpdateRelease,
+                skeleton = binding.skeletonRelease
             ),
             ChannelViews(
                 channel = CHANNEL_DEV,
                 textVersion = binding.textDevVersion,
                 textDate = binding.textDevDate,
                 textStatus = binding.textDevStatus,
-                button = binding.buttonUpdateDev
+                button = binding.buttonUpdateDev,
+                skeleton = binding.skeletonDev
             ),
             ChannelViews(
                 channel = CHANNEL_NIGHTLY,
                 textVersion = binding.textNightlyVersion,
                 textDate = binding.textNightlyDate,
                 textStatus = binding.textNightlyStatus,
-                button = binding.buttonUpdateNightly
+                button = binding.buttonUpdateNightly,
+                skeleton = binding.skeletonNightly
             )
         )
 
         channels.forEach { views ->
-            views.textVersion.text = getString(R.string.loading_dots)
+            views.textVersion.visibility = View.GONE
             views.textDate.visibility = View.GONE
             views.textStatus.text = ""
             views.button.visibility = View.GONE
+            views.skeleton.visibility = View.VISIBLE
         }
+        skeletonPulse.start(channels.map { it.skeleton })
 
         lifecycleScope.launch {
             channels.forEach { views ->
-                updateChannelUI(views, UpdateChecker.getVersionInfo(views.channel))
+                val info = UpdateChecker.getVersionInfo(views.channel)
+                views.skeleton.visibility = View.GONE
+                views.textVersion.visibility = View.VISIBLE
+                updateChannelUI(views, info)
             }
+            skeletonPulse.stop()
 
             binding.buttonCheckUpdates.isEnabled = true
             binding.buttonCheckUpdates.text = getString(R.string.update_check)
@@ -196,7 +212,8 @@ class UpdateActivity : AppCompatActivity() {
         val textVersion: android.widget.TextView,
         val textDate: android.widget.TextView,
         val textStatus: android.widget.TextView,
-        val button: com.google.android.material.button.MaterialButton
+        val button: com.google.android.material.button.MaterialButton,
+        val skeleton: View
     )
 
     private fun updateChannelUI(views: ChannelViews, info: ChannelVersionInfo?) {

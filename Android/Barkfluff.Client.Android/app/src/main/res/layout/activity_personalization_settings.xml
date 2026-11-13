@@ -856,10 +856,31 @@
                 android:paddingHorizontal="20dp"
                 android:paddingVertical="16dp">
 
-                <FrameLayout
+                <!-- Превью стикера на фоне чата: тот же фон, размытие и затемнение, что и в превью сообщений. -->
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="260dp"
-                    android:background="?attr/colorSurfaceContainer"
+                    app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                <ImageView
+                    android:id="@+id/stickerPreviewBackgroundImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
+                <View
+                    android:id="@+id/stickerPreviewDimOverlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
                     android:padding="12dp">
 
                     <com.google.android.material.card.MaterialCardView
@@ -913,9 +934,8 @@
                             android:contentDescription="@null"
                             android:importantForAccessibility="no"
                             android:scaleType="fitCenter"
-                            android:src="@drawable/ic_sticker"
-                            app:shapeAppearanceOverlay="@style/ShapeAppearance.App.Sticker"
-                            app:tint="?attr/colorPrimary" />
+                            android:src="@drawable/sticker_preview_app_icon"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.App.Sticker" />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -934,6 +954,8 @@
                     </FrameLayout>
 
                 </FrameLayout>
+
+                </com.google.android.material.card.MaterialCardView>
 
                 <LinearLayout
                     android:layout_width="match_parent"

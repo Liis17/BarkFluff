@@ -769,6 +769,7 @@
     <string name="storage_category_avatars">Avatars</string>
     <string name="security_hero_title">Account protected</string>
     <string name="security_hero_subtitle">Enable 2FA for stronger protection</string>
+    <string name="security_hero_title_unprotected">Your account could be safer</string>
     <string name="security_section_parameters">Settings</string>
     <string name="security_password_step">Step %1$d of 3: %2$s</string>
     <string name="security_password_step_request">Request code</string>
@@ -1362,11 +1363,9 @@
     <string name="security_link_telegram">Link Telegram</string>
     <string name="security_unlink_telegram">Unlink Telegram</string>
     <string name="security_bind_email">Bind email</string>
-    <string name="security_bound_email">Email: %1$s</string>
+    <string name="security_email_title">Email</string>
     <string name="security_login_policy">Sign-in policy</string>
-    <string name="security_login_policy_value">Sign in: %1$s</string>
-    <string name="security_2fa_telegram">Telegram two-factor authentication</string>
-    <string name="security_recovery_codes_count">Recovery codes: %1$d</string>
+    <string name="security_2fa_telegram">2FA via Telegram</string>
     <string name="security_reauthenticate">Confirm action</string>
     <string name="security_reauthenticate_message">Confirm with your configured sign-in method.</string>
     <string name="security_reauthenticate_password">Password (if used)</string>

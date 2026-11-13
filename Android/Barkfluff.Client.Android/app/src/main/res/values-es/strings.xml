@@ -767,6 +767,7 @@
     <string name="storage_category_avatars">Avatares</string>
     <string name="security_hero_title">Cuenta protegida</string>
     <string name="security_hero_subtitle">Activa 2FA para mayor protección</string>
+    <string name="security_hero_title_unprotected">Tu cuenta podría estar más protegida</string>
     <string name="security_section_parameters">Configuración</string>
     <string name="security_password_step">Paso %1$d de 3: %2$s</string>
     <string name="security_password_step_request">Solicitar código</string>
@@ -1366,11 +1367,9 @@
     <string name="security_link_telegram">Vincular Telegram</string>
     <string name="security_unlink_telegram">Desvincular Telegram</string>
     <string name="security_bind_email">Vincular correo</string>
-    <string name="security_bound_email">Correo: %1$s</string>
+    <string name="security_email_title">Correo</string>
     <string name="security_login_policy">Política de acceso</string>
-    <string name="security_login_policy_value">Acceso: %1$s</string>
-    <string name="security_2fa_telegram">Autenticación de dos factores por Telegram</string>
-    <string name="security_recovery_codes_count">Códigos de recuperación: %1$d</string>
+    <string name="security_2fa_telegram">2FA por Telegram</string>
     <string name="security_reauthenticate">Confirmar acción</string>
     <string name="security_reauthenticate_message">Confirma con el método de acceso configurado.</string>
     <string name="security_reauthenticate_password">Contraseña (si se usa)</string>

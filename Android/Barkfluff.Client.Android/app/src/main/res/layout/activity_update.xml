@@ -62,7 +62,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:textAppearance="?attr/textAppearanceHeadlineMedium"
-                        android:textColor="@color/white" />
+                        android:textColor="@color/profile_settings_on_primary_container" />
 
                     <TextView
                         android:id="@+id/textCurrentChannel"
@@ -119,12 +119,34 @@
 
                     </LinearLayout>
 
+                    <!-- Скелетон версии и даты, пока канал загружается. -->
+                    <LinearLayout
+                        android:id="@+id/skeletonRelease"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:importantForAccessibility="noHideDescendants"
+                        android:orientation="vertical">
+
+                        <View
+                            android:layout_width="140dp"
+                            android:layout_height="18dp"
+                            android:layout_marginTop="12dp"
+                            android:background="@drawable/bg_skeleton_bar" />
+
+                        <View
+                            android:layout_width="200dp"
+                            android:layout_height="12dp"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/bg_skeleton_bar" />
+
+                    </LinearLayout>
+
                     <TextView
                         android:id="@+id/textReleaseVersion"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="@string/loading_dots"
+                        android:visibility="gone"
                         android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:textColor="?attr/colorOnSurface" />
 
@@ -193,12 +215,34 @@
 
                     </LinearLayout>
 
+                    <!-- Скелетон версии и даты, пока канал загружается. -->
+                    <LinearLayout
+                        android:id="@+id/skeletonDev"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:importantForAccessibility="noHideDescendants"
+                        android:orientation="vertical">
+
+                        <View
+                            android:layout_width="140dp"
+                            android:layout_height="18dp"
+                            android:layout_marginTop="12dp"
+                            android:background="@drawable/bg_skeleton_bar" />
+
+                        <View
+                            android:layout_width="200dp"
+                            android:layout_height="12dp"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/bg_skeleton_bar" />
+
+                    </LinearLayout>
+
                     <TextView
                         android:id="@+id/textDevVersion"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="@string/loading_dots"
+                        android:visibility="gone"
                         android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:textColor="?attr/colorOnSurface" />
 
@@ -267,12 +311,34 @@
 
                     </LinearLayout>
 
+                    <!-- Скелетон версии и даты, пока канал загружается. -->
+                    <LinearLayout
+                        android:id="@+id/skeletonNightly"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:importantForAccessibility="noHideDescendants"
+                        android:orientation="vertical">
+
+                        <View
+                            android:layout_width="140dp"
+                            android:layout_height="18dp"
+                            android:layout_marginTop="12dp"
+                            android:background="@drawable/bg_skeleton_bar" />
+
+                        <View
+                            android:layout_width="200dp"
+                            android:layout_height="12dp"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/bg_skeleton_bar" />
+
+                    </LinearLayout>
+
                     <TextView
                         android:id="@+id/textNightlyVersion"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="@string/loading_dots"
+                        android:visibility="gone"
                         android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:textColor="?attr/colorOnSurface" />
 
