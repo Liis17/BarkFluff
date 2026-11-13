@@ -11,6 +11,7 @@ public sealed class BftServerTunnelOptions
     public required BftServerHandshakeOptions Handshake { get; init; }
     public required string ProxyId { get; init; }
     public required IReadOnlyList<byte> ServiceIds { get; init; }
+    public required byte[] TlsSpkiSha256 { get; init; }
     public IReadOnlyCollection<string> AccessTokens { get; init; } = [];
     public int InitialWindow { get; init; } = 262144;
     public int MaxStreams { get; init; } = 256;
@@ -37,6 +38,7 @@ public sealed class BftClientTunnel : IAsyncDisposable
     public BftHello Hello { get; }
     public uint GoAwayLastStreamId => _connection.GoAwayLastStreamId;
     public bool HasReceivedGoAway => _connection.HasReceivedGoAway;
+    public Task Completion => _connection.Completion;
     public Task<uint> WaitForGoAwayAsync(CancellationToken cancellationToken = default) => _connection.WaitForGoAwayAsync(cancellationToken);
     internal ulong OutgoingMessageCount => _connection.OutgoingMessageCount;
     internal ulong IncomingMessageCount => _connection.IncomingMessageCount;
@@ -77,6 +79,7 @@ public sealed class BftServerTunnel : IAsyncDisposable
     }
 
     public uint LastOpenedStreamId => _connection.MaxOpenedStreamId;
+    public Task Completion => _connection.Completion;
 
     public static async ValueTask<BftServerTunnelAcceptResult> TryAcceptAsync(Stream stream, BftServerTunnelOptions options, CancellationToken cancellationToken = default)
     {
@@ -88,7 +91,8 @@ public sealed class BftServerTunnel : IAsyncDisposable
 
         var mux = new BftMuxConnection(handshake.Session!, isServer: true, options.ProxyId, options.ServiceIds,
             options.InitialWindow, options.MaxStreams, options.AccessTokens,
-            timeProvider: options.Handshake.TimeProvider, random: options.Handshake.RandomSource);
+            timeProvider: options.Handshake.TimeProvider, random: options.Handshake.RandomSource,
+            tlsSpkiSha256: options.TlsSpkiSha256);
         try
         {
             await mux.StartServerAsync(cancellationToken).ConfigureAwait(false);
@@ -119,7 +123,7 @@ public sealed class BftServerTunnel : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(options);
         if (options.InitialWindow is < 16384 or > int.MaxValue) throw new ArgumentOutOfRangeException(nameof(options.InitialWindow));
         if (options.MaxStreams is < 1 or > ushort.MaxValue) throw new ArgumentOutOfRangeException(nameof(options.MaxStreams));
-        _ = new BftHello(options.ProxyId, options.InitialWindow, (ushort)options.MaxStreams, options.ServiceIds).ToBody();
+        _ = new BftHello(options.ProxyId, options.InitialWindow, (ushort)options.MaxStreams, options.TlsSpkiSha256, options.ServiceIds).ToBody();
         if (options.AccessTokens.Any(token => string.IsNullOrEmpty(token) || System.Text.Encoding.UTF8.GetByteCount(token) > 256))
             throw new ArgumentException("Access tokens must be 1–256 UTF-8 bytes.", nameof(options));
     }

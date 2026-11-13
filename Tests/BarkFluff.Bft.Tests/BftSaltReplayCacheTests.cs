@@ -20,6 +20,7 @@ public sealed class BftSaltReplayCacheTests
         Assert.Equal(BftSaltReplayAddResult.Added, cache.TryAdd(secondSalt));
         Assert.Equal(BftSaltReplayAddResult.Full, cache.TryAdd(thirdSalt));
         Assert.Equal(BftSaltReplayAddResult.Duplicate, cache.TryAdd(salt));
+        Assert.Equal(BftSaltReplayAddResult.Duplicate, cache.TryAdd(secondSalt));
 
         clock.Advance(TimeSpan.FromSeconds(300));
         Assert.Equal(BftSaltReplayAddResult.Added, cache.TryAdd(thirdSalt));
@@ -31,6 +32,13 @@ public sealed class BftSaltReplayCacheTests
 internal sealed class AdjustableTimeProvider(DateTimeOffset now) : TimeProvider
 {
     private DateTimeOffset _now = now;
+    private long _timestamp = now.UtcTicks;
     public override DateTimeOffset GetUtcNow() => _now;
-    public void Advance(TimeSpan value) => _now += value;
+    public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+    public override long GetTimestamp() => _timestamp;
+    public void Advance(TimeSpan value)
+    {
+        _now += value;
+        _timestamp += value.Ticks;
+    }
 }

@@ -76,6 +76,7 @@ public sealed class BftMuxSequencesTests
             },
             ProxyId = "lv-1",
             ServiceIds = [1, 4, 5],
+            TlsSpkiSha256 = new byte[32],
             InitialWindow = initialWindow
         }, cancellationToken).AsTask();
         var clientTask = BftClientTunnel.ConnectAsync(clientStream, new BftClientTunnelOptions

@@ -160,6 +160,7 @@ def build():
     server_e = bytes(range(0x81, 0xA1))
     relay_key = bytes(range(0xA1, 0xC1))
     timestamp = 1_800_000_000
+    tls_spki_sha256 = bytes(range(32))
     exit_pub = x_pub(exit_priv)
     keys = obfs_keys(obfs_key, salt)
     c_len, c_dat, s_len, s_dat = keys["c2s len"], keys["c2s data"], keys["s2c len"], keys["s2c data"]
@@ -175,7 +176,7 @@ def build():
     # транспорт: запись обфускации n = номер сообщения Noise + 1 (запись 0 — хендшейк)
     def hello(window, services=bytes([1, 4, 5])):
         return frame(0x02, 0, bytes([4]) + b"lv-1" + struct.pack(">IH", window, 256)
-                     + bytes([len(services)]) + services)
+                     + tls_spki_sha256 + bytes([len(services)]) + services)
 
     frames = {
         "AUTH": frame(0x01, 0, b"token-1"),
@@ -332,6 +333,7 @@ def build():
         },
         "transport": transport_vectors,
         "frames": frames,
+        "tlsSpkiSha256": tls_spki_sha256,
         "muxSequences": mux_sequences,
         "relayPreamble": {"relayKey": relay_key, "salt": salt,
                           "valid": [p4, preamble("2001:db8::1", 443, relay_id="relay-0123456789",

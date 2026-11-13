@@ -13,6 +13,7 @@ internal sealed class BftMuxStreamState(uint id, byte serviceId, int initialWind
     public long ReceiveWindow = initialWindow;
     public int BufferedBytes;
     public int PendingOutboundBytes;
+    public int PendingWindowUpdateBytes;
     public Queue<byte[]> Incoming { get; } = new();
     public Queue<BftFrame> Outgoing { get; } = new();
     public SemaphoreSlim IncomingSignal { get; } = new(0);
@@ -48,7 +49,8 @@ internal sealed class BftMuxConnection : IAsyncDisposable
     private int _maxStreams;
     private readonly HashSet<byte> _serviceIds;
     private readonly string _proxyId;
-    private readonly HashSet<string> _accessTokens;
+    private readonly byte[][] _accessTokens;
+    private readonly byte[] _tlsSpkiSha256;
     private readonly bool _authRequired;
     private readonly TimeProvider _timeProvider;
     private readonly IBftRandomSource _random;
@@ -80,7 +82,8 @@ internal sealed class BftMuxConnection : IAsyncDisposable
     private int _roundRobinIndex;
 
     public BftMuxConnection(BftNoiseSession session, bool isServer, string proxyId, IEnumerable<byte> serviceIds,
-        int initialWindow, int maxStreams, IEnumerable<string>? accessTokens, TimeProvider timeProvider, IBftRandomSource random)
+        int initialWindow, int maxStreams, IEnumerable<string>? accessTokens, TimeProvider timeProvider, IBftRandomSource random,
+        byte[]? tlsSpkiSha256 = null)
     {
         _session = session;
         _isServer = isServer;
@@ -88,8 +91,9 @@ internal sealed class BftMuxConnection : IAsyncDisposable
         _serviceIds = new HashSet<byte>(serviceIds);
         _initialWindow = initialWindow;
         _maxStreams = maxStreams;
-        _accessTokens = new HashSet<string>(accessTokens ?? [], StringComparer.Ordinal);
-        _authRequired = isServer && _accessTokens.Count > 0;
+        _accessTokens = (accessTokens ?? []).Select(Encoding.UTF8.GetBytes).ToArray();
+        _authRequired = isServer && _accessTokens.Length > 0;
+        _tlsSpkiSha256 = tlsSpkiSha256?.ToArray() ?? [];
         _timeProvider = timeProvider;
         _random = random;
         _lastReceived = timeProvider.GetUtcNow();
@@ -99,12 +103,17 @@ internal sealed class BftMuxConnection : IAsyncDisposable
     public uint GoAwayLastStreamId => _hasReceivedGoAway ? _goAwayLastStreamId : uint.MaxValue;
     public bool HasReceivedGoAway => _hasReceivedGoAway;
     public uint MaxOpenedStreamId => _maxOpened;
+    internal int PendingWindowUpdateCount
+    {
+        get { lock (_gate) return _controlFrames.Count(frame => frame.Type == BftFrameType.WindowUpdate); }
+    }
     internal ulong OutgoingMessageCount => _session.WriteNoiseCounter;
     internal ulong IncomingMessageCount => _session.ReadNoiseCounter;
     public Task<uint> WaitForGoAwayAsync(CancellationToken cancellationToken) => _goAwayReceived.Task.WaitAsync(cancellationToken);
     internal Task WaitForOutgoingMessageCountAsync(ulong count, CancellationToken cancellationToken) => _session.WaitForWriteCounterAsync(count, cancellationToken);
     internal Task WaitForIncomingMessageCountAsync(ulong count, CancellationToken cancellationToken) => _session.WaitForReadCounterAsync(count, cancellationToken);
     internal Task WaitForClosedAsync(CancellationToken cancellationToken) => _closed.Task.WaitAsync(cancellationToken);
+    public Task Completion => _closed.Task;
 
     public async Task WaitForStreamsClosedAsync(CancellationToken cancellationToken = default)
     {
@@ -122,22 +131,23 @@ internal sealed class BftMuxConnection : IAsyncDisposable
 
     public async Task StartServerAsync(CancellationToken cancellationToken)
     {
-        StartLoops();
         if (!_authRequired)
         {
-            QueueControl(BftFrame.HelloFrame(new BftHello(_proxyId, _initialWindow, (ushort)_maxStreams, _serviceIds.Order().ToArray())));
             _readyAccepted = true;
             _ready.TrySetResult(true);
+            QueueControl(BftFrame.HelloFrame(new BftHello(_proxyId, _initialWindow, (ushort)_maxStreams, _tlsSpkiSha256, _serviceIds.Order().ToArray())));
+            StartLoops();
             return;
         }
 
+        StartLoops();
         try
         {
             await _ready.Task.WaitAsync(TimeSpan.FromSeconds(10), _timeProvider, cancellationToken).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
-            await SendUrgentFrameAsync(BftFrame.GoAway(_maxOpened, BftGoAwayCode.AuthFailed), cancellationToken).ConfigureAwait(false);
+            await SendGoAwayWithTimeoutAsync(BftFrame.GoAway(_maxOpened, BftGoAwayCode.AuthFailed), cancellationToken).ConfigureAwait(false);
             Abort(new BftProtocolException("AUTH was not received before the deadline."));
             throw new BftAuthenticationException("AUTH was not received before the deadline.");
         }
@@ -261,6 +271,20 @@ internal sealed class BftMuxConnection : IAsyncDisposable
         }
     }
 
+    internal void DisposeStream(BftMuxStreamState state)
+    {
+        lock (_gate)
+        {
+            if (state.Reset || _aborted || !_streams.ContainsKey(state.Id)) return;
+            if (state.RemoteClosed && state.BufferedBytes == 0 && state.LocalClosed && state.LocalCloseSent)
+            {
+                CloseIfFinishedLocked(state);
+                return;
+            }
+            MarkResetLocked(state, new IOException("BFT stream was disposed before graceful completion."), true, BftResetCode.Cancel);
+        }
+    }
+
     internal void ReportStreamRead(BftMuxStreamState state, int bytesRead)
     {
         lock (_gate)
@@ -269,8 +293,15 @@ internal sealed class BftMuxConnection : IAsyncDisposable
             state.ReceiveWindow += bytesRead;
             if (!state.Reset && !_aborted)
             {
-                QueueControlLocked(BftFrame.WindowUpdate(state.Id, (uint)bytesRead));
+                state.PendingWindowUpdateBytes += bytesRead;
+                if (!state.RemoteClosed && state.PendingWindowUpdateBytes >= _initialWindow / 4)
+                {
+                    var increment = (uint)state.PendingWindowUpdateBytes;
+                    state.PendingWindowUpdateBytes = 0;
+                    QueueControlLocked(BftFrame.WindowUpdate(state.Id, increment));
+                }
             }
+            CloseIfFinishedLocked(state);
         }
     }
 
@@ -302,11 +333,12 @@ internal sealed class BftMuxConnection : IAsyncDisposable
             }
         }
         catch (OperationCanceledException) when (_stop.IsCancellationRequested) { }
+        catch (BftRecordException ex) { Abort(ex); }
         catch (BftProtocolException ex)
         {
             if (_isServer && !_aborted)
             {
-                try { await SendUrgentFrameAsync(BftFrame.GoAway(_maxOpened, BftGoAwayCode.ProtocolError), CancellationToken.None).ConfigureAwait(false); }
+                try { await SendGoAwayWithTimeoutAsync(BftFrame.GoAway(_maxOpened, BftGoAwayCode.ProtocolError)).ConfigureAwait(false); }
                 catch { }
             }
             Abort(ex);
@@ -325,13 +357,12 @@ internal sealed class BftMuxConnection : IAsyncDisposable
                     await RejectAuthenticationAsync(cancellationToken).ConfigureAwait(false);
                     return BftMuxFrameAction.AuthenticationRejected;
                 }
-                var token = Encoding.UTF8.GetString(frame.Body);
-                if (!_accessTokens.Contains(token))
+                if (!IsAccessToken(frame.Body))
                 {
                     await RejectAuthenticationAsync(cancellationToken).ConfigureAwait(false);
                     return BftMuxFrameAction.AuthenticationRejected;
                 }
-                QueueControl(BftFrame.HelloFrame(new BftHello(_proxyId, _initialWindow, (ushort)_maxStreams, _serviceIds.Order().ToArray())));
+                QueueControl(BftFrame.HelloFrame(new BftHello(_proxyId, _initialWindow, (ushort)_maxStreams, _tlsSpkiSha256, _serviceIds.Order().ToArray())));
                 _readyAccepted = true;
                 _ready.TrySetResult(true);
                 return BftMuxFrameAction.Processed;
@@ -372,7 +403,7 @@ internal sealed class BftMuxConnection : IAsyncDisposable
             case BftFrameType.Reset:
                 return ProcessStreamFrame(frame);
             case BftFrameType.Ping:
-                await SendUrgentFrameAsync(BftFrame.Pong(frame.Body), cancellationToken).ConfigureAwait(false);
+                QueueControl(BftFrame.Pong(frame.Body));
                 return BftMuxFrameAction.Processed;
             case BftFrameType.Pong:
                 lock (_gate)
@@ -395,9 +426,20 @@ internal sealed class BftMuxConnection : IAsyncDisposable
 
     private async Task RejectAuthenticationAsync(CancellationToken cancellationToken)
     {
-        await SendUrgentFrameAsync(BftFrame.GoAway(_maxOpened, BftGoAwayCode.AuthFailed), cancellationToken).ConfigureAwait(false);
+        await SendGoAwayWithTimeoutAsync(BftFrame.GoAway(_maxOpened, BftGoAwayCode.AuthFailed), cancellationToken).ConfigureAwait(false);
         _ready.TrySetResult(false);
         Abort(new BftAuthenticationException("BFT token authentication failed."));
+    }
+
+    private bool IsAccessToken(ReadOnlySpan<byte> token)
+        => FixedTimeEqualsAny(token, _accessTokens);
+
+    internal static bool FixedTimeEqualsAny(ReadOnlySpan<byte> token, IEnumerable<byte[]> candidates)
+    {
+        var matched = false;
+        foreach (var allowed in candidates)
+            matched |= CryptographicOperations.FixedTimeEquals(token, allowed);
+        return matched;
     }
 
     private BftMuxFrameAction ProcessOpen(BftFrame frame)
@@ -520,7 +562,7 @@ internal sealed class BftMuxConnection : IAsyncDisposable
 
     private void CloseIfFinishedLocked(BftMuxStreamState state)
     {
-        if (!state.LocalClosed || !state.RemoteClosed || !state.LocalCloseSent) return;
+        if (!state.LocalClosed || !state.RemoteClosed || !state.LocalCloseSent || state.BufferedBytes != 0) return;
         if (_streams.Remove(state.Id)) SignalStreamsChangedLocked();
         state.IncomingSignal.Release();
         state.WindowSignal.Release();
@@ -682,14 +724,31 @@ internal sealed class BftMuxConnection : IAsyncDisposable
     private async Task SendUrgentFrameAsync(BftFrame frame, CancellationToken cancellationToken)
     {
         var message = BftFrameCodec.Encode(frame);
-        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try { await _session.WriteMessageAsync(message, cancellationToken: cancellationToken).ConfigureAwait(false); }
+        var writeGateHeld = false;
+        try
+        {
+            await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            writeGateHeld = true;
+            await _session.WriteMessageAsync(message, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Abort(ex);
+            throw;
+        }
         finally
         {
-            _writeGate.Release();
+            if (writeGateHeld) _writeGate.Release();
             CryptographicOperations.ZeroMemory(message);
             CryptographicOperations.ZeroMemory(frame.Body);
         }
+    }
+
+    private async Task SendGoAwayWithTimeoutAsync(BftFrame frame, CancellationToken cancellationToken = default)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5), _timeProvider);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        await SendUrgentFrameAsync(frame, linked.Token).ConfigureAwait(false);
     }
 
     public async Task SendGoAwayAsync(BftGoAwayCode code, CancellationToken cancellationToken = default)
@@ -745,7 +804,7 @@ internal sealed class BftMuxConnection : IAsyncDisposable
                 }
                 else
                 {
-                    await SendUrgentFrameAsync(BftFrame.Ping(ping), _stop.Token).ConfigureAwait(false);
+                    QueueControl(BftFrame.Ping(ping));
                     CryptographicOperations.ZeroMemory(ping);
                     await Task.Delay(KeepAliveTimeout, _timeProvider, _stop.Token).ConfigureAwait(false);
                 }
@@ -786,6 +845,7 @@ internal sealed class BftMuxConnection : IAsyncDisposable
                 state.Outgoing.Clear();
                 state.BufferedBytes = 0;
                 state.PendingOutboundBytes = 0;
+                state.PendingWindowUpdateBytes = 0;
                 state.IncomingSignal.Release();
                 state.WindowSignal.Release();
             }
@@ -809,6 +869,7 @@ internal sealed class BftMuxConnection : IAsyncDisposable
         Abort(new ObjectDisposedException(nameof(BftMuxConnection)));
         var tasks = new[] { _readerTask, _writerTask, _keepAliveTask }.Where(task => task is not null).Cast<Task>();
         try { await Task.WhenAll(tasks).ConfigureAwait(false); } catch { }
+        foreach (var token in _accessTokens) CryptographicOperations.ZeroMemory(token);
         await _session.DisposeAsync().ConfigureAwait(false);
         _stop.Dispose();
         _writerSignal.Dispose();

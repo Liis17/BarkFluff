@@ -37,19 +37,20 @@ public enum BftGoAwayCode : byte
     Overload = 3
 }
 
-public sealed record BftHello(string ProxyId, int InitialWindow, ushort MaxStreams, IReadOnlyList<byte> ServiceIds)
+public sealed record BftHello(string ProxyId, int InitialWindow, ushort MaxStreams, byte[] TlsSpkiSha256, IReadOnlyList<byte> ServiceIds)
 {
     public byte[] ToBody()
     {
         BftFrameCodec.ValidateHello(this);
         var id = Encoding.ASCII.GetBytes(ProxyId);
-        var body = new byte[1 + id.Length + 4 + 2 + 1 + ServiceIds.Count];
+        var body = new byte[40 + id.Length + ServiceIds.Count];
         body[0] = (byte)id.Length;
         id.CopyTo(body, 1);
         BinaryPrimitives.WriteUInt32BigEndian(body.AsSpan(1 + id.Length), (uint)InitialWindow);
         BinaryPrimitives.WriteUInt16BigEndian(body.AsSpan(5 + id.Length), MaxStreams);
-        body[7 + id.Length] = (byte)ServiceIds.Count;
-        for (var i = 0; i < ServiceIds.Count; i++) body[8 + id.Length + i] = ServiceIds[i];
+        TlsSpkiSha256.CopyTo(body, 7 + id.Length);
+        body[39 + id.Length] = (byte)ServiceIds.Count;
+        for (var i = 0; i < ServiceIds.Count; i++) body[40 + id.Length + i] = ServiceIds[i];
         return body;
     }
 }
@@ -153,9 +154,9 @@ public static class BftFrameCodec
 
     public static BftHello ParseHello(ReadOnlySpan<byte> body)
     {
-        if (body.Length < 8) throw new BftProtocolException("Truncated HELLO body.");
+        if (body.Length < 40) throw new BftProtocolException("Truncated HELLO body.");
         var idLength = body[0];
-        if (idLength is < 1 or > 32 || body.Length < 8 + idLength)
+        if (idLength is < 1 or > 32 || body.Length < 40 + idLength)
             throw new BftProtocolException("Invalid HELLO proxy ID length.");
         var idBytes = body.Slice(1, idLength);
         if (idBytes.IndexOfAnyInRange((byte)0x80, byte.MaxValue) >= 0)
@@ -163,11 +164,12 @@ public static class BftFrameCodec
         var proxyId = Encoding.ASCII.GetString(idBytes);
         var initialWindow = BinaryPrimitives.ReadUInt32BigEndian(body[(1 + idLength)..]);
         var maxStreams = BinaryPrimitives.ReadUInt16BigEndian(body[(5 + idLength)..]);
-        var count = body[7 + idLength];
-        if (body.Length != 8 + idLength + count)
+        var pin = body.Slice(7 + idLength, 32).ToArray();
+        var count = body[39 + idLength];
+        if (body.Length != 40 + idLength + count)
             throw new BftProtocolException("Invalid HELLO service list length.");
-        var serviceIds = body.Slice(8 + idLength, count).ToArray();
-        var hello = new BftHello(proxyId, initialWindow <= int.MaxValue ? (int)initialWindow : -1, maxStreams, serviceIds);
+        var serviceIds = body.Slice(40 + idLength, count).ToArray();
+        var hello = new BftHello(proxyId, initialWindow <= int.MaxValue ? (int)initialWindow : -1, maxStreams, pin, serviceIds);
         ValidateHello(hello);
         return hello;
     }
@@ -178,6 +180,8 @@ public static class BftFrameCodec
             throw new BftProtocolException("HELLO proxy ID must be 1–32 ASCII bytes.");
         if (hello.InitialWindow is < 16384 or > int.MaxValue || hello.MaxStreams < 1)
             throw new BftProtocolException("HELLO limits are invalid.");
+        if (hello.TlsSpkiSha256 is null || hello.TlsSpkiSha256.Length != 32)
+            throw new BftProtocolException("HELLO TLS SPKI SHA-256 pin must be 32 bytes.");
         if (hello.ServiceIds.Count > byte.MaxValue)
             throw new BftProtocolException("HELLO contains too many services.");
         var seen = new HashSet<byte>();

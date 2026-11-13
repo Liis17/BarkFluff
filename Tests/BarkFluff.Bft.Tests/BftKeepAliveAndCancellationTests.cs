@@ -9,6 +9,7 @@ public sealed class BftKeepAliveAndCancellationTests
     private static readonly byte[] ClientEphemeral = Enumerable.Range(0x61, 32).Select(value => (byte)value).ToArray();
     private static readonly byte[] ServerEphemeral = Enumerable.Range(0x81, 32).Select(value => (byte)value).ToArray();
     private static readonly byte[] ObfsKey = Enumerable.Range(0x20, 32).Select(value => (byte)value).ToArray();
+    private static readonly byte[] TlsPin = Enumerable.Range(0, 32).Select(value => (byte)value).ToArray();
 
     [Fact]
     public async Task KeepAlive_PingPongInBothDirections()
@@ -94,6 +95,7 @@ public sealed class BftKeepAliveAndCancellationTests
             },
             ProxyId = "lv-1",
             ServiceIds = [1, 4, 5],
+            TlsSpkiSha256 = TlsPin,
             InitialWindow = initialWindow
         }, cancellationToken).AsTask();
         var clientTask = BftClientTunnel.ConnectAsync(clientStream, new BftClientTunnelOptions

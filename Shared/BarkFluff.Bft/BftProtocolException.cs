@@ -1,10 +1,24 @@
 namespace BarkFluff.Bft;
 
-public sealed class BftProtocolException : IOException
+public class BftProtocolException : IOException
 {
     public BftProtocolException(string message) : base(message) { }
 
     public BftProtocolException(string message, Exception innerException) : base(message, innerException) { }
+}
+
+public sealed class BftRecordException : BftProtocolException
+{
+    public BftRecordException(string message) : base(message) { }
+
+    public BftRecordException(string message, Exception innerException) : base(message, innerException) { }
+}
+
+public sealed class BftInvalidNoiseException : BftProtocolException
+{
+    public BftInvalidNoiseException(string message) : base(message) { }
+
+    public BftInvalidNoiseException(string message, Exception innerException) : base(message, innerException) { }
 }
 
 public interface IBftRandomSource

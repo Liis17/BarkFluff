@@ -64,11 +64,11 @@ public sealed class BftVectorsTests
                 await using var stream = new ChunkedReadStream(bytes, 1);
                 var reader = new BftObfuscatedRecordReader(stream, keys, clientToServer: true);
                 if (name == "replay") Assert.Equal("first"u8.ToArray(), await reader.ReadAsync());
-                await Assert.ThrowsAsync<BftProtocolException>(async () => await reader.ReadAsync());
+                await Assert.ThrowsAsync<BftRecordException>(async () => await reader.ReadAsync());
             }
             else
             {
-                Assert.Throws<BftProtocolException>(() => BftObfuscatedRecords.Decrypt(keys, true, 0, bytes));
+                Assert.Throws<BftRecordException>(() => BftObfuscatedRecords.Decrypt(keys, true, 0, bytes));
             }
         }
     }
@@ -95,7 +95,7 @@ public sealed class BftVectorsTests
         await using (var truncated = new ChunkedReadStream(first[..^1], 1))
         {
             var reader = new BftObfuscatedRecordReader(truncated, keys, true);
-            await Assert.ThrowsAsync<BftProtocolException>(async () => await reader.ReadAsync());
+            await Assert.ThrowsAsync<BftRecordException>(async () => await reader.ReadAsync());
         }
 
         var pipe = new Pipe();
@@ -199,6 +199,8 @@ public sealed class BftVectorsTests
             });
             Assert.False(result.Accepted);
             Assert.NotNull(result.Rejection);
+            if (vector.GetProperty("name").GetString() == "low-order-ephemeral")
+                Assert.Equal(BftServerHandshakeRejection.InvalidNoiseMessage, result.Rejection);
             Assert.True(client.CanWrite);
         }
     }
@@ -251,13 +253,22 @@ public sealed class BftVectorsTests
     public void Frames_And_NegativeVectors()
     {
         using var json = Vectors;
+        var root = json.RootElement;
         foreach (var frame in json.RootElement.GetProperty("frames").EnumerateObject())
         {
             var bytes = Bytes(frame.Value);
             Assert.Equal(bytes, BftFrameCodec.Encode(BftFrameCodec.DecodeSingle(bytes)));
         }
+        var hello = BftFrameCodec.DecodeSingle(Bytes(root.GetProperty("frames").GetProperty("HELLO")));
+        Assert.Equal(Bytes(root.GetProperty("tlsSpkiSha256")), BftFrameCodec.ParseHello(hello.Body).TlsSpkiSha256);
         foreach (var invalid in json.RootElement.GetProperty("negative").GetProperty("frames").EnumerateArray())
             Assert.Throws<BftProtocolException>(() => BftFrameCodec.Decode(Bytes(invalid.GetProperty("bytes"))));
+    }
+
+    [Fact]
+    public void HelloRequiresA32ByteTlsPin()
+    {
+        Assert.Throws<BftProtocolException>(() => new BftHello("lv-1", 262144, 256, new byte[31], [1]).ToBody());
     }
 
     [Fact]

@@ -17,72 +17,85 @@ public static class BftObfuscatedRecords
     {
         ArgumentNullException.ThrowIfNull(keys);
         if (sequence >= MaxRecordCount)
-            throw new BftProtocolException("Obfuscation record counter limit reached.");
+            throw new BftRecordException("Obfuscation record counter limit reached.");
         if (payload.Length > MaxPayloadLength)
             throw new ArgumentOutOfRangeException(nameof(payload));
         if (paddingLength is < 0 or > MaxPaddingLength)
             throw new ArgumentOutOfRangeException(nameof(paddingLength));
 
-        var plainBody = new byte[2 + payload.Length + paddingLength];
+        var plainBodyLength = 2 + payload.Length + paddingLength;
+        var plainBody = ArrayPool<byte>.Shared.Rent(plainBodyLength);
+        var record = GC.AllocateUninitializedArray<byte>(18 + plainBodyLength + 16);
         try
         {
+            plainBody.AsSpan(0, plainBodyLength).Clear();
             BinaryPrimitives.WriteUInt16BigEndian(plainBody, (ushort)payload.Length);
             payload.CopyTo(plainBody.AsSpan(2));
-            var encryptedBody = BftCrypto.EncryptChaCha(keys.DataKey(clientToServer), sequence, ReadOnlySpan<byte>.Empty, plainBody);
-            var encryptedLength = checked((ushort)encryptedBody.Length);
+            var encryptedLength = checked((ushort)(plainBodyLength + 16));
             Span<byte> lengthBytes = stackalloc byte[2];
             BinaryPrimitives.WriteUInt16BigEndian(lengthBytes, encryptedLength);
-            var encryptedHeader = BftCrypto.EncryptChaCha(keys.LengthKey(clientToServer), sequence, ReadOnlySpan<byte>.Empty, lengthBytes);
-            var record = new byte[encryptedHeader.Length + encryptedBody.Length];
-            encryptedHeader.CopyTo(record, 0);
-            encryptedBody.CopyTo(record, encryptedHeader.Length);
-            CryptographicOperations.ZeroMemory(encryptedBody);
-            CryptographicOperations.ZeroMemory(encryptedHeader);
+            BftCrypto.EncryptChaCha(keys.LengthCipher(clientToServer), sequence, ReadOnlySpan<byte>.Empty, lengthBytes,
+                record.AsSpan(0, 2), record.AsSpan(2, 16));
+            BftCrypto.EncryptChaCha(keys.DataCipher(clientToServer), sequence, ReadOnlySpan<byte>.Empty,
+                plainBody.AsSpan(0, plainBodyLength), record.AsSpan(18, plainBodyLength), record.AsSpan(18 + plainBodyLength, 16));
             return record;
         }
-        finally { CryptographicOperations.ZeroMemory(plainBody); }
+        catch
+        {
+            CryptographicOperations.ZeroMemory(record);
+            throw;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plainBody.AsSpan(0, plainBodyLength));
+            ArrayPool<byte>.Shared.Return(plainBody);
+        }
     }
 
     public static byte[] Decrypt(BftObfuscationKeys keys, bool clientToServer, ulong sequence, ReadOnlySpan<byte> record)
     {
         ArgumentNullException.ThrowIfNull(keys);
         if (sequence >= MaxRecordCount)
-            throw new BftProtocolException("Obfuscation record counter limit reached.");
+            throw new BftRecordException("Obfuscation record counter limit reached.");
         if (record.Length < 18)
-            throw new BftProtocolException("Truncated obfuscation record header.");
-        var lengthPlain = BftCrypto.DecryptChaCha(keys.LengthKey(clientToServer), sequence, ReadOnlySpan<byte>.Empty, record[..18]);
-        if (lengthPlain.Length != 2)
-            throw new BftProtocolException("Invalid encrypted record length.");
+            throw new BftRecordException("Truncated obfuscation record header.");
+        Span<byte> lengthPlain = stackalloc byte[2];
+        BftCrypto.DecryptChaCha(keys.LengthCipher(clientToServer), sequence, ReadOnlySpan<byte>.Empty, record[..2], record.Slice(2, 16), lengthPlain);
         var encryptedLength = BinaryPrimitives.ReadUInt16BigEndian(lengthPlain);
-        CryptographicOperations.ZeroMemory(lengthPlain);
         ValidateEncryptedLength(encryptedLength);
         if (record.Length != 18 + encryptedLength)
-            throw new BftProtocolException("Obfuscation record length does not match its header.");
+            throw new BftRecordException("Obfuscation record length does not match its header.");
         return DecryptBody(keys, clientToServer, sequence, record.Slice(18, encryptedLength));
     }
 
     internal static void ValidateEncryptedLength(int length)
     {
         if (length is < MinEncryptedLength or > MaxEncryptedLength)
-            throw new BftProtocolException("Obfuscation record length is out of range.");
+            throw new BftRecordException("Obfuscation record length is out of range.");
     }
 
     internal static byte[] DecryptBody(BftObfuscationKeys keys, bool clientToServer, ulong sequence, ReadOnlySpan<byte> encryptedBody)
     {
-        var plainBody = BftCrypto.DecryptChaCha(keys.DataKey(clientToServer), sequence, ReadOnlySpan<byte>.Empty, encryptedBody);
-        if (plainBody.Length < 2)
-            throw new BftProtocolException("Invalid obfuscation record body.");
-        var payloadLength = BinaryPrimitives.ReadUInt16BigEndian(plainBody);
-        if (payloadLength > MaxPayloadLength || 2 + payloadLength > plainBody.Length)
-            throw new BftProtocolException("Obfuscation payload length exceeds its body.");
-        if (plainBody.AsSpan(2 + payloadLength).IndexOfAnyExcept((byte)0) >= 0)
+        if (encryptedBody.Length < MinEncryptedLength)
+            throw new BftRecordException("Invalid obfuscation record body.");
+        var plainBodyLength = encryptedBody.Length - 16;
+        var plainBody = ArrayPool<byte>.Shared.Rent(plainBodyLength);
+        try
         {
-            CryptographicOperations.ZeroMemory(plainBody);
-            throw new BftProtocolException("Obfuscation padding is not zeroed.");
+            BftCrypto.DecryptChaCha(keys.DataCipher(clientToServer), sequence, ReadOnlySpan<byte>.Empty,
+                encryptedBody[..^16], encryptedBody[^16..], plainBody.AsSpan(0, plainBodyLength));
+            var payloadLength = BinaryPrimitives.ReadUInt16BigEndian(plainBody);
+            if (payloadLength > MaxPayloadLength || 2 + payloadLength > plainBodyLength)
+                throw new BftRecordException("Obfuscation payload length exceeds its body.");
+            if (plainBody.AsSpan(2 + payloadLength, plainBodyLength - 2 - payloadLength).IndexOfAnyExcept((byte)0) >= 0)
+                throw new BftRecordException("Obfuscation padding is not zeroed.");
+            return plainBody.AsSpan(2, payloadLength).ToArray();
         }
-        var payload = plainBody.AsSpan(2, payloadLength).ToArray();
-        CryptographicOperations.ZeroMemory(plainBody);
-        return payload;
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plainBody.AsSpan(0, plainBodyLength));
+            ArrayPool<byte>.Shared.Return(plainBody);
+        }
     }
 }
 
@@ -105,11 +118,12 @@ public sealed class BftObfuscatedRecordWriter
 
     public ulong Sequence => _sequence;
 
-    public ValueTask WriteAsync(ReadOnlyMemory<byte> payload, int paddingLength = 0, CancellationToken cancellationToken = default)
+    public async ValueTask WriteAsync(ReadOnlyMemory<byte> payload, int paddingLength = 0, CancellationToken cancellationToken = default)
     {
         var record = BftObfuscatedRecords.Encrypt(_keys, _clientToServer, _sequence, payload.Span, paddingLength);
         _sequence++;
-        return _stream.WriteAsync(record, cancellationToken);
+        try { await _stream.WriteAsync(record, cancellationToken).ConfigureAwait(false); }
+        finally { CryptographicOperations.ZeroMemory(record); }
     }
 
     public ValueTask WriteRandomPaddingAsync(ReadOnlyMemory<byte> payload, int maximumPaddingLength, CancellationToken cancellationToken = default)
@@ -163,47 +177,65 @@ public sealed class BftObfuscatedRecordReader
     public async ValueTask<byte[]?> ReadAsync(CancellationToken cancellationToken = default)
     {
         if (_sequence >= BftObfuscatedRecords.MaxRecordCount)
-            throw new BftProtocolException("Obfuscation record counter limit reached.");
-        var header = _stream is not null
-            ? await ReadStreamExactlyAsync(_stream, 18, allowCleanEof: true, cancellationToken).ConfigureAwait(false)
-            : await ReadPipeExactlyAsync(_pipeReader!, 18, allowCleanEof: true, cancellationToken).ConfigureAwait(false);
-        if (header is null) return null;
-        var lengthPlain = BftCrypto.DecryptChaCha(_keys.LengthKey(_clientToServer), _sequence, ReadOnlySpan<byte>.Empty, header);
-        if (lengthPlain.Length != 2)
-            throw new BftProtocolException("Invalid encrypted record length.");
-        var length = BinaryPrimitives.ReadUInt16BigEndian(lengthPlain);
-        CryptographicOperations.ZeroMemory(lengthPlain);
-        BftObfuscatedRecords.ValidateEncryptedLength(length);
-        var body = _stream is not null
-            ? await ReadStreamExactlyAsync(_stream, length, allowCleanEof: false, cancellationToken).ConfigureAwait(false)
-            : await ReadPipeExactlyAsync(_pipeReader!, length, allowCleanEof: false, cancellationToken).ConfigureAwait(false);
+            throw new BftRecordException("Obfuscation record counter limit reached.");
+        var header = ArrayPool<byte>.Shared.Rent(18);
         try
         {
-            var payload = BftObfuscatedRecords.DecryptBody(_keys, _clientToServer, _sequence, body!);
-            _sequence++;
-            return payload;
+            var hasHeader = _stream is not null
+                ? await ReadStreamExactlyAsync(_stream, header.AsMemory(0, 18), allowCleanEof: true, cancellationToken).ConfigureAwait(false)
+                : await ReadPipeExactlyAsync(_pipeReader!, header.AsMemory(0, 18), allowCleanEof: true, cancellationToken).ConfigureAwait(false);
+            if (!hasHeader) return null;
+            var length = DecryptLength(header);
+            BftObfuscatedRecords.ValidateEncryptedLength(length);
+            var body = ArrayPool<byte>.Shared.Rent(length);
+            try
+            {
+                if (_stream is not null)
+                    _ = await ReadStreamExactlyAsync(_stream, body.AsMemory(0, length), allowCleanEof: false, cancellationToken).ConfigureAwait(false);
+                else
+                    _ = await ReadPipeExactlyAsync(_pipeReader!, body.AsMemory(0, length), allowCleanEof: false, cancellationToken).ConfigureAwait(false);
+                var payload = BftObfuscatedRecords.DecryptBody(_keys, _clientToServer, _sequence, body.AsSpan(0, length));
+                _sequence++;
+                return payload;
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(body.AsSpan(0, length));
+                ArrayPool<byte>.Shared.Return(body);
+            }
         }
-        finally { CryptographicOperations.ZeroMemory(body!); }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(header.AsSpan(0, 18));
+            ArrayPool<byte>.Shared.Return(header);
+        }
     }
 
-    private static async ValueTask<byte[]?> ReadStreamExactlyAsync(Stream stream, int length, bool allowCleanEof, CancellationToken cancellationToken)
+    private ushort DecryptLength(byte[] header)
     {
-        var bytes = new byte[length];
+        Span<byte> lengthPlain = stackalloc byte[2];
+        BftCrypto.DecryptChaCha(_keys.LengthCipher(_clientToServer), _sequence, ReadOnlySpan<byte>.Empty,
+            header.AsSpan(0, 2), header.AsSpan(2, 16), lengthPlain);
+        return BinaryPrimitives.ReadUInt16BigEndian(lengthPlain);
+    }
+
+    private static async ValueTask<bool> ReadStreamExactlyAsync(Stream stream, Memory<byte> buffer, bool allowCleanEof, CancellationToken cancellationToken)
+    {
         var offset = 0;
-        while (offset < length)
+        while (offset < buffer.Length)
         {
-            var read = await stream.ReadAsync(bytes.AsMemory(offset), cancellationToken).ConfigureAwait(false);
+            var read = await stream.ReadAsync(buffer[offset..], cancellationToken).ConfigureAwait(false);
             if (read == 0)
             {
-                if (offset == 0 && allowCleanEof) return null;
-                throw new BftProtocolException("Connection ended in the middle of an obfuscation record.");
+                if (offset == 0 && allowCleanEof) return false;
+                throw new BftRecordException("Connection ended in the middle of an obfuscation record.");
             }
             offset += read;
         }
-        return bytes;
+        return true;
     }
 
-    private static async ValueTask<byte[]?> ReadPipeExactlyAsync(PipeReader reader, int length, bool allowCleanEof, CancellationToken cancellationToken)
+    private static async ValueTask<bool> ReadPipeExactlyAsync(PipeReader reader, Memory<byte> destination, bool allowCleanEof, CancellationToken cancellationToken)
     {
         while (true)
         {
@@ -214,19 +246,19 @@ public sealed class BftObfuscatedRecordReader
                 reader.AdvanceTo(buffer.Start, buffer.End);
                 throw new OperationCanceledException(cancellationToken);
             }
-            if (buffer.Length >= length)
+            if (buffer.Length >= destination.Length)
             {
-                var bytes = buffer.Slice(0, length).ToArray();
-                var consumed = buffer.GetPosition(length);
+                buffer.Slice(0, destination.Length).CopyTo(destination.Span);
+                var consumed = buffer.GetPosition(destination.Length);
                 reader.AdvanceTo(consumed, consumed);
-                return bytes;
+                return true;
             }
 
             if (result.IsCompleted)
             {
                 reader.AdvanceTo(buffer.End);
-                if (buffer.IsEmpty && allowCleanEof) return null;
-                throw new BftProtocolException("Connection ended in the middle of an obfuscation record.");
+                if (buffer.IsEmpty && allowCleanEof) return false;
+                throw new BftRecordException("Connection ended in the middle of an obfuscation record.");
             }
 
             reader.AdvanceTo(buffer.Start, buffer.End);

@@ -6,13 +6,13 @@ namespace BarkFluff.Bft;
 
 public sealed class BftNoiseCipherState : IDisposable
 {
-    private byte[] _key;
+    private ChaCha20Poly1305 _cipher;
     private bool _disposed;
 
     public BftNoiseCipherState(ReadOnlySpan<byte> key, ulong nonce = 0)
     {
         if (key.Length != 32) throw new ArgumentException("Noise cipher keys must be 32 bytes.", nameof(key));
-        _key = key.ToArray();
+        _cipher = new ChaCha20Poly1305(key);
         Counter = nonce;
     }
 
@@ -21,7 +21,8 @@ public sealed class BftNoiseCipherState : IDisposable
     public byte[] Encrypt(ReadOnlySpan<byte> plaintext, ReadOnlySpan<byte> associatedData = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var encrypted = BftCrypto.EncryptChaCha(_key, Counter, associatedData, plaintext);
+        var encrypted = new byte[plaintext.Length + 16];
+        BftCrypto.EncryptChaCha(_cipher, Counter, associatedData, plaintext, encrypted.AsSpan(0, plaintext.Length), encrypted.AsSpan(plaintext.Length, 16));
         Advance();
         return encrypted;
     }
@@ -29,7 +30,17 @@ public sealed class BftNoiseCipherState : IDisposable
     public byte[] Decrypt(ReadOnlySpan<byte> ciphertextAndTag, ReadOnlySpan<byte> associatedData = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var plaintext = BftCrypto.DecryptChaCha(_key, Counter, associatedData, ciphertextAndTag);
+        if (ciphertextAndTag.Length < 16) throw new BftRecordException("Truncated ChaCha20-Poly1305 message.");
+        var plaintext = new byte[ciphertextAndTag.Length - 16];
+        try
+        {
+            BftCrypto.DecryptChaCha(_cipher, Counter, associatedData, ciphertextAndTag[..^16], ciphertextAndTag[^16..], plaintext);
+        }
+        catch
+        {
+            CryptographicOperations.ZeroMemory(plaintext);
+            throw;
+        }
         Advance();
         return plaintext;
     }
@@ -37,16 +48,20 @@ public sealed class BftNoiseCipherState : IDisposable
     public void Rekey()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var encrypted = BftCrypto.EncryptChaCha(_key, ulong.MaxValue, ReadOnlySpan<byte>.Empty, new byte[32]);
-        CryptographicOperations.ZeroMemory(_key);
-        _key = encrypted.AsSpan(0, 32).ToArray();
+        Span<byte> plaintext = stackalloc byte[32];
+        Span<byte> encrypted = stackalloc byte[48];
+        plaintext.Clear();
+        BftCrypto.EncryptChaCha(_cipher, ulong.MaxValue, ReadOnlySpan<byte>.Empty, plaintext, encrypted[..32], encrypted[32..]);
+        var replacement = new ChaCha20Poly1305(encrypted[..32]);
+        _cipher.Dispose();
+        _cipher = replacement;
         CryptographicOperations.ZeroMemory(encrypted);
     }
 
     private void Advance()
     {
         if (Counter == ulong.MaxValue)
-            throw new BftProtocolException("Noise nonce counter exhausted.");
+            throw new BftRecordException("Noise nonce counter exhausted.");
         Counter++;
         if (Counter != 0 && Counter % 65536 == 0)
             Rekey();
@@ -55,7 +70,7 @@ public sealed class BftNoiseCipherState : IDisposable
     public void Dispose()
     {
         if (_disposed) return;
-        CryptographicOperations.ZeroMemory(_key);
+        _cipher.Dispose();
         _disposed = true;
     }
 }
@@ -120,12 +135,12 @@ public sealed class BftNoiseSession : IAsyncDisposable
         try
         {
             if (encrypted.Length is < 16 or > 16400)
-                throw new BftProtocolException("Invalid Noise transport message length.");
+                throw new BftRecordException("Invalid Noise transport message length.");
             var plaintext = _readCipher.Decrypt(encrypted);
             if (plaintext.Length > 16384)
             {
                 CryptographicOperations.ZeroMemory(plaintext);
-                throw new BftProtocolException("Noise transport plaintext exceeds 16384 bytes.");
+                throw new BftRecordException("Noise transport plaintext exceeds 16384 bytes.");
             }
             lock (_progressGate)
             {
@@ -523,7 +538,7 @@ public static class BftServerHandshake
         }
         catch (Exception ex) when (ex is BftProtocolException or EndOfStreamException or CryptographicException or ArgumentException)
         {
-            return Reject(ex is BftProtocolException { Message: "X25519 produced an all-zero shared secret." }
+            return Reject(ex is BftInvalidNoiseException
                 ? BftServerHandshakeRejection.InvalidNoiseMessage
                 : BftServerHandshakeRejection.InvalidClientFlight);
         }

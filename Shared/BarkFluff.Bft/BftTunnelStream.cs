@@ -101,7 +101,7 @@ public sealed class BftTunnelStream : Stream
         {
             _disposed = true;
             if (_currentRead is not null) System.Security.Cryptography.CryptographicOperations.ZeroMemory(_currentRead);
-            _connection.CompleteWrite(_state);
+            _connection.DisposeStream(_state);
         }
         base.Dispose(disposing);
     }
@@ -112,7 +112,7 @@ public sealed class BftTunnelStream : Stream
         {
             _disposed = true;
             if (_currentRead is not null) System.Security.Cryptography.CryptographicOperations.ZeroMemory(_currentRead);
-            _connection.CompleteWrite(_state);
+            _connection.DisposeStream(_state);
         }
         GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
