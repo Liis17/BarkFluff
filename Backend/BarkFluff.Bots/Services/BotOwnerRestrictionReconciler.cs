@@ -8,7 +8,7 @@ public sealed class BotOwnerRestrictionReconciler(
     BotRegistryCache registryCache,
     ILogger<BotOwnerRestrictionReconciler> logger) : BackgroundService
 {
-    private static readonly TimeSpan ReconciliationInterval = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan ReconciliationInterval = TimeSpan.FromMinutes(1);
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -41,22 +41,32 @@ public sealed class BotOwnerRestrictionReconciler(
         using var scope = scopeFactory.CreateScope();
         var botsStorage = scope.ServiceProvider.GetRequiredService<BotsStorage>();
         var usersClient = scope.ServiceProvider.GetRequiredService<UsersServerApi.UsersServerApiClient>();
-        foreach (var ownerId in await botsStorage.GetDistinctOwnerIds())
+        var ownerIds = await botsStorage.GetDistinctOwnerIds();
+        if (ownerIds.Count > 0)
         {
-            cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                var account = await usersClient.GetAccountRestrictionAsync(
-                    new GetAccountRestrictionRequest { UserId = ownerId },
+                var response = await usersClient.ListByIdsAsync(
+                    new ListByIdsRequest { Ids = { ownerIds } },
                     deadline: DateTime.UtcNow.AddSeconds(5),
                     cancellationToken: cancellationToken);
-                var restricted = account.Restriction.Status != AccountStatus.Active;
-                await botsStorage.SetOwnerRestricted(ownerId, restricted, cancellationToken);
-                registryCache.ApplyOwnerRestriction(ownerId, restricted);
+
+                var accountsById = response.Users.ToDictionary(user => user.Id);
+                foreach (var ownerId in ownerIds)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!accountsById.TryGetValue(ownerId, out var account))
+                    {
+                        logger.LogWarning("Не найден владелец ботов {OwnerUserId} при сверке статуса", ownerId);
+                        continue;
+                    }
+
+                    await botsStorage.SetOwnerRestricted(ownerId, account.AccountStatus != AccountStatus.Active, cancellationToken);
+                }
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                logger.LogWarning(exception, "Не удалось сверить статус владельца ботов {OwnerUserId}", ownerId);
+                logger.LogWarning(exception, "Не удалось сверить статусы владельцев ботов");
             }
         }
 
