@@ -5,6 +5,7 @@ import com.barkfluff.client.data.AutoDownloadSettingsStore
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.media.AutoDownloadNetworkState
 import com.barkfluff.client.cache.ChatCacheRepository
+import com.barkfluff.client.cache.UserBadgeRepository
 import com.barkfluff.client.send.OutgoingMessageQueue
 import com.barkfluff.client.calls.CallEventsService
 import com.barkfluff.client.calls.CallRepository
@@ -42,6 +43,7 @@ import com.barkfluff.client.domain.gateway.GrpcSecretChatGateway
 import com.barkfluff.client.domain.gateway.GrpcStickerGateway
 import com.barkfluff.client.domain.gateway.GrpcUserDirectoryGateway
 import com.barkfluff.client.domain.gateway.GrpcUserProfileGateway
+import com.barkfluff.client.domain.gateway.GrpcUserBadgeGateway
 import com.barkfluff.client.domain.gateway.GrpcUserSettingsGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
 import com.barkfluff.client.domain.gateway.MessageSearchGateway
@@ -54,6 +56,7 @@ import com.barkfluff.client.domain.gateway.SecretChatGateway
 import com.barkfluff.client.domain.gateway.StickerGateway
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
+import com.barkfluff.client.domain.gateway.UserBadgeGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.domain.gateway.PresenceGateway
 import com.barkfluff.client.domain.gateway.GrpcPresenceGateway
@@ -141,6 +144,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideUserBadgeGateway(transport: GrpcApiTransport): UserBadgeGateway =
+        GrpcUserBadgeGateway(transport)
+
+    @Provides
+    @Singleton
     fun provideUserSettingsGateway(transport: GrpcApiTransport): UserSettingsGateway =
         GrpcUserSettingsGateway(transport)
 
@@ -220,6 +228,13 @@ object AppModule {
     @Singleton
     fun provideChatCacheRepository(@ApplicationContext context: Context, secretChats: SecretChatRepository): ChatCacheRepository =
         ChatCacheRepository(context, secretChats)
+
+    @Provides
+    @Singleton
+    fun provideUserBadgeRepository(
+        cache: ChatCacheRepository,
+        gateway: UserBadgeGateway,
+    ): UserBadgeRepository = UserBadgeRepository(cache, gateway)
 
     @Provides
     @Singleton

@@ -242,6 +242,12 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".BadgesSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".ResetPasswordActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"

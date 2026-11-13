@@ -37,6 +37,9 @@ service UsersApi {
   // Получить баджи пользователя
   rpc GetUserBadges(GetUserBadgesRequest) returns(GetUserBadgesResponse);
 
+  // Установить основной бейдж текущего пользователя (badge_id = 0 снимает выбор)
+  rpc SetPrimaryBadge(SetPrimaryBadgeRequest) returns(SetPrimaryBadgeResponse);
+
   // Получить список устройств текущего пользователя
   rpc GetDevices(GetDevicesRequest) returns(GetDevicesResponse);
 
@@ -430,12 +433,14 @@ message Badge {
   string image_url = 4; // ссылка на изображение баджа
   google.protobuf.Timestamp created_date = 5; // дата создания
   bool is_active = 6; // активен ли бадж
+  string mini_image_url = 7; // ссылка на миниатюру 32x32; может быть пустой у старых бейджей
 }
 
 message UserBadge {
   Badge badge = 1; // информация о бадже
   int32 priority = 2; // приоритет отображения (меньше = выше приоритет)
   google.protobuf.Timestamp assigned_date = 3; // дата назначения
+  bool is_primary = 4; // выбран пользователем как основной
 }
 
 // Запросы и ответы для получения баджей пользователя
@@ -447,6 +452,14 @@ message GetUserBadgesRequest {
 
 message GetUserBadgesResponse {
   repeated UserBadge badges = 1; // баджи пользователя, отсортированные по приоритету
+}
+
+message SetPrimaryBadgeRequest {
+  int32 badge_id = 1; // 0 — снять основной бейдж
+}
+
+message SetPrimaryBadgeResponse {
+  UserBadge primary_badge = 1; // не задан, если основной бейдж снят
 }
 
 // Запросы и ответы для назначения баджа
