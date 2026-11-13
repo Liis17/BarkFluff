@@ -122,11 +122,12 @@ def frame(ftype, stream_id, body=b""):
     return struct.pack(">BIH", ftype, stream_id, len(body)) + body
 
 
-def relay_preamble(relay_key, salt, ip, port, timestamp, relay_id):
-    k = hkdf_expand32(hkdf_extract(salt, relay_key), b"BFTv1 relay preamble")
+def relay_preamble(relay_key, salt, relay_nonce, ip, port, timestamp, relay_id):
+    k = hkdf_expand32(hkdf_extract(salt, relay_key), b"BFTv1 relay preamble" + relay_nonce)
     addr = ipaddress.ip_address(ip)
     ip16 = addr.packed if addr.version == 6 else bytes(10) + b"\xff\xff" + addr.packed
-    return aead(k, 0, b"", ip16 + struct.pack(">HQ", port, timestamp) + relay_id.encode().ljust(16, b"\0"))
+    plain = ip16 + struct.pack(">HQ", port, timestamp) + relay_id.encode().ljust(16, b"\0")
+    return relay_nonce + aead(k, 0, b"", plain)
 
 
 def b64u(data):
@@ -172,9 +173,13 @@ def build():
     server_first = record(s_len, s_dat, 0, msg2, 7)
 
     # транспорт: запись обфускации n = номер сообщения Noise + 1 (запись 0 — хендшейк)
+    def hello(window, services=bytes([1, 4, 5])):
+        return frame(0x02, 0, bytes([4]) + b"lv-1" + struct.pack(">IH", window, 256)
+                     + bytes([len(services)]) + services)
+
     frames = {
         "AUTH": frame(0x01, 0, b"token-1"),
-        "HELLO": frame(0x02, 0, bytes([4]) + b"lv-1" + struct.pack(">IH", 262144, 256) + bytes([3, 1, 2, 5])),
+        "HELLO": hello(262144),
         "OPEN": frame(0x03, 1, bytes([4])),
         "DATA": frame(0x04, 1, b"hello"),
         "WINDOW_UPDATE": frame(0x05, 1, struct.pack(">I", 65536)),
@@ -246,17 +251,52 @@ def build():
         {"name": "window-update-zero", "bytes": frame(0x05, 1, struct.pack(">I", 0))},
         {"name": "open-without-service", "bytes": frame(0x03, 1)},
         {"name": "close-with-body", "bytes": frame(0x06, 1, b"x")},
+        {"name": "hello-window-zero", "bytes": hello(0)},
+        {"name": "hello-window-too-large", "bytes": hello(2 ** 31)},
+        {"name": "hello-duplicate-service", "bytes": hello(262144, services=bytes([1, 1]))},
     ]
 
-    def preamble(ip, port, ts=timestamp, relay_id="ru-1", psalt=salt):
-        return {"clientIp": ip, "clientPort": port, "timestamp": ts, "relayId": relay_id,
-                "preamble": relay_preamble(relay_key, psalt, ip, port, ts, relay_id)}
+    # получатель обрабатывает кадры по порядку; expect — действие на последний кадр
+    f = frames
+    open2 = frame(0x03, 2, bytes([4]))
+    mux_sequences = [
+        {"name": "open-skips-id", "side": "exit", "frames": [open2], "expect": "protocol-error"},
+        {"name": "open-repeats-id", "side": "exit", "frames": [f["OPEN"], f["OPEN"]], "expect": "protocol-error"},
+        {"name": "open-closed-id", "side": "exit", "frames": [f["OPEN"], f["RESET"], f["OPEN"]],
+         "expect": "protocol-error"},
+        {"name": "data-on-idle-stream", "side": "exit", "frames": [f["DATA"]], "expect": "protocol-error"},
+        {"name": "reset-on-idle-stream", "side": "exit", "frames": [f["RESET"]], "expect": "protocol-error"},
+        {"name": "data-after-close", "side": "exit", "frames": [f["OPEN"], f["CLOSE"], f["DATA"]],
+         "expect": "reset:7"},
+        {"name": "close-after-close", "side": "exit", "frames": [f["OPEN"], f["CLOSE"], f["CLOSE"]],
+         "expect": "reset:7"},
+        {"name": "window-update-after-close", "side": "exit",
+         "frames": [f["OPEN"], f["CLOSE"], f["WINDOW_UPDATE"]], "expect": "process"},
+        {"name": "data-after-reset", "side": "exit", "frames": [f["OPEN"], f["RESET"], f["DATA"]],
+         "expect": "ignore"},
+        {"name": "reset-after-reset", "side": "exit", "frames": [f["OPEN"], f["RESET"], f["RESET"]],
+         "expect": "ignore"},
+        {"name": "data-beyond-window", "side": "exit", "initialWindow": 16384,
+         "frames": [f["OPEN"], frame(0x04, 1, bytes(16377)), frame(0x04, 1, bytes(8))], "expect": "reset:3"},
+        {"name": "open-after-goaway-sent", "side": "exit", "sentGoawayLastStreamId": 1,
+         "frames": [f["OPEN"], open2, frame(0x04, 2, b"x")], "expect": "ignore"},
+        {"name": "goaway-from-client", "side": "exit", "frames": [f["GOAWAY"]], "expect": "protocol-error"},
+        {"name": "open-from-exit", "side": "client", "frames": [f["HELLO"], f["OPEN"]], "expect": "protocol-error"},
+        {"name": "second-hello", "side": "client", "frames": [f["HELLO"], f["HELLO"]], "expect": "protocol-error"},
+        {"name": "data-on-unopened-stream", "side": "client", "frames": [f["HELLO"], f["DATA"]],
+         "expect": "protocol-error"},
+    ]
+
+    def preamble(ip, port, ts=timestamp, relay_id="ru-1", psalt=salt, nonce=bytes(range(0xC1, 0xD1))):
+        return {"relayNonce": nonce, "clientIp": ip, "clientPort": port, "timestamp": ts, "relayId": relay_id,
+                "preamble": relay_preamble(relay_key, psalt, nonce, ip, port, ts, relay_id)}
 
     p4 = preamble("198.51.100.7", 51234)
     relay_negative = [
         {"name": "other-salt", "now": timestamp, "salt": salt,
          "preamble": preamble("198.51.100.7", 51234, psalt=bytes(32))["preamble"]},
-        {"name": "bit-flip", "now": timestamp, "salt": salt, "preamble": flip(p4["preamble"], 3)},
+        {"name": "nonce-bit-flip", "now": timestamp, "salt": salt, "preamble": flip(p4["preamble"], 3)},
+        {"name": "ciphertext-bit-flip", "now": timestamp, "salt": salt, "preamble": flip(p4["preamble"], 20)},
         {"name": "expired", "now": timestamp + 121, "salt": salt, "preamble": p4["preamble"]},
     ]
 
@@ -292,8 +332,10 @@ def build():
         },
         "transport": transport_vectors,
         "frames": frames,
+        "muxSequences": mux_sequences,
         "relayPreamble": {"relayKey": relay_key, "salt": salt,
-                          "valid": [p4, preamble("2001:db8::1", 443, relay_id="relay-0123456789")]},
+                          "valid": [p4, preamble("2001:db8::1", 443, relay_id="relay-0123456789",
+                                                  nonce=bytes(range(0xD1, 0xE1)))]},
         "negative": {"records": record_negative, "handshake": handshake_negative,
                      "frames": frame_negative, "relayPreamble": relay_negative},
     })
