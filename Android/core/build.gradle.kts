@@ -24,6 +24,8 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    sourceSets.getByName("test").java.srcDir("src/testSupport/java")
+    sourceSets.getByName("test").resources.srcDir("src/testSupport/resources")
 }
 
 protobuf {
@@ -86,6 +88,11 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.conscrypt:conscrypt-openjdk-uber:2.5.2")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation("androidx.test:runner:1.7.0")
+}
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    jvmArgs("--add-opens=java.base/java.net=ALL-UNNAMED")
 }

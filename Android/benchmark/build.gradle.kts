@@ -14,10 +14,16 @@ android {
         targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         missingDimensionStrategy("channel", "nightly")
+        providers.gradleProperty("bftAndroidTestClass").orNull?.let {
+            testInstrumentationRunnerArguments["class"] = it
+        }
     }
 
     targetProjectPath = ":app-v1"
     experimentalProperties["android.experimental.self-instrumenting"] = true
+    sourceSets.getByName("main").java.srcDir(rootProject.file("core/src/main/java/com/barkfluff/client/bft"))
+    sourceSets.getByName("main").java.srcDir(rootProject.file("core/src/testSupport/java"))
+    sourceSets.getByName("main").assets.srcDir(rootProject.file("core/src/testSupport/resources"))
 
     buildTypes {
         create("benchmark") {
@@ -30,6 +36,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 }
 
@@ -43,6 +50,10 @@ dependencies {
     implementation(libs.androidx.benchmark.macro.junit4)
     implementation(libs.androidx.test.uiautomator)
     implementation(libs.androidx.junit)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("io.grpc:grpc-okhttp:1.60.0")
+    implementation("io.grpc:grpc-stub:1.60.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 tasks.configureEach {
