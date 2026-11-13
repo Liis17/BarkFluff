@@ -34,6 +34,12 @@ public class SendMessageReplyForwardTests
             {
                 Users = { new User { Id = 2, FirstName = "Original", LastName = "Author" } }
             }));
+        _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns((GetByIdRequest request, Metadata? _, DateTime? _, CancellationToken _) =>
+                TestHelper.CreateAsyncCall(new GetByIdResponse
+                {
+                    User = new User { Id = request.UserId, AccountStatus = AccountStatus.Active }
+                }));
     }
 
     private SendMessageCommandHandler CreateHandler(long userId)

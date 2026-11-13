@@ -1,6 +1,7 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Infrastructure;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Messages.Mapping;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
@@ -66,7 +67,10 @@ public class CreatePrivateChatCommandHandler : IRequestHandler<CreatePrivateChat
         }
 
         // Проверка существования peer-пользователя — gRPC бросит исключение если не найден
-        await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = request.PeerUserId });
+        var peer = await _usersClient.GetByIdAsync(
+            new GetByIdRequest { UserId = request.PeerUserId },
+            cancellationToken: cancellationToken);
+        UserAccountStatusGuard.EnsureActive(peer.User.AccountStatus);
 
         var creation = await _chatsStorage.CreatePrivateChat(
             _userContext.UserId,

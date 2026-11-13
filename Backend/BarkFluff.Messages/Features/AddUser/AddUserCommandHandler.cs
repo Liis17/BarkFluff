@@ -1,6 +1,7 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Domain;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
@@ -87,12 +88,15 @@ public class AddUserCommandHandler : IRequestHandler<AddUserCommand>
 
         _logger.LogDebug("Добавление пользователя {UserId} в чат {ChatId}", request.UserId, request.ChatId);
 
+        var addedUserInfoResponse = await _usersServerApiClient.GetByIdAsync(
+            new GetByIdRequest() { UserId = request.UserId },
+            cancellationToken: cancellationToken);
+        UserAccountStatusGuard.EnsureActive(addedUserInfoResponse.User.AccountStatus);
+
         await _chatsStorage.AddChatMember(request.ChatId, request.UserId);
 
         var administatorUserInfoResponse = await
             _usersServerApiClient.GetByIdAsync(new GetByIdRequest() { UserId = _userContext.UserId });
-
-        var addedUserInfoResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest() { UserId = request.UserId });
 
         var adminName = $"{administatorUserInfoResponse.User.FirstName} {administatorUserInfoResponse.User.LastName}";
 

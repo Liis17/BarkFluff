@@ -7,6 +7,7 @@ using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Shared.Queue.Federation;
 
 using MediatR;
@@ -255,6 +256,19 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 throw new NoAccessToChatException();
             }
 
+            var chat = await _chatsStorage.GetChat(chatId.Value, cancellationToken);
+            if (chat is { Type: ChatType.Regular, IsGroupChat: false, IsFederated: false })
+            {
+                var peerId = chat.Members?.FirstOrDefault(member => member.UserId != senderId)?.UserId;
+                if (peerId.HasValue)
+                {
+                    var peer = await _usersServerApiClient.GetByIdAsync(
+                        new GetByIdRequest { UserId = peerId.Value },
+                        cancellationToken: cancellationToken);
+                    UserAccountStatusGuard.EnsureActive(peer.User.AccountStatus);
+                }
+            }
+
             // Fed-чат, отклонённый partner-нодой (privacy DenyFederatedDm, этап 2.5) — понятная
             // ошибка вместо тихой отправки в чат, который вторая сторона никогда не увидит.
             var federatedStatus = await _chatsStorage.GetFederatedStatusAsync(
@@ -281,6 +295,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             var personRepose = await _usersServerApiClient.GetByIdAsync(
                 new GetByIdRequest { UserId = request.UserId!.Value },
                 cancellationToken: cancellationToken);
+            UserAccountStatusGuard.EnsureActive(personRepose.User.AccountStatus);
 
             var chatIdWithPerson = await _chatsStorage.GetUserChatIdWithPerson(
                 personRepose.User.Id,

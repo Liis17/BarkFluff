@@ -3,6 +3,7 @@ using BarkFluff.Messages.Features.SendSecretMessage;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
 
 namespace BarkFluff.Messages.Tests.Features.SendSecretMessage;
@@ -12,11 +13,21 @@ public class SendSecretMessageCommandHandlerTests
     private readonly TestHelper _h = new();
     private readonly Mock<SecretMessageBuffer> _buffer;
     private readonly Mock<SecretMessageQueueSender> _queueSender;
+    private readonly Mock<UsersServerApi.UsersServerApiClient> _usersClient;
 
     public SendSecretMessageCommandHandlerTests()
     {
         _buffer = new Mock<SecretMessageBuffer>(Mock.Of<StackExchange.Redis.IConnectionMultiplexer>(), TestHelper.CreateLogger<SecretMessageBuffer>());
         _queueSender = new Mock<SecretMessageQueueSender>(_h.PublishEndpointMock.Object);
+        _usersClient = new Mock<UsersServerApi.UsersServerApiClient>();
+        SetupUserStatus(AccountStatus.Active);
+    }
+
+    private void SetupUserStatus(AccountStatus status)
+    {
+        _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns((GetByIdRequest request, Grpc.Core.Metadata? _, DateTime? _, CancellationToken _) =>
+                TestHelper.CreateAsyncCall(new GetByIdResponse { User = new User { Id = request.UserId, AccountStatus = status } }));
     }
 
     private SendSecretMessageCommandHandler CreateHandler(long userId, string? deviceId = "00000000-0000-0000-0000-000000000001")
@@ -24,9 +35,27 @@ public class SendSecretMessageCommandHandlerTests
         return new SendSecretMessageCommandHandler(
             _buffer.Object,
             _queueSender.Object,
+            _usersClient.Object,
             _h.CreateUserContext(userId, deviceId),
             _h.Metrics,
             TestHelper.CreateLogger<SendSecretMessageCommandHandler>());
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedRecipient_ThrowsBeforeEnqueueingMessage()
+    {
+        SetupUserStatus(AccountStatus.PendingDeletion);
+        var handler = CreateHandler(1);
+
+        var act = () => handler.Handle(new SendSecretMessageCommand
+        {
+            RecipientUserId = 2,
+            RecipientDeviceId = Guid.NewGuid(),
+            Envelope = new byte[100]
+        }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BarkFluff.Shared.Exceptions.Users.UserUnavailableException>();
+        _buffer.Verify(b => b.EnqueueMessageAsync(It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<byte[]>()), Times.Never);
     }
 
     [Fact]

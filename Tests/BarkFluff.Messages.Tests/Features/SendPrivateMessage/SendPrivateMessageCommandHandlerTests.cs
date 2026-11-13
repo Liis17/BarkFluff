@@ -3,7 +3,10 @@ using BarkFluff.Messages.Features.SendPrivateMessage;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
+
+using Grpc.Core;
 
 namespace BarkFluff.Messages.Tests.Features.SendPrivateMessage;
 
@@ -11,10 +14,20 @@ public class SendPrivateMessageCommandHandlerTests
 {
     private readonly TestHelper _h = new();
     private readonly EncryptedMessageQueueSender _queueSender;
+    private readonly Mock<UsersServerApi.UsersServerApiClient> _usersClient;
 
     public SendPrivateMessageCommandHandlerTests()
     {
         _queueSender = new EncryptedMessageQueueSender(_h.PublishEndpointMock.Object);
+        _usersClient = new Mock<UsersServerApi.UsersServerApiClient>();
+        SetupUserStatus(AccountStatus.Active);
+    }
+
+    private void SetupUserStatus(AccountStatus status)
+    {
+        _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns((GetByIdRequest request, Metadata? _, DateTime? _, CancellationToken _) =>
+                TestHelper.CreateAsyncCall(new GetByIdResponse { User = new User { Id = request.UserId, AccountStatus = status } }));
     }
 
     private SendPrivateMessageCommandHandler CreateHandler(long userId, string? deviceId = "00000000-0000-0000-0000-000000000001")
@@ -23,9 +36,30 @@ public class SendPrivateMessageCommandHandlerTests
             _h.ChatsStorage,
             _h.EncryptedMessagesStorage,
             _queueSender,
+            _usersClient.Object,
             _h.CreateUserContext(userId, deviceId),
             _h.Metrics,
             TestHelper.CreateLogger<SendPrivateMessageCommandHandler>());
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedPeer_ThrowsAndDoesNotSaveMessage()
+    {
+        SetupUserStatus(AccountStatus.Blocked);
+        var userId = 1L;
+        var chat = await _h.SeedChat(type: Domain.ChatType.Private, memberUserIds: [userId, 2], kdfSalt: new byte[32], passphraseVerifier: new byte[32], privateInviteState: Domain.PrivateChatInviteState.Accepted);
+        var handler = CreateHandler(userId);
+
+        var act = () => handler.Handle(new SendPrivateMessageCommand
+        {
+            ChatId = chat.Id,
+            Ciphertext = new byte[100],
+            Nonce = new byte[12],
+            AssociatedData = Array.Empty<byte>()
+        }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BarkFluff.Shared.Exceptions.Users.UserUnavailableException>();
+        _h.DbContext.EncryptedMessages.Should().BeEmpty();
     }
 
     [Fact]

@@ -2,9 +2,11 @@ using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Infrastructure;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Messages.Mapping;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
 
 using MediatR;
@@ -18,12 +20,14 @@ public class AcceptPrivateChatCommandHandler : IRequestHandler<AcceptPrivateChat
     private readonly EncryptedMessageQueueSender _queueSender;
     private readonly UserContext _userContext;
     private readonly MetricsCollector _metrics;
+    private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly ILogger<AcceptPrivateChatCommandHandler> _logger;
 
     public AcceptPrivateChatCommandHandler(
         ChatsStorage chatsStorage,
         PrivateChatInviteStore inviteStore,
         EncryptedMessageQueueSender queueSender,
+        UsersServerApi.UsersServerApiClient usersClient,
         UserContext userContext,
         MetricsCollector metrics,
         ILogger<AcceptPrivateChatCommandHandler> logger)
@@ -31,6 +35,7 @@ public class AcceptPrivateChatCommandHandler : IRequestHandler<AcceptPrivateChat
         _chatsStorage = chatsStorage;
         _inviteStore = inviteStore;
         _queueSender = queueSender;
+        _usersClient = usersClient;
         _userContext = userContext;
         _metrics = metrics;
         _logger = logger;
@@ -75,13 +80,19 @@ public class AcceptPrivateChatCommandHandler : IRequestHandler<AcceptPrivateChat
             throw new PrivateChatAlreadyAcceptedException();
         }
 
+        var inviterId = chat.Members?.FirstOrDefault()?.UserId;
+        if (inviterId.HasValue)
+        {
+            var inviter = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = inviterId.Value }, cancellationToken: cancellationToken);
+            UserAccountStatusGuard.EnsureActive(inviter.User.AccountStatus);
+        }
+
         var updated = await _chatsStorage.AcceptPrivateChat(request.ChatId, _userContext.UserId);
         await _inviteStore.RemoveAsync(request.ChatId);
 
-        var inviterId = chat.Members?.FirstOrDefault()?.UserId ?? 0;
         await _queueSender.SendInviteResolution(
             request.ChatId,
-            inviterId,
+            inviterId ?? 0,
             _userContext.UserId,
             accepted: true);
 

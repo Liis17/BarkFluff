@@ -31,6 +31,7 @@ public class SendMessageCommandHandlerTests
         var cacheMock = new Mock<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
         _chatCache = new ChatCache(cacheMock.Object, TestHelper.CreateLogger<ChatCache>());
         _queueSender = new MessageQueueSender(_h.PublishEndpointMock.Object);
+        SetupUsersClient(2);
     }
 
     private SendMessageCommandHandler CreateHandler(long userId)
@@ -56,11 +57,11 @@ public class SendMessageCommandHandlerTests
             ?? throw new InvalidOperationException("Outbox payload is empty");
     }
 
-    private void SetupUsersClient(long userId, string firstName = "Test", string lastName = "User", string username = "testuser")
+    private void SetupUsersClient(long userId, string firstName = "Test", string lastName = "User", string username = "testuser", AccountStatus accountStatus = AccountStatus.Active)
     {
         var response = new GetByIdResponse
         {
-            User = new User { Id = userId, FirstName = firstName, LastName = lastName, Username = username }
+            User = new User { Id = userId, FirstName = firstName, LastName = lastName, Username = username, AccountStatus = accountStatus }
         };
         _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
             .Returns(new AsyncUnaryCall<GetByIdResponse>(
@@ -88,6 +89,41 @@ public class SendMessageCommandHandlerTests
         result.Message.Content.Text.Should().Be("Hello");
         GetQueuedEvent().Message.Should().NotBeEmpty();
         _h.PublishEndpointMock.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedDirectChatPeer_RejectsClientMessage()
+    {
+        const long userId = 1;
+        var chat = await _h.SeedChat(memberUserIds: [userId, 2]);
+        SetupUsersClient(2, accountStatus: AccountStatus.Blocked);
+        var handler = CreateHandler(userId);
+
+        var act = () => handler.Handle(new SendMessageCommand
+        {
+            ChatId = chat.Id,
+            Message = new OutgoingMsg { Text = "not delivered" }
+        }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BarkFluff.Shared.Exceptions.Users.UserUnavailableException>();
+        _h.DbContext.Messages.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedDirectChatPeer_RejectsServerBotMessage()
+    {
+        SetupUsersClient(2, accountStatus: AccountStatus.PendingDeletion);
+        var handler = CreateHandler(1);
+
+        var act = () => handler.Handle(new SendMessageCommand
+        {
+            SenderId = 99,
+            UserId = 2,
+            Message = new OutgoingMsg { Text = "not delivered" }
+        }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BarkFluff.Shared.Exceptions.Users.UserUnavailableException>();
+        _h.DbContext.Messages.Should().BeEmpty();
     }
 
     [Fact]
