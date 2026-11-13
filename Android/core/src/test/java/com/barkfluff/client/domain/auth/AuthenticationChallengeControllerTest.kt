@@ -6,6 +6,9 @@ import com.barkfluff.client.domain.model.AuthenticationChallenge
 import com.barkfluff.client.domain.model.AuthenticationChallengeReference
 import com.barkfluff.client.domain.model.AuthenticationChallengeState
 import com.barkfluff.client.domain.model.AuthenticationCompletion
+import com.barkfluff.client.domain.model.AccountRestriction
+import com.barkfluff.client.domain.model.AccountStatus
+import com.barkfluff.client.domain.model.AuthenticationErrorCodes
 import com.barkfluff.client.domain.model.AuthenticationFactor
 import com.barkfluff.client.domain.model.AuthenticationLoginMode
 import com.barkfluff.client.domain.model.OtpEnrollment
@@ -57,6 +60,49 @@ class AuthenticationChallengeControllerTest {
 
         assertEquals(listOf("code-1"), completion.recoveryCodes)
         assertTrue(controller.resend().isFailure)
+    }
+
+    @Test
+    fun `blocked account completion preserves restriction details and clears the challenge`() = runBlocking {
+        val gateway = FakeGateway().apply {
+            completion = completion.copy(
+                errorCode = AuthenticationErrorCodes.ACCOUNT_BLOCKED,
+                accountRestriction = AccountRestriction(AccountStatus.BLOCKED, "terms violation", null),
+            )
+        }
+        val controller = AuthenticationChallengeController(gateway)
+        controller.begin { beginPasswordRecovery("alice") }
+
+        val completion = controller.complete("123456").getOrThrow()
+
+        assertEquals(AuthenticationErrorCodes.ACCOUNT_BLOCKED, completion.errorCode)
+        assertEquals(AccountStatus.BLOCKED, completion.accountRestriction?.status)
+        assertEquals("terms violation", completion.accountRestriction?.reason)
+        assertFalse(controller.hasActiveChallenge)
+    }
+
+    @Test
+    fun `pending deletion completion preserves date and clears the challenge`() = runBlocking {
+        val gateway = FakeGateway().apply {
+            completion = completion.copy(
+                errorCode = AuthenticationErrorCodes.ACCOUNT_PENDING_DELETION,
+                accountRestriction = AccountRestriction(
+                    AccountStatus.PENDING_DELETION,
+                    "requested by user",
+                    1_800_000_000_000L,
+                ),
+            )
+        }
+        val controller = AuthenticationChallengeController(gateway)
+        controller.begin { beginPasswordRecovery("alice") }
+
+        val completion = controller.complete("123456").getOrThrow()
+
+        assertEquals(AuthenticationErrorCodes.ACCOUNT_PENDING_DELETION, completion.errorCode)
+        assertEquals(AccountStatus.PENDING_DELETION, completion.accountRestriction?.status)
+        assertEquals("requested by user", completion.accountRestriction?.reason)
+        assertEquals(1_800_000_000_000L, completion.accountRestriction?.deletionScheduledAtMillis)
+        assertFalse(controller.hasActiveChallenge)
     }
 
     @Test

@@ -1438,4 +1438,16 @@
     <string name="voice_sender_you">You</string>
     <string name="cd_voice_player_close">Close player</string>
     <string name="voice_player_error">Could not play audio</string>
+    <string name="account_blocked_title">Account blocked</string>
+    <string name="account_pending_deletion_title">Account pending deletion</string>
+    <string name="account_blocked_user">Blocked user</string>
+    <string name="account_deleted_user">Deleted user</string>
+    <string name="account_restriction_reason">Reason: %1$s</string>
+    <string name="account_blocked_explanation">Only the server administrator can remove this block.</string>
+    <string name="account_deletion_date">Final deletion: %1$s</string>
+    <string name="account_pending_deletion_explanation">You can cancel deletion before this date by contacting the server administrator.</string>
+    <string name="account_restricted_chat_read_only">This chat is read-only because the other account is restricted by the server.</string>
+    <string name="account_session_blocked">Your session ended because the account is blocked. Only the server administrator can remove this restriction.</string>
+    <string name="account_session_pending_deletion">Your session ended because the account is pending deletion. Contact the server administrator.</string>
+    <string name="account_user_unavailable">This user is unavailable. Their account may be restricted by the server.</string>
 </resources>

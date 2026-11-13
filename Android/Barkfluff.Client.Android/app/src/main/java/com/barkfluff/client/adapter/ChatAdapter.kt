@@ -16,6 +16,7 @@ import barkfluff.shared.Shared
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemChatBinding
 import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.MarkdownRenderer
 import java.text.SimpleDateFormat
@@ -36,7 +37,8 @@ class ChatAdapter(
         val displayAvatarFileId: String?,
         val otherUserId: Long = 0,
         val unreadGroupPosition: UnreadGroupPosition = UnreadGroupPosition.NONE,
-        val isFooter: Boolean = false
+        val isFooter: Boolean = false,
+        val accountStatus: AccountStatus = AccountStatus.ACTIVE,
     )
 
     enum class UnreadGroupPosition { NONE, SINGLE, FIRST, MIDDLE, LAST }

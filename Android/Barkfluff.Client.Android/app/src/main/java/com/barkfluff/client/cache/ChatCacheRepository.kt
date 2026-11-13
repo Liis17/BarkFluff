@@ -23,6 +23,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.model.ChatFolder
 import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.domain.model.LastMessageSummary
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.notifications.isPushPreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -51,7 +52,8 @@ data class CacheScope(val id: String) {
 data class CachedChatDisplay(
     val title: String,
     val avatarFileId: String?,
-    val otherUserId: Long
+    val otherUserId: Long,
+    val accountStatus: AccountStatus = AccountStatus.ACTIVE,
 )
 
 internal fun mergeCachedChatDisplay(previous: ChatSummary?, incoming: ChatSummary): ChatSummary =
@@ -180,7 +182,8 @@ data class CachedChatDisplayEntity(
     val chatId: String,
     val title: String,
     val avatarFileId: String?,
-    val otherUserId: Long
+    val otherUserId: Long,
+    @ColumnInfo(defaultValue = "0") val accountStatusNumber: Int,
 )
 
 @Entity(
@@ -382,7 +385,7 @@ interface ChatCacheDao {
         PendingMessageReadEntity::class,
         PendingChatReadRangeEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class ChatCacheDatabase : RoomDatabase() {
@@ -418,7 +421,12 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         val dao = database().cacheDao()
         val meta = dao.meta(scope.id) ?: return@withContext null
         val displays = dao.displays(scope.id).associate { display ->
-            display.chatId to CachedChatDisplay(display.title, display.avatarFileId, display.otherUserId)
+            display.chatId to CachedChatDisplay(
+                display.title,
+                display.avatarFileId,
+                display.otherUserId,
+                AccountStatus.fromStoredNumber(display.accountStatusNumber),
+            )
         }
         CachedChatList(
             chats = dao.chats(scope.id).map { it.toChatData() },
@@ -479,7 +487,14 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
     suspend fun saveDisplay(scope: CacheScope, chatId: String, display: CachedChatDisplay) =
         withContext(Dispatchers.IO) {
             database().cacheDao().upsertDisplay(
-                CachedChatDisplayEntity(scope.id, chatId, display.title, display.avatarFileId, display.otherUserId)
+                CachedChatDisplayEntity(
+                    scope.id,
+                    chatId,
+                    display.title,
+                    display.avatarFileId,
+                    display.otherUserId,
+                    display.accountStatus.ordinal,
+                )
             )
         }
 
@@ -487,7 +502,14 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         withContext(Dispatchers.IO) {
             if (displays.isNotEmpty()) {
                 database().cacheDao().upsertDisplays(displays.map { (chatId, display) ->
-                    CachedChatDisplayEntity(scope.id, chatId, display.title, display.avatarFileId, display.otherUserId)
+                    CachedChatDisplayEntity(
+                        scope.id,
+                        chatId,
+                        display.title,
+                        display.avatarFileId,
+                        display.otherUserId,
+                        display.accountStatus.ordinal,
+                    )
                 })
             }
         }
@@ -954,7 +976,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         val key = databaseKey()
         return Room.databaseBuilder(appContext, ChatCacheDatabase::class.java, DATABASE_NAME)
             .openHelperFactory(SupportOpenHelperFactory(key))
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .build()
     }
 
@@ -1325,6 +1347,12 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
                     "CREATE INDEX IF NOT EXISTS index_pending_chat_read_ranges_scopeId_nextAttemptAtMillis " +
                         "ON pending_chat_read_ranges(scopeId, nextAttemptAtMillis)"
                 )
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE cached_chat_displays ADD COLUMN accountStatusNumber INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

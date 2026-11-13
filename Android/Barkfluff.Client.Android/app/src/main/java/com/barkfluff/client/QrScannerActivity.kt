@@ -12,6 +12,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.databinding.ActivityQrScannerBinding
 import com.barkfluff.client.domain.gateway.FastAuthGateway
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -141,9 +143,12 @@ class QrScannerActivity : AppCompatActivity() {
                 startActivity(intent)
                 finish()
             } else {
-                val msg = result.exceptionOrNull()?.message ?: getString(R.string.unknown_error)
+                val error = result.exceptionOrNull()
+                if (error != null && exitToLoginIfAccountRestricted(error)) return@launch
+                val msg = error?.let { accountRestrictionRpcMessage(it) ?: it.message }
+                    ?: getString(R.string.unknown_error)
                 Log.e(TAG, "Ошибка scanFastAuth: $msg")
-                Toast.makeText(this@QrScannerActivity, getString(R.string.settings_error_detail, msg), Toast.LENGTH_LONG).show()
+                Toast.makeText(this@QrScannerActivity, msg, Toast.LENGTH_LONG).show()
                 binding.textScanHint.text = getString(R.string.qr_scanner_hint)
                 isProcessing.set(false)
             }

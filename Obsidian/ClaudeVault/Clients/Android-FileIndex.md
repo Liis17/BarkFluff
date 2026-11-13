@@ -21,7 +21,7 @@ Parent: [[Clients/Android]]
 |---|---|
 | grpc | GrpcClientRegistry, GrpcApiTransport, TokenCoordinator, MediaHttpTransport, RealtimeService |
 | domain/gateway | DomainGateways contracts и GrpcGatewayAdapters production mapping |
-| domain/auth, domain/model | Challenge controller и доменные DTO/policies |
+| domain/auth, domain/model | Challenge controller, AuthenticationChallengeModels и AccountStatus с маппингом серверных статусов |
 | security | TlsTransportFactory, TlsTrustStore, TlsCertificateProbe, endpoint policy |
 | data | GlobalParam и локальные настройки сети |
 | repository | ChatRepository, PrivateChatRepository, SecretChatRepository |
@@ -38,11 +38,11 @@ Parent: [[Clients/Android]]
 | ChatViewModel.kt, ChatStateModules.kt | State/effect/intent и reducers обычного чата |
 | chat | RegularChatSession, MessageNavigator и timeline coordination |
 | adapter | MessageRowProjector, MessageAdapter и UI lists |
-| cache | SQLCipher Room v5, outbox records, migration и выборочная очистка (ClearCacheOptions, clearHistoryCache/clearSecretHistory/clearOutgoingKeepReads, compact) |
+| cache | SQLCipher Room v7, статус peer в cached_chat_displays, миграция v6→v7, outbox records и выборочная очистка (ClearCacheOptions, clearHistoryCache/clearSecretHistory/clearOutgoingKeepReads, compact) |
 | drafts | ChatDraftRepository и ComposerAttachmentStore |
-| send | OutgoingMessageQueue, OutgoingMessageWorker и retry policy |
-| auth | Activity-retained challenge state и диалог |
-| search | Compose user/chat/message search и view models |
+| send | OutgoingMessageQueue, OutgoingMessageWorker и retry policy; GrpcOutgoingFailure помечает UserUnavailable постоянной ошибкой |
+| auth | Activity-retained challenge state и диалог; AccountRestrictionUi обрабатывает статус входа и завершение сессии |
+| search | Compose user/chat/message search и view models; ограниченные профили локально маскируются |
 | notifications | FCM service, NotificationHelper, receivers, realtime side effects |
 | calls | LiveKit engine, call screens, Telecom bridge, foreground service |
 | voice, audio | Voice capture, playback, waveform and MediaSession |

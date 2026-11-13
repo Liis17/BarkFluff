@@ -1428,4 +1428,16 @@
     <string name="voice_sender_you">你</string>
     <string name="cd_voice_player_close">关闭播放器</string>
     <string name="voice_player_error">无法播放音频</string>
+    <string name="account_blocked_title">账号已封禁</string>
+    <string name="account_pending_deletion_title">账号正在删除</string>
+    <string name="account_blocked_user">已封禁用户</string>
+    <string name="account_deleted_user">已删除用户</string>
+    <string name="account_restriction_reason">原因：%1$s</string>
+    <string name="account_blocked_explanation">只有服务器管理员可以解除封禁。</string>
+    <string name="account_deletion_date">最终删除时间：%1$s</string>
+    <string name="account_pending_deletion_explanation">在此日期之前联系服务器管理员可以取消删除。</string>
+    <string name="account_restricted_chat_read_only">对方账号受到服务器限制，此聊天为只读。</string>
+    <string name="account_session_blocked">账号已封禁，当前会话已结束。只有服务器管理员可以解除此限制。</string>
+    <string name="account_session_pending_deletion">账号正在删除，当前会话已结束。请联系服务器管理员。</string>
+    <string name="account_user_unavailable">该用户不可用，其账号可能受到服务器限制。</string>
 </resources>

@@ -1489,4 +1489,16 @@
     <string name="voice_sender_you">Вы</string>
     <string name="cd_voice_player_close">Закрыть плеер</string>
     <string name="voice_player_error">Не удалось воспроизвести аудио</string>
+    <string name="account_blocked_title">Аккаунт заблокирован</string>
+    <string name="account_pending_deletion_title">Аккаунт удаляется</string>
+    <string name="account_blocked_user">Заблокированный пользователь</string>
+    <string name="account_deleted_user">Удалённый пользователь</string>
+    <string name="account_restriction_reason">Причина: %1$s</string>
+    <string name="account_blocked_explanation">Снять блокировку может только администратор сервера.</string>
+    <string name="account_deletion_date">Окончательное удаление: %1$s</string>
+    <string name="account_pending_deletion_explanation">До этой даты удаление можно отменить, обратившись к администратору сервера.</string>
+    <string name="account_restricted_chat_read_only">Этот чат доступен только для чтения: собеседник ограничен сервером.</string>
+    <string name="account_session_blocked">Сессия завершена: аккаунт заблокирован. Снять ограничение может только администратор сервера.</string>
+    <string name="account_session_pending_deletion">Сессия завершена: аккаунт удаляется. Обратитесь к администратору сервера.</string>
+    <string name="account_user_unavailable">Этот пользователь недоступен. Возможно, его аккаунт ограничен сервером.</string>
 </resources>

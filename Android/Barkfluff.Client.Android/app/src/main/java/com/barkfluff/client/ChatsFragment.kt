@@ -25,9 +25,12 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.FragmentChatsBinding
 import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.perf.PerfTrace
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.accountRestrictionSessionMessage
+import com.barkfluff.client.grpc.TokenValidity
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -172,7 +175,7 @@ class ChatsFragment : Fragment() {
             viewModel.events.collect { event ->
                 when (event) {
                     ChatsEvent.NavigateToLogin -> navigateToLogin()
-                    ChatsEvent.SessionRejected -> exitRejectedSession()
+                    is ChatsEvent.SessionRejected -> exitRejectedSession(event.validity)
                     ChatsEvent.RefreshUserAvatar -> loadUserAvatar()
                     is ChatsEvent.ChatLoadError -> Snackbar.make(
                         binding.root,
@@ -500,7 +503,9 @@ class ChatsFragment : Fragment() {
                 chatId = chat.id,
                 title = displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.create_chat_private) },
                 inviteState = chat.privateInviteState.number,
-                inviterUserId = chat.privateInviterUserId
+                inviterUserId = chat.privateInviterUserId,
+                otherUserId = displayItem?.otherUserId ?: 0L,
+                accountStatus = displayItem?.accountStatus ?: AccountStatus.ACTIVE,
             ).putExtra(PerfTrace.EXTRA_CHAT_OPEN, true))
             return
         }
@@ -511,6 +516,7 @@ class ChatsFragment : Fragment() {
             putExtra("chat_avatar_file_id", displayItem?.displayAvatarFileId ?: chat.pictureFileId.ifBlank { null })
             putExtra("is_group_chat", chat.isGroupChat)
             putExtra("other_user_id", displayItem?.otherUserId ?: 0L)
+            putExtra("account_status", displayItem?.accountStatus?.ordinal ?: AccountStatus.ACTIVE.ordinal)
             putExtra(PerfTrace.EXTRA_CHAT_OPEN, true)
         }
 
@@ -535,10 +541,10 @@ class ChatsFragment : Fragment() {
     }
 
     /** Ordinary cache and outbox stay scoped for a later login; only crypto state is wiped. */
-    private suspend fun exitRejectedSession() {
+    private suspend fun exitRejectedSession(validity: TokenValidity) {
         val app = requireContext().applicationContext as BarkFluffApplication
         if (com.barkfluff.client.utils.LogoutHelper.exitRejectedSession(app, app.prekeyManager)) {
-            if (isAdded) navigateToLogin()
+            if (isAdded) navigateToLogin(requireContext().accountRestrictionSessionMessage(validity))
             return
         }
         val root = _binding?.root ?: return
@@ -547,8 +553,10 @@ class ChatsFragment : Fragment() {
             .show()
     }
 
-    private fun navigateToLogin() {
-        val intent = Intent(requireContext(), LoginActivity::class.java)
+    private fun navigateToLogin(restrictionNotice: String? = null) {
+        val intent = Intent(requireContext(), LoginActivity::class.java).apply {
+            restrictionNotice?.let { putExtra(LoginActivity.EXTRA_ACCOUNT_RESTRICTION_NOTICE, it) }
+        }
         startActivity(intent)
         requireActivity().finish()
     }

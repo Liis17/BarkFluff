@@ -80,6 +80,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import com.barkfluff.client.R
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.view.AvatarView
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -311,7 +312,15 @@ private fun SearchResults(
             items = users,
             key = { _, user -> user.userData.userId }
         ) { index, user ->
-            val accessibilityText = listOf(user.displayFullName, user.displayUsername)
+            val restricted = user.userData.accountStatus != AccountStatus.ACTIVE
+            val displayName = when (user.userData.accountStatus) {
+                AccountStatus.BLOCKED, AccountStatus.UNKNOWN -> stringResourceCompat(R.string.account_blocked_user)
+                AccountStatus.PENDING_DELETION, AccountStatus.DELETED -> stringResourceCompat(R.string.account_deleted_user)
+                AccountStatus.ACTIVE -> user.displayFullName
+            }
+            val displayUsername = if (restricted) "" else user.displayUsername
+            val displayAvatar = if (restricted) null else user.displayAvatarFileId
+            val accessibilityText = listOf(displayName, displayUsername)
                 .filter { it.isNotBlank() }
                 .joinToString(", ")
             SearchGroupedItem(
@@ -326,16 +335,16 @@ private fun SearchResults(
                 ListItem(
                     headlineContent = {
                         Text(
-                            text = user.displayFullName,
+                            text = displayName,
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     },
-                    supportingContent = if (user.displayUsername.isBlank()) null else {
+                    supportingContent = if (displayUsername.isBlank()) null else {
                         {
                             Text(
-                                text = user.displayUsername,
+                                text = displayUsername,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -344,8 +353,8 @@ private fun SearchResults(
                     },
                     leadingContent = {
                         SearchAvatar(
-                            fileId = user.displayAvatarFileId,
-                            displayName = user.displayFullName,
+                            fileId = displayAvatar,
+                            displayName = displayName,
                             userId = user.userData.userId,
                             getAvatarUrl = getAvatarUrl
                         )

@@ -34,6 +34,9 @@ service UsersApi {
   // Найти пользователей по имени/фамилии/юзернейму
   rpc SearchUsers(SearchUsersRequest) returns(SearchUsersResponse);
 
+  // Резолв федеративного адреса @username:servername (Фаза 2; до неё — Unimplemented)
+  rpc ResolveFederatedUser(ResolveFederatedUserRequest) returns (ResolveFederatedUserResponse);
+
   // Получить баджи пользователя
   rpc GetUserBadges(GetUserBadgesRequest) returns(GetUserBadgesResponse);
 
@@ -49,6 +52,9 @@ service UsersApi {
   // Установить Firebase токен устройства
   rpc SetFirebaseToken(SetFirebaseTokenRequest) returns(SetFirebaseTokenResponse);
 
+  // Удалить Firebase токен текущего устройства
+  rpc ClearFirebaseToken(ClearFirebaseTokenRequest) returns(ClearFirebaseTokenResponse);
+
   // Включить или выключить уведомления для текущего устройства
   rpc SetNotificationsEnabled(SetNotificationsEnabledRequest) returns(SetNotificationsEnabledResponse);
 
@@ -63,6 +69,9 @@ service UsersApi {
 
   // Обновить настройки приватности текущего пользователя
   rpc UpdatePrivacySettings(UpdatePrivacySettingsRequest) returns(UpdatePrivacySettingsResponse);
+
+  // Зафиксировать принятие Пользовательского соглашения и Политики конфиденциальности
+  rpc AcceptLegalConsent(AcceptLegalConsentRequest) returns(AcceptLegalConsentResponse);
 
   // Получить персонализацию текущего пользователя
   rpc GetPersonalization(GetPersonalizationRequest) returns(GetPersonalizationResponse);
@@ -134,6 +143,13 @@ service UsersApi {
 }
 
 service UsersServerApi {
+  rpc SetVerifiedEmail(SetVerifiedEmailRequest) returns(SetVerifiedEmailResponse);
+
+  // Административное изменение статуса локального аккаунта.
+  rpc SetAccountRestriction(SetAccountRestrictionRequest) returns(SetAccountRestrictionResponse);
+  rpc GetAccountRestriction(GetAccountRestrictionRequest) returns(GetAccountRestrictionResponse);
+  rpc ClaimAccountsForDeletion(ClaimAccountsForDeletionRequest) returns(ClaimAccountsForDeletionResponse);
+  rpc CompleteAccountCleanup(CompleteAccountCleanupRequest) returns(CompleteAccountCleanupResponse);
   
   // Найти по логину
   rpc FindByLogin(FindByLoginRequest) returns(FindByLoginResponse);
@@ -195,6 +211,9 @@ service UsersServerApi {
   // Удалить устройство пользователя
   rpc DeleteUserDevice(DeleteUserDeviceRequest) returns(DeleteUserDeviceResponse);
 
+  // Обновить имя устройства и версию приложения (вызывается Identity при refresh токена)
+  rpc UpdateDeviceAppInfo(UpdateDeviceAppInfoRequest) returns(UpdateDeviceAppInfoResponse);
+
   // Получить публичную информацию пользователя по юзернейму (для веб-сервера)
   rpc GetUserByUsername(GetUserByUsernameRequest) returns(GetUserByUsernameResponse);
 
@@ -219,6 +238,9 @@ service UsersServerApi {
   // Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
   rpc GetUserPrivacy(GetUserPrivacyRequest) returns(GetUserPrivacyResponse);
 
+  // Получить подмножество чатов, замьюченных пользователем (для флага muted в Messages)
+  rpc GetMutedChatIds(GetMutedChatIdsRequest) returns(GetMutedChatIdsResponse);
+
   // Обновить профиль пользователя (для админ-панели)
   rpc UpdateProfileServer(UpdateProfileServerRequest) returns(UpdateProfileServerResponse);
 
@@ -227,6 +249,52 @@ service UsersServerApi {
 
   // Получить URL постера профиля пользователя (для админ-панели)
   rpc GetProfilePosterServer(GetProfilePosterServerRequest) returns(GetProfilePosterServerResponse);
+
+  // Создать бот-пользователя (для сервиса Bots). Идемпотентно: если username уже занят ботом — вернуть его id.
+  rpc CreateBotUser(CreateBotUserRequest) returns(CreateBotUserResponse);
+
+  // Удалить бот-аккаунт (для сервиса Bots): освободить username, исключить из поиска. Чаты сохраняются.
+  rpc DeleteBotUser(DeleteBotUserRequest) returns(DeleteBotUserResponse);
+
+  // Федерация: батч-upsert кешей remote-профилей (валидация — правила пиннинга uuid к server_name).
+  // Этап 2.1.
+  rpc UpsertRemoteUsers(UpsertRemoteUsersRequest) returns(UpsertRemoteUsersResponse);
+
+  // Messages: батч-чтение профилей по UUID (локальные и remote вперемешку) для отображения remote-авторов.
+  // Этап 2.1.
+  rpc GetUsersByUuid(GetUsersByUuidRequest) returns(GetUsersByUuidResponse);
+
+  // Федерация: профиль локального пользователя (privacy-фильтрованный) по username или uuid.
+  // Используется S2S GetUserProfile. Этап 2.1.
+  rpc GetFederatedProfile(GetFederatedProfileRequest) returns(GetFederatedProfileResponse);
+
+  // Отдавать ли аватар пользователя в федерацию (этап 3.4). Ровно то же правило, которым
+  // GetFederatedProfile решает, показывать ли avatar_file_id: если профиль наружу аватар
+  // отдал — FetchFile его отдаст, если скрыл — откажет даже по утёкшей ссылке.
+  rpc IsAvatarVisibleToFederation(IsAvatarVisibleToFederationRequest) returns(IsAvatarVisibleToFederationResponse);
+
+  // Anti-open-proxy (этап 3.4): существует ли remote-профиль с такой парой (нода, аватар).
+  // Без этой проверки маршрут /download/fed/ проксировал бы произвольный файл с любой ноды.
+  rpc CheckRemoteAvatarRef(CheckRemoteAvatarRefRequest) returns(CheckRemoteAvatarRefResponse);
+}
+
+// Удаление бот-аккаунта (серверный, для сервиса Bots)
+message DeleteBotUserRequest {
+  int64 user_id = 1; // идентификатор бота
+}
+
+message DeleteBotUserResponse { }
+
+// Создание бот-пользователя (серверный, для сервиса Bots)
+message CreateBotUserRequest {
+  string username = 1;               // юзернейм бота (обязан заканчиваться на "bot", кроме bypass)
+  string first_name = 2;             // отображаемое имя бота
+  bool bypass_username_rules = 3;    // true для системных ботов (напр. botfather): пропустить проверку формата/суффикса
+}
+
+message CreateBotUserResponse {
+  int64 user_id = 1;         // идентификатор созданного (или существующего) бота
+  bool already_existed = 2;  // true если бот с таким username уже существовал
 }
 
 // Установить аватарку (серверный)
@@ -271,12 +339,70 @@ message SearchUsersServerRequest {
   string query = 1;   // Поиск по username или user_id (пустой = все)
   int32 offset = 2;
   int32 size = 3;     // макс 50
+  optional AccountStatus status_filter = 4;
 }
 
 message SearchUsersServerResponse {
   repeated User users = 1;
   int32 total_count = 2;
+  repeated SearchUserServerResult results = 3;
 }
+
+message SearchUserServerResult {
+  User user = 1;
+  AccountRestrictionInfo restriction = 2;
+}
+
+enum AccountStatus {
+  ACTIVE = 0;
+  BLOCKED = 1;
+  PENDING_DELETION = 2;
+  DELETED = 3;
+}
+
+enum AccountRestrictionAction {
+  ACCOUNT_RESTRICTION_ACTION_UNSPECIFIED = 0;
+  BLOCK = 1;
+  UNBLOCK = 2;
+  SCHEDULE_DELETION = 3;
+  CANCEL_DELETION = 4;
+}
+
+message AccountRestrictionInfo {
+  AccountStatus status = 1;
+  string reason = 2;
+  google.protobuf.Timestamp restricted_at = 3;
+  google.protobuf.Timestamp deletion_scheduled_at = 4;
+}
+
+message SetAccountRestrictionRequest {
+  int64 user_id = 1;
+  AccountRestrictionAction action = 2;
+  string reason = 3;
+}
+
+message SetAccountRestrictionResponse {
+  User user = 1;
+  AccountRestrictionInfo restriction = 2;
+  string email = 3;
+}
+
+message GetAccountRestrictionRequest { int64 user_id = 1; }
+
+message GetAccountRestrictionResponse {
+  AccountRestrictionInfo restriction = 1;
+  string username = 2;
+  string first_name = 3;
+  string email = 4;
+}
+
+message ClaimAccountsForDeletionRequest { int32 limit = 1; }
+
+message ClaimAccountsForDeletionResponse { repeated int64 user_ids = 1; }
+
+message CompleteAccountCleanupRequest { int64 user_id = 1; }
+
+message CompleteAccountCleanupResponse { }
 
 // Обновление лимита хранилища
 message UpdateStorageLimitRequest {
@@ -377,7 +503,11 @@ message AddDraftUserRequest {
   string last_name = 2; // фамилия
   string username = 3; // имя пользователя
   string email = 4; // почта
+  string registration_id = 5; // Idempotency key supplied only by Identity.
 }
+
+message SetVerifiedEmailRequest { int64 user_id = 1; string email = 2; }
+message SetVerifiedEmailResponse { }
 
 message AddDraftUserResponse {
   int64 user_id = 1; // идентификатор пользователя
@@ -419,6 +549,24 @@ message User{
   repeated UserBadge badges = 9; // баджи пользователя
   int32 storage_limit_gb = 10; // лимит хранилища в гигабайтах
   string profile_poster_file_id = 11; // FileId постера/фона профиля (пусто если не задан)
+  bool is_bot = 12; // является ли пользователь ботом
+  string uuid = 13; // Глобально уникальный идентификатор пользователя (Guid), для федерации
+  AccountStatus account_status = 14;
+}
+
+message ResolveFederatedUserRequest {
+  string fid = 1; // "@username:servername" (допускается без @)
+}
+
+message ResolveFederatedUserResponse {
+  bool found = 1;
+  string uuid = 2;
+  string username = 3;
+  string server_name = 4;
+  string first_name = 5;
+  string last_name = 6;
+  string bio = 7;
+  string avatar_url = 8; // проксируемый URL своей ноды (пусто, если скрыт/нет)
 }
 
 // Сообщения для работы с баджами
@@ -599,6 +747,19 @@ message RegisterDeviceResponse {
   Device device = 1; // Зарегистрированное устройство
 }
 
+// Запросы и ответы для обновления имени устройства и версии приложения (внутренний эндпоинт)
+
+message UpdateDeviceAppInfoRequest {
+  string device_id = 1; // Уникальный идентификатор устройства (GUID)
+  int64 user_id = 2; // Идентификатор пользователя
+  string original_name = 3; // Оригинальное имя устройства
+  string app_name = 4; // Имя приложения (с версией)
+}
+
+message UpdateDeviceAppInfoResponse {
+  bool updated = 1; // true — данные отличались и были записаны
+}
+
 // Запросы и ответы для получения устройств пользователя (внутренний эндпоинт)
 
 message GetUserDevicesRequest {
@@ -632,20 +793,34 @@ message GetUserByUsernameResponse {
   string bio = 5; // био
   string profile_picture = 6; // ссылка на аватарку
   string profile_poster_url = 7; // ссылка на постер/фон профиля (пусто если не задан)
+  bool is_bot = 8; // является ли пользователь ботом
+  int64 id = 9; // идентификатор пользователя
 }
 
 // Запросы и ответы для установки Firebase токена
 
 message SetFirebaseTokenRequest {
   string firebase_token = 1; // Firebase токен устройства
+  PushPlatform push_platform = 2; // Платформа, которой принадлежит токен
 }
 
 message SetFirebaseTokenResponse { }
+
+message ClearFirebaseTokenRequest { }
+
+message ClearFirebaseTokenResponse { }
+
+enum PushPlatform {
+  PUSH_PLATFORM_UNSPECIFIED = 0;
+  PUSH_PLATFORM_ANDROID = 1;
+  PUSH_PLATFORM_WEB = 2;
+}
 
 // Запросы и ответы для получения устройств с Firebase токенами
 
 message GetDevicesWithFirebaseTokensRequest {
   repeated int64 user_ids = 1; // идентификаторы пользователей
+  string chat_id = 2; // если задан (Guid-строка) — исключить пользователей, замьютивших этот чат; пусто = без фильтра
 }
 
 message GetDevicesWithFirebaseTokensByDeviceIdsRequest {
@@ -663,6 +838,7 @@ message DeviceFirebaseToken {
   int64 user_id = 1; // идентификатор пользователя
   string device_id = 2; // идентификатор устройства
   string firebase_token = 3; // Firebase токен
+  PushPlatform push_platform = 4; // платформа токена
 }
 
 // Запросы и ответы для включения/выключения уведомлений на текущем устройстве
@@ -677,7 +853,7 @@ message SetNotificationsEnabledResponse { }
 
 message SetChatMutedRequest {
   string chat_id = 1;                        // идентификатор чата (Guid-строка)
-  bool muted = 2;                            // true = замьютить; false = снять mute
+  bool muted = 2;                            // true = замьютить; false = снять mute (удалить запись)
   google.protobuf.Timestamp muted_until = 3; // до какого времени mute (пусто при muted=true => навсегда)
 }
 
@@ -692,6 +868,17 @@ message MutedChat {
 
 message GetMutedChatsResponse {
   repeated MutedChat chats = 1; // активные муьюты текущего пользователя
+}
+
+// Батч-запрос замьюченных чатов (внутренний, для сервиса Messages)
+
+message GetMutedChatIdsRequest {
+  int64 user_id = 1;             // идентификатор пользователя
+  repeated string chat_ids = 2;  // проверяемые чаты (Guid-строки)
+}
+
+message GetMutedChatIdsResponse {
+  repeated string muted_chat_ids = 1; // подмножество chat_ids с активным mute
 }
 
 // Настройки приватности пользователя
@@ -714,6 +901,7 @@ message PrivacySettings {
   ProfileFieldVisibility email_visibility = 4;    // видимость почты
   bool search_visible = 5;                        // показывать ли пользователя в выдаче поиска
   ProfileFieldVisibility online_visibility = 6;   // видимость онлайн-статуса
+  bool deny_federated_dm = 7;                     // Запретить входящие сообщения с других серверов (default false = разрешено)
 }
 
 message GetPrivacySettingsRequest { }
@@ -727,6 +915,12 @@ message UpdatePrivacySettingsRequest {
 }
 
 message UpdatePrivacySettingsResponse { }
+
+message AcceptLegalConsentRequest {
+  string revision = 1; // Редакция документов — дата «Последнее обновление» из шапки соглашения
+}
+
+message AcceptLegalConsentResponse { }
 
 message GetUserPrivacyRequest {
   int64 user_id = 1;
@@ -774,14 +968,14 @@ message GetUserSettingsResponse {
 }
 
 message SetGlobalChatBackgroundRequest {
-  string chat_background_file_id = 1;
+  string chat_background_file_id = 1; // пусто = без глобального фона
 }
 
 message SetGlobalChatBackgroundResponse { }
 
 message SetChatBackgroundRequest {
   string chat_id = 1;
-  string chat_background_file_id = 2;
+  string chat_background_file_id = 2; // пусто = использовать глобальный фон
 }
 
 message SetChatBackgroundResponse { }
@@ -899,7 +1093,8 @@ message PrekeyBundle {
   bool kyber_prekey_is_last_resort = 8; // true если kyber_prekey взят из last-resort слота
 }
 
-// Сериализованный libsignal Kyber prekey и подпись identity-ключом.
+// Сериализованный libsignal Kyber prekey и подпись identity-ключом. Сервер ограничивает размер полей,
+// но подпись и содержимое криптографически проверяет клиент.
 message SignedKyberPreKey {
   uint32 prekey_id = 1;
   bytes public_key = 2;
@@ -982,4 +1177,96 @@ message GetOwnPrekeyStatusResponse {
   uint32 registration_id = 5;
   SignedKyberPreKey last_resort_kyber_prekey = 6;
   bool has_bundle = 7;
+}
+
+// -- Федеративные профили (этап 2.1) --------------------------------------------
+
+// Одна запись батча UpsertRemoteUsers. Federation присылает профиль, полученный с origin-ноды;
+// Users применяет правила пиннинга (uuid↔server_name) и возвращает per-запись результат.
+message UpsertRemoteUserInfo {
+  string uuid = 1;            // UUID с origin-ноды (PK в RemoteUsers)
+  string username = 2;
+  string server_name = 3;     // punycode A-label lowercase
+  string first_name = 4;
+  string last_name = 5;
+  string bio = 6;
+  string avatar_file_id = 7;  // FileId на origin (пусто = нет)
+  bool is_deactivated = 8;
+}
+
+message UpsertRemoteUsersRequest {
+  repeated UpsertRemoteUserInfo records = 1;
+}
+
+message UpsertRemoteUserResult {
+  string uuid = 1;
+  bool ok = 2;
+  // Пусто при ok=true. Возможные значения: "LocalUuidCollision", "ServerNameMismatch".
+  string reject_reason = 3;
+}
+
+message UpsertRemoteUsersResponse {
+  repeated UpsertRemoteUserResult results = 1;
+}
+
+// Профиль пользователя по UUID (локальный или remote). Для рендеринга remote-авторов в Messages.
+message UserProfileByUuid {
+  string uuid = 1;
+  bool found = 2;
+  bool is_remote = 3;        // true — RemoteUser, false — локальный User
+  string server_name = 4;    // punycode A-label lowercase (пусто для локального)
+  string username = 5;
+  string first_name = 6;
+  string last_name = 7;
+  string bio = 8;            // локальный: после privacy-фильтра (None здесь — для межсервисного запроса отдаём как есть)
+  string avatar_file_id = 9; // для локального: ProfilePicture; для remote: AvatarFileId на origin
+  bool is_deactivated = 10;  // только для remote
+  int64 user_id = 11;        // только для локального (для remote = 0): numeric ID для создания ChatMember
+  bool deny_federated_dm = 12; // только для локального (для remote всегда false): privacy-запрет входящих fed-DM (этап 2.5)
+  AccountStatus account_status = 13;
+}
+
+message GetUsersByUuidRequest {
+  repeated string uuids = 1; // Guid в строковой форме
+}
+
+message GetUsersByUuidResponse {
+  repeated UserProfileByUuid users = 1;
+}
+
+// Privacy-фильтрованный профиль локального пользователя для S2S-отдачи (GetUserProfile).
+// bio/avatar_file_id пустые, если скрыты privacy; found=false если профиль скрыт целиком или
+// пользователь деактивирован/черновик.
+message GetFederatedProfileRequest {
+  oneof user {
+    string username = 1; // username без домена
+    string uuid = 2;     // Guid в строковой форме
+  }
+}
+
+message GetFederatedProfileResponse {
+  bool found = 1;
+  string uuid = 2;
+  string username = 3;
+  string first_name = 4;
+  string last_name = 5;
+  string bio = 6;
+  string avatar_file_id = 7; // FileId на этой ноде (пусто если скрыт/нет)
+}
+
+message IsAvatarVisibleToFederationRequest {
+  int64 user_id = 1;
+}
+
+message IsAvatarVisibleToFederationResponse {
+  bool visible = 1;
+}
+
+message CheckRemoteAvatarRefRequest {
+  string server_name = 1;
+  string file_id = 2;
+}
+
+message CheckRemoteAvatarRefResponse {
+  bool exists = 1;
 }

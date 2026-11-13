@@ -4,6 +4,8 @@ package com.barkfluff.client.domain.model
 object AuthenticationErrorCodes {
     const val ACCOUNT_NOT_FOUND = "account_not_found"
     const val LOGIN_MODE_DISABLED = "login_mode_disabled"
+    const val ACCOUNT_BLOCKED = "account_blocked"
+    const val ACCOUNT_PENDING_DELETION = "account_pending_deletion"
 }
 
 /** The account policy selected by the user and enforced by Identity. */
@@ -63,6 +65,7 @@ data class AuthenticationCompletion(
     val securityProof: AuthenticationChallengeReference?,
     val recoveryCodes: List<String>,
     val errorCode: String,
+    val accountRestriction: AccountRestriction? = null,
 )
 
 data class RegistrationRequest(

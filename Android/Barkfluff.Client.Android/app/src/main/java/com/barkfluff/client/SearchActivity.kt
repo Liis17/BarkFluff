@@ -18,12 +18,16 @@ import androidx.compose.runtime.setValue
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.search.BarkFluffSearchTheme
 import com.barkfluff.client.search.SearchScreen
 import com.barkfluff.client.search.SearchUser
 import com.barkfluff.client.search.SearchViewModel
 import com.barkfluff.client.utils.showImeAware
+import com.barkfluff.client.utils.accountStatusLabel
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -90,7 +94,7 @@ class SearchActivity : AppCompatActivity() {
         if (isActionInProgress) return
         if (intent.getStringExtra(EXTRA_MODE) == MODE_PICK_AUTHOR) {
             setResult(RESULT_OK, Intent().putExtra(EXTRA_AUTHOR_ID, user.userData.userId)
-                .putExtra(EXTRA_AUTHOR_NAME, user.displayFullName))
+                .putExtra(EXTRA_AUTHOR_NAME, userDisplayName(user.userData)))
             finish()
             return
         }
@@ -112,10 +116,8 @@ class SearchActivity : AppCompatActivity() {
                     val chatId = result.getOrNull()
                     Log.d(TAG, "openChatWithUser: Got chatId=$chatId")
 
-                    val displayName = "${userData.firstName} ${userData.lastName}"
-                        .trim()
-                        .ifBlank { userData.username }
-                    val avatarFileId = userData.profilePicturePreviewFileId
+                    val displayName = userDisplayName(userData)
+                    val avatarFileId = if (userData.accountStatus != AccountStatus.ACTIVE) null else userData.profilePicturePreviewFileId
                         .ifBlank { userData.profilePictureFileId }
                         .ifBlank { null }
 
@@ -129,12 +131,12 @@ class SearchActivity : AppCompatActivity() {
                     startActivity(intent)
                 } else {
                     Log.e(TAG, "Ошибка получения chatId", result.exceptionOrNull())
+                    val error = result.exceptionOrNull()
+                    if (error != null && exitToLoginIfAccountRestricted(error)) return@launch
                     Toast.makeText(
                         this@SearchActivity,
-                        getString(
-                            R.string.chat_open_failed_detail,
-                            result.exceptionOrNull()?.message.orEmpty()
-                        ),
+                        error?.let { accountRestrictionRpcMessage(it) }
+                            ?: getString(R.string.chat_open_failed_detail, error?.message.orEmpty()),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -201,28 +203,35 @@ class SearchActivity : AppCompatActivity() {
                     passphrase,
                     rememberKey
                 )
-                result.onSuccess { creation ->
-                    val title = "${userData.firstName} ${userData.lastName}"
-                        .trim()
-                        .ifBlank { userData.username }
-                    startActivity(
-                        ChatActivity.privateChatIntent(
-                            this@SearchActivity,
-                            chatId = creation.chat.id,
-                            title = title
-                        )
-                    )
-                    finish()
-                }.onFailure {
+                val error = result.exceptionOrNull()
+                if (error != null) {
+                    if (exitToLoginIfAccountRestricted(error)) return@launch
                     Toast.makeText(
                         this@SearchActivity,
-                        getString(R.string.private_chat_open_failed, it.message.orEmpty()),
+                        accountRestrictionRpcMessage(error) ?: getString(R.string.private_chat_open_failed, error.message.orEmpty()),
                         Toast.LENGTH_LONG
                     ).show()
+                    return@launch
                 }
+                val creation = result.getOrNull()!!
+                val title = userDisplayName(userData)
+                startActivity(
+                    ChatActivity.privateChatIntent(
+                        this@SearchActivity,
+                        chatId = creation.chat.id,
+                        title = title,
+                        otherUserId = userData.userId,
+                        accountStatus = userData.accountStatus,
+                    )
+                )
+                finish()
             } finally {
                 isActionInProgress = false
             }
         }
     }
+
+    private fun userDisplayName(user: UserProfile): String =
+        if (user.accountStatus != AccountStatus.ACTIVE) accountStatusLabel(user.accountStatus)
+        else "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
 }

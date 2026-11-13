@@ -18,6 +18,8 @@ import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.repository.PrivateChatRepository
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import com.barkfluff.client.utils.showImeAware
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -149,9 +151,14 @@ class PrivateChatController(
                         binding.e2eInviteContainer.visibility = View.GONE
                         setInputEnabled(true)
                         loadHistory()
-                    }.onFailure {
-                        Log.w(TAG, "Failed to accept private chat invite", it)
-                        Toast.makeText(activity, R.string.invalid_passphrase, Toast.LENGTH_LONG).show()
+                    }.onFailure { error ->
+                        Log.w(TAG, "Failed to accept private chat invite", error)
+                        if (activity.exitToLoginIfAccountRestricted(error)) return@onFailure
+                        Toast.makeText(
+                            activity,
+                            activity.accountRestrictionRpcMessage(error) ?: activity.getString(R.string.invalid_passphrase),
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 }
             }
@@ -327,10 +334,12 @@ class PrivateChatController(
                         binding.messagesRecyclerView.scrollToPosition(adapter.itemCount.coerceAtLeast(1) - 1)
                     }
                 }
-                .onFailure {
+                .onFailure { error ->
+                    if (activity.exitToLoginIfAccountRestricted(error)) return@onFailure
                     Toast.makeText(
                         activity,
-                        activity.getString(R.string.private_chat_message_send_failed, it.message.orEmpty()),
+                        activity.accountRestrictionRpcMessage(error)
+                            ?: activity.getString(R.string.private_chat_message_send_failed, error.message.orEmpty()),
                         Toast.LENGTH_LONG
                     ).show()
                 }

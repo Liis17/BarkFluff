@@ -350,6 +350,7 @@ class MainActivity : AppCompatActivity() {
             "604DD334-0484-4C6B-8113-354B9D2FDF2A", // NoAccessToChat
             "7506386A-8940-4F3B-87B8-315DD0A7AB08", // ChatNotFound
             "D0AC27C0-3381-401D-8EF4-E35610C372AB", // ChatTypeMismatch
+            "6BC0E7A1-5117-4910-9717-1784E6921F6F", // UserUnavailable
         )
         return errorCode in permanentCodes || chain.any { error ->
             when (error) {

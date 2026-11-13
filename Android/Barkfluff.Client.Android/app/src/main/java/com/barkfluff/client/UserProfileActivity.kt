@@ -33,11 +33,15 @@ import com.barkfluff.client.domain.gateway.PresenceGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.AccountStatus
 import coil.load
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileMediaUrl
 import com.barkfluff.client.utils.OnlineTimeFormatter
+import com.barkfluff.client.utils.accountStatusLabel
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -77,6 +81,7 @@ class UserProfileActivity : AppCompatActivity() {
     private var chatTitle: String = ""
     private var chatAvatarFileId: String? = null
     private var isChatMuted: Boolean = false
+    private var profileRestricted: Boolean = false
 
     private enum class Tab { MEDIA, FILES, VOICE }
 
@@ -167,7 +172,7 @@ class UserProfileActivity : AppCompatActivity() {
     // ── Кнопки действий ───────────────────────────────────────────────────────
 
     private fun setupActions() {
-        if (isGroupChat) {
+        if (isGroupChat || chatId.isBlank()) {
             binding.profileActionsRow.visibility = View.GONE
             return
         }
@@ -271,7 +276,12 @@ class UserProfileActivity : AppCompatActivity() {
                 })
             }.onFailure { error ->
                 Log.e(TAG, "Failed to start call", error)
-                Toast.makeText(this@UserProfileActivity, R.string.call_start_failed, Toast.LENGTH_SHORT).show()
+                if (exitToLoginIfAccountRestricted(error)) return@onFailure
+                Toast.makeText(
+                    this@UserProfileActivity,
+                    accountRestrictionRpcMessage(error) ?: getString(R.string.call_start_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -612,11 +622,18 @@ class UserProfileActivity : AppCompatActivity() {
                 val userResult = userProfileGateway.user(otherUserId)
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()!!
-                    val displayName = "${user.firstName} ${user.lastName}".trim()
+                    profileRestricted = user.accountStatus != AccountStatus.ACTIVE
+                    val displayName = if (profileRestricted) {
+                        accountStatusLabel(user.accountStatus)
+                    } else {
+                        "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
+                    }
 
-                    binding.profileNameTextView.text = if (displayName.isNotBlank()) displayName else user.username
-                    binding.profileUsernameTextView.text = getString(R.string.register_username_format, user.username)
-                    binding.profileUsernameTextView.visibility = View.VISIBLE
+                    binding.profileNameTextView.text = displayName
+                    binding.profileUsernameTextView.visibility = if (profileRestricted) View.GONE else View.VISIBLE
+                    if (!profileRestricted) {
+                        binding.profileUsernameTextView.text = getString(R.string.register_username_format, user.username)
+                    }
 
                     if (user.registrationDate > 0) {
                         binding.profileRegistrationValue.text = DateFormat.getDateInstance(
@@ -629,12 +646,14 @@ class UserProfileActivity : AppCompatActivity() {
                         binding.dividerChatId.visibility = View.GONE
                     }
 
-                    if (user.bio.isNotBlank()) {
+                    if (!profileRestricted && user.bio.isNotBlank()) {
                         binding.profileBioTextView.text = user.bio
                         binding.profileBioTextView.visibility = View.VISIBLE
+                    } else {
+                        binding.profileBioTextView.visibility = View.GONE
                     }
 
-                    val avatarFileId = avatarSourceFor(user)
+                    val avatarFileId = if (profileRestricted) null else avatarSourceFor(user)
                     if (!avatarFileId.isNullOrBlank()) {
                         AvatarLoader.loadByFileId(
                             imageView = binding.profileAvatarImageView,
@@ -648,53 +667,59 @@ class UserProfileActivity : AppCompatActivity() {
                     } else {
                         AvatarLoader.showPlaceholder(
                             binding.profileAvatarPlaceholder,
-                            displayName.ifBlank { user.username },
+                            displayName,
                             otherUserId
                         )
                         binding.profileAvatarImageView.visibility = View.GONE
                     }
 
-                    val posterFileId = user.profilePosterFileId
+                    val posterFileId = user.profilePosterFileId.takeUnless { profileRestricted }.orEmpty()
                     if (posterFileId.isNotBlank()) {
                         loadPosterImage(posterFileId)
+                    } else if (profileRestricted) {
+                        binding.profilePosterImageView.visibility = View.GONE
+                        binding.profilePosterPlaceholder.visibility = View.GONE
+                        binding.profilePosterScrim.visibility = View.GONE
                     }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading user profile", e)
-            }
-        }
 
-        // Онлайн-статус
-        lifecycleScope.launch {
-            try {
-                val userStatus = presenceGateway.status(listOf(otherUserId)).getOrNull()?.firstOrNull()
-                    if (userStatus != null) {
-                        if (userStatus.isOnline) {
-                            binding.profileOnlineStatusTextView.text = getString(R.string.profile_online)
-                            binding.profileOnlineStatusTextView.setTextColor(
-                                ContextCompat.getColor(this@UserProfileActivity, R.color.profile_presence_online)
-                            )
-                            binding.statusDot.visibility = View.VISIBLE
-                            binding.onlineIndicator.visibility = View.VISIBLE
-                        } else {
-                            binding.profileOnlineStatusTextView.text =
-                                OnlineTimeFormatter.formatLastSeen(this@UserProfileActivity, userStatus.lastSeenEpochMillis)
-                            binding.profileOnlineStatusTextView.setTextColor(
-                                MaterialColors.getColor(
-                                    binding.root,
-                                    com.google.android.material.R.attr.colorOnSurfaceVariant
-                                )
-                            )
-                            binding.statusDot.visibility = View.GONE
-                            binding.onlineIndicator.visibility = View.GONE
-                        }
-                    } else {
-                        binding.profileOnlineStatusTextView.text = getString(R.string.profile_last_seen_recently)
+                    if (profileRestricted) {
+                        binding.actionCallButton.visibility = View.GONE
+                        binding.profileOnlineStatusTextView.visibility = View.GONE
                         binding.statusDot.visibility = View.GONE
                         binding.onlineIndicator.visibility = View.GONE
                     }
+                }
+                if (profileRestricted) return@launch
+
+                // Онлайн-статус
+                val userStatus = presenceGateway.status(listOf(otherUserId)).getOrNull()?.firstOrNull()
+                if (userStatus != null) {
+                    if (userStatus.isOnline) {
+                        binding.profileOnlineStatusTextView.text = getString(R.string.profile_online)
+                        binding.profileOnlineStatusTextView.setTextColor(
+                            ContextCompat.getColor(this@UserProfileActivity, R.color.profile_presence_online)
+                        )
+                        binding.statusDot.visibility = View.VISIBLE
+                        binding.onlineIndicator.visibility = View.VISIBLE
+                    } else {
+                        binding.profileOnlineStatusTextView.text =
+                            OnlineTimeFormatter.formatLastSeen(this@UserProfileActivity, userStatus.lastSeenEpochMillis)
+                        binding.profileOnlineStatusTextView.setTextColor(
+                            MaterialColors.getColor(
+                                binding.root,
+                                com.google.android.material.R.attr.colorOnSurfaceVariant
+                            )
+                        )
+                        binding.statusDot.visibility = View.GONE
+                        binding.onlineIndicator.visibility = View.GONE
+                    }
+                } else {
+                    binding.profileOnlineStatusTextView.text = getString(R.string.profile_last_seen_recently)
+                    binding.statusDot.visibility = View.GONE
+                    binding.onlineIndicator.visibility = View.GONE
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading online status", e)
+                Log.e(TAG, "Error loading user profile or online status", e)
             }
         }
     }

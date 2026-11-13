@@ -73,6 +73,7 @@ import com.barkfluff.client.domain.gateway.StickerGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.grpc.MediaHttpTransport
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.repository.PrivateChatRepository
@@ -93,6 +94,9 @@ import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.barkfluff.client.utils.MessageTimeSpacingDecoration
 import com.barkfluff.client.utils.OnlineTimeFormatter
+import com.barkfluff.client.utils.accountStatusLabel
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import com.barkfluff.client.utils.applySpringPress
 import com.barkfluff.client.view.MessageActionsOverlay
 import com.barkfluff.client.view.M3ContextMenu
@@ -168,6 +172,8 @@ class ChatActivity : AppCompatActivity() {
     private var chatAvatarFileId: String? = null
     private var isGroupChat: Boolean = false
     private var otherUserId: Long = 0L
+    private var peerAccountStatus: AccountStatus = AccountStatus.ACTIVE
+    private var peerStatusLookupUserId: Long = 0L
     private var currentUserId: Long = 0L
     private var supportsDrafts: Boolean = false
     private var chatBackgroundLoadVersion = 0
@@ -274,6 +280,7 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_CHAT_AVATAR_FILE_ID = "chat_avatar_file_id"
         private const val EXTRA_IS_GROUP_CHAT = "is_group_chat"
         private const val EXTRA_OTHER_USER_ID = "other_user_id"
+        private const val EXTRA_ACCOUNT_STATUS = "account_status"
         private const val EXTRA_CHAT_KIND = "chat_kind"
         private const val EXTRA_INVITE_STATE = "invite_state"
         private const val EXTRA_INVITER_USER_ID = "inviter_user_id"
@@ -319,13 +326,17 @@ class ChatActivity : AppCompatActivity() {
             chatId: String,
             title: String,
             inviteState: Int = -1,
-            inviterUserId: Long = 0L
+            inviterUserId: Long = 0L,
+            otherUserId: Long = 0L,
+            accountStatus: AccountStatus = AccountStatus.ACTIVE,
         ): Intent = Intent(context, ChatActivity::class.java).apply {
             putExtra(EXTRA_CHAT_KIND, KIND_PRIVATE)
             putExtra(EXTRA_CHAT_ID, chatId)
             putExtra(EXTRA_CHAT_TITLE, title)
             putExtra(EXTRA_INVITE_STATE, inviteState)
             putExtra(EXTRA_INVITER_USER_ID, inviterUserId)
+            putExtra(EXTRA_OTHER_USER_ID, otherUserId)
+            putExtra(EXTRA_ACCOUNT_STATUS, accountStatus.ordinal)
         }
 
         /** Intent для секретного E2E-чата в общем ChatActivity. */
@@ -378,6 +389,9 @@ class ChatActivity : AppCompatActivity() {
         chatAvatarFileId = intent.getStringExtra(EXTRA_CHAT_AVATAR_FILE_ID)
         isGroupChat = intent.getBooleanExtra(EXTRA_IS_GROUP_CHAT, false)
         otherUserId = intent.getLongExtra(EXTRA_OTHER_USER_ID, 0L)
+        peerAccountStatus = AccountStatus.fromStoredNumber(
+            intent.getIntExtra(EXTRA_ACCOUNT_STATUS, AccountStatus.ACTIVE.ordinal)
+        )
         currentUserId = globalParam.userId
 
         // E2E-чаты (приватный/секретный) рендерятся в облегчённом shell того же Activity.
@@ -398,6 +412,7 @@ class ChatActivity : AppCompatActivity() {
         setupKeyboardTracking()
         setupChatBackground()
         setupPinnedBar()
+        if (peerAccountStatus != AccountStatus.ACTIVE) applyRestrictedPeer()
         viewModel.dispatch(ChatIntent.Initialize(
             chatId = chatId,
             title = chatTitle,
@@ -446,6 +461,9 @@ class ChatActivity : AppCompatActivity() {
                 isGroupChat = state.isGroupChat
                 isChatMuted = state.isChatMuted
                 otherUserId = state.otherUserId
+                if (!state.isGroupChat && state.otherUserId > 0L) {
+                    resolvePeerAccountStatus(state.otherUserId)
+                }
 
                 if (previousPresence != state.presence) {
                     renderPresenceState(state.presence)
@@ -456,19 +474,31 @@ class ChatActivity : AppCompatActivity() {
                     renderTypingIndicator(renderedTypingUserIds)
                 }
 
-                if (previousTitle != state.chatTitle) {
-                    previousTitle = state.chatTitle
-                    binding.chatNameTextView.text = state.chatTitle.ifBlank { getString(R.string.chat_default_title) }
+                val displayTitle = if (!state.isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+                    accountStatusLabel(peerAccountStatus)
+                } else {
+                    state.chatTitle.ifBlank { getString(R.string.chat_default_title) }
                 }
-                if (previousAvatarFileId != state.chatAvatarFileId) {
-                    previousAvatarFileId = state.chatAvatarFileId
+                chatTitle = displayTitle
+                chatAvatarFileId = if (!state.isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+                    null
+                } else {
+                    state.chatAvatarFileId
+                }
+                if (previousTitle != displayTitle) {
+                    previousTitle = displayTitle
+                    binding.chatNameTextView.text = displayTitle
+                }
+                if (previousAvatarFileId != chatAvatarFileId) {
+                    previousAvatarFileId = chatAvatarFileId
                     loadChatAvatar()
                 }
 
                 // otherUserId выяснился из chatInfo — подписываемся на онлайн-статус
                 if (!state.isGroupChat && state.otherUserId > 0 && state.otherUserId != observedOnlineUserId) {
                     observedOnlineUserId = state.otherUserId
-                    binding.onlineStatusTextView.visibility = View.VISIBLE
+                    binding.onlineStatusTextView.visibility =
+                        if (peerAccountStatus == AccountStatus.ACTIVE) View.VISIBLE else View.GONE
                 }
 
                 // Сообщения
@@ -697,6 +727,19 @@ class ChatActivity : AppCompatActivity() {
             KIND_PRIVATE -> {
                 val inviteState = intent.getIntExtra(EXTRA_INVITE_STATE, -1)
                 val inviterUserId = intent.getLongExtra(EXTRA_INVITER_USER_ID, 0L)
+                if (inviterUserId > 0L) otherUserId = inviterUserId
+                if (otherUserId > 0L) {
+                    resolvePeerAccountStatus(otherUserId)
+                } else {
+                    lifecycleScope.launch {
+                        val peerId = chatDirectoryGateway.chat(chatId).getOrNull()?.memberIds
+                            ?.firstOrNull { it != currentUserId } ?: 0L
+                        if (peerId > 0L) {
+                            otherUserId = peerId
+                            resolvePeerAccountStatus(peerId)
+                        }
+                    }
+                }
                 PrivateChatController(
                     activity = this,
                     binding = binding,
@@ -724,6 +767,8 @@ class ChatActivity : AppCompatActivity() {
                     finish()
                     return@launch
                 }
+                otherUserId = chat.peerUserId
+                resolvePeerAccountStatus(otherUserId)
                 binding.chatNameTextView.text = getString(R.string.secret_chat_title, chat.peerUserId)
                 binding.chatAvatarPlaceholder.text = "🔒"
                 SecretChatController(
@@ -739,6 +784,8 @@ class ChatActivity : AppCompatActivity() {
                     .start()
             }
         }
+
+        if (peerAccountStatus != AccountStatus.ACTIVE) applyRestrictedPeer()
 
         OpenChatManager.setOpenChat(chatId)
         NotificationHelper.dismissForChat(applicationContext, chatId)
@@ -911,6 +958,10 @@ class ChatActivity : AppCompatActivity() {
 
 
     private fun startCall(video: Boolean) {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+            Toast.makeText(this, R.string.account_restricted_chat_read_only, Toast.LENGTH_SHORT).show()
+            return
+        }
         lifecycleScope.launch {
             val mediaType = if (video) {
                 CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO
@@ -939,13 +990,21 @@ class ChatActivity : AppCompatActivity() {
                 })
             }.onFailure { error ->
                 Log.e(TAG, "Failed to start call", error)
-                Toast.makeText(this@ChatActivity, R.string.call_start_failed, Toast.LENGTH_SHORT).show()
+                if (exitToLoginIfAccountRestricted(error)) return@onFailure
+                Toast.makeText(
+                    this@ChatActivity,
+                    accountRestrictionRpcMessage(error) ?: getString(R.string.call_start_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
 
     private fun loadChatAvatar() {
-        if (!chatAvatarFileId.isNullOrBlank()) {
+        if (peerAccountStatus != AccountStatus.ACTIVE) {
+            AvatarLoader.showPlaceholder(binding.chatAvatarPlaceholder, accountStatusLabel(peerAccountStatus), otherUserId)
+            binding.chatAvatar.visibility = View.GONE
+        } else if (!chatAvatarFileId.isNullOrBlank()) {
             val fileId = chatAvatarFileId!!
             AvatarLoader.loadByFileId(
                 imageView = binding.chatAvatar,
@@ -960,6 +1019,78 @@ class ChatActivity : AppCompatActivity() {
         } else {
             AvatarLoader.showPlaceholder(binding.chatAvatarPlaceholder, chatTitle, chatId.hashCode().toLong())
             binding.chatAvatar.visibility = View.GONE
+        }
+    }
+
+    private fun resolvePeerAccountStatus(userId: Long) {
+        if (userId <= 0L || peerStatusLookupUserId == userId) return
+        peerStatusLookupUserId = userId
+        lifecycleScope.launch {
+            val user = userProfileGateway.user(userId).getOrNull() ?: return@launch
+            if (otherUserId != userId) return@launch
+            val wasRestricted = peerAccountStatus != AccountStatus.ACTIVE
+            peerAccountStatus = user.accountStatus
+            if (peerAccountStatus != AccountStatus.ACTIVE) {
+                applyRestrictedPeer()
+            } else if (wasRestricted) {
+                clearRestrictedPeer(user)
+            }
+        }
+    }
+
+    private var restrictedPeerVisibility: List<Pair<View, Int>>? = null
+
+    private fun applyRestrictedPeer() {
+        if (restrictedPeerVisibility == null) {
+            restrictedPeerVisibility = listOf(
+                binding.onlineStatusTextView,
+                binding.onlineIndicator,
+                binding.btnAudioCall,
+                binding.inputBar,
+                binding.sendButton,
+                binding.voiceRecordBar,
+                binding.attachmentPreviewBar,
+                binding.replyPreviewBar,
+                binding.editPreviewBar,
+                binding.stickerPanelContainer,
+                binding.e2eInviteContainer,
+                binding.readOnlyNotice,
+            ).map { it to it.visibility }
+        }
+        chatTitle = accountStatusLabel(peerAccountStatus)
+        chatAvatarFileId = null
+        binding.chatNameTextView.text = chatTitle
+        binding.chatAvatarPlaceholder.text = chatTitle.trim().firstOrNull()?.uppercase() ?: "?"
+        loadChatAvatar()
+        binding.onlineStatusTextView.visibility = View.GONE
+        binding.onlineIndicator.visibility = View.GONE
+        binding.btnAudioCall.visibility = View.GONE
+        binding.inputBar.visibility = View.GONE
+        binding.sendButton.visibility = View.GONE
+        binding.voiceRecordBar.visibility = View.GONE
+        binding.attachmentPreviewBar.visibility = View.GONE
+        binding.replyPreviewBar.visibility = View.GONE
+        binding.editPreviewBar.visibility = View.GONE
+        binding.stickerPanelContainer.visibility = View.GONE
+        binding.e2eInviteContainer.visibility = View.GONE
+        binding.readOnlyNotice.visibility = View.VISIBLE
+        WindowInsetsControllerCompat(window, binding.chatRootLayout).hide(WindowInsetsCompat.Type.ime())
+    }
+
+    private fun clearRestrictedPeer(user: UserProfile) {
+        val displayName = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
+        chatTitle = if (intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR) == KIND_SECRET) {
+            getString(R.string.secret_chat_title, user.userId)
+        } else {
+            displayName
+        }
+        chatAvatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }.ifBlank { null }
+        binding.chatNameTextView.text = chatTitle
+        loadChatAvatar()
+        restrictedPeerVisibility?.forEach { (view, visibility) -> view.visibility = visibility }
+        restrictedPeerVisibility = null
+        if (intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR) == KIND_REGULAR && !isGroupChat) {
+            renderPresenceState(viewModel.state.value.presence)
         }
     }
 
@@ -1388,12 +1519,16 @@ class ChatActivity : AppCompatActivity() {
 
             for (member in members) {
                 if (member.userId == currentUserId) continue
-                val name = "${member.firstName} ${member.lastName}".trim().ifBlank {
+                val user = userProfileGateway.user(member.userId).getOrNull()
+                val restricted = user?.accountStatus?.let { it != AccountStatus.ACTIVE } == true
+                val name = if (restricted) {
+                    accountStatusLabel(user!!.accountStatus)
+                } else {
+                    "${user?.firstName ?: member.firstName} ${user?.lastName ?: member.lastName}".trim()
+                }.ifBlank {
                     getString(R.string.group_member_id, member.userId)
                 }
-                val avatarSource = userProfileGateway.user(member.userId).getOrNull()?.let { user ->
-                    avatarSourceFor(user)
-                }
+                val avatarSource = user?.takeUnless { restricted }?.let(::avatarSourceFor)
                 groupMemberInfoCache[member.userId] = name to avatarSource
             }
 
@@ -1411,6 +1546,10 @@ class ChatActivity : AppCompatActivity() {
      * Если никто не печатает — восстанавливает предыдущее содержимое (статус онлайна / скрытие для группы).
      */
     private fun renderTypingIndicator(userIds: Set<Long> = renderedTypingUserIds) {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+            binding.onlineStatusTextView.visibility = View.GONE
+            return
+        }
         if (userIds.isEmpty()) {
             if (isGroupChat) {
                 binding.onlineStatusTextView.visibility = View.GONE
@@ -1457,10 +1596,15 @@ class ChatActivity : AppCompatActivity() {
             try {
                 val user = userProfileGateway.user(userId).getOrNull()
                 if (user != null) {
-                    val name = "${user.firstName} ${user.lastName}".trim().ifBlank {
+                    val name = if (user.accountStatus != AccountStatus.ACTIVE) {
+                        accountStatusLabel(user.accountStatus)
+                    } else {
+                        "${user.firstName} ${user.lastName}".trim()
+                    }.ifBlank {
                         getString(R.string.group_member_id, userId)
                     }
-                    groupMemberInfoCache[userId] = name to avatarSourceFor(user)
+                    groupMemberInfoCache[userId] = name to
+                        if (user.accountStatus == AccountStatus.ACTIVE) avatarSourceFor(user) else null
                 }
             } finally {
                 pendingTypingNameFetches.remove(userId)
@@ -1878,6 +2022,7 @@ class ChatActivity : AppCompatActivity() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
     private fun startVoiceRecording(locked: Boolean = false) {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) return
         if (!audioPlayback.playbackAllowed) return
         voicePreview?.pause()
         audioPlayback.pause()
@@ -1945,6 +2090,10 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendVoiceDraft() {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+            Toast.makeText(this, R.string.account_restricted_chat_read_only, Toast.LENGTH_SHORT).show()
+            return
+        }
         val composer = viewModel.state.value.composer
         if (composer.isSending || composer.isVoiceStaging || composer.isRestoring || composer.isRestoringAttachments) return
         val source = composer.voiceSourcePath
@@ -1953,6 +2102,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun pickImages() {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) return
         val imagePicker = ImagePickerBottomSheet.newInstance { result ->
             handleSelectedImages(result)
         }
@@ -2052,6 +2202,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun showStickerPicker() {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) return
         if (inputPanelState == InputPanelState.STICKER_PANEL) {
             hideStickerPanel()
             return
@@ -2313,6 +2464,10 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendMessageWithPendingAttachments() {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+            Toast.makeText(this, R.string.account_restricted_chat_read_only, Toast.LENGTH_SHORT).show()
+            return
+        }
         if (pendingAttachmentsAwaitingOutbox) return
         if (viewModel.state.value.composer.voiceSourcePath != null) { sendVoiceDraft(); return }
         // The ViewModel copies sources asynchronously. Wait until all source URIs have either
@@ -2330,6 +2485,10 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendMessage(text: String = binding.messageEditText.text.toString(), fileIds: List<String> = emptyList()) {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+            Toast.makeText(this, R.string.account_restricted_chat_read_only, Toast.LENGTH_SHORT).show()
+            return
+        }
         val messageText = text.trim()
         val state = viewModel.state.value
 
@@ -3284,6 +3443,11 @@ class ChatActivity : AppCompatActivity() {
 
     /** Renders the immutable presence snapshot; subscriptions and polling stay in ChatViewModel. */
     private fun renderPresenceState(presence: PresenceState) {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+            binding.onlineStatusTextView.visibility = View.GONE
+            binding.onlineIndicator.visibility = View.GONE
+            return
+        }
         if (isGroupChat) {
             if (presence.typingUserIds.isEmpty()) {
                 binding.onlineStatusTextView.visibility = View.GONE
