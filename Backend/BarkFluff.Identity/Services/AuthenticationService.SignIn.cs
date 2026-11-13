@@ -149,7 +149,8 @@ public sealed partial class AuthenticationService
         if (recovery) return;
         c.TelegramId = settings?.TelegramId;
         if (c.Factor == OtpTypeId.Email && !recovery)
-            c.Email = (await users.GetUserContactsAsync(new GetUserContactsRequest { UserId = c.UserId }, cancellationToken: ct)).Contact?.Email;
+            c.Email = (await users.GetAccountRestrictionAsync(
+                new GetAccountRestrictionRequest { UserId = c.UserId }, cancellationToken: ct)).Email;
         await Deliver(c, ct);
     }
 
@@ -296,6 +297,10 @@ public sealed partial class AuthenticationService
         }
         else
         {
+            var precheck = await users.GetAccountRestrictionAsync(
+                new GetAccountRestrictionRequest { UserId = c.UserId }, cancellationToken: ct);
+            AccountRestrictionStatusGuard.ThrowIfInactive(precheck.Restriction.Status);
+
             var account = await users.GetByIdAsync(new GetByIdRequest { UserId = c.UserId }, cancellationToken: ct);
             if (account.User == null || account.User.IsBot) throw Denied();
             var old = await db.RefreshTokens.Where(x => x.UserId == c.UserId && x.DeviceId == c.DeviceId).ToListAsync(ct);
@@ -311,13 +316,22 @@ public sealed partial class AuthenticationService
                 new GetAccountRestrictionRequest { UserId = c.UserId }, cancellationToken: ct);
             if (restriction.Restriction.Status != BarkFluff.Proto.Users.AccountStatus.Active)
             {
-                await publishEndpoint.Publish(new SessionRevokedEvent
+                try
                 {
-                    UserId = c.UserId,
-                    DeviceId = c.DeviceId,
-                    AccessTokenExpiresAt = Now.AddMinutes(jwtSettings.ExpiryMinutes + 2),
-                }, ct);
-                await users.DeleteUserDeviceAsync(new DeleteUserDeviceRequest { UserId = c.UserId, DeviceId = c.DeviceId }, cancellationToken: ct);
+                    await publishEndpoint.Publish(new SessionRevokedEvent
+                    {
+                        UserId = c.UserId,
+                        DeviceId = c.DeviceId,
+                        AccessTokenExpiresAt = Now.AddMinutes(jwtSettings.ExpiryMinutes + 2),
+                    }, ct);
+                    await users.DeleteUserDeviceAsync(new DeleteUserDeviceRequest { UserId = c.UserId, DeviceId = c.DeviceId }, cancellationToken: ct);
+                }
+                finally
+                {
+                    db.RefreshTokens.Remove(token);
+                    await db.SaveChangesAsync(ct);
+                }
+
                 AccountRestrictionStatusGuard.ThrowIfInactive(restriction.Restriction.Status);
             }
 

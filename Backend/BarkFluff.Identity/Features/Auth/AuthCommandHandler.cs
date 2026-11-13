@@ -319,6 +319,10 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 user.User.Id,
                 cancellationToken);
 
+            var precheck = await usersClient.GetAccountRestrictionAsync(
+                new GetAccountRestrictionRequest { UserId = user.User.Id }, cancellationToken: cancellationToken);
+            AccountRestrictionStatusGuard.ThrowIfInactive(precheck.Restriction.Status);
+
             logger.LogInformation(
                 "Успешная аутентификация пользователя {UserId} ({Login}) с устройства {DeviceName}, IP: {IpAddress}",
                 user.User.Id,

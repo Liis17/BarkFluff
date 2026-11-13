@@ -11,6 +11,7 @@ using BarkFluff.Identity.Settings;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Shared.Queue.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 using Grpc.Core;
 using MassTransit;
@@ -53,6 +54,53 @@ public class AuthenticationFlowTests
         var repeated = await h.Complete(pending, code);
         Assert.Equal(AuthChallengeState.Rejected, repeated.State);
         Assert.Null(repeated.Session);
+    }
+
+    [Fact]
+    public async Task Complete_StatusChangesBeforeSessionCreation_DoesNotCreateTokenOrDevice()
+    {
+        using var h = new Harness();
+        await h.Register();
+        var pending = await h.Service.BeginSignIn(h.SignIn(), default);
+        h.BlockRestrictionOnCheck = h.RestrictionCheckCount + 2;
+
+        await Assert.ThrowsAsync<AccountBlockedException>(() => h.Complete(pending, h.Bot.LastCode));
+
+        Assert.Single(h.Db.RefreshTokens);
+        Assert.Equal(1, h.RegisteredDevices);
+        Assert.Equal(0, h.DeletedDevices);
+        Assert.Equal(0, h.SessionRevocations);
+    }
+
+    [Fact]
+    public async Task Complete_StatusChangesAfterSessionCreation_RemovesOrphanedToken()
+    {
+        using var h = new Harness();
+        await h.Register();
+        var pending = await h.Service.BeginSignIn(h.SignIn(), default);
+        h.BlockRestrictionOnCheck = h.RestrictionCheckCount + 3;
+
+        await Assert.ThrowsAsync<AccountBlockedException>(() => h.Complete(pending, h.Bot.LastCode));
+
+        Assert.Empty(h.Db.RefreshTokens);
+        Assert.Equal(2, h.RegisteredDevices);
+        Assert.Equal(1, h.DeletedDevices);
+        Assert.Equal(1, h.SessionRevocations);
+    }
+
+    [Fact]
+    public async Task Complete_StatusChangesAfterSessionCreation_StillRemovesTokenWhenRevocationPublishFails()
+    {
+        using var h = new Harness();
+        await h.Register();
+        var pending = await h.Service.BeginSignIn(h.SignIn(), default);
+        h.BlockRestrictionOnCheck = h.RestrictionCheckCount + 3;
+        h.FailRevocationPublish = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => h.Complete(pending, h.Bot.LastCode));
+
+        Assert.Empty(h.Db.RefreshTokens);
+        Assert.Equal(2, h.RegisteredDevices);
     }
 
     [Fact]
@@ -597,6 +645,47 @@ public class AuthenticationFlowTests
     }
 
     [Fact]
+    public async Task BlockedEmailSecondFactor_BeginIsGenericAndCompleteReturnsRestriction()
+    {
+        async Task<AuthChallengeResponse> RegisterAndBegin(Harness harness, bool blocked)
+        {
+            var registration = harness.Registration();
+            registration.ConfirmationMethod = OtpTypeId.Email;
+            registration.Email = "verified@example.com";
+            var pendingRegistration = await harness.Service.BeginRegistration(registration, default);
+            var registrationCode = harness.Emails.Last().Payload["confirmation_code"];
+            await harness.Complete(pendingRegistration, registrationCode);
+            if (blocked)
+                harness.SetRestriction(AccountStatus.Blocked, "manual review", null);
+            var request = harness.SignIn();
+            request.Factor = OtpTypeId.Email;
+            return await harness.Service.BeginSignIn(request, default);
+        }
+
+        using var active = new Harness(emailEnabled: true);
+        var activePending = await RegisterAndBegin(active, blocked: false);
+        using var blocked = new Harness(emailEnabled: true);
+        var blockedPending = await RegisterAndBegin(blocked, blocked: true);
+
+        Assert.Equal(activePending.State, blockedPending.State);
+        Assert.Equal(activePending.Factor, blockedPending.Factor);
+        Assert.Equal(activePending.NeedsCode, blockedPending.NeedsCode);
+        Assert.Equal(activePending.ErrorCode, blockedPending.ErrorCode);
+        Assert.Equal(AuthChallengeState.Waiting, blockedPending.State);
+        Assert.Equal(OtpTypeId.Email, blockedPending.Factor);
+        Assert.True(blockedPending.NeedsCode);
+
+        var code = blocked.Emails.Last(x => x.Type == NotificationType.ConfirmationAuth).Payload["confirmation_code"];
+        var complete = await blocked.Complete(blockedPending, code);
+
+        Assert.Equal(AuthChallengeState.Rejected, complete.State);
+        Assert.Equal("account_blocked", complete.ErrorCode);
+        Assert.Equal(AccountStatus.Blocked, complete.AccountRestriction.Status);
+        Assert.Equal("manual review", complete.AccountRestriction.Reason);
+        Assert.Null(complete.Session);
+    }
+
+    [Fact]
     public async Task AuthenticatorSecondFactor_UsesTotpChallenge()
     {
         using var h = new Harness(); await h.Register();
@@ -841,6 +930,11 @@ public class AuthenticationFlowTests
         public AuthenticationService Service { get; }
         public AddDraftUserRequest? LastDraft { get; private set; }
         public int RegisteredDevices { get; private set; }
+        public int DeletedDevices { get; private set; }
+        public int SessionRevocations { get; private set; }
+        public int RestrictionCheckCount { get; private set; }
+        public int? BlockRestrictionOnCheck { get; set; }
+        public bool FailRevocationPublish { get; set; }
         public TestHelper.TestIdentityAbuseGuard AbuseGuard { get; } = TestHelper.CreateAbuseGuard();
         public FindByLoginRequest? LastFindByLogin { get; private set; }
         private readonly Mock<UsersServerApi.UsersServerApiClient> _users = new();
@@ -881,11 +975,20 @@ public class AuthenticationFlowTests
                 .Returns(() => Unary(new GetByIdResponse { User = user }));
             _users.Setup(x => x.RegisterDeviceAsync(It.IsAny<RegisterDeviceRequest>(), null, null, It.IsAny<CancellationToken>()))
                 .Callback(() => RegisteredDevices++).Returns(() => Unary(new RegisterDeviceResponse()));
+            _users.Setup(x => x.DeleteUserDeviceAsync(It.IsAny<DeleteUserDeviceRequest>(), null, null, It.IsAny<CancellationToken>()))
+                .Callback(() => DeletedDevices++).Returns(() => Unary(new DeleteUserDeviceResponse()));
             _users.Setup(x => x.GetUserContactsAsync(It.IsAny<GetUserContactsRequest>(), null, null, It.IsAny<CancellationToken>()))
                 .Returns(() => Unary(new GetUserContactsResponse { User = user, Contact = new UserContact { Email = emailEnabled ? "verified@example.com" : "" } }));
             _users.Setup(x => x.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+                .Callback<GetAccountRestrictionRequest, Metadata, DateTime?, CancellationToken>((_, _, _, _) =>
+                {
+                    RestrictionCheckCount++;
+                    if (BlockRestrictionOnCheck == RestrictionCheckCount)
+                        SetRestriction(AccountStatus.Blocked, "node policy", null);
+                })
                 .Returns(() => Unary(new GetAccountRestrictionResponse
                 {
+                Email = emailEnabled ? "verified@example.com" : string.Empty,
                     Restriction = new AccountRestrictionInfo
                     {
                         Status = _accountStatus,
@@ -894,6 +997,11 @@ public class AuthenticationFlowTests
                     }
                 }));
             var publish = new Mock<IPublishEndpoint>();
+            publish.Setup(x => x.Publish(It.IsAny<SessionRevokedEvent>(), It.IsAny<CancellationToken>()))
+                .Callback<SessionRevokedEvent, CancellationToken>((_, _) => SessionRevocations++)
+                .Returns(() => FailRevocationPublish
+                    ? Task.FromException(new InvalidOperationException("broker unavailable"))
+                    : Task.CompletedTask);
             publish.Setup(x => x.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()))
                 .Callback<EmailNotification, CancellationToken>((message, _) => Emails.Add(message)).Returns(Task.CompletedTask);
             var deviceId = Guid.NewGuid().ToString();

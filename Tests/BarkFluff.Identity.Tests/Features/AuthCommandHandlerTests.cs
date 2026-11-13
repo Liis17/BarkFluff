@@ -11,6 +11,7 @@ using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Shared.Queue.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 
 using Grpc.Core;
@@ -219,6 +220,31 @@ public class AuthCommandHandlerTests
         Assert.Empty(_context.RefreshTokens);
         _mediator.Verify(m => m.Send(It.IsAny<CreateTokenCommand>(), It.IsAny<CancellationToken>()), Times.Never);
         _publishEndpoint.Verify(p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedAccountAfterPasswordCheckDoesNotCreateSessionSideEffects()
+    {
+        _usersClient.Setup(c => c.FindByLoginAsync(It.IsAny<FindByLoginRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<FindByLoginResponse>(
+                Task.FromResult(new FindByLoginResponse { User = new User { Id = 1, Username = "user" } }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+        _usersClient.Setup(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<GetAccountRestrictionResponse>(
+                Task.FromResult(new GetAccountRestrictionResponse
+                {
+                    Restriction = new AccountRestrictionInfo { Status = AccountStatus.Blocked, Reason = "policy" }
+                }), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+        _context.UserPasswords.Add(new UserPassword { UserId = 1, PasswordHash = PasswordHasher.HashPassword("correct") });
+        await _context.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<AccountBlockedException>(() => CreateHandler().Handle(
+            new AuthCommand { Username = "user", Password = "correct" }, CancellationToken.None));
+
+        Assert.Empty(_context.RefreshTokens);
+        _mediator.Verify(m => m.Send(It.IsAny<CreateTokenCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+        _usersClient.Verify(c => c.RegisterDeviceAsync(It.IsAny<RegisterDeviceRequest>(), null, null, It.IsAny<CancellationToken>()), Times.Never);
+        _publishEndpoint.Verify(p => p.Publish(It.IsAny<SessionRevokedEvent>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
