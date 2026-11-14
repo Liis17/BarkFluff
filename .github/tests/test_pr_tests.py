@@ -10,7 +10,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / '.github/scripts'))
-from pr_tests import JOBS, SUITES, results_pass, select_suites
+from pr_tests import JOBS, SUITES, results_pass, select, select_suites
 
 
 class PrTestSelectionTests(unittest.TestCase):
@@ -45,19 +45,56 @@ class PrTestSelectionTests(unittest.TestCase):
     def test_mixed_changes_combine_platforms(self):
         self.assert_suites(['Android/core/Example.kt', 'Mac/Barkfluff/Example.swift'], ['android', 'macos'])
 
-    def test_shared_contracts_and_selector_changes_run_every_suite(self):
-        for path in ['Shared/BarkFluff.Proto/messages.proto', '.github/workflows/ci.yml', '.github/scripts/ci_plan.py',
-                     '.github/scripts/pr_tests.py']:
+    def test_selector_changes_run_every_suite(self):
+        for path in ['.github/workflows/ci.yml', '.github/scripts/ci_plan.py', '.github/scripts/pr_tests.py']:
             with self.subTest(path=path):
-                self.assert_suites([path], SUITES)
+                self.assertEqual(select([path]), (dict.fromkeys(SUITES, True), None))
+
+    def test_shared_code_selects_only_its_consumers(self):
+        # Android and macOS keep their own .proto copies; only Windows clients build from Shared.
+        self.assert_suites(['Shared/BarkFluff.Proto/messages_api.proto'], ['backend', 'windows', 'frontend'])
+        self.assert_suites(['Shared/BarkFluff.Shared.Auth/Example.cs'], ['backend', 'windows'])
+        self.assert_suites(['Shared/BarkFluff.Shared.Queue/Example.cs'], ['backend'])
+        self.assert_suites(['Shared/BarkFluff.Bft/Example.cs'], ['backend'])
+
+    def test_backend_runs_only_test_projects_that_build_from_the_change(self):
+        common = 'BarkFluff.GrpcServer.Tests'
+        for paths, expected in [
+            (['Backend/Barkfluff.AdminPanel/Services/Example.cs'], {'BarkFluff.AdminPanel.Tests'}),
+            (['Backend/BarkFluff.Calls/Services/Example.cs', 'Tests/BarkFluff.Calls.Tests/Example.cs'],
+             {'BarkFluff.Calls.Tests'}),
+            (['Shared/BarkFluff.Bft/Example.cs', 'Docs/bft/bftv1-vectors.json'],
+             {'BarkFluff.Bft.Tests', 'BarkFluff.BftProxy.Tests'}),
+            (['Tools/BarkFluff.Builder/BuilderModel.cs'], {'BarkFluff.Builder.Tests'}),
+            # Services without their own tests are covered by the common GrpcServer tests only.
+            (['Backend/BarkFluff.Beacon/Program.cs'], set()),
+        ]:
+            with self.subTest(paths=paths):
+                self.assertEqual(set(select(paths)[1]), expected | {common})
+        self.assertGreater(len(select(['Shared/BarkFluff.Proto/messages_api.proto'])[1]), 5)
+
+    def test_unmapped_backend_inputs_run_every_backend_test(self):
+        for path in ['Docker/nightly/barkfluff/docker-compose.yml', 'Backend/rebuild.trigger', 'global.json',
+                     'Tests/LoadTests/run-load-test.ps1']:
+            with self.subTest(path=path):
+                suites, projects = select([path])
+                self.assertTrue(suites['backend'])
+                self.assertIsNone(projects)
+
+    def test_server_and_android_change_skips_other_clients(self):
+        self.assert_suites(['Android/core/src/main/java/com/barkfluff/client/bft/Proxy.kt',
+                            'Backend/BarkFluff.BftProxy/Program.cs', 'Shared/BarkFluff.Bft/Frame.cs',
+                            'Tests/BarkFluff.BftProxy.Tests/ProxyTests.cs', 'Obsidian/ClaudeVault/Index.md'],
+                           ['backend', 'android'])
 
     def test_docs_do_not_start_application_tests(self):
         self.assert_suites(['README.md', 'Obsidian/ClaudeVault/Testing.md'], [])
 
-    def test_bft_spec_and_vectors_select_backend_tests(self):
+    def test_bft_spec_and_vectors_select_backend_and_android_tests(self):
+        # Android unit tests read Docs/bft vectors too.
         for path in ['Docs/BFTv1.md', 'Docs/bft/bftv1-vectors.json', 'Docs/bft/generate_vectors.py']:
             with self.subTest(path=path):
-                self.assert_suites([path], ['backend'])
+                self.assert_suites([path], ['backend', 'android'])
 
     def test_dotnet_sdk_change_runs_backend_and_windows(self):
         self.assert_suites(['global.json'], ['backend', 'windows', 'builder'])
