@@ -65,6 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.select.outputs.backend }}
+      backend_projects: ${{ steps.select.outputs.backend_projects }}
       platforms: ${{ steps.select.outputs.platforms }}
       scripts: ${{ steps.select.outputs.scripts }}
       frontend: ${{ steps.select.outputs.frontend }}
@@ -82,6 +83,8 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.backend == 'true' }}
     uses: ./.github/workflows/test-backend.yml
+    with:
+      project: ${{ needs.changes.outputs.backend_projects }}
 
   client-tests:
     name: "🧪 Клиенты"
