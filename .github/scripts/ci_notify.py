@@ -1,10 +1,13 @@
 """Build one Telegram message (legacy Markdown) for a CI run and send it via send-telegram.sh."""
+import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 
 ICONS = {'success': '✅', 'failure': '❌', 'cancelled': '⛔', 'skipped': '⏭'}
+BUILD_JOBS = {'backend': '🐳 Backend-образы', 'promote': '🔁 Перенос backend-образов', 'android': '📱 Android',
+              'macos': '🍎 macOS', 'winui': '🪟 WinUI', 'builder': '🧰 Builder'}
 SUITES = (('guard', 'Ветка-источник'), ('backend', 'Backend тесты'), ('clients', 'Клиенты'),
           ('scripts', 'Скрипты CI'), ('frontend', 'Frontend'), ('builder', 'Builder'))
 
@@ -19,13 +22,23 @@ def plain(value):
 
 
 def read_results(directory):
-    results = []
+    """Result files are named <job>[-<item>].txt and hold `status|label|detail` lines."""
+    results, failed_jobs = [], set()
     for path in sorted(Path(directory).rglob('*.txt')) if directory and Path(directory).is_dir() else []:
+        job = path.stem.split('-', 1)[0]
         for line in path.read_text(encoding='utf-8').splitlines():
             status, label, detail = (line.split('|', 2) + ['', ''])[:3]
             if status:
                 results.append((status, label, detail))
-    return results
+                if status != 'success':
+                    failed_jobs.add(job)
+    return results, failed_jobs
+
+
+def missing_failures(needs, failed_jobs):
+    """Failed jobs that left no failure line of their own (crash, timeout, cancel before the result step)."""
+    return [(needs[job]['result'], label, '') for job, label in BUILD_JOBS.items()
+            if needs.get(job, {}).get('result', 'skipped') not in ('success', 'skipped') and job not in failed_jobs]
 
 
 def push_message(env, results, plan_result):
@@ -62,7 +75,8 @@ def main():
     if sys.argv[1:] == ['pr']:
         message = pr_message(env)
     else:
-        results = read_results(env.get('RESULTS_DIR'))
+        results, failed_jobs = read_results(env.get('RESULTS_DIR'))
+        results += missing_failures(json.loads(env.get('NEEDS') or '{}'), failed_jobs)
         if not results and env['PLAN_RESULT'] == 'success':
             print('Нечего собирать — уведомление не нужно')
             return 0

@@ -1,11 +1,10 @@
 """Select what a push to nightly/dev/master builds and publish the backend service catalog."""
+from fnmatch import fnmatchcase
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
-
-CI_FILES = ('.github/workflows/ci.yml', '.github/scripts/ci_plan.py')
 
 # Inputs shared by every backend image except BftProxy, which has no GrpcServer/Lognara dependency.
 BACKEND_COMMON = ('global.json', '.dockerignore', 'Docker/Lognara/**', 'Shared/**',
@@ -76,7 +75,7 @@ CLIENTS = {
 
 def matches(path, pattern):
     if pattern.startswith('**/'):
-        return path.endswith(pattern[2:])
+        return fnmatchcase(path.rsplit('/', 1)[-1], pattern[3:])
     if pattern.endswith('/**'):
         return path.startswith(pattern[:-2])
     return path == pattern
@@ -87,8 +86,12 @@ def touches(paths, patterns):
 
 
 def plan(branch, paths):
-    """paths=None means everything (manual run, new branch or unknown base)."""
-    rebuild_all = paths is None or touches(paths, CI_FILES)
+    """paths=None means everything (manual run, new branch or unknown base).
+
+    Editing ci.yml itself publishes nothing: it also holds PR checks and notifications.
+    After changing build steps, rebuild explicitly with workflow_dispatch mode=build.
+    """
+    rebuild_all = paths is None
     every = lambda patterns: rebuild_all or touches(paths, patterns)
     result = {name: every(patterns) for name, patterns in CLIENTS.items()}
     if branch == 'nightly':

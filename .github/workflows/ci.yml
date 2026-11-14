@@ -25,9 +25,11 @@ on:
 permissions:
   contents: read
 
+# Очередь без отмены: пропущенный push-запуск потерял бы свой diff, а queue: max
+# несовместим с cancel-in-progress. Устаревшие PR-запуски просто доработают.
 concurrency:
   group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
   queue: max
 
 jobs:
@@ -295,7 +297,7 @@ jobs:
 
   notify-pr:
     name: "📣 Уведомление о проверках"
-    if: ${{ always() && github.event_name == 'pull_request' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
     needs: [required, guard, backend-tests, client-tests, script-tests, frontend-checks, builder-tests, builder-configs]
     runs-on: ubuntu-latest
     steps:
@@ -658,10 +660,12 @@ jobs:
 
       - name: Get version
         id: meta
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.version }}
         run: |
           VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" \
             build/export/Barkfluff.app/Contents/Info.plist)
-          if [ "$VERSION" != "${{ steps.version.outputs.version }}" ]; then
+          if [ "$VERSION" != "$EXPECTED_VERSION" ]; then
             echo "Версия .app не совпадает с вычисленной версией" >&2
             exit 1
           fi
@@ -672,8 +676,9 @@ jobs:
         id: dmg
         env:
           BRANCH_NAME: ${{ github.ref_name }}
+          APP_VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          DMG_PATH="build/BarkFluff-${{ steps.meta.outputs.version }}.dmg"
+          DMG_PATH="build/BarkFluff-$APP_VERSION.dmg"
           CUSTOM_DMG=false
           case "$BRANCH_NAME" in
             nightly)
@@ -1288,6 +1293,8 @@ jobs:
     needs: plan
     if: ${{ needs.plan.outputs.builder == 'true' }}
     runs-on: windows-2025-vs2026
+    permissions:
+      contents: write  # gh release create в master
     defaults:
       run:
         shell: pwsh
@@ -1386,5 +1393,6 @@ jobs:
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           PLAN_RESULT: ${{ needs.plan.result }}
+          NEEDS: ${{ toJSON(needs) }}
           RESULTS_DIR: ${{ runner.temp }}/ci-results
         run: python3 .github/scripts/ci_notify.py push

@@ -60,18 +60,19 @@ class Registry:
         token = base64.b64encode(f'{user}:{password}'.encode()).decode()
         self.headers = {'Authorization': f'Basic {token}', 'Accept': ACCEPT}
 
-    def request(self, path, method='GET'):
+    def request(self, path, method='GET', attempts=6, delay=15):
         request = urllib.request.Request(f'https://{REGISTRY}/v2/{path}', headers=self.headers, method=method)
-        for attempt in range(3):
+        for attempt in range(1, attempts + 1):
             try:
                 with urllib.request.urlopen(request, timeout=30) as response:
                     return response.headers, response.read()
-            except urllib.error.HTTPError:
-                raise
-            except OSError:
-                if attempt == 2:
+            except urllib.error.HTTPError as error:
+                if error.code < 500 or attempt == attempts:
                     raise
-                time.sleep(5)
+            except OSError:
+                if attempt == attempts:
+                    raise
+            time.sleep(delay)
 
     def digest(self, repository, reference):
         try:
@@ -152,6 +153,8 @@ def main():
             break
         if attempt == 6:
             print('::error::Не удалось войти в реестр после 6 попыток')
+            (results / 'promote-login.txt').write_text('failure|🔁 Перенос образов|вход в реестр не удался\n',
+                                                       encoding='utf-8')
             return 1
         time.sleep(15)
     failed = False
@@ -164,7 +167,7 @@ def main():
             line = f'{"⏭" if status == "unchanged" else "✅"} {name} {version}'
             if status == 'promoted':
                 (results / f'promote-{name}.txt').write_text(f'success|🐳 {name}|{version}\n', encoding='utf-8')
-        except (PromotionError, urllib.error.URLError, KeyError, ValueError) as error:
+        except (PromotionError, OSError, KeyError, ValueError) as error:
             failed = True
             line = f'❌ {name}: {error}'
             print(f'::error title={name}::{error}')

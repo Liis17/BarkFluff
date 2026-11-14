@@ -38,12 +38,12 @@ class CiPlanTests(unittest.TestCase):
         self.assertEqual(built('nightly', ['Shared/BarkFluff.Proto/messages.proto']), without_bft)
         self.assertEqual(built('nightly', ['Docker/Lognara/agent/SHA256SUMS']), without_bft)
         self.assertEqual(built('nightly', ['Shared/BarkFluff.Bft/Frame.cs']), everything)
-        self.assertEqual(built('nightly', ['.github/workflows/ci.yml']), everything)
         self.assertEqual(built('nightly', None), everything)
 
     def test_tests_and_docs_do_not_publish_images(self):
         for path in ['Tests/BarkFluff.Messages.Tests/Test.cs', 'Tests/BarkFluff.GrpcServer.Tests/Test.cs',
                      '.github/tests/test_ci_plan.py', '.github/workflows/test-backend.yml',
+                     '.github/workflows/ci.yml', '.github/scripts/ci_notify.py',
                      'Obsidian/ClaudeVault/Index.md', 'README.md']:
             with self.subTest(path=path):
                 result = plan('nightly', [path])
@@ -58,6 +58,8 @@ class CiPlanTests(unittest.TestCase):
             'Windows/BarkFluff.Client.Core/Client.cs': {'winui'},
             'Shared/BarkFluff.Proto/users.proto': {'winui'},
             'Tools/BarkFluff.Builder/Model.cs': {'builder'},
+            'Directory.Build.props': {'builder'},
+            'Tools/BarkFluff.Builder/Directory.Build.targets': {'builder'},
             '.github/scripts/client-version.sh': {'android', 'macos', 'winui'},
         }
         for path, expected in cases.items():
@@ -136,6 +138,17 @@ class NotifyTests(unittest.TestCase):
         self.assertIn('✅ 🐳 messages `1.0.5`', message)
         self.assertIn('❌ 📱 Android (nightly)', message)
         self.assertIn('`some_user`', message)
+
+    def test_jobs_that_died_without_result_file_are_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, 'backend-messages.txt').write_text('failure|🐳 messages|\n', encoding='utf-8')
+            Path(directory, 'android.txt').write_text('success|📱 Android|1.2.3\n', encoding='utf-8')
+            results, failed_jobs = ci_notify.read_results(directory)
+        needs = {'backend': {'result': 'failure'}, 'promote': {'result': 'skipped'},
+                 'android': {'result': 'success'}, 'winui': {'result': 'cancelled'}}
+        extra = ci_notify.missing_failures(needs, failed_jobs)
+        self.assertEqual(failed_jobs, {'backend'})
+        self.assertEqual(extra, [('cancelled', '🪟 WinUI', '')])
 
     def test_pr_message_escapes_untrusted_title_and_branches(self):
         env = dict(self.ENV, REQUIRED='failure', PR_NUMBER='7', PR_TITLE='fix *bold* _x_ `code` [l](u)',
