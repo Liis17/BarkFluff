@@ -3,12 +3,10 @@ from functools import lru_cache
 import json
 import os
 from pathlib import Path
-import posixpath
 import subprocess
 import sys
-import xml.etree.ElementTree as ET
 
-from ci_plan import CLIENTS, matches
+from ci_plan import CLIENTS, matches, project_inputs
 
 SUITES = ('backend', 'windows', 'android', 'macos', 'scripts', 'frontend', 'builder')
 JOBS = ('backend', 'clients', 'scripts', 'frontend', 'builder')
@@ -26,31 +24,6 @@ RUNTIME_INPUTS = ((BFT_SPEC, {'BarkFluff.Bft.Tests', 'BarkFluff.BftProxy.Tests'}
 COMMON_BACKEND_TESTS = 'BarkFluff.GrpcServer.Tests'
 # Code outside any known test input: run the whole backend suite rather than miss a test.
 BACKEND_FALLBACK = ('Backend/', 'Shared/', 'Frontend/Developers/', 'Docker/', 'Icons/', 'Tools/', 'Tests/')
-# MSBuild items whose Include is not a file path.
-NON_FILE_ITEMS = ('PackageReference', 'FrameworkReference', 'Using', 'InternalsVisibleTo', 'PackageVersion')
-
-
-def project_inputs(root, csproj, inputs, seen):
-    """Collect repository paths a project builds from: its folder, referenced projects and linked files."""
-    if csproj in seen or not (root / csproj).is_file():
-        return
-    seen.add(csproj)
-    directory = posixpath.dirname(csproj)
-    inputs.add(directory + '/')
-    for item in ET.parse(root / csproj).iter():
-        tag = item.tag.rsplit('}', 1)[-1]
-        include = item.attrib.get('Include', '')
-        if tag in NON_FILE_ITEMS or not include or '$(' in include:
-            continue
-        target = posixpath.normpath(posixpath.join(directory, include.replace(chr(92), '/')))
-        if target.startswith('..'):
-            continue
-        if tag == 'ProjectReference':
-            project_inputs(root, target, inputs, seen)
-        elif '*' in target:
-            inputs.add(target.split('*', 1)[0])
-        else:
-            inputs.add(target)
 
 
 @lru_cache(maxsize=None)
