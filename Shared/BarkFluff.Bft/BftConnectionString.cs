@@ -13,10 +13,13 @@ public sealed record BftConnectionSettings(byte[] StaticPublicKey, byte[] ObfsKe
 public static class BftConnectionString
 {
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+    private const int MaxEncodedBodyLength = 4096;
 
     public static BftConnectionSettings Parse(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
+        if (value.StartsWith("bft://", StringComparison.Ordinal) && IsEncodedBody(value.AsSpan(6)))
+            value = "bft://" + DecodeBody(value[6..]);
         if (!value.StartsWith("bft://", StringComparison.Ordinal) || value.Contains('#') || value.IndexOf('/', 6) >= 0)
             throw new FormatException("Invalid BFT connection string.");
 
@@ -78,6 +81,36 @@ public static class BftConnectionString
         if (settings.Name is not null) parameters.Add($"name={EncodeName(settings.Name)}");
         var query = parameters.Count == 0 ? string.Empty : $"?{string.Join('&', parameters)}";
         return $"bft://{EncodeKey(settings.StaticPublicKey)}.{EncodeKey(settings.ObfsKey)}@{host}:{settings.Port}{query}";
+    }
+
+    /// <summary>Formats the link as <c>bft://</c> followed by the base64url (unpadded) encoding of the classic link body.</summary>
+    public static string FormatEncoded(BftConnectionSettings settings)
+    {
+        var body = Format(settings)[6..];
+        return "bft://" + Convert.ToBase64String(StrictUtf8.GetBytes(body)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    }
+
+    private static bool IsEncodedBody(ReadOnlySpan<char> body)
+    {
+        var length = body.TrimEnd('=').Length;
+        if (length == 0 || body.Length - length > 2) return false;
+        foreach (var c in body[..length])
+        {
+            if (!(char.IsAsciiLetterOrDigit(c) || c is '-' or '_')) return false;
+        }
+        return true;
+    }
+
+    private static string DecodeBody(string body)
+    {
+        if (body.Length > MaxEncodedBodyLength) throw new FormatException("Encoded BFT connection string is too long.");
+        var base64 = body.TrimEnd('=').Replace('-', '+').Replace('_', '/');
+        base64 = base64.PadRight(base64.Length + (4 - base64.Length % 4) % 4, '=');
+        try { return StrictUtf8.GetString(Convert.FromBase64String(base64)); }
+        catch (Exception ex) when (ex is FormatException or DecoderFallbackException)
+        {
+            throw new FormatException("Invalid encoded BFT connection string.", ex);
+        }
     }
 
     private static (string Host, int Port) ParseHostPort(string value)

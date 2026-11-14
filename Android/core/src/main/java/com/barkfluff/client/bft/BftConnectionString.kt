@@ -18,6 +18,8 @@ data class BftConnectionSettings(
 ) {
     fun format(): String = BftConnectionString.format(this)
 
+    fun formatEncoded(): String = BftConnectionString.formatEncoded(this)
+
     override fun toString(): String =
         "BftConnectionSettings(host=$host, port=$port, token=${if (token == null) "null" else "[redacted]"}, name=$name)"
 }
@@ -26,7 +28,12 @@ object BftConnectionString {
     private val unreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
 
     @JvmStatic
-    fun parse(value: String): BftConnectionSettings {
+    fun parse(link: String): BftConnectionSettings {
+        val value = if (link.startsWith("bft://") && isEncodedBody(link.substring(6))) {
+            "bft://" + decodeBody(link.substring(6))
+        } else {
+            link
+        }
         require(value.startsWith("bft://") && '#' !in value && '/' !in value.substring(6)) {
             "Invalid BFT connection string"
         }
@@ -92,6 +99,35 @@ object BftConnectionString {
         }
         return "bft://${encodeKey(settings.staticPublicKey)}.${encodeKey(settings.obfsKey)}@$host:${settings.port}" +
             if (query.isEmpty()) "" else "?${query.joinToString("&")}"
+    }
+
+    /** Formats the link as `bft://` followed by the base64url (unpadded) encoding of the classic link body. */
+    @JvmStatic
+    fun formatEncoded(settings: BftConnectionSettings): String =
+        "bft://" + java.util.Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(format(settings).substring(6).toByteArray(StandardCharsets.UTF_8))
+
+    private fun isEncodedBody(body: String): Boolean {
+        val trimmed = body.trimEnd('=')
+        return trimmed.isNotEmpty() && body.length - trimmed.length <= 2 &&
+            trimmed.all { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '-' || it == '_' }
+    }
+
+    private fun decodeBody(body: String): String {
+        require(body.length <= MAX_ENCODED_BODY_LENGTH) { "Encoded BFT connection string is too long" }
+        val bytes = try {
+            java.util.Base64.getUrlDecoder().decode(body.trimEnd('='))
+        } catch (error: IllegalArgumentException) {
+            throw IllegalArgumentException("Invalid encoded BFT connection string", error)
+        }
+        return try {
+            StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(bytes)).toString()
+        } catch (error: CharacterCodingException) {
+            throw IllegalArgumentException("Encoded BFT connection string is not valid UTF-8", error)
+        }
     }
 
     private fun parseHostPort(value: String): Pair<String, Int> {
@@ -206,4 +242,5 @@ object BftConnectionString {
     }
 
     private const val HEX = "0123456789ABCDEF"
+    private const val MAX_ENCODED_BODY_LENGTH = 4096
 }
