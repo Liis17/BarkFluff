@@ -15,7 +15,7 @@ Kotlin-клиент в Android/Barkfluff.Client.Android. Поддерживае�
 | Kotlin | 2.2.20 | Android/gradle/libs.versions.toml |
 | KSP | 2.2.20-2.0.3 | Android/gradle/libs.versions.toml |
 | min / compile / target SDK | 31 / 36 / 36 | Android/Barkfluff.Client.Android/app/build.gradle.kts |
-| Java bytecode | 17; Gradle daemon toolchain — JDK 21; CI — JDK 21 | Android/Barkfluff.Client.Android/app/build.gradle.kts, Android/gradle/gradle-daemon-jvm.properties, .github/workflows/build-client-android.yml, .github/workflows/test-clients.yml |
+| Java bytecode | 17; Gradle daemon toolchain — JDK 21; CI — JDK 21 | Android/Barkfluff.Client.Android/app/build.gradle.kts, Android/gradle/gradle-daemon-jvm.properties, .github/workflows/ci.yml, .github/workflows/test-clients.yml |
 | RPC transport | gRPC-OkHttp 1.60.0; gRPC Kotlin 1.4.1 | Android/core/build.gradle.kts |
 | Macrobenchmark | androidx.benchmark:benchmark-macro-junit4 1.5.0; androidx.test.uiautomator:uiautomator 2.4.0 | Android/gradle/libs.versions.toml |
 

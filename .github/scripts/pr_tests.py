@@ -5,13 +5,19 @@ from pathlib import Path
 import subprocess
 import sys
 
-SUITES = ('backend', 'windows', 'android', 'macos', 'scripts')
+from ci_plan import CLIENTS, matches
+
+SUITES = ('backend', 'windows', 'android', 'macos', 'scripts', 'frontend', 'builder')
+JOBS = ('backend', 'clients', 'scripts', 'frontend', 'builder')
+FRONTEND = ('Backend/BarkFluff.Web/', 'Frontend/Developers/', 'Backend/BarkFluff.Navigator/Admin/',
+            'Shared/BarkFluff.Proto/')
+BUILDER = (*CLIENTS['builder'], 'Tests/BarkFluff.Builder.Tests/**')
 
 
 def select_suites(paths):
     selected = dict.fromkeys(SUITES, False)
     for path in paths:
-        if path in ('.github/workflows/pr-tests.yml', '.github/scripts/pr_tests.py'):
+        if path in ('.github/workflows/ci.yml', '.github/scripts/pr_tests.py', '.github/scripts/ci_plan.py'):
             return dict.fromkeys(SUITES, True)
         if path.startswith('Shared/'):
             selected.update(dict.fromkeys(SUITES, True))
@@ -33,13 +39,14 @@ def select_suites(paths):
             selected['backend'] = selected['windows'] = True
         if path == '.dockerignore':
             selected['backend'] = True
-        if path.startswith('.github/workflows/build-backend-') or path == '.github/workflows/test-backend.yml':
+        if path == '.github/workflows/test-backend.yml':
             selected['backend'] = True
         if path == '.github/workflows/test-clients.yml':
             selected.update(dict.fromkeys(('windows', 'android', 'macos'), True))
-        for platform, workflow in (('windows', 'winui'), ('android', 'android'), ('macos', 'macos')):
-            if path == f'.github/workflows/build-client-{workflow}.yml':
-                selected[platform] = True
+        if path.startswith(FRONTEND):
+            selected['frontend'] = True
+        if any(matches(path, pattern) for pattern in BUILDER):
+            selected['builder'] = True
         if path.startswith(('.github/', 'Backend/BarkFluff.Web/', 'Backend/Barkfluff.AdminPanel/',
                             'Tests/BarkFluff.AdminPanel.Tests/Frontend/', 'Windows/BarkFluff.Client.WinUI/')):
             selected['scripts'] = True
@@ -51,21 +58,31 @@ def selected_jobs(suites):
         'backend': suites['backend'],
         'clients': any(suites[platform] for platform in ('windows', 'android', 'macos')),
         'scripts': suites['scripts'],
+        'frontend': suites['frontend'],
+        'builder': suites['builder'],
     }
 
 
-def results_pass(selection_result, selected, results):
+def results_pass(selection_result, selected, results, guard_result='success'):
+    """Every selected job must succeed and every other one must be skipped.
+
+    Promotion PRs (into dev/master) skip selection entirely: their code was tested on the way
+    into nightly, so only the source-branch guard has to pass.
+    """
+    if guard_result != 'success':
+        return False
+    if selection_result == 'skipped':
+        return all(results[job] == 'skipped' for job in JOBS)
     return selection_result == 'success' and all(
-        results[job] == ('success' if selected[job] else 'skipped')
-        for job in ('backend', 'clients', 'scripts'))
+        results[job] == ('success' if selected.get(job) else 'skipped') for job in JOBS)
 
 
 def main():
     if sys.argv[1:] == ['--check']:
-        selected = json.loads(os.environ['SELECTED_JOBS'])
-        results = {job: os.environ[job.upper()] for job in ('backend', 'clients', 'scripts')}
-        print(f'Selected jobs: {selected}; results: {results}')
-        return 0 if results_pass(os.environ['SELECTION_RESULT'], selected, results) else 1
+        selected = json.loads(os.environ.get('SELECTED_JOBS') or '{}')
+        results = {job: os.environ[job.upper()] for job in JOBS}
+        print(f'Guard: {os.environ["GUARD"]}; selected jobs: {selected}; results: {results}')
+        return 0 if results_pass(os.environ['SELECTION_RESULT'], selected, results, os.environ['GUARD']) else 1
 
     if os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch':
         suites = dict.fromkeys(SUITES, True)

@@ -6,3 +6,4 @@ gsdfdfgфвыфdgbbfghsdfg
 dsfgdfalighkапраhgkuhs
 dfgloihdfisughidвыфапы
 health endpoints rollout 2026-08-23
+ci.yml: image revision labels 2026-11-14
