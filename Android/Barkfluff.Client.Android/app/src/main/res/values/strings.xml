@@ -1536,6 +1536,8 @@
     <string name="bft_proxy_delete_message">Ссылка и настройки прокси будут удалены с этого устройства.</string>
     <string name="bft_proxy_status_disabled">Выключен</string>
     <string name="bft_proxy_status_connecting">Подключение…</string>
+    <string name="bft_proxy_connecting_title">Подключение к прокси</string>
+    <string name="bft_proxy_connecting_target">%1$s · %2$s</string>
     <string name="bft_proxy_status_connected">Подключён</string>
     <string name="bft_proxy_status_no_connection">Нет связи с прокси</string>
     <string name="bft_proxy_status_key_rejected">Ключ неверен или отозван</string>

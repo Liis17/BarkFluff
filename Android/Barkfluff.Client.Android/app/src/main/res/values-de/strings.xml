@@ -1486,6 +1486,8 @@
     <string name="bft_proxy_delete_message">Der Proxy-Link und die Einstellungen werden von diesem Gerät entfernt.</string>
     <string name="bft_proxy_status_disabled">Aus</string>
     <string name="bft_proxy_status_connecting">Verbindung wird hergestellt…</string>
+    <string name="bft_proxy_connecting_title">Verbindung zum Proxy wird hergestellt</string>
+    <string name="bft_proxy_connecting_target">%1$s · %2$s</string>
     <string name="bft_proxy_status_connected">Verbunden</string>
     <string name="bft_proxy_status_no_connection">Keine Verbindung zum Proxy</string>
     <string name="bft_proxy_status_key_rejected">Schlüssel ungültig oder widerrufen</string>

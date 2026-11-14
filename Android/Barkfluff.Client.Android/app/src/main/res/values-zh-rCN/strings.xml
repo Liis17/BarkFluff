@@ -1475,6 +1475,8 @@
     <string name="bft_proxy_delete_message">此设备上的代理链接和设置将被删除。</string>
     <string name="bft_proxy_status_disabled">已关闭</string>
     <string name="bft_proxy_status_connecting">正在连接…</string>
+    <string name="bft_proxy_connecting_title">正在连接代理</string>
+    <string name="bft_proxy_connecting_target">%1$s · %2$s</string>
     <string name="bft_proxy_status_connected">已连接</string>
     <string name="bft_proxy_status_no_connection">无法连接代理</string>
     <string name="bft_proxy_status_key_rejected">密钥无效或已撤销</string>

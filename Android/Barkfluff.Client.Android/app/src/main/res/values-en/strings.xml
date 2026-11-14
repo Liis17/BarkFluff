@@ -1485,6 +1485,8 @@
     <string name="bft_proxy_delete_message">The proxy link and settings will be removed from this device.</string>
     <string name="bft_proxy_status_disabled">Off</string>
     <string name="bft_proxy_status_connecting">Connecting…</string>
+    <string name="bft_proxy_connecting_title">Connecting to proxy</string>
+    <string name="bft_proxy_connecting_target">%1$s · %2$s</string>
     <string name="bft_proxy_status_connected">Connected</string>
     <string name="bft_proxy_status_no_connection">No connection to proxy</string>
     <string name="bft_proxy_status_key_rejected">Key is invalid or revoked</string>
