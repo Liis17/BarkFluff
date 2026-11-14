@@ -242,6 +242,10 @@ class MessageAdapter(
         private const val TIME_STATUS_TOP_MARGIN_DP = 2f
         /** Поднимает строку времени на уровень длительности под волной голосового. */
         private const val VOICE_INLINE_TIME_OVERLAP_DP = 27f
+        /** Насколько низ строки времени выше низа последней строки текста. */
+        private const val INLINE_TIME_RAISE_DP = 2f
+        /** Зазор между концом текста и временем в одной строке. */
+        private const val INLINE_TIME_GAP_DP = 8f
         private const val VIEW_TYPE_SENT = 1
         private const val VIEW_TYPE_RECEIVED = 2
         private const val VIEW_TYPE_DATE_SEPARATOR = 3
@@ -662,7 +666,14 @@ class MessageAdapter(
                 val showMediaTimeOverlay = item.text.isBlank() &&
                     (hasOutgoingMedia || item.localPreviewUris.isNotEmpty() || displayedAttachments.isPureMedia())
                 binding.timeStatusLayout.visibility = if (showMediaTimeOverlay) View.GONE else View.VISIBLE
-                applyVoiceInlineTime(binding.timeStatusLayout, item, displayedAttachments, binding.forwardQuotesContainer)
+                applyTimePlacement(
+                    binding.timeStatusLayout,
+                    binding.messageTextView,
+                    binding.messageMarkdownContainer,
+                    item,
+                    displayedAttachments,
+                    binding.forwardQuotesContainer,
+                )
 
                 if (item.outgoingAttachments.isNotEmpty()) {
                     val mediaWidthPx = if (hasOutgoingMedia) calcMediaWidthPx(binding.root.context) else 0
@@ -874,7 +885,14 @@ class MessageAdapter(
 
                 val showMediaTimeOverlay = item.text.isBlank() && displayedAttachments.isPureMedia()
                 binding.timeStatusLayout.visibility = if (showMediaTimeOverlay) View.GONE else View.VISIBLE
-                applyVoiceInlineTime(binding.timeStatusLayout, item, displayedAttachments, binding.forwardQuotesContainer)
+                applyTimePlacement(
+                    binding.timeStatusLayout,
+                    binding.messageTextView,
+                    binding.messageMarkdownContainer,
+                    item,
+                    displayedAttachments,
+                    binding.forwardQuotesContainer,
+                )
 
                 if (displayedAttachments.isNotEmpty()) {
                     val hasMedia = displayedAttachments.any {
@@ -1588,7 +1606,7 @@ class MessageAdapter(
         binding.docOpenButton.visibility = View.GONE
         binding.docMenuButton.visibility = View.GONE
         binding.docDownloadProgress.visibility = View.GONE
-        binding.outgoingUploadProgress.setIndicatorColor(resolveOnPrimaryContainerColor(container.context))
+        applySentDocumentColors(binding)
         renderOutgoingAttachmentIndicator(binding.root, attachment, item)
         return binding.root
     }
@@ -1763,22 +1781,88 @@ class MessageAdapter(
     }
 
     /** У голосового без текста время и статус встают справа в строку длительности, как в Telegram. */
-    private fun applyVoiceInlineTime(
-        timeStatus: View,
+    /**
+     * Положение строки времени: у голосового — на уровне длительности, у простого текста —
+     * в конце последней строки (как в Telegram), иначе — отдельной строкой под содержимым.
+     * Вызывать после renderText и установки текста времени/метки «изменено».
+     */
+    private fun applyTimePlacement(
+        timeStatus: ViewGroup,
+        textView: android.widget.TextView,
+        markdownContainer: ViewGroup,
         item: MessageItem,
         displayed: List<Shared.MessageAttachment>,
         forwardQuotes: View,
     ) {
-        val inline = item.text.isBlank() && item.outgoingAttachments.isEmpty() &&
-            forwardQuotes.visibility != View.VISIBLE &&
+        val density = timeStatus.resources.displayMetrics.density
+        val forwardHidden = forwardQuotes.visibility != View.VISIBLE
+        val voiceInline = item.text.isBlank() && item.outgoingAttachments.isEmpty() && forwardHidden &&
             displayed.size == 1 && displayed[0].type == Shared.MessageAttachmentType.VOICE
+        val text = textView.text
+        val textInline = !voiceInline && forwardHidden &&
+            timeStatus.visibility == View.VISIBLE &&
+            textView.visibility == View.VISIBLE && !text.isNullOrEmpty() &&
+            markdownContainer.childCount == 1 && markdownContainer.getChildAt(0) === textView &&
+            !android.text.TextDirectionHeuristics.FIRSTSTRONG_LTR.isRtl(text, 0, text.length)
+        val topMargin = when {
+            voiceInline -> -(VOICE_INLINE_TIME_OVERLAP_DP * density).toInt()
+            textInline -> -(appendInlineTimeSpacer(timeStatus, textView) + (INLINE_TIME_RAISE_DP * density).toInt())
+            else -> (TIME_STATUS_TOP_MARGIN_DP * density).toInt()
+        }
         val params = timeStatus.layoutParams as ViewGroup.MarginLayoutParams
-        val topMargin = ((if (inline) -VOICE_INLINE_TIME_OVERLAP_DP else TIME_STATUS_TOP_MARGIN_DP) *
-            timeStatus.resources.displayMetrics.density).toInt()
         if (params.topMargin != topMargin) {
             params.topMargin = topMargin
             timeStatus.layoutParams = params
         }
+    }
+
+    /**
+     * Дописывает в конец текста невидимый отступ шириной со строку времени, чтобы время
+     * встало в последнюю строку, а если места нет — перенеслось на новую. Возвращает высоту
+     * строки времени в px. Слот иконки статуса резервируется всегда: частичный ребинд
+     * (PAYLOAD_OUTGOING_PROGRESS) может показать её без пересчёта текста.
+     */
+    private fun appendInlineTimeSpacer(timeStatus: ViewGroup, textView: android.widget.TextView): Int {
+        val density = timeStatus.resources.displayMetrics.density
+        val time = timeStatus.findViewById<android.widget.TextView>(R.id.timeTextView)
+        val edited = timeStatus.findViewById<android.widget.TextView>(R.id.editedLabelTextView)
+        val hasStatusIcon = timeStatus.findViewById<View>(R.id.readStatusImageView) != null
+        var width = time.paint.measureText(time.text.toString()) + INLINE_TIME_GAP_DP * density
+        if (edited.visibility == View.VISIBLE) {
+            width += edited.paint.measureText(edited.text.toString()) + 6 * density
+        }
+        if (hasStatusIcon) width += (4 + 16) * density
+        val spacer = android.text.SpannableStringBuilder(textView.text).append(' ')
+        val start = spacer.length
+        spacer.append('￼')
+        spacer.setSpan(InlineTimeSpacerSpan(kotlin.math.ceil(width).toInt()), start, spacer.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        textView.text = spacer
+        val fm = time.paint.fontMetricsInt
+        val iconHeight = if (hasStatusIcon) (16 * density).toInt() else 0
+        return maxOf(fm.bottom - fm.top, iconHeight)
+    }
+
+    /** Пустое место фиксированной ширины в конце текста под строку времени. */
+    private class InlineTimeSpacerSpan(private val widthPx: Int) : android.text.style.ReplacementSpan() {
+        override fun getSize(
+            paint: android.graphics.Paint,
+            text: CharSequence?,
+            start: Int,
+            end: Int,
+            fm: android.graphics.Paint.FontMetricsInt?,
+        ): Int = widthPx
+
+        override fun draw(
+            canvas: android.graphics.Canvas,
+            text: CharSequence?,
+            start: Int,
+            end: Int,
+            x: Float,
+            top: Int,
+            y: Int,
+            bottom: Int,
+            paint: android.graphics.Paint,
+        ) = Unit
     }
 
     // ─── Audio Row ────────────────────────────────────────────────────────────
@@ -2173,19 +2257,7 @@ class MessageAdapter(
         binding.docFileSize.text = formatFileSize(context, attachment.attachmentSize)
         binding.docDownloadProgress.visibility = View.GONE
 
-        // Перекраска для отправленных сообщений (контраст на primaryContainer)
-        if (isSentByMe) {
-            val onContainer = resolveOnPrimaryContainerColor(context)
-            val onContainerVariant = resolveOnPrimaryContainerVariantColor(context)
-            val onContainerCsl = ColorStateList.valueOf(onContainer)
-
-            binding.docFileIcon.imageTintList = onContainerCsl
-            binding.docFileName.setTextColor(onContainer)
-            binding.docFileSize.setTextColor(onContainerVariant)
-            binding.docDownloadButton.imageTintList = onContainerCsl
-            binding.docOpenButton.imageTintList = onContainerCsl
-            binding.docDownloadProgress.setIndicatorColor(onContainer)
-        }
+        if (isSentByMe) applySentDocumentColors(binding)
 
         fun updateUiForCached() {
             binding.docDownloadButton.visibility = View.GONE
@@ -2270,6 +2342,24 @@ class MessageAdapter(
         }
 
         return binding.root
+    }
+
+    /** Перекраска строки файла для отправленных сообщений (контраст на primaryContainer). */
+    private fun applySentDocumentColors(binding: ItemAttachmentDocumentBinding) {
+        val context = binding.root.context
+        val onContainer = resolveOnPrimaryContainerColor(context)
+        val onContainerCsl = ColorStateList.valueOf(onContainer)
+        val containerCsl = ColorStateList.valueOf(resolvePrimaryContainerColor(context))
+
+        binding.docFileIcon.backgroundTintList = onContainerCsl
+        binding.docFileIcon.imageTintList = containerCsl
+        binding.docDownloadButton.backgroundTintList = onContainerCsl
+        binding.docDownloadButton.imageTintList = containerCsl
+        binding.docFileName.setTextColor(onContainer)
+        binding.docFileSize.setTextColor(resolveOnPrimaryContainerVariantColor(context))
+        binding.docDownloadProgress.setIndicatorColor(onContainer)
+        binding.docMenuButton.imageTintList = onContainerCsl
+        binding.outgoingUploadProgress.setIndicatorColor(onContainer)
     }
 
     private fun showDocumentContextMenu(
