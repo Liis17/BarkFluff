@@ -320,10 +320,11 @@ class ChatsFragment : Fragment() {
             }
         }
         val proxyState = bftProxyState?.takeIf { it.enabled }
-        val subtitle = if (proxyState == null) {
-            updateSubtitle
-        } else {
-            "${proxyStatusLabel(proxyState)}\n$updateSubtitle"
+        val subtitle = when {
+            proxyState == null -> updateSubtitle
+            // Проблему прокси ставим первой, чтобы её не обрезало многоточием.
+            proxyState.status == BftProxyStatus.CONNECTED -> "$updateSubtitle · ${proxyStatusLabel(proxyState)}"
+            else -> "${proxyStatusLabel(proxyState)} · $updateSubtitle"
         }
 
         if (lastHeaderSubtitle == subtitle) return
@@ -336,7 +337,7 @@ class ChatsFragment : Fragment() {
             binding.headerSubtitle.alpha = 1f
             binding.headerSubtitle.translationY = 0f
             binding.headerSubtitle.text = subtitle
-            if (proxyState == null) scheduleSubtitleHide()
+            scheduleSubtitleHide()
             return
         }
 
@@ -356,7 +357,7 @@ class ChatsFragment : Fragment() {
                     .setDuration(TITLE_FADE_IN_DURATION_MS)
                     .withEndAction {
                         if (_binding != null && generation == titleAnimationGeneration) {
-                            if (proxyState == null) scheduleSubtitleHide()
+                            scheduleSubtitleHide()
                         }
                     }
                     .start()
