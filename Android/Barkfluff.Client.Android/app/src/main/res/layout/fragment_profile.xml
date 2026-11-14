@@ -339,7 +339,7 @@
                     android:layout_height="58dp"
                     android:clickable="true"
                     android:focusable="true"
-                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Middle">
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Bottom">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -375,68 +375,6 @@
 
                     </LinearLayout>
 
-                </com.google.android.material.card.MaterialCardView>
-
-                <Space
-                    android:layout_width="match_parent"
-                    android:layout_height="3dp" />
-
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/itemProxy"
-                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Bottom">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingStart="20dp"
-                        android:paddingEnd="20dp">
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:contentDescription="@null"
-                            android:src="@drawable/ic_link"
-                            app:tint="@color/profile_settings_icon" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/bft_proxy_title"
-                                android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
-                                android:textColor="@color/profile_settings_on_surface" />
-
-                            <TextView
-                                android:id="@+id/textProxyStatus"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:ellipsize="end"
-                                android:maxLines="1"
-                                android:text="@string/bft_proxy_status_disabled"
-                                android:textAppearance="?attr/textAppearanceBodySmall"
-                                android:textColor="@color/profile_settings_on_surface_variant" />
-                        </LinearLayout>
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
-                            app:tint="@color/profile_settings_on_surface_variant" />
-                    </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
             </LinearLayout>
@@ -769,6 +707,68 @@
 
                     </LinearLayout>
 
+                </com.google.android.material.card.MaterialCardView>
+
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/itemProxy"
+                    style="@style/Widget.Barkfluff.Profile.SettingsItem"
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.Profile.SettingsItem.Middle">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_link"
+                            app:tint="@color/profile_settings_icon" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/bft_proxy_title"
+                                android:textAppearance="@style/TextAppearance.Barkfluff.Profile.Item"
+                                android:textColor="@color/profile_settings_on_surface" />
+
+                            <TextView
+                                android:id="@+id/textProxyStatus"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="@string/bft_proxy_status_disabled"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="@color/profile_settings_on_surface_variant" />
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/profile_settings_on_surface_variant" />
+                    </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
                 <Space
