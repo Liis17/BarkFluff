@@ -2,7 +2,6 @@ package com.barkfluff.client.utils
 
 import android.view.View
 import android.widget.ImageView
-import coil.load
 import com.barkfluff.client.R
 import com.barkfluff.client.domain.model.ChatSummary
 import barkfluff.shared.Shared
@@ -18,5 +17,7 @@ fun showSavedMessagesAvatar(image: ImageView, placeholder: View) {
     placeholder.tag = "saved_messages"
     placeholder.visibility = View.GONE
     image.visibility = View.VISIBLE
-    image.load(R.drawable.avatar_saved_messages)
+    // Синхронно, без Coil: ViewTarget-запрос Coil перезапускается при повторном attach View
+    // и в RecyclerView перетирал аватар другого чата, привязанного к этому же ViewHolder.
+    image.setImageResource(R.drawable.avatar_saved_messages)
 }
