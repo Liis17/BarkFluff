@@ -81,7 +81,7 @@ internal class BftProxyConnectionDialog private constructor(
             }
             val error = TextView(activity).apply {
                 setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium)
-                setTextColor(activity.getColor(android.R.color.holo_red_dark))
+                setTextColor(MaterialColors.getColor(activity, androidx.appcompat.R.attr.colorError, Color.RED))
                 visibility = View.GONE
             }
             content.addView(target, LinearLayout.LayoutParams(
