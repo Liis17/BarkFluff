@@ -1,0 +1,1390 @@
+name: "🚀 BarkFluff CI/CD"
+
+# Один workflow на весь репозиторий.
+# - PR в nightly: все проверки затронутых компонентов. Только так код попадает в nightly.
+# - PR в dev (только из nightly) и в master (только из dev): проверяется лишь ветка-источник,
+#   код уже прошёл тесты на пути в nightly.
+# - push в nightly/dev/master: только сборка и публикация, без повторных тестов.
+#   nightly собирает backend-образы; dev и master копируют проверенные образы по digest.
+
+on:
+  pull_request:
+    branches: [nightly, dev, master]
+    # edited: смена целевой ветки PR должна заново пройти проверку ветки-источника.
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [nightly, dev, master]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "build — собрать и опубликовать всё для ветки; tests — прогнать все проверки"
+        type: choice
+        options: [build, tests]
+        default: build
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  queue: max
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  #  Проверки PR
+  # ═══════════════════════════════════════════════════════════════
+  guard:
+    name: "🔒 Ветка-источник"
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Проверка схемы nightly → dev → master
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          case "$BASE_REF" in
+            nightly) exit 0 ;;
+            dev) expected=nightly ;;
+            master) expected=dev ;;
+            *) echo "::error::Неизвестная целевая ветка"; exit 1 ;;
+          esac
+          if [ "$HEAD_REF" != "$expected" ] || [ "$HEAD_REPO" != "$REPOSITORY" ]; then
+            echo "::error::PR в $BASE_REF принимается только из $expected этого репозитория"
+            exit 1
+          fi
+
+  changes:
+    name: "🧭 Выбор проверок"
+    if: ${{ (github.event_name == 'pull_request' && github.base_ref == 'nightly') || inputs.mode == 'tests' }}
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.select.outputs.backend }}
+      platforms: ${{ steps.select.outputs.platforms }}
+      scripts: ${{ steps.select.outputs.scripts }}
+      frontend: ${{ steps.select.outputs.frontend }}
+      builder: ${{ steps.select.outputs.builder }}
+      selected: ${{ steps.select.outputs.selected }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 2
+      - id: select
+        run: python3 .github/scripts/pr_tests.py
+
+  backend-tests:
+    name: "🧪 Backend"
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    uses: ./.github/workflows/test-backend.yml
+
+  client-tests:
+    name: "🧪 Клиенты"
+    needs: changes
+    if: ${{ needs.changes.outputs.platforms != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJSON(needs.changes.outputs.platforms) }}
+    uses: ./.github/workflows/test-clients.yml
+    with:
+      platform: ${{ matrix.platform }}
+
+  script-tests:
+    name: "🧪 Скрипты"
+    needs: changes
+    if: ${{ needs.changes.outputs.scripts == 'true' }}
+    uses: ./.github/workflows/test-scripts.yml
+
+  frontend-checks:
+    name: "🧹 Frontend"
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            Frontend/Developers/package-lock.json
+            Backend/BarkFluff.Navigator/Admin/package-lock.json
+      - name: Web — ESLint и Prettier
+        run: |
+          npm --prefix Backend/BarkFluff.Web/scripts install --no-package-lock --ignore-scripts
+          npm --prefix Backend/BarkFluff.Web/scripts run lint
+          npm --prefix Backend/BarkFluff.Web/scripts run format:check
+      - name: Developers — сборка frontend с актуальными контрактами
+        working-directory: Frontend/Developers
+        run: |
+          npm ci
+          npm run build
+      - name: Navigator — сборка admin UI
+        working-directory: Backend/BarkFluff.Navigator/Admin
+        run: |
+          npm ci
+          npm run build
+
+  builder-tests:
+    name: "🧪 Builder (Windows)"
+    needs: changes
+    if: ${{ needs.changes.outputs.builder == 'true' }}
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+      - name: Test Builder
+        run: dotnet test Tests/BarkFluff.Builder.Tests/BarkFluff.Builder.Tests.csproj --configuration Release
+
+  builder-configs:
+    name: "🧪 Builder: сгенерированные конфиги"
+    needs: changes
+    if: ${{ needs.changes.outputs.builder == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+      - name: Generate a self-signed certificate for nginx validation
+        run: |
+          mkdir -p "$RUNNER_TEMP/builder-certs"
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+            -keyout "$RUNNER_TEMP/builder-certs/barkfluff-key.pem" \
+            -out "$RUNNER_TEMP/builder-certs/barkfluff-crt.pem" \
+            -subj "/CN=node.example.com"
+
+      - name: Generate sample configurations
+        env:
+          BUILDER_SAMPLE_OUTPUT: ${{ runner.temp }}/builder-samples
+          BUILDER_CERTIFICATE_SOURCE: ${{ runner.temp }}/builder-certs/barkfluff-crt.pem
+          BUILDER_KEY_SOURCE: ${{ runner.temp }}/builder-certs/barkfluff-key.pem
+          BUILDER_DOCKER_NETWORK: builder-sample-${{ github.run_id }}-${{ github.run_attempt }}
+        run: >-
+          dotnet test Tests/BarkFluff.Builder.Tests/BarkFluff.Builder.Tests.csproj
+          --configuration Release
+          --filter FullyQualifiedName~BuilderSampleOutputTests.GenerateSamplesWhenOutputDirectoryIsConfigured
+
+      - name: Validate generated Compose files
+        env:
+          BUILDER_SAMPLE_OUTPUT: ${{ runner.temp }}/builder-samples
+        run: |
+          set -euo pipefail
+          for mode in compose compose-lognara external-container host none environment-specials; do
+            test -d "$BUILDER_SAMPLE_OUTPUT/$mode"
+          done
+          for sample in "$BUILDER_SAMPLE_OUTPUT"/*; do
+            for compose_file in docker-compose.yml docker-compose.setup.yml; do
+              echo "Validating $sample/$compose_file"
+              docker compose --env-file "$sample/.env" -f "$sample/$compose_file" config -q
+            done
+          done
+
+      - name: Verify generated service environment values with special characters
+        env:
+          BUILDER_SAMPLE_OUTPUT: ${{ runner.temp }}/builder-samples
+        run: |
+          set -euo pipefail
+          sample="$BUILDER_SAMPLE_OUTPUT/environment-specials"
+          config_json="$RUNNER_TEMP/builder-env-specials-config.json"
+          docker compose --env-file "$sample/.env" -f "$sample/docker-compose.yml" config --format json > "$config_json"
+          python3 - "$sample/expected-env.json" "$config_json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as expected_file:
+              expected = json.load(expected_file)
+          with open(sys.argv[2], encoding="utf-8") as config_file:
+              config = json.load(config_file)
+
+          failures = False
+          for variable, expected_value in expected.items():
+              found = False
+              for service in config.get("services", {}).values():
+                  environment = service.get("environment") or {}
+                  if variable not in environment:
+                      continue
+                  found = True
+                  actual_value = environment[variable]
+                  # Compose config keeps literal dollars escaped as $$ in its serialized model.
+                  if not isinstance(actual_value, str) or actual_value.replace("$$", "$") != expected_value:
+                      print(f"{variable}: value mismatch")
+                      failures = True
+              if not found:
+                  print(f"{variable}: missing")
+                  failures = True
+
+          if failures:
+              sys.exit(1)
+          print(f"Verified {len(expected)} generated service environment values")
+          PY
+
+      - name: Validate generated nginx sites
+        env:
+          BUILDER_SAMPLE_OUTPUT: ${{ runner.temp }}/builder-samples
+        run: |
+          set -euo pipefail
+          services=(identity users messages files updates onliner fast-auth federation beacon bots calls livekit web developers admin-panel setup)
+          host_args=()
+          for service in "${services[@]}"; do
+            host_args+=(--add-host "$service:127.0.0.1")
+          done
+
+          for mode in compose external-container host; do
+            sample="$BUILDER_SAMPLE_OUTPUT/$mode"
+            nginx_args=(docker run --rm "${host_args[@]}"
+              --mount "type=bind,src=$sample/nginx/sites,dst=/etc/nginx/conf.d,readonly"
+              --mount "type=bind,src=$sample/certs,dst=/etc/nginx/certs,readonly")
+            if [[ "$mode" == compose ]]; then
+              nginx_args+=(--mount "type=bind,src=$sample/nginx/nginx.conf,dst=/etc/nginx/nginx.conf,readonly"
+                nginx:alpine nginx -t -c /etc/nginx/nginx.conf)
+            else
+              nginx_args+=(nginx:alpine nginx -t)
+            fi
+            echo "Validating nginx sites for $mode"
+            "${nginx_args[@]}"
+          done
+
+      - name: Verify PostgreSQL bootstrap from a cold database and on repeat
+        env:
+          BUILDER_SAMPLE_OUTPUT: ${{ runner.temp }}/builder-samples
+          BUILDER_DOCKER_NETWORK: builder-sample-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          sample="$BUILDER_SAMPLE_OUTPUT/compose"
+          project="builder-bootstrap-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          network="$BUILDER_DOCKER_NETWORK"
+          compose=(docker compose --project-name "$project" --env-file "$sample/.env" -f "$sample/docker-compose.setup.yml")
+
+          cleanup() {
+            "${compose[@]}" down --volumes --remove-orphans || true
+            docker network rm "$network" >/dev/null 2>&1 || true
+          }
+          # The run-scoped Compose project, Docker network, and runner-temp bind mounts are disposable CI resources.
+          trap cleanup EXIT
+
+          docker network create "$network"
+          "${compose[@]}" up --abort-on-container-exit --exit-code-from postgres-bootstrap postgres postgres-bootstrap
+          echo "Repeating PostgreSQL bootstrap against the same database"
+          "${compose[@]}" up --abort-on-container-exit --exit-code-from postgres-bootstrap postgres postgres-bootstrap
+
+  required:
+    name: Tests passed
+    if: ${{ always() && (github.event_name == 'pull_request' || inputs.mode == 'tests') }}
+    needs: [guard, changes, backend-tests, client-tests, script-tests, frontend-checks, builder-tests, builder-configs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Все выбранные проверки должны пройти
+        env:
+          GUARD: ${{ github.event_name == 'pull_request' && needs.guard.result || 'success' }}
+          SELECTION_RESULT: ${{ needs.changes.result }}
+          SELECTED_JOBS: ${{ needs.changes.outputs.selected }}
+          BACKEND: ${{ needs.backend-tests.result }}
+          CLIENTS: ${{ needs.client-tests.result }}
+          SCRIPTS: ${{ needs.script-tests.result }}
+          FRONTEND: ${{ needs.frontend-checks.result }}
+          BUILDER: ${{ (needs.builder-tests.result == 'skipped' && needs.builder-configs.result == 'skipped') && 'skipped' || ((needs.builder-tests.result == 'success' && needs.builder-configs.result == 'success') && 'success' || 'failure') }}
+        run: python3 .github/scripts/pr_tests.py --check
+
+  notify-pr:
+    name: "📣 Уведомление о проверках"
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    needs: [required, guard, backend-tests, client-tests, script-tests, frontend-checks, builder-tests, builder-configs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Telegram
+        continue-on-error: true
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REQUIRED: ${{ needs.required.result }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          GUARD: ${{ needs.guard.result }}
+          BACKEND: ${{ needs.backend-tests.result }}
+          CLIENTS: ${{ needs.client-tests.result }}
+          SCRIPTS: ${{ needs.script-tests.result }}
+          FRONTEND: ${{ needs.frontend-checks.result }}
+          BUILDER: ${{ (needs.builder-tests.result == 'skipped' && needs.builder-configs.result == 'skipped') && 'skipped' || ((needs.builder-tests.result == 'success' && needs.builder-configs.result == 'success') && 'success' || 'failure') }}
+        run: python3 .github/scripts/ci_notify.py pr
+
+  # ═══════════════════════════════════════════════════════════════
+  #  Сборка и публикация (push / ручной запуск build)
+  # ═══════════════════════════════════════════════════════════════
+  plan:
+    name: "🧭 Состав сборки"
+    if: ${{ github.event_name == 'push' || inputs.mode == 'build' }}
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.plan.outputs.backend }}
+      has_backend: ${{ steps.plan.outputs.has_backend }}
+      promote: ${{ steps.plan.outputs.promote }}
+      android: ${{ steps.plan.outputs.android }}
+      macos: ${{ steps.plan.outputs.macos }}
+      winui: ${{ steps.plan.outputs.winui }}
+      builder: ${{ steps.plan.outputs.builder }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - id: plan
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: python3 .github/scripts/ci_plan.py
+
+  backend:
+    name: "🐳 ${{ matrix.name }}"
+    needs: plan
+    if: ${{ needs.plan.outputs.has_backend == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # Ограничение одновременных push в реестр; можно поднять, если реестр выдерживает.
+      max-parallel: 6
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.backend) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+
+      - name: Кеш NuGet
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ matrix.name }}-${{ hashFiles('**/*.csproj', '**/*.props', 'global.json') }}
+          restore-keys: nuget-${{ runner.os }}-${{ matrix.name }}-
+
+      - name: Set up Node.js
+        if: ${{ matrix.node_dir != '' }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: ${{ matrix.node_version }}
+          cache: npm
+          cache-dependency-path: ${{ matrix.node_dir }}/package-lock.json
+
+      - name: Сборка frontend
+        if: ${{ matrix.node_dir != '' }}
+        working-directory: ${{ matrix.node_dir }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: "⚙️ dotnet publish (Linux Release)"
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: dotnet publish "$PROJECT" -c Release -o ./publish /p:UseAppHost=false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Версия образа
+        id: vars
+        uses: ./.github/actions/docker-version
+        with:
+          image: ${{ matrix.image }}
+          registry-username: ${{ secrets.REGISTRY_USERNAME }}
+          registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: "📤 Сборка образа и отправка в реестр"
+        env:
+          DOCKERFILE: ${{ matrix.dockerfile }}
+          VERSION: ${{ steps.vars.outputs.version }}
+          TAGS: ${{ steps.vars.outputs.tags }}
+          REVISION: ${{ github.sha }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: bash .github/scripts/push-docker-image.sh
+
+      - name: Итог
+        if: ${{ always() }}
+        uses: ./.github/actions/ci-result
+        with:
+          key: backend-${{ matrix.name }}
+          status: ${{ job.status }}
+          label: "🐳 ${{ matrix.name }}"
+          detail: ${{ steps.vars.outputs.version }}
+
+  promote:
+    name: "🔁 Перенос backend-образов"
+    needs: plan
+    if: ${{ needs.plan.outputs.promote == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+      - name: Копирование проверенных образов по digest
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          RESULTS_DIR: ${{ runner.temp }}/ci-results
+        run: python3 .github/scripts/promote_backend.py
+      - name: Итог
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: ci-result-promote
+          path: ${{ runner.temp }}/ci-results/
+          if-no-files-found: ignore
+          retention-days: 3
+
+  android:
+    name: "📱 Android"
+    needs: plan
+    if: ${{ needs.plan.outputs.android == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Подготовка gradlew
+        run: chmod +x gradlew
+
+      - name: Настройка JDK 21
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            Android/**/build.gradle*
+            Android/**/settings.gradle*
+            Android/**/gradle.properties
+            Android/gradle/libs.versions.toml
+            Android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Настройка Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+
+      - name: Установка Android SDK зависимостей
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+          SDK_PATH="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          test -n "$SDK_PATH"
+          printf 'sdk.dir=%s\n' "$SDK_PATH" > local.properties
+
+      - name: Восстановление CA-бандла Cloudflare Origin CA
+        env:
+          CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
+        run: echo "$CA_BUNDLE_B64" | base64 -d > cloudflare-origin-ca-bundle.pem
+
+      - name: Канал сборки
+        id: target
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          case "$BRANCH_NAME" in
+            master)  FLAVOR="Stable";  CHANNEL="release" ;;
+            dev)     FLAVOR="Dev";     CHANNEL="dev" ;;
+            nightly) FLAVOR="Nightly"; CHANNEL="nightly" ;;
+            *)
+              echo "Ветка $BRANCH_NAME не привязана к каналу обновлений" >&2
+              exit 1
+              ;;
+          esac
+          echo "flavor=$FLAVOR" >> "$GITHUB_OUTPUT"
+          echo "flavor_dir=$(echo "$FLAVOR" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Ветка $BRANCH_NAME → flavor $FLAVOR, канал $CHANNEL"
+
+      - name: Определение версии
+        id: version
+        env:
+          CLIENT_APP: barkfluffkotlin
+          CA_FILE: cloudflare-origin-ca-bundle.pem
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/client-version.sh"
+
+      - name: Восстановление keystore из секрета
+        env:
+          STORE_B64: ${{ secrets.ANDROID_RELEASE_STORE_B64 }}
+        run: |
+          test -n "$STORE_B64"
+          printf '%s' "$STORE_B64" | base64 --decode > Barkfluff.Client.Android/barkfluff-release.jks
+          test -s Barkfluff.Client.Android/barkfluff-release.jks
+
+      - name: Сборка APK
+        env:
+          FLAVOR: ${{ steps.target.outputs.flavor }}
+          APP_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_STORE_FILE: ../barkfluff-release.jks
+          RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+          # Резервный CA сервера обновлений — уезжает в APK строкой BuildConfig.STORAGE_CA_PEM_B64.
+          # Сначала клиент использует системный trust store, этот CA нужен для fallback.
+          STORAGE_CA_PEM_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
+        run: ./gradlew ":app-v1:assemble${FLAVOR}Release" --no-daemon -PappVersionName="$APP_VERSION"
+
+      - name: Поиск APK
+        id: apk
+        env:
+          FLAVOR_DIR: ${{ steps.target.outputs.flavor_dir }}
+          CHANNEL: ${{ steps.target.outputs.channel }}
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          BUILT_APK=$(find "Barkfluff.Client.Android/app/build/outputs/apk/$FLAVOR_DIR/release" -name '*.apk' | head -1)
+          test -n "$BUILT_APK"
+
+          # ClientStorage сохраняет имя файла и отдаёт его при скачивании,
+          # поэтому кладём в него канал и версию.
+          APK_PATH="Barkfluff-$CHANNEL-$APP_VERSION.apk"
+          cp "$BUILT_APK" "$APK_PATH"
+          echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found APK: $BUILT_APK → $APK_PATH"
+
+      - name: "📤 Загрузка на сервер обновлений"
+        env:
+          CLIENT_STORAGE_URL: ${{ secrets.CLIENT_STORAGE_URL }}
+          CLIENT_STORAGE_TOKEN: ${{ secrets.CLIENT_STORAGE_TOKEN }}
+          CHANNEL: ${{ steps.target.outputs.channel }}
+          APP_VERSION: ${{ steps.version.outputs.version }}
+          FILE_PATH: ${{ steps.apk.outputs.path }}
+        run: |
+          curl -f --retry 5 --retry-delay 15 --retry-all-errors --cacert cloudflare-origin-ca-bundle.pem \
+            -X POST "$CLIENT_STORAGE_URL/set/barkfluffkotlin/$CHANNEL" \
+            -H "Authorization: Bearer $CLIENT_STORAGE_TOKEN" \
+            -H "X-App-Version: $APP_VERSION" \
+            -F "file=@$FILE_PATH"
+
+      - name: Итог
+        if: ${{ always() }}
+        uses: ./.github/actions/ci-result
+        with:
+          key: android
+          status: ${{ job.status }}
+          label: "📱 Android (${{ steps.target.outputs.channel }})"
+          detail: ${{ steps.version.outputs.version }}
+
+  macos:
+    name: "🍎 macOS"
+    needs: plan
+    if: ${{ needs.plan.outputs.macos == 'true' }}
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: Mac/Barkfluff
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Выбор Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
+        with:
+          xcode-version: latest
+
+      - name: Проверка версии Xcode/Swift
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Установить xcbeautify и create-dmg
+        run: brew install xcbeautify create-dmg
+
+      - name: Восстановление CA-бандла Cloudflare Origin CA
+        env:
+          CA_BUNDLE_B64: ${{ secrets.CLOUDFLARE_ORIGIN_CA_BUNDLE_B64 }}
+        run: printf '%s' "$CA_BUNDLE_B64" | base64 -D > cloudflare-origin-ca-bundle.pem
+
+      - name: Канал сборки
+        id: target
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          case "$BRANCH_NAME" in
+            master)  CHANNEL="release" ;;
+            dev)     CHANNEL="dev" ;;
+            nightly) CHANNEL="nightly" ;;
+            *)
+              echo "Ветка $BRANCH_NAME не привязана к каналу обновлений" >&2
+              exit 1
+              ;;
+          esac
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Ветка $BRANCH_NAME → канал $CHANNEL"
+
+      - name: Определение версии
+        id: version
+        env:
+          CLIENT_APP: barkfluffmacos
+          CA_FILE: cloudflare-origin-ca-bundle.pem
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/client-version.sh"
+
+      - name: Версия в проекте
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.version }}
+        run: sed -i '' -E "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = ${NEW_VERSION};/g" Barkfluff.xcodeproj/project.pbxproj
+
+      - name: Archive (без подписи)
+        run: |
+          set -o pipefail
+          NSUnbufferedIO=YES xcodebuild -project Barkfluff.xcodeproj \
+            -scheme Barkfluff \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -archivePath build/Barkfluff.xcarchive \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            archive 2>&1 | xcbeautify --renderer github-actions
+
+      - name: Export .app
+        run: |
+          set -o pipefail
+          NSUnbufferedIO=YES xcodebuild -exportArchive \
+            -archivePath build/Barkfluff.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath build/export \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | xcbeautify --renderer github-actions
+
+      - name: Get version
+        id: meta
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" \
+            build/export/Barkfluff.app/Contents/Info.plist)
+          if [ "$VERSION" != "${{ steps.version.outputs.version }}" ]; then
+            echo "Версия .app не совпадает с вычисленной версией" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: Собрать DMG
+        id: dmg
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          DMG_PATH="build/BarkFluff-${{ steps.meta.outputs.version }}.dmg"
+          CUSTOM_DMG=false
+          case "$BRANCH_NAME" in
+            nightly)
+              BACKGROUND_FILE="Packaging/dmg-background.png"
+              CUSTOM_DMG=true
+              ;;
+            dev)
+              BACKGROUND_FILE="Packaging/dmg-background-dev.png"
+              CUSTOM_DMG=true
+              ;;
+            master)
+              BACKGROUND_FILE="Packaging/dmg-background-master.png"
+              CUSTOM_DMG=true
+              ;;
+            *)
+              BACKGROUND_FILE=""
+              ;;
+          esac
+
+          if [ "$CUSTOM_DMG" = true ]; then
+            test -f "$BACKGROUND_FILE"
+            BACKGROUND_ARGS=(--background "$BACKGROUND_FILE")
+            TEXT_SIZE_ARGS=(--text-size 16)
+            DMG_LAYOUT_ARGS=(
+              --window-size 680 425
+              --icon "Barkfluff.app" 205 220
+              --app-drop-link 515 220
+            )
+          else
+            BACKGROUND_ARGS=()
+            TEXT_SIZE_ARGS=()
+            DMG_LAYOUT_ARGS=(
+              --window-size 600 400
+              --icon "Barkfluff.app" 150 200
+              --app-drop-link 450 200
+            )
+          fi
+          create-dmg \
+            --volname "BarkFluff" \
+            "${BACKGROUND_ARGS[@]}" \
+            "${DMG_LAYOUT_ARGS[@]}" \
+            --icon-size 128 \
+            "${TEXT_SIZE_ARGS[@]}" \
+            "$DMG_PATH" \
+            "build/export/Barkfluff.app"
+
+          if [ "$CUSTOM_DMG" = true ]; then
+            RW_DMG="${DMG_PATH%.dmg}-rw.dmg"
+            REPACKED_DMG="${DMG_PATH%.dmg}-repacked.dmg"
+            hdiutil convert "$DMG_PATH" -format UDRW -o "$RW_DMG"
+            ATTACH_INFO=$(hdiutil attach -mountrandom /Volumes -nobrowse -readwrite "$RW_DMG")
+            DEV_NAME=$(printf '%s\n' "$ATTACH_INFO" | awk '$1 ~ /^\/dev\/disk[0-9]+$/ { print $1; exit }')
+            MOUNT_DIR=$(printf '%s\n' "$ATTACH_INFO" | awk '$1 ~ /^\/dev\// && $3 ~ /^\/Volumes\// { print $3; exit }')
+            cleanup_dmg() {
+              if [ -n "${MOUNT_DIR:-}" ]; then
+                hdiutil detach "$MOUNT_DIR" >/dev/null 2>&1 || true
+                rmdir "$MOUNT_DIR" 2>/dev/null || true
+              elif [ -n "${DEV_NAME:-}" ]; then
+                hdiutil detach "$DEV_NAME" >/dev/null 2>&1 || true
+              fi
+              [ -z "${RW_DMG:-}" ] || rm -f "$RW_DMG"
+              [ -z "${REPACKED_DMG:-}" ] || rm -f "$REPACKED_DMG"
+            }
+            trap cleanup_dmg EXIT
+            [ -n "$MOUNT_DIR" ] || { echo "Не удалось найти mountpoint DMG" >&2; exit 1; }
+            DISK_NAME=$(basename "$MOUNT_DIR")
+            BACKGROUND_BASENAME=$(basename "$BACKGROUND_FILE")
+
+            /usr/bin/osascript <<APPLESCRIPT
+            tell application "Finder"
+              tell disk "${DISK_NAME}"
+                open
+                delay 1
+                tell container window
+                  set current view to icon view
+                  set toolbar visible to false
+                  set statusbar visible to false
+                  set bounds to {10, 60, 690, 485}
+                end tell
+                set opts to icon view options of container window
+                set icon size of opts to 128
+                set text size of opts to 16
+                set arrangement of opts to not arranged
+                set background picture of opts to POSIX file "${MOUNT_DIR}/.background/${BACKGROUND_BASENAME}"
+                set position of item "Barkfluff.app" of container window to {205, 220}
+                set position of item "Applications" of container window to {515, 220}
+                delay 3
+              end tell
+            end tell
+          APPLESCRIPT
+            chflags hidden "$MOUNT_DIR/.background" "$MOUNT_DIR/.DS_Store"
+            hdiutil detach "$MOUNT_DIR"
+            hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$REPACKED_DMG"
+            mv "$REPACKED_DMG" "$DMG_PATH"
+            rm -f "$RW_DMG"
+            rmdir "$MOUNT_DIR" 2>/dev/null || true
+          fi
+
+          echo "path=$DMG_PATH" >> "$GITHUB_OUTPUT"
+      - name: "📤 Загрузка на сервер обновлений"
+        env:
+          CLIENT_STORAGE_URL: ${{ secrets.CLIENT_STORAGE_URL }}
+          CLIENT_STORAGE_TOKEN: ${{ secrets.CLIENT_STORAGE_TOKEN }}
+          CHANNEL: ${{ steps.target.outputs.channel }}
+          APP_VERSION: ${{ steps.meta.outputs.version }}
+          FILE_PATH: ${{ steps.dmg.outputs.path }}
+        run: |
+          curl -f --retry 5 --retry-delay 15 --retry-all-errors --cacert cloudflare-origin-ca-bundle.pem \
+            -X POST "$CLIENT_STORAGE_URL/set/barkfluffmacos/$CHANNEL" \
+            -H "Authorization: Bearer $CLIENT_STORAGE_TOKEN" \
+            -H "X-App-Version: $APP_VERSION" \
+            -F "file=@$FILE_PATH"
+
+      - name: Итог
+        if: ${{ always() }}
+        uses: ./.github/actions/ci-result
+        with:
+          key: macos
+          status: ${{ job.status }}
+          label: "🍎 macOS (${{ steps.target.outputs.channel }})"
+          detail: ${{ steps.meta.outputs.version }}
+
+  winui:
+    name: "🪟 WinUI"
+    needs: plan
+    if: ${{ needs.plan.outputs.winui == 'true' }}
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Настройка .NET SDK
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+
+      - name: Определение канала обновлений
+        id: target
+        shell: pwsh
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          if ($env:REF_TYPE -ne 'branch') {
+            throw 'Сборка клиента разрешена только для веток'
+          }
+          switch ($env:BRANCH_NAME) {
+            'master' {
+              $channel = 'release'
+              $assetDirectory = 'master'
+              $identityName = '7895OrbitinSpace.Barkfluff'
+              $displayName = 'Barkfluff'
+              $shortName = 'barkfluff'
+            }
+            'dev' {
+              $channel = 'dev'
+              $assetDirectory = 'dev'
+              $identityName = '7895OrbitinSpace.Barkfluff.Dev'
+              $displayName = 'Barkfluff.dev'
+              $shortName = 'barkfluff.dev'
+            }
+            'nightly' {
+              $channel = 'nightly'
+              $assetDirectory = 'nightly'
+              $identityName = '7895OrbitinSpace.Barkfluff.Nightly'
+              $displayName = 'Barkfluff.nightly'
+              $shortName = 'barkfluff.nightly'
+            }
+            default {
+              throw "Ветка '$($env:BRANCH_NAME)' не привязана к каналу обновлений"
+            }
+          }
+
+          $uploadPath = if ($channel -eq 'release') {
+            'set/barkfluffwinui'
+          } else {
+            "set/barkfluffwinui/$channel"
+          }
+
+          @(
+            "branch=$($env:BRANCH_NAME)"
+            "channel=$channel"
+            "upload_path=$uploadPath"
+            "asset_directory=$assetDirectory"
+            "identity_name=$identityName"
+            "display_name=$displayName"
+            "short_name=$shortName"
+          ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "Ветка $($env:BRANCH_NAME) → канал $channel → /$uploadPath"
+      - name: Определение версии
+        id: version
+        shell: bash
+        env:
+          CLIENT_APP: barkfluffwinui
+        run: bash .github/scripts/client-version.sh
+
+      - name: Подготовка варианта MSIX и версии
+        id: variant
+        shell: pwsh
+        env:
+          BRANCH_NAME: ${{ steps.target.outputs.branch }}
+          CHANNEL: ${{ steps.target.outputs.channel }}
+          ASSET_DIRECTORY: ${{ steps.target.outputs.asset_directory }}
+          IDENTITY_NAME: ${{ steps.target.outputs.identity_name }}
+          DISPLAY_NAME: ${{ steps.target.outputs.display_name }}
+          SHORT_NAME: ${{ steps.target.outputs.short_name }}
+          PACKAGE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\Package.appxmanifest'
+          $applicationManifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\app.manifest'
+          $backupDirectory = Join-Path $env:RUNNER_TEMP "BarkFluffWinUI-manifest-$($env:GITHUB_RUN_ID)"
+
+          foreach ($path in @($manifestPath, $applicationManifestPath)) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Не найден обязательный файл: $path"
+            }
+          }
+
+          if (Test-Path -LiteralPath $backupDirectory) {
+            Remove-Item -LiteralPath $backupDirectory -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $backupDirectory -Force | Out-Null
+          Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $backupDirectory 'Package.appxmanifest')
+          Copy-Item -LiteralPath $applicationManifestPath -Destination (Join-Path $backupDirectory 'app.manifest')
+
+          [xml]$sourceManifest = [System.IO.File]::ReadAllText($manifestPath)
+          $sourceIdentity = $sourceManifest.SelectSingleNode("/*[local-name()='Package']/*[local-name()='Identity']")
+          $sourceManifestVersion = [string]$sourceIdentity.Version
+
+          # Версию вычисляет .github/scripts/client-version.sh; MSIX допускает части не больше 65535.
+          $packageVersion = [string]$env:PACKAGE_VERSION
+          if ($packageVersion -notmatch '^[0-9]{1,5}\.[0-9]{1,5}\.[0-9]{1,5}$' -or
+              @($packageVersion.Split('.') | Where-Object { [int]$_ -gt [ushort]::MaxValue }).Count -gt 0) {
+            throw "Некорректная версия MSIX: '$packageVersion'"
+          }
+          $manifestVersion = "$packageVersion.0"
+
+          $sourceManifestText = [System.IO.File]::ReadAllText($manifestPath)
+          $preparedManifest = $sourceManifestText
+          $preparedManifest = $preparedManifest.Replace(
+            'Name="7895OrbitinSpace.Barkfluff"',
+            "Name=`"$($env:IDENTITY_NAME)`"")
+          $preparedManifest = $preparedManifest.Replace(
+            "Version=`"$sourceManifestVersion`"",
+            "Version=`"$manifestVersion`"")
+          $preparedManifest = $preparedManifest.Replace(
+            '<DisplayName>Barkfluff</DisplayName>',
+            "<DisplayName>$($env:DISPLAY_NAME)</DisplayName>")
+          $preparedManifest = $preparedManifest.Replace(
+            'DisplayName="Barkfluff"',
+            "DisplayName=`"$($env:DISPLAY_NAME)`"")
+          $preparedManifest = $preparedManifest.Replace(
+            'ShortName="barkfluff"',
+            "ShortName=`"$($env:SHORT_NAME)`"")
+          $preparedManifest = $preparedManifest.Replace(
+            'Assets\master\',
+            "Assets\$($env:ASSET_DIRECTORY)\")
+
+          $expectedAssetPrefix = "Assets\$($env:ASSET_DIRECTORY)\"
+          $assetReferenceCount = [regex]::Matches(
+            $preparedManifest,
+            [regex]::Escape($expectedAssetPrefix)).Count
+          if ($assetReferenceCount -lt 7) {
+            throw "В manifest найдено недостаточно ссылок на Assets\$($env:ASSET_DIRECTORY): $assetReferenceCount"
+          }
+          if (($env:ASSET_DIRECTORY -ne 'master') -and $preparedManifest.Contains('Assets\master\')) {
+            throw 'В manifest остались ссылки на master-иконки'
+          }
+          if (-not $preparedManifest.Contains("Name=`"$($env:IDENTITY_NAME)`"")) {
+            throw "Identity.Name не заменён на $($env:IDENTITY_NAME)"
+          }
+
+          $sourceApplicationManifest = [System.IO.File]::ReadAllText($applicationManifestPath)
+          $preparedApplicationManifest = $sourceApplicationManifest.Replace(
+            'version="1.0.0.0"',
+            "version=`"$manifestVersion`"")
+          if (-not $preparedApplicationManifest.Contains("version=`"$manifestVersion`"")) {
+            throw 'Версия app.manifest не соответствует вычисленной'
+          }
+
+          [System.IO.File]::WriteAllText(
+            $manifestPath,
+            $preparedManifest,
+            [System.Text.UTF8Encoding]::new($false))
+          [System.IO.File]::WriteAllText(
+            $applicationManifestPath,
+            $preparedApplicationManifest,
+            [System.Text.UTF8Encoding]::new($false))
+
+          @(
+            "version=$packageVersion"
+            "manifest_version=$manifestVersion"
+            "backup_directory=$backupDirectory"
+          ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          $global:LASTEXITCODE = 0
+          Write-Host "Канал: $($env:CHANNEL)"
+          Write-Host "Identity: $($env:IDENTITY_NAME)"
+          Write-Host "Версия хранения: $packageVersion"
+          Write-Host "Версия manifest: $manifestVersion"
+
+      - name: Восстановление self-signed сертификата MSIX
+        id: certificate
+        shell: pwsh
+        env:
+          CERTIFICATE_B64: ${{ secrets.WINUI_MSIX_CERTIFICATE_B64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.WINUI_MSIX_CERTIFICATE_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CERTIFICATE_B64)) {
+            throw 'Не задан секрет WINUI_MSIX_CERTIFICATE_B64'
+          }
+
+          $certificateB64 = $env:CERTIFICATE_B64.Trim().Trim([char]0xFEFF)
+          $certificateB64 = $certificateB64.Trim()
+          $hasDoubleQuotes = $certificateB64.StartsWith('"') -and $certificateB64.EndsWith('"')
+          $hasSingleQuotes = $certificateB64.StartsWith("'") -and $certificateB64.EndsWith("'")
+          if ($hasDoubleQuotes -or $hasSingleQuotes) {
+            $certificateB64 = $certificateB64.Substring(1, $certificateB64.Length - 2).Trim()
+          }
+
+          $base64Block = [regex]::Match(
+            $certificateB64,
+            '(?ms)BASE64_BEGIN\s*(?<payload>.*?)\s*BASE64_END')
+          if ($base64Block.Success) {
+            $certificateB64 = $base64Block.Groups['payload'].Value.Trim()
+          }
+
+          if ($certificateB64.StartsWith('```')) {
+            $certificateB64 = $certificateB64 -replace '^```[^\r\n]*\r?\n', ''
+            $certificateB64 = $certificateB64 -replace '\r?\n```\s*$', ''
+          }
+
+          $certificateB64 = $certificateB64 -replace '^(?:base64|pfx)\s*:\s*', ''
+          $certificateB64 = $certificateB64 -replace '^data:application/(?:x-)?pkcs12;base64,', ''
+          $certificateB64 = $certificateB64 -replace '\s', ''
+          if ($certificateB64 -match '-----BEGIN|^\s*(?:base64|pfx)\s*:') {
+            throw 'Секрет WINUI_MSIX_CERTIFICATE_B64 должен содержать Base64 PFX без PEM-заголовка или метки'
+          }
+          $invalidCharacterCount = [regex]::Matches(
+            $certificateB64,
+            '[^A-Za-z0-9+/=]').Count
+          if ($certificateB64.Length -eq 0 -or
+              ($certificateB64.Length % 4) -ne 0 -or
+              $certificateB64 -notmatch '^[A-Za-z0-9+/]*={0,2}$') {
+            throw "Секрет WINUI_MSIX_CERTIFICATE_B64 содержит недопустимые символы или имеет некорректную длину (нормализованная длина: $($certificateB64.Length), недопустимых символов: $invalidCharacterCount)"
+          }
+
+          $certificatePath = Join-Path $env:RUNNER_TEMP 'BarkFluffWinUI-signing.pfx'
+          try {
+            $certificateBytes = [Convert]::FromBase64String($certificateB64)
+          }
+          catch [FormatException] {
+            throw 'Секрет WINUI_MSIX_CERTIFICATE_B64 не удалось декодировать; нужен полный Base64 PFX'
+          }
+          [System.IO.File]::WriteAllBytes($certificatePath, $certificateBytes)
+
+          if (-not (Test-Path -LiteralPath $certificatePath -PathType Leaf)) {
+            throw "Не удалось восстановить сертификат: $certificatePath"
+          }
+
+          $password = ConvertTo-SecureString $env:CERTIFICATE_PASSWORD -AsPlainText -Force
+          try {
+            $certificates = Import-PfxCertificate `
+              -FilePath $certificatePath `
+              -CertStoreLocation 'Cert:\CurrentUser\My' `
+              -Password $password `
+              -ErrorAction Stop
+          }
+          catch {
+            throw 'Не удалось импортировать PFX: проверьте полный Base64-секрет WINUI_MSIX_CERTIFICATE_B64 и пароль WINUI_MSIX_CERTIFICATE_PASSWORD'
+          }
+          $certificate = $certificates |
+            Where-Object HasPrivateKey |
+            Select-Object -First 1
+
+          if ($null -eq $certificate) {
+            throw 'В PFX не найден сертификат с приватным ключом'
+          }
+
+          @(
+            "path=$certificatePath"
+            "thumbprint=$($certificate.Thumbprint)"
+          ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "Сертификат восстановлен: thumbprint=$($certificate.Thumbprint)"
+
+      - name: Восстановление зависимостей
+        run: dotnet restore Windows/BarkFluff.Client.WinUI/BarkFluff.Client.WinUI.csproj -p:Configuration=Release -p:Platform=x64 -p:RuntimeIdentifier=win-x64 -p:PublishReadyToRun=true
+
+      - name: Сборка и упаковка MSIX
+        id: package
+        shell: pwsh
+        env:
+          CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
+          PACKAGE_VERSION: ${{ steps.variant.outputs.version }}
+          PACKAGE_MANIFEST_VERSION: ${{ steps.variant.outputs.manifest_version }}
+          EXPECTED_IDENTITY: ${{ steps.target.outputs.identity_name }}
+          ASSET_DIRECTORY: ${{ steps.target.outputs.asset_directory }}
+        run: |
+          $projectPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\BarkFluff.Client.WinUI.csproj'
+          $outputDirectory = Join-Path $env:GITHUB_WORKSPACE 'artifacts'
+
+          if (Test-Path -LiteralPath $outputDirectory) {
+            Remove-Item -LiteralPath $outputDirectory -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
+
+          $arguments = @(
+            'publish'
+            $projectPath
+            '--configuration'
+            'Release'
+            '--no-restore'
+            '-p:Platform=x64'
+            '-p:PublishProfile='
+            '-p:PublishAppxPackage=true'
+            '-p:AppxBundle=Never'
+            '-p:GenerateAppInstallerFile=false'
+            '-p:GenerateTemporaryStoreCertificate=false'
+            '-p:AppxPackageSigningEnabled=true'
+            "-p:PackageCertificateThumbprint=$env:CERTIFICATE_THUMBPRINT"
+            '-p:PackageCertificateKeyFile='
+            '-p:PackageCertificatePassword='
+            "-p:Version=$env:PACKAGE_VERSION"
+            "-p:AssemblyVersion=$env:PACKAGE_MANIFEST_VERSION"
+            "-p:FileVersion=$env:PACKAGE_MANIFEST_VERSION"
+            "-p:PackageVersion=$env:PACKAGE_VERSION"
+            '-p:AppxAutoIncrementPackageRevision=false'
+            "-p:AppxPackageDir=$outputDirectory"
+          )
+
+          & dotnet @arguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "dotnet publish завершился с кодом $LASTEXITCODE"
+          }
+
+          $msixCandidates = Get-ChildItem `
+            -LiteralPath $outputDirectory `
+            -Recurse `
+            -File `
+            -Filter '*.msix'
+
+          $msix = $null
+          $manifestText = $null
+          $identity = $null
+          foreach ($candidate in $msixCandidates) {
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $candidatePackage = [System.IO.Compression.ZipFile]::OpenRead($candidate.FullName)
+            try {
+              $manifestEntry = $candidatePackage.GetEntry('AppxManifest.xml')
+              if ($null -eq $manifestEntry) {
+                continue
+              }
+
+              $reader = [System.IO.StreamReader]::new($manifestEntry.Open())
+              try {
+                $candidateManifestText = $reader.ReadToEnd()
+                [xml]$candidateManifest = $candidateManifestText
+              } finally {
+                $reader.Dispose()
+              }
+
+              $candidateIdentity = $candidateManifest.SelectSingleNode("/*[local-name()='Package']/*[local-name()='Identity']")
+              if ($null -ne $candidateIdentity -and
+                  [string]$candidateIdentity.Name -eq $env:EXPECTED_IDENTITY) {
+                $msix = $candidate
+                $manifestText = $candidateManifestText
+                $identity = $candidateIdentity
+                break
+              }
+            } finally {
+              $candidatePackage.Dispose()
+            }
+          }
+
+          if ($null -eq $msix) {
+            throw "MSIX с identity '$($env:EXPECTED_IDENTITY)' не найден в $outputDirectory"
+          }
+
+          $version = [string]$identity.Version
+          if ($version -ne $env:PACKAGE_MANIFEST_VERSION) {
+            throw "Версия MSIX $version не совпадает с ожидаемой $($env:PACKAGE_MANIFEST_VERSION)"
+          }
+
+          $normalizedManifestText = $manifestText.Replace('\', '/')
+          $expectedAssetPrefix = "Assets/$($env:ASSET_DIRECTORY)/"
+          $assetReferenceCount = [regex]::Matches(
+            $normalizedManifestText,
+            [regex]::Escape($expectedAssetPrefix)).Count
+          if ($assetReferenceCount -lt 7) {
+            throw "В MSIX найдено недостаточно ссылок на $expectedAssetPrefix`: $assetReferenceCount"
+          }
+          if (($env:ASSET_DIRECTORY -ne 'master') -and $normalizedManifestText.Contains('Assets/master/')) {
+            throw 'В MSIX остались ссылки на master-иконки'
+          }
+
+          @(
+            "package_dir=$($msix.Directory.FullName)"
+            "msix_path=$($msix.FullName)"
+            "version=$($env:PACKAGE_VERSION)"
+            "manifest_version=$version"
+          ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host "MSIX: $($msix.FullName)"
+          Write-Host "Identity: $($identity.Name)"
+          Write-Host "Версия: $($env:PACKAGE_VERSION) ($version в manifest)"
+
+      - name: Архивирование папки установщика
+        id: archive
+        shell: pwsh
+        env:
+          PACKAGE_DIRECTORY: ${{ steps.package.outputs.package_dir }}
+          VERSION: ${{ steps.package.outputs.version }}
+          BRANCH_NAME: ${{ steps.target.outputs.branch }}
+        run: |
+          $applicationName = 'BarkFluffWinUI'
+          $safeBranchName = $env:BRANCH_NAME -replace '[^A-Za-z0-9._-]', '-'
+          $archiveName = "${applicationName}_${safeBranchName}_$($env:VERSION).zip"
+          $archivePath = Join-Path $env:GITHUB_WORKSPACE $archiveName
+
+          Compress-Archive `
+            -Path $env:PACKAGE_DIRECTORY `
+            -DestinationPath $archivePath `
+            -CompressionLevel Optimal `
+            -Force
+
+          if (-not (Test-Path -LiteralPath $archivePath -PathType Leaf)) {
+            throw "Архив не создан: $archivePath"
+          }
+
+          "path=$archivePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "name=$archiveName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Архив: $archiveName"
+
+      - name: Загрузка на сервер обновлений
+        shell: pwsh
+        env:
+          CLIENT_STORAGE_URL: ${{ secrets.CLIENT_STORAGE_URL }}
+          CLIENT_STORAGE_TOKEN: ${{ secrets.CLIENT_STORAGE_TOKEN }}
+          UPLOAD_PATH: ${{ steps.target.outputs.upload_path }}
+          VERSION: ${{ steps.package.outputs.version }}
+          ARCHIVE_PATH: ${{ steps.archive.outputs.path }}
+        run: |
+          foreach ($name in @('CLIENT_STORAGE_URL', 'CLIENT_STORAGE_TOKEN', 'UPLOAD_PATH', 'VERSION', 'ARCHIVE_PATH')) {
+            if ([string]::IsNullOrWhiteSpace((Get-Item "Env:$name").Value)) {
+              throw "Не задано обязательное значение $name"
+            }
+          }
+
+          if (-not (Test-Path -LiteralPath $env:ARCHIVE_PATH -PathType Leaf)) {
+            throw "Архив не найден: $env:ARCHIVE_PATH"
+          }
+
+          $url = "$($env:CLIENT_STORAGE_URL.TrimEnd('/'))/$($env:UPLOAD_PATH)"
+          & curl.exe `
+            --fail `
+            --retry 5 `
+            --retry-delay 15 `
+            --retry-all-errors `
+            --request POST `
+            $url `
+            --header "Authorization: Bearer $($env:CLIENT_STORAGE_TOKEN)" `
+            --header "X-App-Version: $($env:VERSION)" `
+            --form "file=@$($env:ARCHIVE_PATH)"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Загрузка архива завершилась с кодом $LASTEXITCODE"
+          }
+
+          Write-Host "Архив $($env:ARCHIVE_PATH) загружен на $url"
+
+      - name: Очистка временных секретов
+        if: always()
+        shell: pwsh
+        env:
+          CERTIFICATE_PATH: ${{ steps.certificate.outputs.path }}
+          CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
+          MANIFEST_BACKUP_DIRECTORY: ${{ runner.temp }}\BarkFluffWinUI-manifest-${{ github.run_id }}
+        run: |
+          $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\Package.appxmanifest'
+          $applicationManifestPath = Join-Path $env:GITHUB_WORKSPACE 'Windows\BarkFluff.Client.WinUI\app.manifest'
+          $backupManifestPath = Join-Path $env:MANIFEST_BACKUP_DIRECTORY 'Package.appxmanifest'
+          $backupApplicationManifestPath = Join-Path $env:MANIFEST_BACKUP_DIRECTORY 'app.manifest'
+          if ((Test-Path -LiteralPath $backupManifestPath -PathType Leaf) -and
+              (Test-Path -LiteralPath $backupApplicationManifestPath -PathType Leaf)) {
+            Copy-Item -LiteralPath $backupManifestPath -Destination $manifestPath -Force
+            Copy-Item -LiteralPath $backupApplicationManifestPath -Destination $applicationManifestPath -Force
+            Remove-Item -LiteralPath $env:MANIFEST_BACKUP_DIRECTORY -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:CERTIFICATE_THUMBPRINT)) {
+            Get-ChildItem -Path 'Cert:\CurrentUser\My' |
+              Where-Object Thumbprint -eq $env:CERTIFICATE_THUMBPRINT |
+              Remove-Item -Force -ErrorAction SilentlyContinue
+          }
+
+          foreach ($path in @($env:CERTIFICATE_PATH)) {
+            if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {
+              Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+            }
+          }
+      - name: Итог
+        if: ${{ always() }}
+        uses: ./.github/actions/ci-result
+        with:
+          key: winui
+          status: ${{ job.status }}
+          label: "🪟 WinUI (${{ steps.target.outputs.channel }})"
+          detail: ${{ steps.package.outputs.version }}
+
+  builder:
+    name: "🧰 Builder"
+    needs: plan
+    if: ${{ needs.plan.outputs.builder == 'true' }}
+    runs-on: windows-2025-vs2026
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+
+      - name: Publish self-contained Windows x64
+        run: >-
+          dotnet publish Tools/BarkFluff.Builder/BarkFluff.Builder.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --output "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-self-contained"
+
+      - name: Verify self-contained executable and create ZIP
+        run: |
+          $output = "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-self-contained"
+          if (-not (Test-Path -LiteralPath "$output/BarkFluff.Builder.exe")) {
+            throw "Self-contained BarkFluff.Builder.exe was not published."
+          }
+          Compress-Archive -Path "$output/*" -DestinationPath "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-self-contained.zip" -CompressionLevel Optimal
+
+      - name: Publish framework-dependent Windows x64
+        run: >-
+          dotnet publish Tools/BarkFluff.Builder/BarkFluff.Builder.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained false
+          -p:UseAppHost=true
+          --output "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-framework-dependent"
+
+      - name: Verify framework-dependent executable and create ZIP
+        run: |
+          $output = "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-framework-dependent"
+          if (-not (Test-Path -LiteralPath "$output/BarkFluff.Builder.exe")) {
+            throw "Framework-dependent BarkFluff.Builder.exe was not published."
+          }
+          Compress-Archive -Path "$output/*" -DestinationPath "$env:RUNNER_TEMP/BarkFluff.Builder-win-x64-framework-dependent.zip" -CompressionLevel Optimal
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: barkfluff-builder-win-x64-self-contained
+          path: ${{ runner.temp }}/BarkFluff.Builder-win-x64-self-contained.zip
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: barkfluff-builder-win-x64-framework-dependent
+          path: ${{ runner.temp }}/BarkFluff.Builder-win-x64-framework-dependent.zip
+          if-no-files-found: error
+      - name: Create non-latest Builder release
+        if: ${{ github.ref == 'refs/heads/master' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="builder-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" \
+            --target "$GITHUB_SHA" \
+            --title "$tag" \
+            --notes "Windows x64 self-contained and framework-dependent BarkFluff Builder archives." \
+            --latest=false \
+            --repo "$GITHUB_REPOSITORY" \
+            "$RUNNER_TEMP/BarkFluff.Builder-win-x64-self-contained.zip" \
+            "$RUNNER_TEMP/BarkFluff.Builder-win-x64-framework-dependent.zip"
+
+      - name: Итог
+        if: ${{ always() }}
+        uses: ./.github/actions/ci-result
+        with:
+          key: builder
+          status: ${{ job.status }}
+          label: "🧰 Builder"
+
+  notify:
+    name: "📣 Уведомление о сборке"
+    if: ${{ always() && (github.event_name == 'push' || inputs.mode == 'build') }}
+    needs: [plan, backend, promote, android, macos, winui, builder]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        continue-on-error: true
+        with:
+          pattern: ci-result-*
+          path: ${{ runner.temp }}/ci-results
+          merge-multiple: true
+      - name: Telegram
+        continue-on-error: true
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_ACTION_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+          RESULTS_DIR: ${{ runner.temp }}/ci-results
+        run: python3 .github/scripts/ci_notify.py push

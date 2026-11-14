@@ -19,10 +19,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Liis17/BarkFluff?style=flat-square&color=8A2BE2" alt="MIT License"></a>
-  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-android.yml/badge.svg?branch=master" alt="Android CI"></a>
-  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-winui.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-winui.yml/badge.svg?branch=master" alt="WinUI CI"></a>
-  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-client-macos.yml/badge.svg?branch=master" alt="macOS CI"></a>
-  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/build-backend-web.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/build-backend-web.yml/badge.svg?branch=master" alt="Web CI"></a>
+  <a href="https://github.com/Liis17/BarkFluff/actions/workflows/ci.yml"><img src="https://github.com/Liis17/BarkFluff/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"></a>
 </p>
 
 ---

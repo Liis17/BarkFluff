@@ -7,7 +7,7 @@
 - `ComposeGenerator` генерирует Compose; guard-тесты сравнивают его сервисы, environment, mounts и dependencies с `Docker/nightly/barkfluff/docker-compose.yml` и `docker-compose.setup.yml`. Nginx guard-тесты сравнивают маршруты `NginxGenerator` с `Docker/nightly/nginx/`.
 - Версия и контрольные суммы Lognara agent, встроенные в `ComposeGenerator`, проверяются относительно `Docker/Lognara/agent/install-agent.sh` и `Docker/Lognara/agent/SHA256SUMS`.
 - `Backend/BarkFluff.Settings/Catalog/NodeSubdomains.cs` подключён в Builder как исходный файл и используется для доменов сайтов nginx. Источники публичных URL и заполнение defaults описаны в [[Backend/Settings]].
-- `Tests/BarkFluff.Builder.Tests/NginxAndTemplateGuardTests.cs` проверяет дрейф compose и nginx; `BuilderCoreTests` — согласованность Lognara agent; `BuilderConfigLoaderTests` — round-trip конфигурации. Подробности CI — в [[Testing]] и `.github/workflows/build-builder.yml`.
+- `Tests/BarkFluff.Builder.Tests/NginxAndTemplateGuardTests.cs` проверяет дрейф compose и nginx; `BuilderCoreTests` — согласованность Lognara agent; `BuilderConfigLoaderTests` — round-trip конфигурации. Подробности CI — в [[Testing]] и `.github/workflows/ci.yml`.
 
 ## Выходные файлы и владение
 
@@ -63,4 +63,4 @@ Lognara Relay общий для ноды и использует именова�
 
 `Tests/BarkFluff.Builder.Tests/` — кроссплатформенный проект `net10.0` с проверками модели, генераторов, валидации, записи файлов и round-trip. `BuilderSampleOutputTests` создаёт примеры конфигураций для CI. `.github/scripts/pr_tests.py` относит `Tools/` и `Tests/BarkFluff.Builder.Tests/` к backend-набору.
 
-`.github/workflows/build-builder.yml` запускает тесты и публикует Windows x64 ZIP в self-contained и framework-dependent вариантах. На Ubuntu workflow проверяет `docker compose config`, `nginx -t` и bootstrap PostgreSQL на новой и повторно используемой БД. Только push в `master` создаёт release `builder-<run_number>-<run_attempt>` с `latest=false`.
+`.github/workflows/ci.yml` в PR в `nightly` запускает тесты Builder на Windows и на Ubuntu проверяет `docker compose config`, `nginx -t` и bootstrap PostgreSQL на новой и повторно используемой БД. При push публикует Windows x64 ZIP в self-contained и framework-dependent вариантах; только push в `master` создаёт release `builder-<run_number>-<run_attempt>` с `latest=false`.

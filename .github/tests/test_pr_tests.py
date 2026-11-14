@@ -10,7 +10,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / '.github/scripts'))
-from pr_tests import SUITES, results_pass, select_suites
+from pr_tests import JOBS, SUITES, results_pass, select_suites
 
 
 class PrTestSelectionTests(unittest.TestCase):
@@ -26,7 +26,6 @@ class PrTestSelectionTests(unittest.TestCase):
     def test_platform_sources_select_their_own_suite(self):
         for path, suite in [
             ('Backend/BarkFluff.Messages/Host/MessagesApiService.cs', 'backend'),
-            ('Frontend/Developers/src/App.tsx', 'backend'),
             ('Windows/BarkFluff.Client.Core/Client.cs', 'windows'),
             ('Tests/BarkFluff.ClientV2.WPF.Tests/Example.cs', 'windows'),
             ('Mac/Barkfluff/Packages/BFCore/Sources/Example.swift', 'macos'),
@@ -34,14 +33,20 @@ class PrTestSelectionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assert_suites([path], [suite])
 
-    def test_builder_tool_changes_select_backend_suite(self):
-        self.assert_suites(['Tools/BarkFluff.Builder/BuilderModel.cs'], ['backend'])
+    def test_builder_tool_changes_select_backend_and_builder_suites(self):
+        self.assert_suites(['Tools/BarkFluff.Builder/BuilderModel.cs'], ['backend', 'builder'])
+        self.assert_suites(['Tests/BarkFluff.Builder.Tests/BuilderTests.cs'], ['backend', 'builder'])
+
+    def test_frontend_sources_select_frontend_checks(self):
+        self.assert_suites(['Frontend/Developers/src/App.tsx'], ['backend', 'frontend'])
+        self.assert_suites(['Backend/BarkFluff.Web/scripts/app.js'], ['backend', 'frontend', 'scripts'])
+        self.assert_suites(['Backend/BarkFluff.Navigator/Admin/src/main.tsx'], ['backend', 'frontend'])
 
     def test_mixed_changes_combine_platforms(self):
         self.assert_suites(['Android/core/Example.kt', 'Mac/Barkfluff/Example.swift'], ['android', 'macos'])
 
     def test_shared_contracts_and_selector_changes_run_every_suite(self):
-        for path in ['Shared/BarkFluff.Proto/messages.proto', '.github/workflows/pr-tests.yml',
+        for path in ['Shared/BarkFluff.Proto/messages.proto', '.github/workflows/ci.yml', '.github/scripts/ci_plan.py',
                      '.github/scripts/pr_tests.py']:
             with self.subTest(path=path):
                 self.assert_suites([path], SUITES)
@@ -55,26 +60,34 @@ class PrTestSelectionTests(unittest.TestCase):
                 self.assert_suites([path], ['backend'])
 
     def test_dotnet_sdk_change_runs_backend_and_windows(self):
-        self.assert_suites(['global.json'], ['backend', 'windows'])
+        self.assert_suites(['global.json'], ['backend', 'windows', 'builder'])
 
-    def test_client_workflow_change_also_checks_scripts(self):
-        self.assert_suites(['.github/workflows/build-client-android.yml'], ['android', 'scripts'])
+    def test_ci_helper_change_checks_scripts(self):
+        self.assert_suites(['.github/scripts/client-version.sh'], ['scripts'])
 
     def test_client_test_workflow_runs_all_clients_and_scripts(self):
         self.assert_suites(['.github/workflows/test-clients.yml'], ['windows', 'android', 'macos', 'scripts'])
 
     def test_gate_rejects_failed_cancelled_and_unexpectedly_skipped_jobs(self):
-        jobs = ('backend', 'clients', 'scripts')
         states = ('success', 'failure', 'cancelled', 'skipped')
-        for selected_values in itertools.product((False, True), repeat=3):
-            selected = dict(zip(jobs, selected_values))
-            expected = {job: 'success' if selected[job] else 'skipped' for job in jobs}
-            for values in itertools.product(states, repeat=3):
-                results = dict(zip(jobs, values))
-                for selection_result in states:
+        for selected_values in itertools.product((False, True), repeat=len(JOBS)):
+            selected = dict(zip(JOBS, selected_values))
+            expected = {job: 'success' if selected[job] else 'skipped' for job in JOBS}
+            for values in itertools.product(states, repeat=len(JOBS)):
+                results = dict(zip(JOBS, values))
+                for selection_result in ('success', 'failure', 'cancelled'):
                     self.assertEqual(results_pass(selection_result, selected, results),
                                      selection_result == 'success' and results == expected,
                                      (selection_result, selected, results))
+
+    def test_promotion_pr_needs_only_guard_and_no_tests(self):
+        skipped = dict.fromkeys(JOBS, 'skipped')
+        self.assertTrue(results_pass('skipped', {}, skipped, 'success'))
+        for guard in ('failure', 'cancelled', 'skipped'):
+            self.assertFalse(results_pass('skipped', {}, skipped, guard))
+            self.assertFalse(results_pass('success', dict.fromkeys(JOBS, False), skipped, guard))
+        for job in JOBS:
+            self.assertFalse(results_pass('skipped', {}, dict(skipped, **{job: 'success'}), 'success'))
 
     def test_shallow_merge_diff_excludes_unrelated_target_branch_changes(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -110,7 +123,8 @@ class PrTestSelectionTests(unittest.TestCase):
                            env=dict(os.environ, GITHUB_EVENT_NAME='pull_request', GITHUB_OUTPUT=str(output)))
             values = dict(line.split('=', 1) for line in output.read_text().splitlines())
             self.assertEqual(json.loads(values['platforms']), ['android'])
-            self.assertEqual(json.loads(values['selected']), {'backend': False, 'clients': True, 'scripts': False})
+            self.assertEqual(json.loads(values['selected']), {'backend': False, 'clients': True, 'scripts': False,
+                                                         'frontend': False, 'builder': False})
 
 
 if __name__ == '__main__':
