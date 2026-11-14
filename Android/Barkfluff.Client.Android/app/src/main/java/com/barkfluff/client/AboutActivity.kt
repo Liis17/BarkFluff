@@ -7,7 +7,11 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.barkfluff.client.bft.BftProxyManager
+import com.barkfluff.client.bft.BftProxyViewState
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityAboutBinding
 import com.barkfluff.client.utils.ServicePingChecker
@@ -16,6 +20,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
@@ -26,6 +31,7 @@ class AboutActivity : AppCompatActivity() {
     private val servicePingChecker by lazy { ServicePingChecker(applicationContext) }
     private var pingResults = emptyMap<String, ServicePingResult>()
     private var isChecking = false
+    private var bftProxyState: BftProxyViewState? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,11 +39,26 @@ class AboutActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         globalParam = GlobalParam(this)
+        val proxyManager = BftProxyManager.get(applicationContext)
+        bftProxyState = proxyManager.state.value
 
         setupToolbar()
         fillAppInfo()
         fillDeviceInfo()
         setupServerInfo()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                proxyManager.state.collect { state ->
+                    val previous = bftProxyState
+                    bftProxyState = state
+                    if (binding.serverInfoCard.visibility == View.VISIBLE &&
+                        (previous?.enabled != state.enabled || previous?.name != state.name)
+                    ) {
+                        fillServerInfo()
+                    }
+                }
+            }
+        }
     }
 
     private fun setupToolbar() {
@@ -119,8 +140,28 @@ class AboutActivity : AppCompatActivity() {
                 ellipsize = TextUtils.TruncateAt.END
             }
 
+            val proxyRouteView = bftProxyState
+                ?.takeIf { it.enabled && service.pingable && service.address.isNotBlank() }
+                ?.let { state ->
+                    TextView(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+                        text = getString(
+                            R.string.bft_proxy_via_name,
+                            state.name?.takeIf { it.isNotBlank() } ?: getString(R.string.bft_proxy_name_unknown)
+                        )
+                        setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                        setTextColor(getColor(R.color.profile_settings_on_surface_variant))
+                        maxLines = 1
+                        ellipsize = TextUtils.TruncateAt.END
+                    }
+                }
+
             details.addView(nameView)
             details.addView(addressView)
+            if (proxyRouteView != null) details.addView(proxyRouteView)
             row.addView(details)
 
             val statusView = TextView(this).apply {

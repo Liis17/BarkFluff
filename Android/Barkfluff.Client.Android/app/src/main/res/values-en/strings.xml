@@ -1468,6 +1468,9 @@
     <string name="account_session_pending_deletion">Your session ended because the account is pending deletion. Contact the server administrator.</string>
     <string name="account_user_unavailable">This user is unavailable. Their account may be restricted by the server.</string>
     <!-- BFT proxy -->
+    <string name="bft_proxy_via_name">Via proxy “%1$s”</string>
+    <string name="bft_proxy_chat_connecting">Connecting to proxy…</string>
+    <string name="bft_proxy_button_description">Proxy settings: %1$s</string>
     <string name="bft_proxy_title">Proxy</string>
     <string name="bft_proxy_name_label">Proxy name</string>
     <string name="bft_proxy_address_label">Address</string>

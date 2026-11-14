@@ -1472,6 +1472,9 @@
     <string name="account_session_pending_deletion">La sesión terminó porque la cuenta está pendiente de eliminación. Contacta con el administrador del servidor.</string>
     <string name="account_user_unavailable">Este usuario no está disponible. Es posible que el servidor haya restringido su cuenta.</string>
     <!-- BFT proxy -->
+    <string name="bft_proxy_via_name">A través del proxy «%1$s»</string>
+    <string name="bft_proxy_chat_connecting">Conectando al proxy…</string>
+    <string name="bft_proxy_button_description">Ajustes del proxy: %1$s</string>
     <string name="bft_proxy_title">Proxy</string>
     <string name="bft_proxy_name_label">Nombre del proxy</string>
     <string name="bft_proxy_address_label">Dirección</string>

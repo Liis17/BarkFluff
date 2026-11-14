@@ -1458,6 +1458,9 @@
     <string name="account_session_pending_deletion">账号正在删除，当前会话已结束。请联系服务器管理员。</string>
     <string name="account_user_unavailable">该用户不可用，其账号可能受到服务器限制。</string>
     <!-- BFT proxy -->
+    <string name="bft_proxy_via_name">通过代理“%1$s”</string>
+    <string name="bft_proxy_chat_connecting">正在连接代理…</string>
+    <string name="bft_proxy_button_description">代理设置：%1$s</string>
     <string name="bft_proxy_title">代理</string>
     <string name="bft_proxy_name_label">代理名称</string>
     <string name="bft_proxy_address_label">地址</string>

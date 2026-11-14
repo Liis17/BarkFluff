@@ -52,12 +52,25 @@
                     android:layout_marginEnd="12dp"
                     android:ellipsize="end"
                     android:lineHeight="20sp"
-                    android:maxLines="1"
+                    android:maxLines="3"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="14sp"
                     tools:text="12 непрочитанных сообщений" />
 
             </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/proxyButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/bft_proxy_title"
+                android:padding="12dp"
+                android:src="@drawable/ic_storage"
+                android:visibility="gone"
+                app:tint="?attr/colorOnSurfaceVariant" />
 
             <!-- Аватар пользователя справа -->
             <FrameLayout
