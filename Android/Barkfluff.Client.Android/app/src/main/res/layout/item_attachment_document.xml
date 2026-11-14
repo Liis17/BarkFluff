@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Файл в стиле Telegram: круглая кнопка (скачать / открыть) слева, имя и размер справа. -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -7,24 +8,45 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:paddingHorizontal="12dp"
-    android:paddingVertical="10dp"
-    android:minWidth="200dp">
+    android:paddingStart="8dp"
+    android:paddingEnd="4dp"
+    android:paddingTop="8dp"
+    android:minWidth="220dp">
 
-    <!-- Иконка файла -->
+    <!-- Круг 48dp: иконка файла, поверх — кнопка скачивания (с заливкой) или прозрачная
+         кнопка открытия; кольцо загрузки исходящего файла обрамляет круг. -->
     <FrameLayout
         android:layout_width="48dp"
         android:layout_height="48dp">
 
         <ImageView
             android:id="@+id/docFileIcon"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_gravity="center"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_doc_circle"
+            android:padding="13dp"
             android:src="@drawable/ic_file"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
-            app:tint="?attr/colorPrimary" />
+            app:tint="?attr/colorOnPrimary" />
+
+        <ImageButton
+            android:id="@+id/docDownloadButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_doc_circle"
+            android:src="@drawable/ic_download"
+            android:contentDescription="@string/cd_download_file"
+            android:scaleType="center"
+            app:tint="?attr/colorOnPrimary" />
+
+        <ImageButton
+            android:id="@+id/docOpenButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_open_file"
+            android:visibility="gone" />
 
         <com.google.android.material.progressindicator.CircularProgressIndicator
             android:id="@+id/outgoingUploadProgress"
@@ -33,7 +55,7 @@
             android:layout_gravity="center"
             android:indeterminate="true"
             android:visibility="gone"
-            app:indicatorSize="44dp"
+            app:indicatorSize="48dp"
             app:trackThickness="3dp" />
     </FrameLayout>
 
@@ -42,7 +64,8 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginHorizontal="8dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="4dp"
         android:orientation="vertical">
 
         <TextView
@@ -51,7 +74,7 @@
             android:layout_height="wrap_content"
             android:singleLine="true"
             android:ellipsize="middle"
-            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
             android:textColor="?attr/colorOnSurface"
             tools:text="document.pdf" />
 
@@ -60,7 +83,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textAppearance="?attr/textAppearanceBodySmall"
             android:textColor="?attr/colorOnSurfaceVariant"
             tools:text="2.5 MB" />
 
@@ -73,51 +96,21 @@
             android:max="100"
             android:progress="0"
             android:visibility="gone"
-            app:trackThickness="4dp"
+            app:trackThickness="3dp"
             tools:visibility="visible" />
 
     </LinearLayout>
 
-    <!-- Контейнер для кнопок — 48dp touch target (M3 / WCAG минимум).
-         Визуальный размер иконки сохраняется 24dp через scaleType=center. -->
-    <FrameLayout
-        android:layout_width="96dp"
-        android:layout_height="48dp">
-
-        <!-- Кнопка скачать -->
-        <ImageButton
-            android:id="@+id/docDownloadButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_download"
-            android:contentDescription="@string/cd_download_file"
-            android:scaleType="center"
-            app:tint="?attr/colorOnSurfaceVariant" />
-
-        <!-- Кнопка открыть (показывается после скачивания) -->
-        <ImageButton
-            android:id="@+id/docOpenButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_open"
-            android:contentDescription="@string/cd_open_file"
-            android:scaleType="center"
-            android:visibility="gone"
-            app:tint="?attr/colorOnSurfaceVariant" />
-
-        <ImageButton
-            android:id="@+id/docMenuButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_gravity="end"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_more_vert"
-            android:contentDescription="@string/cd_more_menu"
-            android:scaleType="center"
-            app:tint="?attr/colorOnSurfaceVariant" />
-
-    </FrameLayout>
+    <!-- Меню скачанного файла (удалить из кеша) -->
+    <ImageButton
+        android:id="@+id/docMenuButton"
+        android:layout_width="40dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_more_vert"
+        android:contentDescription="@string/cd_more_menu"
+        android:scaleType="center"
+        android:visibility="gone"
+        app:tint="?attr/colorOnSurfaceVariant" />
 
 </LinearLayout>
