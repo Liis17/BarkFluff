@@ -56,7 +56,7 @@ internal static class BftProxyCli
         var obfsKey = RandomNumberGenerator.GetBytes(32);
         try
         {
-            var link = BftConnectionString.Format(new BftConnectionSettings(
+            var link = BftConnectionString.FormatEncoded(new BftConnectionSettings(
                 BftCrypto.GetX25519PublicKey(staticKey), obfsKey, options["--host"], port,
                 options.GetValueOrDefault("--token")) { Name = options["--name"] });
             var line = $"{label} {EncodeKey(obfsKey)} # {options["--name"]}";

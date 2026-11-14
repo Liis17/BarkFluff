@@ -4,7 +4,7 @@ Parent: [[Index]]. `Shared/BarkFluff.Bft/` is the .NET 10 library for BFTv1 fram
 
 ## Public entry points
 
-- `BftConnectionString` and `BftConnectionSettings` parse/format the `bft://` client link.
+- `BftConnectionString` and `BftConnectionSettings` parse/format the `bft://` client link. `Parse` accepts both the classic form and the encoded form `bft://<base64url(body)>`; `Format` stays the canonical classic form, `FormatEncoded` produces the encoded link handed to users. Android mirrors this in `Android/core/.../bft/BftConnectionString.kt` (`parse`, `format`, `formatEncoded`).
 - `BftClientHandshake` / `BftServerHandshake`, their option/result records, `BftNoiseSession`, and `BftClientTunnel` / `BftServerTunnel` establish an authenticated encrypted tunnel.
 - `BftTunnelStream` exposes one multiplexed tunnel stream as a `Stream`; `BftFrameCodec`, frame enums/records, and `BftObfuscatedRecords` encode transport records.
 - `BftRelayPreamble` and `BftRelayPreambleInfo` authenticate the client address and Relay ID between Relay and Exit.

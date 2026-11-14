@@ -56,7 +56,7 @@ docker compose -f docker-compose.exit.yml run --rm --no-deps exit add-client --l
 docker compose -f docker-compose.exit.yml run --rm --no-deps exit remove-client --label phone
 ```
 
-`--host` and `--port` identify the public client-facing endpoint: the Exit host/port for direct access or Relay host/port when routed through Relay. Key-file changes are picked up without restart; a removed key revokes its active tunnels on the next reload. The volume must be writable by UID 1654 so the CLI can append/remove entries.
+`add-client` prints the encoded link `bft://<base64url(body)>` (`BftConnectionString.FormatEncoded`, see `Docs/BFTv1.md` §3). `--host` and `--port` identify the public client-facing endpoint: the Exit host/port for direct access or Relay host/port when routed through Relay. Key-file changes are picked up without restart; a removed key revokes its active tunnels on the next reload. The volume must be writable by UID 1654 so the CLI can append/remove entries.
 
 ## Trust boundaries and forwarding
 

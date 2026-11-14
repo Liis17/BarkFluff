@@ -348,6 +348,7 @@ public sealed class ExitProxyTests(BftProxyFixture fixture)
             var cliListenPort = ReservePort();
             Assert.Equal(0, await BftProxyCli.RunAsync(["add-client", "--label", "cli-user", "--name", "My proxy", "--host", "127.0.0.1", "--port", cliListenPort.ToString(), "--token", "my token"]));
             var link = captured.ToString().Trim();
+            Assert.Matches("^bft://[A-Za-z0-9_-]+$", link);
             var parsed = BftConnectionString.Parse(link);
             Assert.Equal("My proxy", parsed.Name);
             Assert.Equal("my token", parsed.Token);
