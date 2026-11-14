@@ -1469,6 +1469,9 @@
     <string name="account_session_pending_deletion">Ihre Sitzung wurde beendet, weil das Konto gelöscht werden soll. Wenden Sie sich an den Serveradministrator.</string>
     <string name="account_user_unavailable">Dieser Benutzer ist nicht verfügbar. Das Konto ist möglicherweise vom Server eingeschränkt.</string>
     <!-- BFT proxy -->
+    <string name="bft_proxy_via_name">Über Proxy „%1$s“</string>
+    <string name="bft_proxy_chat_connecting">Verbindung zum Proxy wird hergestellt…</string>
+    <string name="bft_proxy_button_description">Proxy-Einstellungen: %1$s</string>
     <string name="bft_proxy_title">Proxy</string>
     <string name="bft_proxy_name_label">Proxyname</string>
     <string name="bft_proxy_address_label">Adresse</string>
@@ -1483,6 +1486,8 @@
     <string name="bft_proxy_delete_message">Der Proxy-Link und die Einstellungen werden von diesem Gerät entfernt.</string>
     <string name="bft_proxy_status_disabled">Aus</string>
     <string name="bft_proxy_status_connecting">Verbindung wird hergestellt…</string>
+    <string name="bft_proxy_connecting_title">Verbindung zum Proxy wird hergestellt</string>
+    <string name="bft_proxy_connecting_target">%1$s · %2$s</string>
     <string name="bft_proxy_status_connected">Verbunden</string>
     <string name="bft_proxy_status_no_connection">Keine Verbindung zum Proxy</string>
     <string name="bft_proxy_status_key_rejected">Schlüssel ungültig oder widerrufen</string>

@@ -50,17 +50,19 @@ internal object BftProxyLinkImporter {
                     globalParam.userId
                 )
                 if (activeSession) {
+                    val connectionDialog = BftProxyConnectionDialog.show(activity, name, address)
                     activity.lifecycleScope.launch {
                         val result = withContext(Dispatchers.IO) {
                             runCatching { manager.saveConnectionStringAndEnable(link) }
                         }
                         result.onFailure { error ->
-                            Toast.makeText(
-                                activity,
-                                proxyErrorMessage(activity, error) ?: activity.getString(R.string.bft_proxy_link_invalid),
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }.onSuccess { onImported(true) }
+                            connectionDialog?.showError(
+                                proxyErrorMessage(activity, error) ?: activity.getString(R.string.bft_proxy_link_invalid)
+                            )
+                        }.onSuccess {
+                            connectionDialog?.dismiss()
+                            onImported(true)
+                        }
                     }
                 } else {
                     runCatching { manager.saveConnectionString(link, enable = true) }

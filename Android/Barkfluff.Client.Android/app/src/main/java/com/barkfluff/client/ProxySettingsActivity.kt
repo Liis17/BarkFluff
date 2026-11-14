@@ -37,20 +37,32 @@ class ProxySettingsActivity : AppCompatActivity() {
         binding.switchEnabled.setOnCheckedChangeListener { _, enabled ->
             if (renderingSwitch) return@setOnCheckedChangeListener
             if (enabled) {
+                val state = proxy.settings
+                val host = state.host
+                val address = if (host != null && state.port != null) {
+                    val formattedHost = if (':' in host) getString(R.string.bft_proxy_ipv6_host_format, host) else host
+                    getString(R.string.bft_proxy_address_format, formattedHost, state.port)
+                } else {
+                    getString(R.string.bft_proxy_not_configured)
+                }
+                val connectionDialog = BftProxyConnectionDialog.show(
+                    this,
+                    state.name ?: getString(R.string.bft_proxy_name_unknown),
+                    address,
+                )
                 lifecycleScope.launch {
                     val activeSession = GlobalParam(applicationContext).let {
                         BftProxySessionPolicy.hasSession(it.accessToken, it.refreshToken, it.userId)
                     }
                     val result = withContext(Dispatchers.IO) { runCatching { proxy.setEnabled(true) } }
                     result.onFailure { error ->
-                        Toast.makeText(
-                            this@ProxySettingsActivity,
+                        connectionDialog?.showError(
                             BftProxyLinkImporter.proxyErrorMessage(this@ProxySettingsActivity, error)
-                                ?: getString(R.string.bft_proxy_enable_requires_configuration),
-                            Toast.LENGTH_LONG
-                        ).show()
+                                ?: getString(R.string.bft_proxy_enable_requires_configuration)
+                        )
                         render(proxy.settings)
                     }.onSuccess {
+                        connectionDialog?.dismiss()
                         if (!activeSession) BftProxyLinkImporter.restartAtNodeSelection(this@ProxySettingsActivity)
                     }
                 }

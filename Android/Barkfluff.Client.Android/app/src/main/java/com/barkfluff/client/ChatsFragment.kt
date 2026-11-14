@@ -2,6 +2,7 @@ package com.barkfluff.client
 
 import android.animation.ValueAnimator
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -9,18 +10,25 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.PathInterpolator
 import androidx.core.animation.doOnEnd
+import androidx.core.content.ContextCompat
 import androidx.core.view.doOnLayout
 import androidx.core.view.updateLayoutParams
+import androidx.core.widget.ImageViewCompat
 import androidx.fragment.app.Fragment
 import androidx.core.os.bundleOf
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.activity.result.contract.ActivityResultContracts
 import com.barkfluff.client.adapter.ChatAdapter
 import com.barkfluff.client.adapter.ChatSkeletonAdapter
 import com.barkfluff.client.adapter.FolderTabsAdapter
+import com.barkfluff.client.bft.BftProxyManager
+import com.barkfluff.client.bft.BftProxyStatus
+import com.barkfluff.client.bft.BftProxyViewState
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.FragmentChatsBinding
@@ -35,6 +43,7 @@ import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -53,6 +62,7 @@ class ChatsFragment : Fragment() {
     private lateinit var skeletonAdapter: ChatSkeletonAdapter
     private var subtitleHideJob: Job? = null
     private var lastHeaderSubtitle: String? = null
+    private var bftProxyState: BftProxyViewState? = null
     private var titleAnimationGeneration = 0
     private var initialScrollPending = true
 
@@ -106,7 +116,18 @@ class ChatsFragment : Fragment() {
                 chatAvatarFileId = globalParam.pictureFileId.ifBlank { globalParam.picturePreviewFileId }.ifBlank { null },
             ))
         }
+        val proxyManager = BftProxyManager.get(requireContext().applicationContext)
+        bftProxyState = proxyManager.state.value
+        binding.proxyButton.setOnClickListener {
+            startActivity(Intent(requireContext(), ProxySettingsActivity::class.java))
+        }
         setupToolbar()
+        renderProxyState(proxyManager.state.value)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                proxyManager.state.collect { state -> renderProxyState(state) }
+            }
+        }
         setupChatList()
         setupFolderTabs()
         setupSearchButton()
@@ -244,13 +265,51 @@ class ChatsFragment : Fragment() {
         }
     }
 
+    private fun renderProxyState(state: BftProxyViewState) {
+        bftProxyState = state
+        if (_binding == null) return
+        binding.proxyButton.visibility = if (state.enabled) View.VISIBLE else View.GONE
+        binding.proxyButton.contentDescription = getString(
+            R.string.bft_proxy_button_description,
+            proxyStatusLabel(state)
+        )
+        val tint = when (state.status) {
+            BftProxyStatus.CONNECTED -> ContextCompat.getColor(requireContext(), R.color.success)
+            BftProxyStatus.NO_CONNECTION,
+            BftProxyStatus.KEY_REJECTED,
+            BftProxyStatus.SERVER_MISMATCH -> ContextCompat.getColor(requireContext(), R.color.error)
+            BftProxyStatus.CONNECTING -> com.google.android.material.color.MaterialColors.getColor(
+                binding.proxyButton,
+                com.google.android.material.R.attr.colorOnSurfaceVariant
+            )
+            BftProxyStatus.DISABLED -> com.google.android.material.color.MaterialColors.getColor(
+                binding.proxyButton,
+                com.google.android.material.R.attr.colorOnSurfaceVariant
+            )
+        }
+        ImageViewCompat.setImageTintList(binding.proxyButton, ColorStateList.valueOf(tint))
+        updateHeaderSubtitle()
+    }
+
+    private fun proxyStatusLabel(state: BftProxyViewState): String = when (state.status) {
+        BftProxyStatus.DISABLED -> getString(R.string.bft_proxy_status_disabled)
+        BftProxyStatus.CONNECTING -> getString(R.string.bft_proxy_chat_connecting)
+        BftProxyStatus.CONNECTED -> getString(
+            R.string.bft_proxy_via_name,
+            state.name?.takeIf { it.isNotBlank() } ?: getString(R.string.bft_proxy_name_unknown)
+        )
+        BftProxyStatus.NO_CONNECTION -> getString(R.string.bft_proxy_status_no_connection)
+        BftProxyStatus.KEY_REJECTED -> getString(R.string.bft_proxy_key_rejected_summary)
+        BftProxyStatus.SERVER_MISMATCH -> getString(R.string.bft_proxy_status_server_mismatch)
+    }
+
     /**
-     * Вторая строка шапки: статус синхронизации, если он есть, иначе — счётчик непрочитанных.
+     * Сабтитул показывает статус прокси вместе со статусом синхронизации или непрочитанными.
      */
     private fun updateHeaderSubtitle(animate: Boolean = true) {
         if (_binding == null) return
         val state = viewModel.uiState.value
-        val subtitle = when {
+        val updateSubtitle = when {
             state.isRealtimeReconnecting -> getString(R.string.connecting)
             state.syncStatus == ChatsSyncStatus.UPDATING -> getString(R.string.chats_sync_updating)
             state.syncStatus == ChatsSyncStatus.OFFLINE -> getString(R.string.chats_sync_offline)
@@ -259,6 +318,12 @@ class ChatsFragment : Fragment() {
                 if (unread == 0) getString(R.string.chats_unread_none)
                 else resources.getQuantityString(R.plurals.chats_unread_summary, unread, unread)
             }
+        }
+        val proxyState = bftProxyState?.takeIf { it.enabled }
+        val subtitle = if (proxyState == null) {
+            updateSubtitle
+        } else {
+            "${proxyStatusLabel(proxyState)}\n$updateSubtitle"
         }
 
         if (lastHeaderSubtitle == subtitle) return
@@ -271,7 +336,7 @@ class ChatsFragment : Fragment() {
             binding.headerSubtitle.alpha = 1f
             binding.headerSubtitle.translationY = 0f
             binding.headerSubtitle.text = subtitle
-            scheduleSubtitleHide()
+            if (proxyState == null) scheduleSubtitleHide()
             return
         }
 
@@ -291,7 +356,7 @@ class ChatsFragment : Fragment() {
                     .setDuration(TITLE_FADE_IN_DURATION_MS)
                     .withEndAction {
                         if (_binding != null && generation == titleAnimationGeneration) {
-                            scheduleSubtitleHide()
+                            if (proxyState == null) scheduleSubtitleHide()
                         }
                     }
                     .start()
