@@ -929,6 +929,7 @@
     <string name="call_no_remote_participants">Keine anderen Teilnehmer</string>
     <string name="call_video_quality_updated">Videoqualität aktualisiert</string>
     <string name="call_status_in_call">Im Gespräch</string>
+    <string name="call_status_waiting">Anruf…</string>
     <string name="call_status_in_call_duration">%1$s · %2$s</string>
     <string name="call_status_reconnecting">Verbindung wird wiederhergestellt…</string>
     <string name="call_status_connection_lost">Verbindung verloren</string>

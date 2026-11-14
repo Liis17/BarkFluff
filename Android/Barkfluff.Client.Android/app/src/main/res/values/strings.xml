@@ -947,6 +947,7 @@
     <string name="call_no_remote_participants">Нет удалённых участников</string>
     <string name="call_video_quality_updated">Качество видео обновлено</string>
     <string name="call_status_in_call">В разговоре</string>
+    <string name="call_status_waiting">Вызов…</string>
     <string name="call_status_in_call_duration">%1$s · %2$s</string>
     <string name="call_status_reconnecting">Восстанавливаем соединение…</string>
     <string name="call_status_connection_lost">Соединение потеряно</string>

@@ -920,6 +920,7 @@
     <string name="call_no_remote_participants">没有其他参与者</string>
     <string name="call_video_quality_updated">视频质量已更新</string>
     <string name="call_status_in_call">通话中</string>
+    <string name="call_status_waiting">正在呼叫…</string>
     <string name="call_status_in_call_duration">%1$s · %2$s</string>
     <string name="call_status_reconnecting">正在恢复连接…</string>
     <string name="call_status_connection_lost">连接已断开</string>
