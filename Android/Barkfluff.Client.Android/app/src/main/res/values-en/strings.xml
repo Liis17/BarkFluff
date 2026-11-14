@@ -928,6 +928,7 @@
     <string name="call_no_remote_participants">No remote participants</string>
     <string name="call_video_quality_updated">Video quality updated</string>
     <string name="call_status_in_call">In call</string>
+    <string name="call_status_waiting">Calling…</string>
     <string name="call_status_in_call_duration">%1$s · %2$s</string>
     <string name="call_status_reconnecting">Restoring connection…</string>
     <string name="call_status_connection_lost">Connection lost</string>

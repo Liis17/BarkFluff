@@ -93,8 +93,9 @@ class CallTileView(context: Context) : FrameLayout(context) {
             typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
-        avatarFrame.addView(avatarImage, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        // Инициалы — подложка, картинка поверх: иначе непрозрачный круг закрывает загруженный аватар.
         avatarFrame.addView(avatarInitials, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        avatarFrame.addView(avatarImage, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         avatarBlock.addView(avatarFrame, LinearLayout.LayoutParams(dp(64), dp(64)))
 
         heroName = TextView(context).apply {
