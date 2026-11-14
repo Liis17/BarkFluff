@@ -6,8 +6,11 @@ namespace BarkFluff.Calls.Settings;
 /// </summary>
 public class LiveKitSettings
 {
-    /// <summary>WSS/WS-адрес LiveKit для входа клиента в комнату (отдаётся клиенту и в Beacon).</summary>
+    /// <summary>Внутренний WS/WSS-адрес LiveKit для серверного RoomServiceClient.</summary>
     public string Url { get; set; } = string.Empty;
+
+    /// <summary>Публичный WSS-адрес LiveKit для входа клиента в комнату (дублируется в Beacon).</summary>
+    public string PublicUrl { get; set; } = string.Empty;
 
     public string ApiKey { get; set; } = string.Empty;
 

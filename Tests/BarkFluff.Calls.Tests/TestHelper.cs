@@ -28,6 +28,8 @@ namespace BarkFluff.Calls.Tests;
 /// </summary>
 public static class TestHelper
 {
+    public const string LiveKitPublicUrl = "wss://livekit.test.example";
+
     public static CallsContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<CallsContext>()
@@ -69,6 +71,7 @@ public static class TestHelper
         var settings = new LiveKitSettings
         {
             Url = "ws://test:7880",
+            PublicUrl = LiveKitPublicUrl,
             ApiKey = "devkey",
             ApiSecret = "0123456789abcdef0123456789abcdef", // ≥32 байта — требование подписи токена
         };

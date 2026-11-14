@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
 /**
@@ -221,5 +222,16 @@ class LiveKitCallEngine(
     private fun requireRoom(): Room = room ?: error("LiveKit room is not connected")
 
     private fun buildTlsOkHttpClient(livekitUrl: String): OkHttpClient =
-        TlsTransportFactory(context.applicationContext).createDirectOkHttpClient(livekitUrl.toHttpUrl())
+        TlsTransportFactory(context.applicationContext).createDirectOkHttpClient(livekitHttpUrl(livekitUrl))
+}
+
+/** OkHttp [HttpUrl] принимает только http(s); LiveKit отдаёт ws(s)-адрес сигналинга. */
+internal fun livekitHttpUrl(livekitUrl: String): HttpUrl {
+    val url = livekitUrl.trim()
+    val httpUrl = when {
+        url.startsWith("wss://", ignoreCase = true) -> "https://" + url.substring(6)
+        url.startsWith("ws://", ignoreCase = true) -> "http://" + url.substring(5)
+        else -> url
+    }
+    return httpUrl.toHttpUrl()
 }

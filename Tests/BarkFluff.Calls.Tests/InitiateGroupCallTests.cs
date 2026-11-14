@@ -55,6 +55,18 @@ public class InitiateGroupCallTests
         db.CallSessions.Single(c => c.Status != CallStatus.Ended).ChatId.Should().Be(chatId);
     }
 
+    [Fact]
+    public async Task InitiateCall_ReturnsPublicLiveKitUrlInsteadOfInternal()
+    {
+        var db = TestHelper.CreateContext();
+        var chatId = Guid.NewGuid();
+        var service = CreateService(db, chatId);
+
+        var response = await service.InitiateAsync(CreateRequest(chatId), CancellationToken.None);
+
+        response.LivekitUrl.Should().Be(TestHelper.LiveKitPublicUrl);
+    }
+
     private static CallLifecycleHandler CreateService(CallsContext db, Guid chatId)
     {
         var messages = new Mock<MessagesServerApi.MessagesServerApiClient>();
