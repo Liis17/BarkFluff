@@ -547,11 +547,16 @@ class MessageAdapter(
     private fun applyBubbleShape(card: MaterialCardView, group: GroupPosition, isSentByMe: Boolean) {
         val density = card.resources.displayMetrics.density
         val c = computeBubbleCorners(density, group, isSentByMe)
+        // Однострочный пузырь ниже двух радиусов из настроек: без ограничения соседние углы
+        // перекрываются и форма рисуется с «шипом» сбоку.
+        fun clamped(px: Float) = com.google.android.material.shape.CornerSize { bounds ->
+            minOf(px, bounds.height() / 2f, bounds.width() / 2f)
+        }
         card.shapeAppearanceModel = ShapeAppearanceModel.builder()
-            .setTopLeftCornerSize(c[0])
-            .setTopRightCornerSize(c[1])
-            .setBottomRightCornerSize(c[2])
-            .setBottomLeftCornerSize(c[3])
+            .setTopLeftCornerSize(clamped(c[0]))
+            .setTopRightCornerSize(clamped(c[1]))
+            .setBottomRightCornerSize(clamped(c[2]))
+            .setBottomLeftCornerSize(clamped(c[3]))
             .build()
     }
 
