@@ -11,6 +11,8 @@ on:
   pull_request:
     branches: [nightly, dev, master]
     # edited: смена целевой ветки PR должна заново пройти проверку ветки-источника.
+    # Правка заголовка или описания тесты не перезапускает: «Tests passed» повторяет
+    # результат прошлого запуска для этого коммита, уведомление не отправляется.
     types: [opened, synchronize, reopened, edited]
   push:
     branches: [nightly, dev, master]
@@ -61,7 +63,10 @@ jobs:
 
   changes:
     name: "🧭 Выбор проверок"
-    if: ${{ (github.event_name == 'pull_request' && github.base_ref == 'nightly') || inputs.mode == 'tests' }}
+    if: >-
+      ${{ (github.event_name == 'pull_request' && github.base_ref == 'nightly'
+           && !(github.event.action == 'edited' && !github.event.changes.base))
+          || inputs.mode == 'tests' }}
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.select.outputs.backend }}
@@ -284,9 +289,27 @@ jobs:
     if: ${{ always() && (github.event_name == 'pull_request' || inputs.mode == 'tests') }}
     needs: [guard, changes, backend-tests, client-tests, script-tests, frontend-checks, builder-tests, builder-configs]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # Правка описания PR: тесты не запускались, повторяем итог прошлого запуска этого коммита.
+      # Запуски одного PR идут очередью, поэтому прошлый уже завершён.
+      - name: Результат прошлого запуска
+        if: ${{ github.event.action == 'edited' && !github.event.changes.base }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GUARD: ${{ needs.guard.result }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          [ "$GUARD" = success ] || { echo "::error::Ветка-источник не прошла проверку"; exit 1; }
+          previous=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs?check_name=Tests%20passed&filter=all&per_page=100" --jq "[.check_runs[] | select(.status == \"completed\" and (.details_url | contains(\"/runs/$GITHUB_RUN_ID/\") | not))]
+                  | sort_by(.completed_at) | last | .conclusion // \"none\"")
+          echo "Прошлый результат: $previous"
+          [ "$previous" = success ]
       - name: Все выбранные проверки должны пройти
+        if: ${{ !(github.event.action == 'edited' && !github.event.changes.base) }}
         env:
           GUARD: ${{ github.event_name == 'pull_request' && needs.guard.result || 'success' }}
           SELECTION_RESULT: ${{ needs.changes.result }}
@@ -300,7 +323,9 @@ jobs:
 
   notify-pr:
     name: "📣 Уведомление о проверках"
-    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    if: >-
+      ${{ !cancelled() && github.event_name == 'pull_request'
+          && !(github.event.action == 'edited' && !github.event.changes.base) }}
     needs: [required, guard, backend-tests, client-tests, script-tests, frontend-checks, builder-tests, builder-configs]
     runs-on: ubuntu-latest
     steps:

@@ -14,6 +14,7 @@ import sys
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -32,6 +33,19 @@ ACCEPT = ', '.join((
 
 class PromotionError(Exception):
     pass
+
+
+class _DropAuthOnForeignRedirect(urllib.request.HTTPRedirectHandler):
+    """Blobs redirect to presigned storage URLs; a forwarded Basic header makes the storage reject them."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None and urllib.parse.urlsplit(newurl).netloc != urllib.parse.urlsplit(req.full_url).netloc:
+            new.remove_header('Authorization')
+        return new
+
+
+_OPENER = urllib.request.build_opener(_DropAuthOnForeignRedirect)
 
 
 def git(*args):
@@ -58,13 +72,14 @@ def check_revision(revision, sources, head='HEAD'):
 class Registry:
     def __init__(self, user, password):
         token = base64.b64encode(f'{user}:{password}'.encode()).decode()
-        self.headers = {'Authorization': f'Basic {token}', 'Accept': ACCEPT}
+        # Cloudflare перед реестром отвечает 403 на User-Agent Python-urllib.
+        self.headers = {'Authorization': f'Basic {token}', 'Accept': ACCEPT, 'User-Agent': 'barkfluff-ci'}
 
     def request(self, path, method='GET', attempts=6, delay=15):
         request = urllib.request.Request(f'https://{REGISTRY}/v2/{path}', headers=self.headers, method=method)
         for attempt in range(1, attempts + 1):
             try:
-                with urllib.request.urlopen(request, timeout=30) as response:
+                with _OPENER.open(request, timeout=30) as response:
                     return response.headers, response.read()
             except urllib.error.HTTPError as error:
                 if error.code < 500 or attempt == attempts:
