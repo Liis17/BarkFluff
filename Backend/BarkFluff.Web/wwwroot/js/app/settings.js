@@ -100,6 +100,7 @@
     }
 
     function close() {
+        runViewCleanup();
         BF.authUI.cancelAll();
         BF.utils.closeOverlay(overlay);
         viewStack = [];
@@ -119,8 +120,15 @@
         showView(name);
     }
 
+    // Освобождение ресурсов экрана (камера «Подключить устройство») при уходе с него или закрытии настроек.
+    var viewCleanup = null;
+    function runViewCleanup() {
+        if (viewCleanup) { viewCleanup(); viewCleanup = null; }
+    }
+
     function showView(name) {
         if (securityCleanup) { securityCleanup(); securityCleanup = null; BF.authUI.cancelAll(); }
+        runViewCleanup();
         backBtn.classList.toggle('visible', viewStack.length > 0);
         body.dataset.view = name;
         switch (name) {
@@ -137,6 +145,7 @@
             case 'about':           renderAbout(); break;
             case 'badges':          renderBadges(); break;
             case 'storage':         renderStorage(); break;
+            case 'linkDevice':      renderLinkDevice(); break;
         }
     }
 
@@ -981,6 +990,21 @@
     }
 
     // --- Sessions ---
+    // Подтверждение входа другого устройства по его QR (FastAuth).
+    function renderLinkDevice() {
+        titleEl.textContent = BF.i18n.t('fastAuthLink.title');
+        body.innerHTML = '';
+        BF.fastAuthLink.render(body);
+        viewCleanup = BF.fastAuthLink.stop;
+    }
+
+    function linkDeviceButton() {
+        var btn = makeSaveBtn(BF.i18n.t('fastAuthLink.title'));
+        btn.type = 'button';
+        btn.addEventListener('click', function () { navigate('linkDevice'); });
+        return btn;
+    }
+
     function renderSessions() {
         titleEl.textContent = BF.i18n.t('settings.sessions');
         body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
@@ -988,7 +1012,9 @@
         var currentDeviceId = BF.device ? BF.device.getDeviceId() : null;
 
         BF.api.getActiveSessions().then(function (data) {
+            if (body.dataset.view !== 'sessions') return;
             body.innerHTML = '';
+            body.appendChild(linkDeviceButton());
             var sessions = data.sessions || [];
             if (sessions.length === 0) {
                 body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('sessions.empty') + '</div>';

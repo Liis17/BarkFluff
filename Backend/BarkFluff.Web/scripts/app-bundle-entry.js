@@ -25,6 +25,7 @@ import '../wwwroot/js/app/calls.js';
 import '../wwwroot/js/app/calls-ui.js';
 import '../wwwroot/js/app/personalization.js';
 import '../wwwroot/js/app/health.js';
+import '../wwwroot/js/app/fast-auth-link.js';
 import '../wwwroot/js/app/settings.js';
 import '../wwwroot/js/app/attach.js';
 import '../wwwroot/js/app/imageeditor.js';

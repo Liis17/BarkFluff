@@ -3045,6 +3045,21 @@
         .sd-storage-bar { height: 6px; margin: 10px 0 16px; border-radius: 3px; background: var(--card-border); overflow: hidden; }
         .sd-storage-bar > div { height: 100%; background: var(--primary); }
 
+        /* Подключение устройства по QR (fast-auth-link.js) */
+        .fal-video { display: block; width: 100%; max-height: 320px; margin: 12px 0; border-radius: 12px; background: #000; object-fit: cover; }
+        .fal-video[hidden] { display: none; }
+        .fal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+        .fal-actions .sd-input { flex: 1; min-width: 200px; }
+        .fal-actions .sd-btn:not(.sd-btn-primary) { background: var(--primary-alpha); color: var(--primary); }
+        .fal-warning {
+            margin: 4px 0 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--primary-alpha);
+            color: var(--text-main);
+            font-size: 13px;
+        }
+
         .sd-btn {
             padding: 11px 20px;
             border-radius: 10px;
