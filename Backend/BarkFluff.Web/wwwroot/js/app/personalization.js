@@ -14,7 +14,8 @@
         blurOn: 'bf_pers_bg_blur_enabled',
         blurR:  'bf_pers_bg_blur_radius',
         dim:    'bf_pers_bg_dim',
-        stickerSize: 'bf_pers_sticker_size'
+        stickerSize: 'bf_pers_sticker_size',
+        lastSeenFormat: 'bf_pers_last_seen_format'
     };
 
     var DEFAULTS = {
@@ -22,7 +23,8 @@
         blurOn: false,
         blurR:  8,
         dim:    30,
-        stickerSize: 160
+        stickerSize: 160,
+        lastSeenFormat: 'relative' // 'relative' | 'exact'
     };
 
     var listeners = [];
@@ -166,6 +168,12 @@
         localStorage.setItem(KEYS.stickerSize, String(v));
         applyAll();
     }
+    function getLastSeenFormat() {
+        return readStr(KEYS.lastSeenFormat, DEFAULTS.lastSeenFormat) === 'exact' ? 'exact' : 'relative';
+    }
+    function setLastSeenFormat(v) {
+        localStorage.setItem(KEYS.lastSeenFormat, v === 'exact' ? 'exact' : 'relative');
+    }
     function applyForChat(chatId) {
         activeChatId = chatId || '';
         activeBackgroundFileId = chatBackgroundFileIds.get(activeChatId) || globalBackgroundFileId;
@@ -231,6 +239,7 @@
         getBlurRadius: getBlurRadius, setBlurRadius: setBlurRadius,
         getDim: getDim, setDim: setDim,
         getStickerSize: getStickerSize, setStickerSize: setStickerSize,
+        getLastSeenFormat: getLastSeenFormat, setLastSeenFormat: setLastSeenFormat,
         getBackgroundFileId: getBackgroundFileId,
         setBackgroundFileId: setBackgroundFileId,
         getChatBackgroundFileId: getChatBackgroundFileId,
