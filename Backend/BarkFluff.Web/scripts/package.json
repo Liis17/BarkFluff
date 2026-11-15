@@ -19,6 +19,7 @@
     "test:pending-sends": "node test-pending-sends.js",
     "test:sticker-picker": "node test-sticker-picker.js",
     "test:chat-list": "node test-chat-list.js",
+    "test:chat-list-time": "node test-chat-list-time.js",
     "test:context-menu": "node test-context-menu.js",
     "test:feed": "node test-feed.js",
     "test:mark-read": "node test-mark-read.js",
