@@ -353,6 +353,7 @@
             '</span>' +
             '<span class="chat-unread' +
             (unread > 0 ? ' visible' : '') +
+            (BF.attention && BF.attention.isChatMuted(chat) ? ' muted' : '') +
             '">' +
             unreadText +
             '</span></div></div>'
@@ -764,6 +765,9 @@
             return c.id === chatId;
         });
         if (chat) {
+            var muted = BF.attention && BF.attention.isChatMuted(chat);
+            chatContextMenu.appendChild(menuItem('toggle-mute', null, BF.i18n.t(muted ? 'chat.unmute' : 'chat.mute')));
+
             var sep2 = document.createElement('div');
             sep2.className = 'cm-separator';
             sep2.setAttribute('role', 'separator');
@@ -777,6 +781,27 @@
             dangerBtn.classList.add('cm-danger');
             chatContextMenu.appendChild(dangerBtn);
         }
+    }
+
+    // Mute без срока (muted_until пуст) или снятие. Другие устройства узнают о смене только
+    // при перезагрузке списка: события изменения mute в Updates нет.
+    function toggleMute(chatId) {
+        var chat = deps.getChats().find(function (c) {
+            return c.id === chatId;
+        });
+        if (!chat) return;
+        var mute = !BF.attention.isChatMuted(chat);
+        BF.api
+            .setChatMuted(chatId, mute)
+            .then(function () {
+                chat.muted = mute;
+                chat.mutedUntil = null;
+                deps.updateTitleBadge();
+                render();
+            })
+            .catch(function () {
+                deps.showToast(BF.i18n.t('common.error'), true);
+            });
     }
 
     // Личный/приватный (не группа, не fed-DM) — показываем чекбокс "удалить также для {имя}".
@@ -978,6 +1003,10 @@
                 closeChatContextMenu();
                 if (act === 'delete-chat' || act === 'leave-chat') {
                     if (chatId) openDeleteChatDialog(chatId);
+                    return;
+                }
+                if (act === 'toggle-mute') {
+                    if (chatId) toggleMute(chatId);
                     return;
                 }
                 if (!BF.folders) return;

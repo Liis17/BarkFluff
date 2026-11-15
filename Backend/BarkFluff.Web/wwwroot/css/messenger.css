@@ -572,6 +572,7 @@
         }
 
         .chat-unread.visible { display: block; }
+        .chat-unread.muted { background: var(--text-sub); }
 
         .search-results {
             display: none;

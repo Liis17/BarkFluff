@@ -713,6 +713,14 @@
         return mutationCall(users().setNotificationsEnabled.bind(users()), req);
     }
 
+    // muted=true без muted_until — mute навсегда; muted=false снимает mute.
+    function setChatMuted(chatId, muted) {
+        var req = new (usrPb().SetChatMutedRequest)();
+        req.setChatId(chatId);
+        req.setMuted(!!muted);
+        return mutationCall(users().setChatMuted.bind(users()), req);
+    }
+
     function setFirebaseToken(token, pushPlatform) {
         var req = new (usrPb().SetFirebaseTokenRequest)();
         req.setFirebaseToken(token);
@@ -1107,6 +1115,7 @@
         // User devices / notifications / privacy / personalization
         renameDevice: renameDevice,
         setNotificationsEnabled: setNotificationsEnabled,
+        setChatMuted: setChatMuted,
         setFirebaseToken: setFirebaseToken,
         clearFirebaseToken: clearFirebaseToken,
         getPrivacySettings: getPrivacySettings,
