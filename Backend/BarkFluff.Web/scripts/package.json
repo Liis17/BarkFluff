@@ -5,7 +5,7 @@
   "scripts": {
     "build:app": "node build-app.js",
     "build:shell-version": "node build-shell-version.js",
-    "vendor:jsqr": "esbuild node_modules/jsqr/dist/jsQR.js --minify --target=es2017 --outfile=../wwwroot/js/vendor/jsqr.min.js --log-level=warning",
+    "vendor:jsqr": "esbuild node_modules/jsqr/dist/jsQR.js --minify --target=es2017 --outfile=../wwwroot/js/vendor/jsqr.min.js --banner:js=\"/*! jsQR 1.4.0 | Apache-2.0 | https://github.com/cozmo/jsQR */\" --log-level=warning",
     "test:chat-background-refresh": "node test-chat-background-refresh.js",
     "test:markdown-preview": "node test-markdown-preview.js",
     "test:network": "node test-network.js",
