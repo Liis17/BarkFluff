@@ -2,7 +2,7 @@
 importScripts('/pwa-config.js');
 importScripts('/js/vendor/firebase-messaging-compat.bundle.js');
 
-const CACHE_NAME = 'barkfluff-shell-52c577e9';
+const CACHE_NAME = 'barkfluff-shell-d15ca7d0';
 const APP_SHELL = [
     '/', '/index.html', '/messenger', '/messenger.html', '/offline.html', '/manifest.webmanifest', '/favicon.ico',
     '/js/proto/barkfluff.bundle.js', '/js/vendor/livekit-client.bundle.js', '/js/vendor/hash-wasm.umd.min.js',

@@ -473,6 +473,57 @@
         });
     }
 
+    // --- Calls: история и активные звонки (enum-поля остаются числами CallsApi) ---
+
+    function listCallHistory(missedOnly, beforeStartedAt, limit) {
+        var pb = window.proto.barkfluff.calls;
+        var req = new pb.ListCallHistoryRequest();
+        req.setFilter(missedOnly ? pb.CallHistoryFilter.CALL_HISTORY_MISSED : pb.CallHistoryFilter.CALL_HISTORY_ALL);
+        req.setLimit(limit || 30);
+        if (beforeStartedAt) {
+            var ts = new window.proto.google.protobuf.Timestamp();
+            ts.fromDate(new Date(beforeStartedAt));
+            req.setBeforeStartedAt(ts);
+        }
+        return readCall(c().calls.listCallHistory.bind(c().calls), req).then(function (resp) {
+            return {
+                items: resp.getItemsList().map(function (i) {
+                    return {
+                        callId: i.getCallId(),
+                        chatId: i.getChatId(),
+                        peerUserId: i.getPeerUserId(),
+                        isGroup: i.getIsGroup(),
+                        mediaType: i.getMediaType(),
+                        direction: i.getDirection(),
+                        endReason: i.getEndReason(),
+                        startedAt: tsToMs(i.getStartedAt()),
+                        answeredAt: tsToMs(i.getAnsweredAt()),
+                        durationSeconds: i.getDurationSeconds()
+                    };
+                }),
+                hasMore: resp.getHasMore()
+            };
+        });
+    }
+
+    function getActiveCalls(chatIds) {
+        var req = new window.proto.barkfluff.calls.GetActiveCallsRequest();
+        req.setChatIdsList(chatIds);
+        return readCall(c().calls.getActiveCalls.bind(c().calls), req).then(function (resp) {
+            return {
+                calls: resp.getCallsList().map(function (a) {
+                    return {
+                        callId: a.getCallId(),
+                        chatId: a.getChatId(),
+                        mediaType: a.getMediaType(),
+                        startedAt: tsToMs(a.getStartedAt()),
+                        participantUserIds: a.getParticipantUserIdsList()
+                    };
+                })
+            };
+        });
+    }
+
     function getUser(userId) {
         var req = new (usrPb().GetUserRequest)();
         req.setUserId(userId);
@@ -1086,6 +1137,8 @@
         updateGroupChat: updateGroupChat,
         searchUsers: searchUsers,
         searchMessages: searchMessages,
+        listCallHistory: listCallHistory,
+        getActiveCalls: getActiveCalls,
         getUser: getUser,
         getUploadUrl: getUploadUrl,
         checkFileHash: checkFileHash,
