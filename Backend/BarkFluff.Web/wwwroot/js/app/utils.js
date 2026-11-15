@@ -537,6 +537,9 @@
 
     function formatLastSeen(lastSeenTs) {
         if (!lastSeenTs) return BF.i18n.t('lastSeen.offline');
+        if (BF.personalization && BF.personalization.getLastSeenFormat() === 'exact') {
+            return formatLastSeenExact(lastSeenTs);
+        }
         var now = Date.now();
         var diff = now - lastSeenTs;
         if (diff < 0) diff = 0;
@@ -556,6 +559,19 @@
         return BF.i18n.t('lastSeen.date', {
             date: d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
         });
+    }
+
+    function formatLastSeenExact(lastSeenTs) {
+        var d = new Date(lastSeenTs);
+        var time = timeOf(d);
+        var today = new Date();
+        if (d.toDateString() === today.toDateString()) return BF.i18n.t('lastSeen.exactToday', { time: time });
+        var yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (d.toDateString() === yesterday.toDateString()) return BF.i18n.t('lastSeen.exactYesterday', { time: time });
+        var opts = { day: 'numeric', month: 'short' };
+        if (d.getFullYear() !== today.getFullYear()) opts.year = 'numeric';
+        return BF.i18n.t('lastSeen.exactDate', { date: d.toLocaleDateString(locale(), opts), time: time });
     }
 
     // ===== Overlay focus management (a11y) =====

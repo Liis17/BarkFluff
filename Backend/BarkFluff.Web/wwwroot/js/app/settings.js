@@ -1239,6 +1239,21 @@
             function (n) { BF.personalization.setStickerSize(n); });
         body.appendChild(stickerSizeCtl.row);
 
+        var lastSeenField = document.createElement('div');
+        lastSeenField.className = 'sd-field';
+        lastSeenField.style.padding = '12px 20px 0';
+        var lastSeenLabel = document.createElement('div');
+        lastSeenLabel.className = 'sd-label';
+        lastSeenLabel.textContent = BF.i18n.t('personalization.lastSeenFormat');
+        lastSeenField.appendChild(lastSeenLabel);
+        lastSeenField.appendChild(makeSegmented([
+            { value: 'relative', labelKey: 'personalization.lastSeenFormat.relative' },
+            { value: 'exact', labelKey: 'personalization.lastSeenFormat.exact' }
+        ], BF.personalization.getLastSeenFormat(), function (v) {
+            BF.personalization.setLastSeenFormat(v);
+        }).el);
+        body.appendChild(lastSeenField);
+
         // Blur toggle + slider
         var blurInitial = BF.personalization.getBlurEnabled();
         var blurToggleSec = document.createElement('div');
