@@ -202,8 +202,12 @@
         if (window.__mobileShowList) window.__mobileShowList();
     }
 
-    function openChat(chatId) {
-        if (chatId === currentChatId) return;
+    // focusMessageId — прыжок к сообщению после открытия (результат поиска сообщений).
+    function openChat(chatId, focusMessageId) {
+        if (chatId === currentChatId) {
+            if (focusMessageId) scrollToMessage(focusMessageId);
+            return;
+        }
         if (currentChatId && currentChatType === 0 && BF.drafts) BF.drafts.flush(currentChatId);
         stopTypingSend(true);
         BF.presence.resetTyping();
@@ -306,7 +310,11 @@
                 messages = data.messages;
                 BF.sendQueue.mergePendingUploadsIntoMessages(chatId);
                 var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
-                renderMessages().then(function () { settleScroll(unreadId); });
+                renderMessages().then(function () {
+                    // scrollToMessage сам догрузит окно вокруг цели, если её нет в первой странице.
+                    if (focusMessageId) scrollToMessage(focusMessageId);
+                    else settleScroll(unreadId);
+                });
                 BF.markRead.schedule();
                 restoreChatDraft(chatId);
             }

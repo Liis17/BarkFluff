@@ -499,6 +499,7 @@
   "register.username.rules": "Letras latinas, dígitos, el símbolo _. De 3 a 30 caracteres.",
   "register.welcomeUser": "¡Te damos la bienvenida, {name}! @{username}",
   "register.zoom": "Zoom",
+  "search.messages": "Mensajes",
   "sessions.device": "Dispositivo",
   "sessions.deviceName": "Nombre del dispositivo",
   "sessions.empty": "No hay sesiones activas",

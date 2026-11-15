@@ -599,6 +599,31 @@
         .search-result-info .user-name { font-size: 15px; font-weight: 600; }
         .search-result-info .user-username { font-size: 13px; color: var(--text-sub); }
 
+        .search-section-title {
+            padding: 12px 16px 4px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-sub);
+        }
+
+        .search-hit .search-result-info { flex: 1; min-width: 0; }
+        .search-hit .user-name { display: flex; gap: 8px; }
+        .search-result-time {
+            margin-left: auto;
+            flex-shrink: 0;
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-sub);
+        }
+        .search-result-text {
+            font-size: 13px;
+            color: var(--text-sub);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .search-result-text .preview-icon { width: 15px; height: 15px; vertical-align: -3px; margin-right: 4px; }
+
         /* === CHAT AREA === */
 
         .chat-area {

@@ -508,6 +508,7 @@
   "register.username.rules": "Латиница, цифры, символ _. От 3 до 30 символов.",
   "register.welcomeUser": "Добро пожаловать, {name}! @{username}",
   "register.zoom": "Масштаб",
+  "search.messages": "Сообщения",
   "sessions.device": "Устройство",
   "sessions.deviceName": "Имя устройства",
   "sessions.empty": "Нет активных сессий",

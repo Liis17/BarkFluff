@@ -447,6 +447,32 @@
         });
     }
 
+    // Серверный поиск по обычным чатам; только первая страница, без курсора.
+    function searchMessages(query, pageSize) {
+        var req = new (msgPb().SearchMessagesRequest)();
+        req.setQuery(query);
+        req.setPageSize(pageSize || 20);
+        return readCall(messages().searchMessages.bind(messages()), req).then(function (resp) {
+            return {
+                hits: resp.getHitsList().map(function (h) {
+                    var author = h.getAuthor();
+                    return {
+                        messageId: h.getMessageId(),
+                        chatId: h.getChatId(),
+                        chatTitle: h.getChatTitle(),
+                        isGroupChat: h.getIsGroupChat(),
+                        otherUserId: h.getOtherUserId(),
+                        authorUserId: author ? author.getUserId() : 0,
+                        authorName: author ? author.getDisplayName() : '',
+                        sentAt: tsToMs(h.getSentAt()),
+                        text: h.getText(),
+                        attachmentTypes: h.getAttachmentTypesList().map(enumName)
+                    };
+                })
+            };
+        });
+    }
+
     function getUser(userId) {
         var req = new (usrPb().GetUserRequest)();
         req.setUserId(userId);
@@ -1051,6 +1077,7 @@
         leaveChat: leaveChat,
         updateGroupChat: updateGroupChat,
         searchUsers: searchUsers,
+        searchMessages: searchMessages,
         getUser: getUser,
         getUploadUrl: getUploadUrl,
         checkFileHash: checkFileHash,

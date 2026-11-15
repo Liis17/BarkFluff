@@ -508,6 +508,7 @@
   "register.username.rules": "Latin letters, digits, the _ symbol. From 3 to 30 characters.",
   "register.welcomeUser": "Welcome, {name}! @{username}",
   "register.zoom": "Zoom",
+  "search.messages": "Messages",
   "sessions.device": "Device",
   "sessions.deviceName": "Device name",
   "sessions.empty": "No active sessions",
