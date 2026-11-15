@@ -198,7 +198,6 @@
   "cookie.ok": "Понятно",
   "date.today": "Сегодня",
   "date.yesterday": "Вчера",
-  "date.yesterdayAt": "вчера в {time}",
   "dialog.deleteChat.forEveryone": "Удалить также для {name}",
   "dialog.deleteChat.pending": "Удаление…",
   "dialog.deleteChat.text": "Чат пропадёт из вашего списка. Собеседник продолжит видеть переписку, если не включить галочку ниже.",

@@ -196,7 +196,6 @@
   "cookie.ok": "知道了",
   "date.today": "今天",
   "date.yesterday": "昨天",
-  "date.yesterdayAt": "昨天 {time}",
   "dialog.deleteChat.pending": "正在删除…",
   "dialog.deleteMessage.text": "该消息将对聊天中的所有人删除。",
   "dialog.deleteMessage.title": "删除消息？",
