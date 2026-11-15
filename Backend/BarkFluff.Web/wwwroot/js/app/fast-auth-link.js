@@ -162,9 +162,20 @@
         fileInput.type = 'file';
         fileInput.accept = 'image/*';
         fileInput.hidden = true;
+        // Экран ввода актуален, пока его не сменил submit или новый renderInput: ответы камеры,
+        // декодера и картинки от прежнего экрана игнорируются, а пришедшая поздно камера гасится.
+        var screen = ++s.screen;
+        function current() {
+            return session === s && s.screen === screen;
+        }
         var decoderPromise = null;
         function decoder() {
-            if (!decoderPromise) decoderPromise = createDecoder();
+            if (!decoderPromise) {
+                decoderPromise = createDecoder().catch(function (e) {
+                    decoderPromise = null; // следующий клик повторит загрузку jsQR
+                    throw e;
+                });
+            }
             return decoderPromise;
         }
 
@@ -174,46 +185,52 @@
                 return;
             }
             cameraBtn.disabled = true;
-            Promise.all([
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }),
-                decoder()
-            ])
-                .then(function (res) {
-                    if (session !== s) {
-                        res[0].getTracks().forEach(function (t) {
+            navigator.mediaDevices
+                .getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+                .then(function (stream) {
+                    if (!current()) {
+                        stream.getTracks().forEach(function (t) {
                             t.stop();
                         });
                         return;
                     }
-                    s.stream = res[0];
-                    video.srcObject = res[0];
+                    s.stream = stream;
+                    video.srcObject = stream;
                     video.hidden = false;
                     video.play().catch(function () {});
-                    var detect = res[1];
-                    var tick = function () {
-                        if (session !== s || !s.stream) return;
-                        detect(video)
-                            .catch(function () {
-                                return null;
-                            })
-                            .then(function (value) {
-                                if (session !== s || !s.stream) return;
-                                if (value && CODE_PATTERN.test(value.trim())) {
-                                    submit(s, value, status);
-                                    return;
-                                }
-                                // Чужой QR в кадре — подсказываем и продолжаем сканировать.
-                                if (value) status.textContent = BF.i18n.t('fastAuthLink.error.invalid');
-                                s.timer = setTimeout(tick, 250);
-                            });
-                    };
-                    tick();
+                    return decoder().then(function (detect) {
+                        if (current() && s.stream === stream) scanLoop(stream, detect);
+                    });
                 })
                 .catch(function () {
+                    if (!current()) return;
+                    stopCamera(s);
+                    video.hidden = true;
                     cameraBtn.disabled = false;
                     status.textContent = BF.i18n.t('fastAuthLink.error.camera');
                 });
         });
+
+        function scanLoop(stream, detect) {
+            var tick = function () {
+                if (!current() || s.stream !== stream) return;
+                detect(video)
+                    .catch(function () {
+                        return null;
+                    })
+                    .then(function (value) {
+                        if (!current() || s.stream !== stream) return;
+                        if (value && CODE_PATTERN.test(value.trim())) {
+                            submit(s, value, status);
+                            return;
+                        }
+                        // Чужой QR в кадре — подсказываем и продолжаем сканировать.
+                        if (value) status.textContent = BF.i18n.t('fastAuthLink.error.invalid');
+                        s.timer = setTimeout(tick, 250);
+                    });
+            };
+            tick();
+        }
         var imageBtn = button('sd-btn', 'fastAuthLink.image', function () {
             fileInput.click();
         });
@@ -230,18 +247,18 @@
                     })
                     .then(function (value) {
                         URL.revokeObjectURL(url);
-                        if (session !== s) return;
+                        if (!current()) return;
                         if (value) submit(s, value, status);
                         else status.textContent = BF.i18n.t('fastAuthLink.error.noQr');
                     })
                     .catch(function () {
                         URL.revokeObjectURL(url);
-                        if (session === s) status.textContent = BF.i18n.t('fastAuthLink.error.noQr');
+                        if (current()) status.textContent = BF.i18n.t('fastAuthLink.error.noQr');
                     });
             };
             img.onerror = function () {
                 URL.revokeObjectURL(url);
-                status.textContent = BF.i18n.t('fastAuthLink.error.noQr');
+                if (current()) status.textContent = BF.i18n.t('fastAuthLink.error.noQr');
             };
             img.src = url;
         });
@@ -271,6 +288,7 @@
             status.textContent = BF.i18n.t('fastAuthLink.error.invalid');
             return;
         }
+        s.screen++; // экран ввода закрыт: его камера, картинка и кнопки больше не вызовут submit
         stopCamera(s);
         s.container.innerHTML = '';
         s.container.appendChild(el('div', 'sd-hint', BF.i18n.t('common.loadingShort')));
@@ -318,9 +336,11 @@
             if (!pending) return;
             acceptBtn.disabled = true;
             rejectBtn.disabled = true;
+            s.deciding = true; // уход с экрана во время решения не должен слать встречный Reject
             decide(accept, pending.fastAuthId, pending.code)
                 .then(function () {
                     s.pending = null;
+                    s.deciding = false;
                     if (session !== s) return;
                     s.container.innerHTML = '';
                     s.container.appendChild(
@@ -333,6 +353,7 @@
                     );
                 })
                 .catch(function (err) {
+                    s.deciding = false;
                     if (session !== s) return;
                     acceptBtn.disabled = false;
                     rejectBtn.disabled = false;
@@ -348,7 +369,7 @@
 
     function render(container) {
         stop();
-        session = { container: container, stream: null, timer: null, pending: null };
+        session = { container: container, stream: null, timer: null, pending: null, deciding: false, screen: 0 };
         renderInput(session);
     }
 
@@ -358,7 +379,7 @@
         session = null;
         if (!s) return;
         stopCamera(s);
-        if (s.pending) {
+        if (s.pending && !s.deciding) {
             decide(false, s.pending.fastAuthId, s.pending.code).catch(function () {});
             s.pending = null;
         }

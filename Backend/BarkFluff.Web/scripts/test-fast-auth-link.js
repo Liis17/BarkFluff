@@ -30,6 +30,9 @@ function makeEl(tag) {
         appendChild: function (child) {
             this.children.push(child);
             return child;
+        },
+        play: function () {
+            return Promise.resolve();
         }
     };
     Object.defineProperty(el, 'innerHTML', {
@@ -123,13 +126,46 @@ function createHarness() {
         document: {
             createElement: function (tag) {
                 return makeEl(tag);
+            },
+            // Загрузка jsQR (BarcodeDetector в тестах нет): скрипт «не загружается».
+            head: {
+                appendChild: function (script) {
+                    scripts.push(script);
+                    setImmediate(function () {
+                        script.onerror();
+                    });
+                }
             }
         },
-        navigator: {},
+        navigator: {
+            mediaDevices: {
+                getUserMedia: function () {
+                    return new Promise(function (resolve) {
+                        cameraRequests.push(function () {
+                            var track = {
+                                stopped: false,
+                                stop: function () {
+                                    this.stopped = true;
+                                }
+                            };
+                            tracks.push(track);
+                            resolve({
+                                getTracks: function () {
+                                    return [track];
+                                }
+                            });
+                        });
+                    });
+                }
+            }
+        },
         Promise: Promise,
         setTimeout: setTimeout,
         clearTimeout: clearTimeout
     });
+    var scripts = [];
+    var cameraRequests = [];
+    var tracks = [];
     context.window = context;
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../wwwroot/js/app/fast-auth-link.js'), 'utf8'), context);
     var container = makeEl('div');
@@ -139,6 +175,9 @@ function createHarness() {
         container: container,
         calls: calls,
         decideResult: decideResult,
+        scripts: scripts,
+        cameraRequests: cameraRequests,
+        tracks: tracks,
         resolveScan: function (i, info) {
             pendingScans[i].resolve({
                 getDeviceName: function () {
@@ -253,6 +292,53 @@ async function main() {
         await settle();
         assert.equal(h.calls[h.calls.length - 1][0], 'reject');
         assert.match(h.container.textContent, /fastAuthLink\.rejected/);
+    });
+
+    await test('a failed QR decoder load turns the granted camera off and the next attempt retries the load', async function () {
+        var h = createHarness();
+        h.button('fastAuthLink.camera').listeners.click();
+        h.cameraRequests[0]();
+        await settle();
+        assert.equal(h.tracks[0].stopped, true, 'camera released after jsQR failed to load');
+        assert.equal(h.button('fastAuthLink.camera').disabled, false);
+        assert.match(h.container.textContent, /fastAuthLink\.error\.camera/);
+
+        h.button('fastAuthLink.camera').listeners.click();
+        h.cameraRequests[1]();
+        await settle();
+        assert.equal(h.scripts.length, 2, 'the rejected decoder is not cached');
+        assert.equal(h.tracks[1].stopped, true);
+    });
+
+    await test('a camera granted after the code was entered manually is stopped at once', async function () {
+        var h = createHarness();
+        h.button('fastAuthLink.camera').listeners.click(); // ждём разрешение камеры
+        h.enterCode(ID);
+        h.cameraRequests[0]();
+        await settle();
+        assert.equal(h.tracks[0].stopped, true);
+        assert.deepEqual(
+            h.calls.map(function (c) {
+                return c[0];
+            }),
+            ['scan']
+        );
+    });
+
+    await test('leaving while the approval is in flight does not send a competing reject', async function () {
+        var h = createHarness();
+        h.enterCode(ID);
+        h.resolveScan(0, {});
+        await settle();
+        h.decideResult.accept = new Promise(function () {}); // ответ ещё не пришёл
+        h.button('fastAuthLink.accept').listeners.click();
+        h.BF.fastAuthLink.stop();
+        assert.deepEqual(
+            h.calls.map(function (c) {
+                return c[0];
+            }),
+            ['scan', 'accept']
+        );
     });
 }
 

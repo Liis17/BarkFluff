@@ -87,6 +87,8 @@
         // Смена языка — перерисовать открытый экран настроек
         BF.i18n.onChange(function () {
             if (!overlay.classList.contains('visible')) return;
+            // Перерисовка «Подключить устройство» отклонила бы отсканированный, но ещё не решённый вход.
+            if (body.dataset.view === 'linkDevice') return;
             showView(viewStack.length ? viewStack[viewStack.length - 1] : 'main');
         });
     }
