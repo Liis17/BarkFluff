@@ -196,7 +196,6 @@
   "cookie.ok": "Verstanden",
   "date.today": "Heute",
   "date.yesterday": "Gestern",
-  "date.yesterdayAt": "gestern um {time}",
   "dialog.deleteChat.pending": "Wird gelöscht…",
   "dialog.deleteMessage.text": "Die Nachricht wird für alle Chatteilnehmer gelöscht.",
   "dialog.deleteMessage.title": "Nachricht löschen?",

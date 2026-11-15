@@ -25,15 +25,16 @@
         if (!ts) return '';
         var d = new Date(ts);
         var today = new Date();
-        if (d.toDateString() === today.toDateString()) {
-            return timeOf(d);
-        }
-        var yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (d.toDateString() === yesterday.toDateString()) {
-            return BF.i18n.t('date.yesterdayAt', { time: timeOf(d) });
-        }
-        return d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
+        // Разница в календарных днях; round сглаживает переходы на летнее время.
+        var days = Math.round(
+            (new Date(today.getFullYear(), today.getMonth(), today.getDate()) -
+                new Date(d.getFullYear(), d.getMonth(), d.getDate())) /
+                86400000
+        );
+        if (days === 0) return timeOf(d);
+        if (days === 1) return BF.i18n.t('date.yesterday');
+        if (days > 1 && days < 7) return d.toLocaleDateString(locale(), { weekday: 'short' });
+        return d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: '2-digit' });
     }
 
     function formatDate(ts) {

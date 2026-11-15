@@ -198,7 +198,6 @@
   "cookie.ok": "Got it",
   "date.today": "Today",
   "date.yesterday": "Yesterday",
-  "date.yesterdayAt": "yesterday at {time}",
   "dialog.deleteChat.forEveryone": "Also delete for {name}",
   "dialog.deleteChat.pending": "Deleting…",
   "dialog.deleteChat.text": "The chat disappears from your list. The other person keeps seeing it unless you check the box below.",
