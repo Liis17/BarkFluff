@@ -40,6 +40,6 @@ foreach ($file in $rulesetFiles) {
 }
 
 foreach ($branch in @('nightly', 'dev', 'master')) {
-    gh api "repos/$Repository/rules/branches/$branch" --jq '[.[] | .type] | join(",")'
+    gh api "repos/$Repository/rules/branches/$branch" --jq '.[].type'
     if ($LASTEXITCODE -ne 0) { throw "Cannot verify rules for $branch." }
 }
