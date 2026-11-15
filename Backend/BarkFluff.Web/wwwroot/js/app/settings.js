@@ -47,7 +47,9 @@
         smartphone: BF.icons.html('active-sessions'),
         info: BF.icons.html('about-app'),
         server: BF.icons.html('about-server'),
-        globe: BF.icons.html('language')
+        globe: BF.icons.html('language'),
+        badge: BF.icons.html('badge'),
+        storage: BF.icons.html('storage-data')
     };
     function init(opts) {
         myUserId = opts.myUserId;
@@ -85,6 +87,8 @@
         // Смена языка — перерисовать открытый экран настроек
         BF.i18n.onChange(function () {
             if (!overlay.classList.contains('visible')) return;
+            // Перерисовка «Подключить устройство» отклонила бы отсканированный, но ещё не решённый вход.
+            if (body.dataset.view === 'linkDevice') return;
             showView(viewStack.length ? viewStack[viewStack.length - 1] : 'main');
         });
     }
@@ -98,6 +102,7 @@
     }
 
     function close() {
+        runViewCleanup();
         BF.authUI.cancelAll();
         BF.utils.closeOverlay(overlay);
         viewStack = [];
@@ -117,8 +122,15 @@
         showView(name);
     }
 
+    // Освобождение ресурсов экрана (камера «Подключить устройство») при уходе с него или закрытии настроек.
+    var viewCleanup = null;
+    function runViewCleanup() {
+        if (viewCleanup) { viewCleanup(); viewCleanup = null; }
+    }
+
     function showView(name) {
         if (securityCleanup) { securityCleanup(); securityCleanup = null; BF.authUI.cancelAll(); }
+        runViewCleanup();
         backBtn.classList.toggle('visible', viewStack.length > 0);
         body.dataset.view = name;
         switch (name) {
@@ -133,6 +145,9 @@
             case 'personalization': renderPersonalization(); break;
             case 'language':        renderLanguage(); break;
             case 'about':           renderAbout(); break;
+            case 'badges':          renderBadges(); break;
+            case 'storage':         renderStorage(); break;
+            case 'linkDevice':      renderLinkDevice(); break;
         }
     }
 
@@ -301,7 +316,9 @@
         // Section: Account
         var secAccount = makeSection(BF.i18n.t('settings.section.account'), [
             { icon: ICONS.edit, label: BF.i18n.t('settings.nameAndUsername'), view: 'name' },
-            { icon: ICONS.fileText, label: BF.i18n.t('settings.bio'), view: 'bio' }
+            { icon: ICONS.fileText, label: BF.i18n.t('settings.bio'), view: 'bio' },
+            { icon: ICONS.badge, label: BF.i18n.t('settings.badges'), view: 'badges' },
+            { icon: ICONS.storage, label: BF.i18n.t('settings.storage'), view: 'storage' }
         ]);
         body.appendChild(secAccount);
 
@@ -512,6 +529,168 @@
             sec.appendChild(row);
         });
         return sec;
+    }
+
+    // --- Badges: выбор основного бейджа (SetPrimaryBadge) ---
+    function renderBadges() {
+        titleEl.textContent = BF.i18n.t('settings.badges');
+        body.innerHTML = '';
+        var hint = makeHint(BF.i18n.t('settings.badges.hint'));
+        var list = document.createElement('div');
+        list.className = 'sd-badge-list';
+        var status = makeHint('');
+        body.appendChild(hint);
+        body.appendChild(list);
+        body.appendChild(status);
+        list.textContent = BF.i18n.t('common.loadingShort');
+
+        var badges = [];
+        var saving = false;
+
+        function draw() {
+            list.innerHTML = '';
+            if (!badges.length) {
+                list.textContent = BF.i18n.t('settings.badges.empty');
+                return;
+            }
+            badges.forEach(function (b) {
+                var row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'sd-badge-item' + (b.isPrimary ? ' primary' : '');
+                row.setAttribute('aria-pressed', b.isPrimary ? 'true' : 'false');
+                row.disabled = saving;
+                if (b.imageUrl) {
+                    var img = document.createElement('img');
+                    img.src = b.imageUrl;
+                    img.alt = '';
+                    row.appendChild(img);
+                }
+                var info = document.createElement('span');
+                info.className = 'sd-badge-info';
+                var name = document.createElement('span');
+                name.className = 'sd-badge-name';
+                name.textContent = b.name;
+                info.appendChild(name);
+                if (b.description) {
+                    var desc = document.createElement('span');
+                    desc.className = 'sd-badge-desc';
+                    desc.textContent = b.description;
+                    info.appendChild(desc);
+                }
+                row.appendChild(info);
+                if (b.isPrimary) {
+                    var mark = document.createElement('span');
+                    mark.className = 'sd-badge-mark';
+                    mark.textContent = BF.i18n.t('settings.badges.primary');
+                    row.appendChild(mark);
+                }
+                // Повторный клик по основному снимает выбор (badge_id = 0).
+                row.addEventListener('click', function () {
+                    choose(b.isPrimary ? 0 : b.id);
+                });
+                list.appendChild(row);
+            });
+        }
+
+        function choose(badgeId) {
+            if (saving) return;
+            saving = true;
+            status.textContent = '';
+            draw();
+            BF.api
+                .setPrimaryBadge(badgeId)
+                .then(function (data) {
+                    var primaryId = data.primaryBadge ? data.primaryBadge.id : 0;
+                    badges.forEach(function (b) {
+                        b.isPrimary = b.id === primaryId;
+                    });
+                    currentUser = null; // профиль с бейджами перечитается при следующем открытии
+                })
+                .catch(function () {
+                    status.textContent = BF.i18n.t('common.error');
+                    status.className = 'sd-hint error';
+                })
+                .then(function () {
+                    saving = false;
+                    if (body.dataset.view === 'badges') draw();
+                });
+        }
+
+        BF.api
+            .getUserBadges(myUserId)
+            .then(function (data) {
+                if (body.dataset.view !== 'badges') return;
+                badges = data.badges;
+                draw();
+            })
+            .catch(function () {
+                if (body.dataset.view !== 'badges') return;
+                list.textContent = BF.i18n.t('common.loadError');
+            });
+    }
+
+    // --- Storage: занятое место по типам файлов (GetUserStorageInfo) ---
+    var STORAGE_TYPE_KEYS = {
+        1: 'settings.storage.avatar',
+        2: 'attachment.photo',
+        3: 'attachment.video',
+        4: 'settings.storage.gif',
+        5: 'attachment.document',
+        6: 'settings.storage.chatPicture',
+        7: 'attachment.audio',
+        8: 'attachment.voice',
+        9: 'attachment.sticker',
+        10: 'settings.storage.poster'
+    };
+
+    function renderStorage() {
+        titleEl.textContent = BF.i18n.t('settings.storage');
+        body.innerHTML = '';
+        var summary = makeHint(BF.i18n.t('common.loadingShort'));
+        body.appendChild(summary);
+
+        BF.api
+            .getUserStorageInfo()
+            .then(function (info) {
+                if (body.dataset.view !== 'storage') return;
+                var size = BF.utils.formatFileSize;
+                summary.textContent = info.limit > 0
+                    ? BF.i18n.t('settings.storage.used', { used: size(info.totalUsed), limit: size(info.limit) })
+                    : size(info.totalUsed);
+                if (info.limit > 0) {
+                    var bar = document.createElement('div');
+                    bar.className = 'sd-storage-bar';
+                    var fill = document.createElement('div');
+                    fill.style.width = Math.min(100, (info.totalUsed / info.limit) * 100) + '%';
+                    bar.appendChild(fill);
+                    body.appendChild(bar);
+                }
+                info.byType
+                    .filter(function (t) {
+                        return t.used > 0;
+                    })
+                    .sort(function (a, b) {
+                        return b.used - a.used;
+                    })
+                    .forEach(function (t) {
+                        var row = document.createElement('div');
+                        row.className = 'sd-about-row';
+                        var l = document.createElement('div');
+                        l.className = 'sd-about-label';
+                        l.textContent = BF.i18n.t(STORAGE_TYPE_KEYS[t.fileType] || 'attachment.generic');
+                        var v = document.createElement('div');
+                        v.className = 'sd-about-value';
+                        v.textContent = size(t.used);
+                        row.appendChild(l);
+                        row.appendChild(v);
+                        body.appendChild(row);
+                    });
+            })
+            .catch(function () {
+                if (body.dataset.view !== 'storage') return;
+                summary.textContent = BF.i18n.t('common.loadError');
+                summary.className = 'sd-hint error';
+            });
     }
 
     // --- Profile (avatar upload) ---
@@ -813,6 +992,21 @@
     }
 
     // --- Sessions ---
+    // Подтверждение входа другого устройства по его QR (FastAuth).
+    function renderLinkDevice() {
+        titleEl.textContent = BF.i18n.t('fastAuthLink.title');
+        body.innerHTML = '';
+        BF.fastAuthLink.render(body);
+        viewCleanup = BF.fastAuthLink.stop;
+    }
+
+    function linkDeviceButton() {
+        var btn = makeSaveBtn(BF.i18n.t('fastAuthLink.title'));
+        btn.type = 'button';
+        btn.addEventListener('click', function () { navigate('linkDevice'); });
+        return btn;
+    }
+
     function renderSessions() {
         titleEl.textContent = BF.i18n.t('settings.sessions');
         body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
@@ -820,7 +1014,9 @@
         var currentDeviceId = BF.device ? BF.device.getDeviceId() : null;
 
         BF.api.getActiveSessions().then(function (data) {
+            if (body.dataset.view !== 'sessions') return;
             body.innerHTML = '';
+            body.appendChild(linkDeviceButton());
             var sessions = data.sessions || [];
             if (sessions.length === 0) {
                 body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('sessions.empty') + '</div>';

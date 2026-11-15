@@ -57,6 +57,9 @@ function createHarness(options) {
     var toastCalls = [];
     var userSearches = [];
     var pendingSearches = [];
+    var messageSearches = [];
+    var pendingMessageSearches = [];
+    var focused = [];
     var settings = options || {};
     var chats = settings.chats || [];
     var BF = {
@@ -65,6 +68,12 @@ function createHarness(options) {
                 userSearches.push(query);
                 return new Promise(function (resolve) {
                     pendingSearches.push({ query: query, resolve: resolve });
+                });
+            },
+            searchMessages: function (query) {
+                messageSearches.push(query);
+                return new Promise(function (resolve, reject) {
+                    pendingMessageSearches.push({ resolve: resolve, reject: reject });
                 });
             },
             getPersonChatId: function (userId) {
@@ -89,6 +98,12 @@ function createHarness(options) {
                 return BF.i18n.t(Number(user.accountStatus) === 1
                     ? 'accountRestriction.userBlocked'
                     : 'accountRestriction.userDeleted');
+            },
+            attachmentPreviewHtml: function (type) {
+                return '[' + type + ']';
+            },
+            formatChatListTime: function () {
+                return '12:00';
             }
         }
     };
@@ -126,16 +141,25 @@ function createHarness(options) {
         showToast: function (message, isError) {
             toastCalls.push([message, isError]);
         },
-        openChat: function (chatId) {
+        openChat: function (chatId, focusMessageId) {
             opened.push(chatId);
+            if (focusMessageId) focused.push(focusMessageId);
         }
     });
     return {
         input: input,
         results: results,
         opened: opened,
+        focused: focused,
         toastCalls: toastCalls,
         userSearches: userSearches,
+        messageSearches: messageSearches,
+        answerMessages: function (index, hits) {
+            pendingMessageSearches[index].resolve({ hits: hits });
+        },
+        failMessages: function (index) {
+            pendingMessageSearches[index].reject(new Error('unavailable'));
+        },
         type: function (text) {
             input.value = text;
             input.listeners.input();
@@ -242,6 +266,79 @@ async function main() {
         h.results.children[0].listeners.click();
         await settle();
         assert.deepEqual(h.toastCalls, [['accountRestriction.userUnavailable', true]]);
+    });
+
+    function hit(overrides) {
+        return Object.assign(
+            {
+                messageId: 900,
+                chatId: '7',
+                chatTitle: 'Team',
+                isGroupChat: true,
+                otherUserId: 0,
+                authorUserId: 3,
+                authorName: 'Bob',
+                sentAt: 1,
+                text: 'release notes',
+                attachmentTypes: []
+            },
+            overrides
+        );
+    }
+
+    await test('message hits appear under their own header and open the chat at the message', async function () {
+        var h = createHarness({ chats: [{ id: '7', title: 'Team', picture: 'https://example.test/team.png' }] });
+        h.type('release');
+        h.fireDebounce();
+        assert.deepEqual(h.messageSearches, ['release']);
+        h.answer(0, []);
+        h.answerMessages(0, [hit()]);
+        await settle();
+        assert.equal(h.results.children.length, 2, 'section header plus the hit');
+        assert.equal(h.results.children[0].className, 'search-section-title');
+        assert.equal(h.results.children[0].textContent, 'search.messages');
+        var item = h.results.children[1].innerHTML;
+        assert.match(item, /team\.png/, 'picture comes from the loaded chat, not the file id');
+        assert.match(item, /Bob: release notes/);
+        h.results.children[1].listeners.click();
+        assert.deepEqual(h.opened, ['7']);
+        assert.deepEqual(h.focused, [900]);
+        assert.equal(h.input.value, '');
+    });
+
+    await test('attachment-only hits show the attachment preview; restricted DM peers keep the local label', async function () {
+        var h = createHarness({ cachedUsers: { 44: { id: 44, accountStatus: 2 } } });
+        h.type('photo');
+        h.fireDebounce();
+        h.answer(0, []);
+        h.answerMessages(0, [hit({ isGroupChat: false, otherUserId: 44, chatTitle: 'Real Name', text: '', attachmentTypes: ['IMAGE'] })]);
+        await settle();
+        var item = h.results.children[1].innerHTML;
+        assert.match(item, /accountRestriction\.userDeleted/);
+        assert.doesNotMatch(item, /Real Name/);
+        assert.match(item, /\[IMAGE\]/);
+        assert.doesNotMatch(item, /Bob:/, 'no author prefix in personal chats');
+    });
+
+    await test('one-character queries skip the message search; stale and failed message responses are ignored', async function () {
+        var h = createHarness();
+        h.type('r');
+        h.fireDebounce();
+        assert.deepEqual(h.userSearches, ['r']);
+        assert.deepEqual(h.messageSearches, [], 'too short for the server-side message search');
+
+        h.type('re');
+        h.fireDebounce();
+        h.type('rel');
+        h.fireDebounce();
+        assert.deepEqual(h.messageSearches, ['re', 'rel']);
+        h.answer(2, [{ id: 5, username: 'rel' }]);
+        h.failMessages(1);
+        await settle();
+        h.answerMessages(0, [hit()]); // запоздалый ответ на «re»
+        await settle();
+        assert.equal(h.results.children.length, 1, 'only the fresh user; no stale hit, no error');
+        assert.match(h.results.children[0].innerHTML, /@rel/);
     });
 }
 

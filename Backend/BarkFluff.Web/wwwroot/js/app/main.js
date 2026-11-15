@@ -197,16 +197,22 @@
         chatHeaderStatus.textContent = '';
         chatHeaderStatus.classList.remove('online');
         setChatCallButtonsVisible(false);
+        BF.chatCalls.hideJoinBanner();
         setChatReadOnly(null);
         resetChatTabContext();
         if (window.__mobileShowList) window.__mobileShowList();
     }
 
-    function openChat(chatId) {
-        if (chatId === currentChatId) return;
+    // focusMessageId — прыжок к сообщению после открытия (результат поиска сообщений).
+    function openChat(chatId, focusMessageId) {
+        if (chatId === currentChatId) {
+            if (focusMessageId) scrollToMessage(focusMessageId);
+            return;
+        }
         if (currentChatId && currentChatType === 0 && BF.drafts) BF.drafts.flush(currentChatId);
         stopTypingSend(true);
         BF.presence.resetTyping();
+        BF.chatCalls.hideJoinBanner();
 
         var chatMeta = chats.find(function (c) { return c.id === chatId; });
         if (chatMeta && chatMeta.chatType === 1) { openPrivateChat(chatMeta); return; }
@@ -293,6 +299,7 @@
                 chatHeaderStatus.classList.remove('online');
                 chatHeaderStatus.hidden = false;
                 setChatCallButtonsVisible(true);
+                BF.chatCalls.refreshJoinBanner();
                 // Для группового чата — сбрасываем кастомный контекст вкладки
                 resetChatTabContext();
             }
@@ -306,7 +313,11 @@
                 messages = data.messages;
                 BF.sendQueue.mergePendingUploadsIntoMessages(chatId);
                 var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
-                renderMessages().then(function () { settleScroll(unreadId); });
+                renderMessages().then(function () {
+                    // scrollToMessage сам догрузит окно вокруг цели, если её нет в первой странице.
+                    if (focusMessageId) scrollToMessage(focusMessageId);
+                    else settleScroll(unreadId);
+                });
                 BF.markRead.schedule();
                 restoreChatDraft(chatId);
             }
@@ -511,6 +522,13 @@
     if (BF.imageEditor) BF.imageEditor.init();
     $('#navChats').addEventListener('click', function () { /* already on chats page */ });
     $('#navSettings').addEventListener('click', function () { BF.settings.open(); });
+    BF.callHistory.init({
+        getChats: function () { return chats; },
+        getUser: getUser,
+        openChat: openChat,
+        showToast: showToast
+    });
+    $('#navCalls').addEventListener('click', function () { BF.callHistory.open(); });
 
     // ========== STICKER PICKER ==========
 

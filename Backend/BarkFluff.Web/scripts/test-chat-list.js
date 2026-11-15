@@ -213,6 +213,8 @@ function createHarness(chatCount, restrictedUser) {
     var rejectDelete;
     var toastCalls = [];
     var frames = [];
+    var muteCalls = [];
+    var muteResult = Promise.resolve();
     var BF = {
         api: {
             listChats: function () {
@@ -227,6 +229,15 @@ function createHarness(chatCount, restrictedUser) {
             },
             leaveChat: function () {
                 return Promise.resolve();
+            },
+            setChatMuted: function (chatId, muted) {
+                muteCalls.push([chatId, muted]);
+                return muteResult;
+            }
+        },
+        attention: {
+            isChatMuted: function (chat) {
+                return !!chat.muted;
             }
         },
         folders: {
@@ -366,6 +377,10 @@ function createHarness(chatCount, restrictedUser) {
         resolveDelete: function () { return resolveDelete; },
         rejectDelete: function () { return rejectDelete; },
         toastCalls: toastCalls,
+        muteCalls: muteCalls,
+        setMuteResult: function (value) {
+            muteResult = value;
+        },
         chats: function () {
             return chats;
         },
@@ -1100,6 +1115,36 @@ async function runAsyncTests() {
         assert.equal(h.deleteChatOk.textContent, 'common.delete');
         assert.equal(h.deleteChatOk.classList.contains('is-loading'), false);
         assert.deepEqual(h.toastCalls, [['error.deleteChat', true]]);
+    });
+
+    await runAsyncTest('mute toggles through SetChatMuted and greys the unread badge', async function () {
+        var h = createHarness(2);
+        h.chats()[0].countUnread = 3;
+        openChatAction(h, 1000, 'toggle-mute');
+        await new Promise(function (resolve) { setImmediate(resolve); });
+        assert.deepEqual(h.muteCalls, [[1000, true]]);
+        assert.equal(h.chats()[0].muted, true);
+        assert.match(h.row(1000).innerHTML, /chat-unread visible muted/);
+
+        h.row(1000).dispatchEvent(makeEvent('contextmenu', { clientX: 20, clientY: 20 }));
+        var label = h.contextMenu.children.find(function (child) {
+            return child.dataset.act === 'toggle-mute';
+        }).innerHTML;
+        assert.match(label, /chat\.unmute/);
+        openChatAction(h, 1000, 'toggle-mute');
+        await new Promise(function (resolve) { setImmediate(resolve); });
+        assert.deepEqual(h.muteCalls, [[1000, true], [1000, false]]);
+        assert.equal(h.chats()[0].muted, false);
+        assert.doesNotMatch(h.row(1000).innerHTML, /muted/);
+    });
+
+    await runAsyncTest('failed mute keeps the state and shows an error', async function () {
+        var h = createHarness(1);
+        h.setMuteResult(Promise.reject(new Error('mute failed')));
+        openChatAction(h, 1000, 'toggle-mute');
+        await new Promise(function (resolve) { setImmediate(resolve); });
+        assert.equal(!!h.chats()[0].muted, false);
+        assert.deepEqual(h.toastCalls, [['common.error', true]]);
     });
 }
 

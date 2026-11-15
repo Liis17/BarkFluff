@@ -92,6 +92,12 @@
                     </span>
                     <span data-i18n="nav.chats">Чаты</span>
                 </button>
+                <button class="nav-btn" id="navCalls">
+                    <span class="nav-icon">
+                        <span class="bf-icon" data-bf-icon="calls" aria-hidden="true"></span>
+                    </span>
+                    <span data-i18n="nav.calls">Звонки</span>
+                </button>
                 <button class="nav-btn" id="navSettings">
                     <span class="nav-icon">
                         <span class="bf-icon" data-bf-icon="general" aria-hidden="true"></span>
@@ -129,6 +135,11 @@
                 </div>
             </div>
             <div class="chat-readonly-banner" id="chatReadOnlyBanner" role="status" aria-live="polite" hidden></div>
+            <div class="chat-call-banner" id="chatCallBanner" role="status" aria-live="polite" hidden>
+                <span class="bf-icon" data-bf-icon="calls" aria-hidden="true"></span>
+                <span class="chat-call-banner-text" id="chatCallBannerText"></span>
+                <button type="button" class="chat-call-banner-join" id="chatCallBannerJoin" data-i18n="call.join">Присоединиться</button>
+            </div>
 
             <div class="pinned-bar hidden" id="pinnedBar">
                 <div class="pinned-bar-counter" id="pinnedBarCounter"></div>
@@ -622,6 +633,22 @@
                 <button class="folder-edit-close" id="pinnedListClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
             </div>
             <div class="pinned-list-inner" id="pinnedListInner"></div>
+        </div>
+    </div>
+
+    <!-- Call history modal -->
+    <div class="overlay call-history-overlay" id="callHistoryOverlay">
+        <div class="dialog call-history-dialog">
+            <div class="call-history-header">
+                <div class="call-history-title" data-i18n="nav.calls">Звонки</div>
+                <div class="call-history-filter">
+                    <button type="button" data-filter="all" aria-pressed="true" class="active" data-i18n="callHistory.all">Все</button>
+                    <button type="button" data-filter="missed" aria-pressed="false" data-i18n="callHistory.missed">Пропущенные</button>
+                </div>
+                <button class="folder-edit-close" id="callHistoryClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
+            </div>
+            <div class="call-history-list" id="callHistoryList"></div>
+            <button type="button" class="call-history-more" id="callHistoryMore" hidden data-i18n="callHistory.more">Показать ещё</button>
         </div>
     </div>
 

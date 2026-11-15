@@ -5,6 +5,7 @@
   "scripts": {
     "build:app": "node build-app.js",
     "build:shell-version": "node build-shell-version.js",
+    "vendor:jsqr": "esbuild node_modules/jsqr/dist/jsQR.js --minify --target=es2017 --outfile=../wwwroot/js/vendor/jsqr.min.js --banner:js=\"/*! jsQR 1.4.0 | Apache-2.0 | https://github.com/cozmo/jsQR */\" --log-level=warning",
     "test:chat-background-refresh": "node test-chat-background-refresh.js",
     "test:markdown-preview": "node test-markdown-preview.js",
     "test:network": "node test-network.js",
@@ -29,6 +30,9 @@
     "test:search": "node test-search.js",
     "test:chat-media": "node test-chat-media.js",
     "test:chat-calls": "node test-chat-calls.js",
+    "test:call-history": "node test-call-history.js",
+    "test:settings-badges-storage": "node test-settings-badges-storage.js",
+    "test:fast-auth-link": "node test-fast-auth-link.js",
     "test:chat-background": "node test-chat-background.js",
     "test:profile": "node test-profile.js",
     "test:forward": "node test-forward.js",
@@ -39,7 +43,7 @@
     "test:send-queue": "node test-send-queue.js",
     "test:media-viewer": "node test-media-viewer.js",
     "format": "prettier --write ../wwwroot/js/app/**/*.js *.js",
-    "format:check": "prettier --check --config prettier.config.cjs ../wwwroot/js/app/app-loader.js ../wwwroot/js/app/media-viewer.js ../wwwroot/js/app/group-info.js ../wwwroot/js/app/private-chat-ui.js ../wwwroot/js/app/sticker-picker.js ../wwwroot/js/app/chat-list.js ../wwwroot/js/app/composer.js ../wwwroot/js/app/feed.js ../wwwroot/js/app/message-menu.js ../wwwroot/js/app/mark-read.js ../wwwroot/js/app/attention.js ../wwwroot/js/app/deep-link.js ../wwwroot/js/app/search.js ../wwwroot/js/app/chat-media.js ../wwwroot/js/app/chat-calls.js ../wwwroot/js/app/chat-background.js ../wwwroot/js/app/profile.js ../wwwroot/js/app/forward.js ../wwwroot/js/app/connection.js ../wwwroot/js/app/presence.js ../wwwroot/js/app/message-events.js ../wwwroot/js/app/send-queue.js app-bundle-entry.js build-app.js",
+    "format:check": "prettier --check --config prettier.config.cjs ../wwwroot/js/app/app-loader.js ../wwwroot/js/app/media-viewer.js ../wwwroot/js/app/group-info.js ../wwwroot/js/app/private-chat-ui.js ../wwwroot/js/app/sticker-picker.js ../wwwroot/js/app/chat-list.js ../wwwroot/js/app/composer.js ../wwwroot/js/app/feed.js ../wwwroot/js/app/message-menu.js ../wwwroot/js/app/mark-read.js ../wwwroot/js/app/attention.js ../wwwroot/js/app/deep-link.js ../wwwroot/js/app/search.js ../wwwroot/js/app/chat-media.js ../wwwroot/js/app/chat-calls.js ../wwwroot/js/app/call-history.js ../wwwroot/js/app/fast-auth-link.js ../wwwroot/js/app/chat-background.js ../wwwroot/js/app/profile.js ../wwwroot/js/app/forward.js ../wwwroot/js/app/connection.js ../wwwroot/js/app/presence.js ../wwwroot/js/app/message-events.js ../wwwroot/js/app/send-queue.js app-bundle-entry.js build-app.js",
     "lint": "cd .. && scripts/node_modules/.bin/eslint --config scripts/eslint.config.cjs wwwroot/js/app/**/*.js scripts/build-app.js scripts/build-shell-version.js scripts/app-bundle-entry.js"
   },
   "dependencies": {
@@ -47,6 +51,7 @@
     "firebase": "12.17.0",
     "google-protobuf": "3.21.2",
     "grpc-web": "1.5.0",
+    "jsqr": "1.4.0",
     "livekit-client": "2.19.2"
   },
   "devDependencies": {
