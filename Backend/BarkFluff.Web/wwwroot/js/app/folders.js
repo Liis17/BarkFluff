@@ -100,7 +100,18 @@
 
         wireModal();
 
+        // Сигнал об изменении папок (в т.ч. с другого устройства) — пустое событие: перечитываем.
+        // Пропущенные за разрыв сигналы не воспроизводятся, поэтому перечитываем и при переоткрытии потока.
+        if (BF.realtime) {
+            BF.realtime.on('chat_folders_changed', reload);
+            BF.realtime.on('resync', function (data) {
+                if (data && data.source === 'chatFolders') reload();
+            });
+        }
+
+        var token = ++reloadToken;
         return BF.api.getChatFolders().then(function (data) {
+            if (token !== reloadToken) return;
             foldersById.clear();
             (data && data.folders ? data.folders : []).forEach(function (f) {
                 foldersById.set(f.folderId, f);
@@ -111,6 +122,26 @@
         }).catch(function (e) {
             console.error('[folders] getChatFolders failed', e);
             renderTabs();
+        });
+    }
+
+    // Полное перечитывание с сервера; ответ устаревшего запроса отбрасывается.
+    var reloadToken = 0;
+    function reload() {
+        var token = ++reloadToken;
+        return BF.api.getChatFolders().then(function (data) {
+            if (token !== reloadToken) return;
+            foldersById.clear();
+            (data && data.folders ? data.folders : []).forEach(function (f) {
+                foldersById.set(f.folderId, f);
+            });
+            recomputeSortedIds();
+            rebuildChatToFolders();
+            if (activeFolderId !== 'all' && !foldersById.has(activeFolderId)) activeFolderId = 'all';
+            renderTabs();
+            notifyChange();
+        }).catch(function (e) {
+            console.error('[folders] getChatFolders failed', e);
         });
     }
 
@@ -349,16 +380,7 @@
         BF.api.reorderChatFolders(orders).catch(function (e) {
             console.error('[folders] reorderChatFolders failed, refetching', e);
             // На ошибке — полный рефреш с сервера
-            BF.api.getChatFolders().then(function (data) {
-                foldersById.clear();
-                (data && data.folders ? data.folders : []).forEach(function (f) {
-                    foldersById.set(f.folderId, f);
-                });
-                recomputeSortedIds();
-                rebuildChatToFolders();
-                renderTabs();
-                notifyChange();
-            });
+            reload();
         });
     }
 

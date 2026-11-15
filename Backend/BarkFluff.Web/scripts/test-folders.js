@@ -36,9 +36,15 @@ class FakeElement {
     };
 }
 
-function loadFolders() {
+var DEFAULT_FOLDERS = [
+    { folderId: 'work', folderName: 'Работа', folderIcon: '💼', sortOrder: 0, chatList: ['chat-1', 'chat-2'] },
+    { folderId: 'personal', folderName: 'Личное', folderIcon: '🏠', sortOrder: 1, chatList: ['chat-1', 'chat-3'] }
+];
+
+function loadFolders(getChatFolders) {
     var elements = new Map();
     elements.set('folderTabs', new FakeElement('div'));
+    var realtimeListeners = {};
 
     var context = {
         console: console,
@@ -62,13 +68,15 @@ function loadFolders() {
                     }
                 },
                 api: {
-                    getChatFolders: function () {
-                        return Promise.resolve({
-                            folders: [
-                                { folderId: 'work', folderName: 'Работа', folderIcon: '💼', sortOrder: 0, chatList: ['chat-1', 'chat-2'] },
-                                { folderId: 'personal', folderName: 'Личное', folderIcon: '🏠', sortOrder: 1, chatList: ['chat-1', 'chat-3'] }
-                            ]
-                        });
+                    getChatFolders:
+                        getChatFolders ||
+                        function () {
+                            return Promise.resolve({ folders: DEFAULT_FOLDERS });
+                        }
+                },
+                realtime: {
+                    on: function (name, callback) {
+                        realtimeListeners[name] = callback;
                     }
                 },
                 i18n: { t: function (key) { return key; } }
@@ -84,7 +92,10 @@ function loadFolders() {
 
     return {
         folders: context.window.BF.folders,
-        tabs: elements.get('folderTabs')
+        tabs: elements.get('folderTabs'),
+        emit: function (name, data) {
+            realtimeListeners[name](data);
+        }
     };
 }
 
@@ -114,6 +125,52 @@ async function main() {
     assert.equal(findChild(loaded.tabs.children[1], 'folder-unread'), undefined, 'empty folders should not show an unread badge');
 
     console.log('PASS: folder tabs reflect unread messages in their chats');
+
+    await testRemoteChanges();
+}
+
+async function settle() {
+    for (var i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve));
+}
+
+async function testRemoteChanges() {
+    var pending = [];
+    var calls = 0;
+    var loaded = loadFolders(function () {
+        calls++;
+        if (calls === 1) return Promise.resolve({ folders: DEFAULT_FOLDERS });
+        return new Promise(function (resolve) {
+            pending.push(resolve);
+        });
+    });
+    await loaded.folders.init();
+    var changes = 0;
+    loaded.folders.setOnChange(function () {
+        changes++;
+    });
+    loaded.folders.setActiveFolderId('personal');
+    changes = 0;
+
+    loaded.emit('chat_folders_changed', {});
+    loaded.emit('resync', { source: 'privateEdits' }); // чужой поток — папки не перечитываем
+    loaded.emit('resync', { source: 'chatFolders' });
+    assert.equal(calls, 3, 'the signal and the folder stream re-open both re-read folders');
+
+    pending[1]({ folders: [DEFAULT_FOLDERS[0]] }); // свежий ответ: «Личное» удалена на другом устройстве
+    await settle();
+    pending[0]({ folders: DEFAULT_FOLDERS }); // запоздалый ответ на первый сигнал
+    await settle();
+
+    assert.deepEqual(
+        Array.from(loaded.folders.getAllFolders(), function (f) {
+            return f.folderId;
+        }),
+        ['work'],
+        'a stale response does not restore the deleted folder'
+    );
+    assert.equal(loaded.folders.getActiveFolderId(), 'all', 'a removed active folder falls back to all chats');
+    assert.equal(changes, 1, 'the chat list re-renders once for the applied response');
+    console.log('PASS: remote folder changes re-read folders and ignore stale responses');
 }
 
 main().catch(function (error) {

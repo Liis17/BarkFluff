@@ -888,6 +888,17 @@
             map: function (evt) {
                 return { chatId: evt.getChatId(), inviteeUserId: evt.getInviteeUserId(), accepted: evt.getAccepted() };
             }
+        },
+        // Не приватный, но такой же user-scoped поток с тем же жизненным циклом. Событие пустое —
+        // только сигнал перечитать папки. Старые ноды отвечают UNIMPLEMENTED: тогда не переподключаемся.
+        chatFolders: {
+            method: 'subscribeChatFoldersChanged',
+            request: 'SubscribeChatFoldersChangedRequest',
+            event: 'chat_folders_changed',
+            optional: true,
+            map: function () {
+                return {};
+            }
         }
     };
     var privateStreamNames = Object.keys(privateStreams);
@@ -903,6 +914,7 @@
 
     function subscribePrivateStream(name, forceRefresh) {
         var s = privateStreams[name];
+        if (s.unsupported) return; // нода без этого RPC; сбрасывается в stopAll
         var generation = beginSubscription(name);
         if (generation === null) return;
         getStreamToken(forceRefresh).then(function (token) {
@@ -943,6 +955,12 @@
             stream.on('error', function (err) {
                 if (generation !== _reconnectGeneration || s.stream !== stream) return;
                 if (!_started) return;
+                if (s.optional && err && err.code === 12) { // UNIMPLEMENTED
+                    if (s.ageTimer) { clearTimeout(s.ageTimer); s.ageTimer = null; }
+                    s.stream = null;
+                    s.unsupported = true;
+                    return;
+                }
                 if (isAuthError(err)) {
                     scheduleReconnect(name, function () { subscribePrivateStream(name, true); }, 0);
                 } else {
@@ -1338,6 +1356,7 @@
             if (s.stream) { try { s.stream.cancel(); } catch (e) {} s.stream = null; }
             if (s.ageTimer) { clearTimeout(s.ageTimer); s.ageTimer = null; }
             s.everOpened = false;
+            s.unsupported = false;
         });
         if (onlineAgeTimer)  { clearTimeout(onlineAgeTimer);  onlineAgeTimer  = null; }
         if (typingAgeTimer)  { clearTimeout(typingAgeTimer);  typingAgeTimer  = null; }
