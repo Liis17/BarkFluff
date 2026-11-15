@@ -3020,6 +3020,31 @@
         .sd-hint { font-size: 12px; color: var(--text-sub); }
         .sd-hint.error { color: var(--error); }
 
+        .sd-badge-list { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; color: var(--text-sub); font-size: 14px; }
+        .sd-badge-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            background: none;
+            text-align: left;
+            font: inherit;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+        .sd-badge-item:disabled { opacity: 0.6; cursor: default; }
+        .sd-badge-item.primary { border-color: var(--primary); background: var(--primary-alpha); }
+        .sd-badge-item img { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+        .sd-badge-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .sd-badge-name { font-size: 14px; font-weight: 600; }
+        .sd-badge-desc { font-size: 12px; color: var(--text-sub); }
+        .sd-badge-mark { font-size: 12px; font-weight: 600; color: var(--primary); flex-shrink: 0; }
+
+        .sd-storage-bar { height: 6px; margin: 10px 0 16px; border-radius: 3px; background: var(--card-border); overflow: hidden; }
+        .sd-storage-bar > div { height: 100%; background: var(--primary); }
+
         .sd-btn {
             padding: 11px 20px;
             border-radius: 10px;

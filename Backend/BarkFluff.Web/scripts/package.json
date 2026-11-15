@@ -29,6 +29,7 @@
     "test:chat-media": "node test-chat-media.js",
     "test:chat-calls": "node test-chat-calls.js",
     "test:call-history": "node test-call-history.js",
+    "test:settings-badges-storage": "node test-settings-badges-storage.js",
     "test:chat-background": "node test-chat-background.js",
     "test:profile": "node test-profile.js",
     "test:forward": "node test-forward.js",

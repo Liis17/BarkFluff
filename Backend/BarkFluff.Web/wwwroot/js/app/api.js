@@ -524,6 +524,51 @@
         });
     }
 
+    function mapUserBadge(b) {
+        var badge = b.getBadge();
+        return {
+            id: badge ? badge.getId() : 0,
+            name: badge ? badge.getName() : '',
+            description: badge ? badge.getDescription() : '',
+            imageUrl: badge ? mediaUrl(badge.getImageUrl()) : '',
+            priority: b.getPriority(),
+            isPrimary: b.getIsPrimary()
+        };
+    }
+
+    // Все назначенные бейджи пользователя (limit не задан — полный список).
+    function getUserBadges(userId) {
+        var req = new (usrPb().GetUserBadgesRequest)();
+        req.setUserId(userId);
+        return readCall(users().getUserBadges.bind(users()), req).then(function (resp) {
+            return { badges: resp.getBadgesList().map(mapUserBadge) };
+        });
+    }
+
+    // badgeId = 0 снимает основной бейдж.
+    function setPrimaryBadge(badgeId) {
+        var req = new (usrPb().SetPrimaryBadgeRequest)();
+        req.setBadgeId(badgeId || 0);
+        return mutationCall(users().setPrimaryBadge.bind(users()), req).then(function (resp) {
+            var primary = resp.getPrimaryBadge();
+            return { primaryBadge: primary ? mapUserBadge(primary) : null };
+        });
+    }
+
+    // Байты — int64 приходят числами (grpc-web без jstype=JS_STRING).
+    function getUserStorageInfo() {
+        var req = new (filePb().GetUserStorageInfoRequest)();
+        return readCall(files().getUserStorageInfo.bind(files()), req).then(function (resp) {
+            return {
+                totalUsed: resp.getTotalUsedStorage(),
+                limit: resp.getStorageLimit(),
+                byType: resp.getStorageByTypesList().map(function (t) {
+                    return { fileType: t.getFileType(), used: t.getUsedStorage() };
+                })
+            };
+        });
+    }
+
     function getUser(userId) {
         var req = new (usrPb().GetUserRequest)();
         req.setUserId(userId);
@@ -1137,6 +1182,9 @@
         updateGroupChat: updateGroupChat,
         searchUsers: searchUsers,
         searchMessages: searchMessages,
+        getUserBadges: getUserBadges,
+        setPrimaryBadge: setPrimaryBadge,
+        getUserStorageInfo: getUserStorageInfo,
         listCallHistory: listCallHistory,
         getActiveCalls: getActiveCalls,
         getUser: getUser,
