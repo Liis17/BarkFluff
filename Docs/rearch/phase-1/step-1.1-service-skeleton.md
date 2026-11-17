@@ -115,5 +115,5 @@ federation:
 2. Локальный/dev-запуск: сервис стартует, `Database.Migrate()` создаёт БД `federation`, в Seq появляются логи и `ServiceMetrics` от `BarkFluff.Federation`.
 3. `grpcurl` (reflection): `FederationS2SApi` и `FederationInternalApi` видны; `Ping` отвечает (server_time заполнен); любой другой RPC — `Unimplemented`; internal-RPC без service-токена — `Unauthenticated`/`PermissionDenied`.
 4. Существующие сервисы стартуют как раньше.
-5. Obsidian: создать `Obsidian/ClaudeVault/Backend/Federation.md` (порт, назначение, ссылка на `docs/rearch/`, текущее состояние «каркас, Ping») + ссылка в `Index.md`.
+5. Obsidian: создать `Obsidian/BarkFluffVault/Backend/Federation.md` (порт, назначение, ссылка на `docs/rearch/`, текущее состояние «каркас, Ping») + ссылка в `Index.md`.
 6. Коммит: `feat(rearch-phase1): 1.1 — каркас сервиса Federation`.

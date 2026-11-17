@@ -2,7 +2,7 @@
 
 **Дата проверки:** 13 августа 2026 года  
 **Проверенная ревизия до добавления отчёта:** `bcb2857fb30a` (изменения после начала проверки затрагивали только Android; дерево `Backend/`, `Shared/` и `docker/` не менялось)  
-**Область:** `Backend/`, `Shared/`, актуальный `docker/barkfluff/docker-compose.yml`, nginx-конфигурация, связанные файлы `Obsidian/ClaudeVault/` и `docs/Audit/`
+**Область:** `Backend/`, `Shared/`, актуальный `docker/barkfluff/docker-compose.yml`, nginx-конфигурация, связанные файлы `Obsidian/BarkFluffVault/` и `docs/Audit/`
 
 ## 1. Резюме
 
@@ -26,7 +26,7 @@ Backend BarkFluff — крупная событийно-ориентирован
 
 Проверка включала:
 
-- чтение актуальной проектной базы знаний в `Obsidian/ClaudeVault/`;
+- чтение актуальной проектной базы знаний в `Obsidian/BarkFluffVault/`;
 - инвентаризацию всех проектов `Backend/` и общих библиотек `Shared/`;
 - трассировку регистраций gRPC-клиентов, MassTransit consumers/producers, хранилищ и внешних интеграций;
 - сопоставление исходников с `docker-compose`, nginx и существующими файлами `docs/Audit/`;

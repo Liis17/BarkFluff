@@ -8,8 +8,8 @@
 
 ## Контекст
 
-- Контракт и правила отображения — `Obsidian/ClaudeVault/Клиенты/Federation-ClientGuide.md` (этап 5.1). **Прочитать целиком до начала.**
-- Карта клиента — `Obsidian/ClaudeVault/Clients/Web.md`.
+- Контракт и правила отображения — `Obsidian/BarkFluffVault/Клиенты/Federation-ClientGuide.md` (этап 5.1). **Прочитать целиком до начала.**
+- Карта клиента — `Obsidian/BarkFluffVault/Clients/Web.md`.
 
 Точки интеграции (проверено при планировании):
 

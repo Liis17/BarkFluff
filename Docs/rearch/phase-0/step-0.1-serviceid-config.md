@@ -65,5 +65,5 @@
 2. `dotnet build Backend/BarkFluff.Settings/BarkFluff.Settings.csproj` — успех.
 3. Запуск Settings локально (или в dev-compose): в логах/БД видно, что ключи `Federation*` и `FederationService*` создались с дефолтами; существующие ключи не перезаписаны.
 4. Любой существующий сервис (например Users) стартует как раньше — его конфигурация не изменилась.
-5. Obsidian: `Obsidian/ClaudeVault/Backend/Settings.md` — дополнить список каталога новыми ключами; `Obsidian/ClaudeVault/Shared/Identity.md` — упомянуть `Federation = 15`.
+5. Obsidian: `Obsidian/BarkFluffVault/Backend/Settings.md` — дополнить список каталога новыми ключами; `Obsidian/BarkFluffVault/Shared/Identity.md` — упомянуть `Federation = 15`.
 6. Коммит: `feat(rearch-phase0): 0.1 — ServiceId.Federation + конфиг-дефолты Federation`.

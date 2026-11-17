@@ -84,11 +84,11 @@ class PrTestSelectionTests(unittest.TestCase):
     def test_server_and_android_change_skips_other_clients(self):
         self.assert_suites(['Android/core/src/main/java/com/barkfluff/client/bft/Proxy.kt',
                             'Backend/BarkFluff.BftProxy/Program.cs', 'Shared/BarkFluff.Bft/Frame.cs',
-                            'Tests/BarkFluff.BftProxy.Tests/ProxyTests.cs', 'Obsidian/ClaudeVault/Index.md'],
+                            'Tests/BarkFluff.BftProxy.Tests/ProxyTests.cs', 'Obsidian/BarkFluffVault/Index.md'],
                            ['backend', 'android'])
 
     def test_docs_do_not_start_application_tests(self):
-        self.assert_suites(['README.md', 'Obsidian/ClaudeVault/Testing.md'], [])
+        self.assert_suites(['README.md', 'Obsidian/BarkFluffVault/Testing.md'], [])
 
     def test_bft_spec_and_vectors_select_backend_and_android_tests(self):
         # Android unit tests read Docs/bft vectors too.

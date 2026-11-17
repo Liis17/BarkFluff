@@ -8,8 +8,8 @@
 
 ## Контекст
 
-- Контракт и правила отображения — `Obsidian/ClaudeVault/Клиенты/Federation-ClientGuide.md` (этап 5.1). **Прочитать целиком до начала.**
-- Карты клиента — `Obsidian/ClaudeVault/Clients/macOS.md`, `macOS-ProjectMap.md`; дизайн-спецификация — `Clients/DesignDocument.md`.
+- Контракт и правила отображения — `Obsidian/BarkFluffVault/Клиенты/Federation-ClientGuide.md` (этап 5.1). **Прочитать целиком до начала.**
+- Карты клиента — `Obsidian/BarkFluffVault/Clients/macOS.md`, `macOS-ProjectMap.md`; дизайн-спецификация — `Clients/DesignDocument.md`.
 
 Структура (проверено при планировании): iOS и macOS подключают **одни и те же** локальные пакеты из `Mac/Barkfluff/Packages/` (в `iOS/.../project.pbxproj` — `XCLocalSwiftPackageReference` с `relativePath = ../../Mac/Barkfluff/Packages/BFxxx`). Дублируются между платформами только `Features/**` (Views + ViewModels), бизнес-логика — общая.
 
