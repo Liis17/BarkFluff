@@ -12,7 +12,7 @@
 - `docker/backend/docker-compose-dev-backend.yml`, `Backend/docker-compose-master.yml` — фактические стеки.
 - `docker/nginx/*.conf` — референсные конфиги, включая `federation.conf` (субдомен `federation.{domain}`, таймауты 3600s) и `barkfluff.single-server.conf` (там же `location = /.well-known/barkfluff` → `federation:7031`), `00-rate-limits.conf` (зоны `federation_s2s`, `federation_wellknown`).
 - `Backend/dev-federation-testbed/README.md` — рабочий пример двух-нодовой конфигурации, генерация self-signed сертов (`certs/make-certs.sh`, печатает SPKI-отпечаток).
-- Ключи конфигурации Federation — `Obsidian/ClaudeVault/Backend/Federation.md` + [../04-federation-service.md](../04-federation-service.md).
+- Ключи конфигурации Federation — `Obsidian/BarkFluffVault/Backend/Federation.md` + [../04-federation-service.md](../04-federation-service.md).
 - Модель доверия, зачем нужен CA-серт на apex и почему self-signed допустим для S2S — [../02-trust-and-certs.md](../02-trust-and-certs.md); discovery — [../03-discovery.md](../03-discovery.md).
 
 **Все утверждения документа сверяются с кодом и конфигами.** Порт, имя ключа или путь, написанные «по памяти», превратятся в сорванный запуск чужой ноды.
@@ -44,7 +44,7 @@
 ## Изменение 3 — точки входа
 
 - Ссылка на документ из `README.md` репозитория (раздел про запуск/эксплуатацию) и из `Backend/DOCKER_SETUP.md`.
-- В `Obsidian/ClaudeVault/Backend/Federation.md` — раздел «Эксплуатация ноды» со ссылкой (vault остаётся картой кода, инструкция живёт в `docs/`).
+- В `Obsidian/BarkFluffVault/Backend/Federation.md` — раздел «Эксплуатация ноды» со ссылкой (vault остаётся картой кода, инструкция живёт в `docs/`).
 
 ## Чего НЕ делать
 

@@ -14,7 +14,7 @@
   <a href="#скачать">Скачать</a> ·
   <a href="#что-внутри">Платформа</a> ·
   <a href="#клиенты">Клиенты</a> ·
-  <a href="../../../Obsidian/ClaudeVault/Index.md">Заметки проекта</a>
+  <a href="../../../Obsidian/BarkFluffVault/Index.md">Заметки проекта</a>
 </p>
 
 <p align="center">
@@ -51,16 +51,16 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 
 **Готовность к эксплуатации.** PostgreSQL хранит состояние, Redis обслуживает горячие данные, MinIO отвечает за объекты, а Docker запускает стек. Нативные и web-клиенты сделаны на Kotlin, WinUI, SwiftUI, Qt и web-технологиях.
 
-В [заметках по архитектуре](../../../Obsidian/ClaudeVault/Architecture.md) описаны порты, аутентификация, доставка событий и соглашения сервисов.
+В [заметках по архитектуре](../../../Obsidian/BarkFluffVault/Architecture.md) описаны порты, аутентификация, доставка событий и соглашения сервисов.
 
 ## Клиенты
 
-- **Android** — Kotlin и gRPC-OkHttp · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/Android.md)
-- **Windows** — WinUI 3 и .NET · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/Windows-WinUI.md) · устаревший WPF-клиент
-- **macOS** — SwiftUI и gRPC-Swift · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/macOS.md)
-- **iOS** — SwiftUI и gRPC-Swift · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/iOS.md)
-- **Linux** — Qt 6, C++20 и gRPC · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/Linux-Qt.md)
-- **Web** — gRPC-Web и vanilla-JS SPA · [заметки проекта](../../../Obsidian/ClaudeVault/Clients/Web.md)
+- **Android** — Kotlin и gRPC-OkHttp · [заметки проекта](../../../Obsidian/BarkFluffVault/Clients/Android.md)
+- **Windows** — WinUI 3 и .NET · [заметки проекта](../../../Obsidian/BarkFluffVault/Clients/Windows-WinUI.md) · устаревший WPF-клиент
+- **macOS** — SwiftUI и gRPC-Swift · [заметки проекта](../../../Obsidian/BarkFluffVault/Clients/macOS.md)
+- **iOS** — SwiftUI и gRPC-Swift · [заметки проекта](../../../Obsidian/BarkFluffVault/Clients/iOS.md)
+- **Linux** — Qt 6, C++20 и gRPC · [заметки проекта](../../../Obsidian/BarkFluffVault/Clients/Linux-Qt.md)
+- **Web** — gRPC-Web и vanilla-JS SPA · [заметки проекта](../../../Obsidian/BarkFluffVault/Clients/Web.md)
 
 ## Исследовать репозиторий
 
@@ -74,7 +74,7 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 > В [`Docker/`](../../../Docker) лежат локальные стеки платформы и инфраструктуры. В [`Tests/`](../../../Tests) — автоматические и нагрузочные тесты.
 
 > ### 📖 Документация
-> [База знаний проекта](../../../Obsidian/ClaudeVault/Index.md) содержит заметки об архитектуре, компонентах и тестировании.
+> [База знаний проекта](../../../Obsidian/BarkFluffVault/Index.md) содержит заметки об архитектуре, компонентах и тестировании.
 
 ## Статус проекта
 
@@ -88,13 +88,13 @@ BarkFluff объединяет нативные клиенты и .NET-бэке�
 ## Справка и документация
 
 > ### 🛠️ Запуск и эксплуатация
-> [Архитектура и развёртывание](../../../Obsidian/ClaudeVault/Architecture.md) · [Настройки](../../../Obsidian/ClaudeVault/Backend/Settings.md) · [Интерфейс первичной настройки](../../../Obsidian/ClaudeVault/Backend/Setup.md) · [Тестирование](../../../Obsidian/ClaudeVault/Testing.md)
+> [Архитектура и развёртывание](../../../Obsidian/BarkFluffVault/Architecture.md) · [Настройки](../../../Obsidian/BarkFluffVault/Backend/Settings.md) · [Интерфейс первичной настройки](../../../Obsidian/BarkFluffVault/Backend/Setup.md) · [Тестирование](../../../Obsidian/BarkFluffVault/Testing.md)
 
 > ### 🤖 Интеграция бота
-> [Заметки о Bot API и сервисе](../../../Obsidian/ClaudeVault/Backend/Bots.md) — возможности, аутентификация и REST-эндпоинты для внешних ботов.
+> [Заметки о Bot API и сервисе](../../../Obsidian/BarkFluffVault/Backend/Bots.md) — возможности, аутентификация и REST-эндпоинты для внешних ботов.
 
 > ### 📚 Изучить систему
-> [База знаний проекта](../../../Obsidian/ClaudeVault/Index.md)
+> [База знаний проекта](../../../Obsidian/BarkFluffVault/Index.md)
 
 > ### ⚖️ Лицензия
 > [Лицензия MIT](../../../LICENSE)

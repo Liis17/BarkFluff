@@ -49,7 +49,7 @@ class CiPlanTests(unittest.TestCase):
         for path in ['Tests/BarkFluff.Messages.Tests/Test.cs', 'Tests/BarkFluff.GrpcServer.Tests/Test.cs',
                      '.github/tests/test_ci_plan.py', '.github/workflows/test-backend.yml',
                      '.github/workflows/ci.yml', '.github/scripts/ci_notify.py',
-                     'Obsidian/ClaudeVault/Index.md', 'README.md']:
+                     'Obsidian/BarkFluffVault/Index.md', 'README.md']:
             with self.subTest(path=path):
                 result = plan('nightly', [path])
                 self.assertEqual(result['backend'], [])

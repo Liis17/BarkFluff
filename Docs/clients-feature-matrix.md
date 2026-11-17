@@ -11,7 +11,7 @@
 
 | Клиент | Расположение | Документация |
 |---|---|---|
-| Android V1 | `Android/Barkfluff.Client.Android` (`:app-v1` + `:core`) | `Obsidian/ClaudeVault/Clients/Android.md` |
+| Android V1 | `Android/Barkfluff.Client.Android` (`:app-v1` + `:core`) | `Obsidian/BarkFluffVault/Clients/Android.md` |
 | iOS | `iOS/Barkfluff` | `Clients/iOS.md` |
 | macOS | `Mac/Barkfluff` | `Clients/macOS.md` |
 | Web | `Backend/BarkFluff.Web/wwwroot` (vanilla JS) | `Clients/Web.md` |
@@ -365,9 +365,9 @@
 
 ## Связанные документы
 
-- `Obsidian/ClaudeVault/Clients/DesignDocument.md` (источник `docs/dd.md`) — UI/UX спецификация всех экранов
-- `Obsidian/ClaudeVault/Backend/Messages-PinnedMessages-ClientGuide.md` — контракт закреплённых сообщений
-- `Obsidian/ClaudeVault/Backend/Users-ChatFolders-ClientGuide.md` — контракт папок чатов
-- `Obsidian/ClaudeVault/Architecture.md` — tech stack, порты, XAuth, gRPC-клиент
+- `Obsidian/BarkFluffVault/Clients/DesignDocument.md` (источник `docs/dd.md`) — UI/UX спецификация всех экранов
+- `Obsidian/BarkFluffVault/Backend/Messages-PinnedMessages-ClientGuide.md` — контракт закреплённых сообщений
+- `Obsidian/BarkFluffVault/Backend/Users-ChatFolders-ClientGuide.md` — контракт папок чатов
+- `Obsidian/BarkFluffVault/Architecture.md` — tech stack, порты, XAuth, gRPC-клиент
 - `docs/Android-iOS-feature-comparison.md` — сравнение Android и iOS (2026-07-05)
 - `Windows/BarkFluff.ClientV2.WPF/docs/Architecture.md` — правила разработки V2

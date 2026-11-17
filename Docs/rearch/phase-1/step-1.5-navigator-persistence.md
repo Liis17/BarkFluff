@@ -69,5 +69,5 @@ Navigator переживает рестарт (PostgreSQL вместо in-memory
 3. Регистрация с `server_name`, чей well-known недоступен или ключи не совпадают, — отклоняется; с валидным well-known (нода из стенда 1.3/1.4 + dev: Navigator придётся дать доступ к well-known ноды — на стенде это HTTP-порт 7031 напрямую или nginx из 1.6; для CA-проверки на стенде допусти env-флаг `NAVIGATOR_INSECURE_WELLKNOWN=1`, действующий только вне production-окружения, по аналогии с dev-флагом Federation) — проходит, federation-поля сохранены.
 4. `GetServerByName` возвращает зарегистрированную ноду; неизвестную — `found=false`.
 5. `dotnet build` Navigator + затронутых проектов — успех.
-6. Obsidian: `Obsidian/ClaudeVault/Backend/Navigator.md` обновить (PostgreSQL, federation-поля, валидация, новый RPC, env `NAVIGATOR_DB`).
+6. Obsidian: `Obsidian/BarkFluffVault/Backend/Navigator.md` обновить (PostgreSQL, federation-поля, валидация, новый RPC, env `NAVIGATOR_DB`).
 7. Коммит: `feat(rearch-phase1): 1.5 — Navigator: PostgreSQL + federation-поля + GetServerByName`.

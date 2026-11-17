@@ -6,7 +6,7 @@
 
 ## Контекст
 
-- Плановый набор метрик — [../04-federation-service.md](../04-federation-service.md), раздел «Метрики»; фактический — разбросан по Фазам 1–4 (см. `Obsidian/ClaudeVault/Backend/Federation.md`, раздел «Метрики»).
+- Плановый набор метрик — [../04-federation-service.md](../04-federation-service.md), раздел «Метрики»; фактический — разбросан по Фазам 1–4 (см. `Obsidian/BarkFluffVault/Backend/Federation.md`, раздел «Метрики»).
 - Контур метрик платформы: `MetricsCollector` (counters сбрасываются в `SnapshotAndReset`, gauges — нет) → `MetricsReporterService` (лог `ServiceMetrics {@Metrics}` раз в 5 с) → Seq → AdminPanel (`Services/MetricsCollectorService.cs`, `SeqService`, кеш в LiteDB `HourlyServiceMetrics`). Подробный образец описания — `Backend/Onliner-Metrics.md`.
 - Страница «Федерация» уже есть (1.7): `Pages/v2/federation.html` (~400 строк, MD3) + `Endpoints/FederationEndpoints.cs` (`/api/federation/status|peers|peers/{server}/block|keys/rotate`) + gRPC-клиент `FederationInternalApi`.
 - Ручной retry/sync заявлен в [../04-federation-service.md](../04-federation-service.md) («состояние outbox: глубина, dead-letter, ручной retry/sync чата»); `TriggerChatSync` намечался этапом 2.6 — **проверь фактическое наличие** в `federation_internal_api.proto` и реализации, прежде чем что-то добавлять.
@@ -25,7 +25,7 @@
 
 ## Изменение 2 — реестр метрик в vault
 
-Создать `Obsidian/ClaudeVault/Backend/Federation-Metrics.md` строго по образцу `Backend/Onliner-Metrics.md`:
+Создать `Obsidian/BarkFluffVault/Backend/Federation-Metrics.md` строго по образцу `Backend/Onliner-Metrics.md`:
 
 - как метрики работают (контур `MetricsCollector` → Seq → AdminPanel, разница counters/gauges);
 - таблицы по областям (метрика | тип | где инкрементируется | смысл) — **только фактические** метрики, каждая со ссылкой на класс;

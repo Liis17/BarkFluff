@@ -14,7 +14,7 @@
   <a href="#download">Download</a> ·
   <a href="#what-is-inside">Platform</a> ·
   <a href="#clients">Clients</a> ·
-  <a href="Obsidian/ClaudeVault/Index.md">Project notes</a>
+  <a href="Obsidian/BarkFluffVault/Index.md">Project notes</a>
 </p>
 
 <p align="center">
@@ -48,16 +48,16 @@ BarkFluff pairs native clients with a gRPC-first .NET backend. Clients discover 
 
 **Built to operate.** PostgreSQL stores state, Redis serves hot data, MinIO handles objects, and Docker runs the stack. Native and web clients are built with Kotlin, WinUI, SwiftUI, Qt, and web technologies.
 
-Read the [project architecture notes](Obsidian/ClaudeVault/Architecture.md) for ports, authentication, event delivery, and service conventions.
+Read the [project architecture notes](Obsidian/BarkFluffVault/Architecture.md) for ports, authentication, event delivery, and service conventions.
 
 ## Clients
 
-- **Android** — Kotlin and gRPC-OkHttp · [project notes](Obsidian/ClaudeVault/Clients/Android.md)
-- **Windows** — WinUI 3 and .NET · [project notes](Obsidian/ClaudeVault/Clients/Windows-WinUI.md) · WPF client (legacy)
-- **macOS** — SwiftUI and gRPC-Swift · [project notes](Obsidian/ClaudeVault/Clients/macOS.md)
-- **iOS** — SwiftUI and gRPC-Swift · [project notes](Obsidian/ClaudeVault/Clients/iOS.md)
-- **Linux** — Qt 6, C++20, and gRPC · [project notes](Obsidian/ClaudeVault/Clients/Linux-Qt.md)
-- **Web** — gRPC-Web and a vanilla-JS SPA · [project notes](Obsidian/ClaudeVault/Clients/Web.md)
+- **Android** — Kotlin and gRPC-OkHttp · [project notes](Obsidian/BarkFluffVault/Clients/Android.md)
+- **Windows** — WinUI 3 and .NET · [project notes](Obsidian/BarkFluffVault/Clients/Windows-WinUI.md) · WPF client (legacy)
+- **macOS** — SwiftUI and gRPC-Swift · [project notes](Obsidian/BarkFluffVault/Clients/macOS.md)
+- **iOS** — SwiftUI and gRPC-Swift · [project notes](Obsidian/BarkFluffVault/Clients/iOS.md)
+- **Linux** — Qt 6, C++20, and gRPC · [project notes](Obsidian/BarkFluffVault/Clients/Linux-Qt.md)
+- **Web** — gRPC-Web and a vanilla-JS SPA · [project notes](Obsidian/BarkFluffVault/Clients/Web.md)
 
 ## Explore the repository
 
@@ -71,7 +71,7 @@ Read the [project architecture notes](Obsidian/ClaudeVault/Architecture.md) for 
 > [`Docker/`](Docker) contains local platform and infrastructure stacks. [`Tests/`](Tests) contains automated and load tests.
 
 > ### 📖 Documentation
-> [Project knowledge base](Obsidian/ClaudeVault/Index.md) contains architecture, component, and testing notes.
+> [Project knowledge base](Obsidian/BarkFluffVault/Index.md) contains architecture, component, and testing notes.
 
 ## Project status
 
@@ -84,13 +84,13 @@ Read the [project architecture notes](Obsidian/ClaudeVault/Architecture.md) for 
 ## Reference & documentation
 
 > ### 🛠️ Run and operate
-> [Architecture and deployment](Obsidian/ClaudeVault/Architecture.md) · [Settings](Obsidian/ClaudeVault/Backend/Settings.md) · [Initial setup UI](Obsidian/ClaudeVault/Backend/Setup.md) · [Testing](Obsidian/ClaudeVault/Testing.md)
+> [Architecture and deployment](Obsidian/BarkFluffVault/Architecture.md) · [Settings](Obsidian/BarkFluffVault/Backend/Settings.md) · [Initial setup UI](Obsidian/BarkFluffVault/Backend/Setup.md) · [Testing](Obsidian/BarkFluffVault/Testing.md)
 
 > ### 🤖 Integrate a bot
-> [Bot API and service notes](Obsidian/ClaudeVault/Backend/Bots.md) — capabilities, authentication, and REST endpoints for external bots.
+> [Bot API and service notes](Obsidian/BarkFluffVault/Backend/Bots.md) — capabilities, authentication, and REST endpoints for external bots.
 
 > ### 📚 Learn the system
-> [Project knowledge base](Obsidian/ClaudeVault/Index.md)
+> [Project knowledge base](Obsidian/BarkFluffVault/Index.md)
 
 > ### ⚖️ License
 > [MIT License](LICENSE)
