@@ -82,6 +82,8 @@ data class ChatCacheStats(
     val sizeBytes: Long
 )
 
+data class ChatReadThrough(val chatId: String, val throughMessageId: Long)
+
 data class ClearCacheOptions(
     val historyMessages: Int,
     val secretMessages: Int,
@@ -474,6 +476,17 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
 
     private val _clearedEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val clearedEvents = _clearedEvents.asSharedFlow()
+
+    /**
+     * Экран чата подтвердил прочтение. Сервер не рассылает ReadBy для уже прочитанных сообщений,
+     * поэтому без этого сигнала список не узнает о прочтении, если единственное эхо потерялось.
+     */
+    private val _chatReadLocally = MutableSharedFlow<ChatReadThrough>(extraBufferCapacity = 16)
+    val chatReadLocally = _chatReadLocally.asSharedFlow()
+
+    fun notifyChatRead(chatId: String, throughMessageId: Long) {
+        _chatReadLocally.tryEmit(ChatReadThrough(chatId, throughMessageId))
+    }
 
     suspend fun readChatList(scope: CacheScope): CachedChatList? = withContext(Dispatchers.IO) {
         val dao = database().cacheDao()
