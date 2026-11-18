@@ -1,11 +1,14 @@
 package com.barkfluff.client.utils
 
+import android.content.Context
+import android.graphics.Bitmap
 import android.widget.ImageView
 import android.graphics.drawable.BitmapDrawable
 import barkfluff.shared.Shared
 import coil.annotation.ExperimentalCoilApi
 import coil.decode.ImageDecoderDecoder
 import coil.decode.VideoFrameDecoder
+import coil.ImageLoader
 import coil.imageLoader
 import coil.load
 import coil.memory.MemoryCache
@@ -29,6 +32,8 @@ object ImageLoadHelper {
         imageView.tag = "local:${attachment.fileId}"
         imageView.load(file, AvatarLoader.getImageLoader(imageView.context)) {
             memoryCacheKey("attachment:${attachment.fileId}")
+            // Текущая картинка остаётся на месте, пока файл декодируется: без пустого кадра.
+            placeholder(imageView.drawable)
             size(maxOf(imageView.width, imageView.height, 256).coerceAtMost(1024))
             when (attachment.type) {
                 Shared.MessageAttachmentType.VIDEO -> decoderFactory { result, options, _ -> VideoFrameDecoder(result.source, options) }
@@ -36,6 +41,33 @@ object ImageLoadHelper {
                 else -> Unit
             }
         }
+    }
+
+    /** Синхронно отдаёт уже декодированное превью вложения из памяти, если оно там есть. */
+    fun peekMemory(context: Context, fileId: String): Bitmap? =
+        if (fileId.isBlank()) null else peekMemory(AvatarLoader.getImageLoader(context), "attachment:$fileId")
+
+    fun peekMemory(loader: ImageLoader, key: String): Bitmap? {
+        val memory = loader.memoryCache ?: return null
+        val memoryKey = memory.keys.firstOrNull { it.key == key } ?: return null
+        return memory[memoryKey]?.bitmap
+    }
+
+    /**
+     * Кладёт только что загруженный на сервер файл в файловый кеш и память под его fileId:
+     * подтверждённое сообщение показывает его сразу, без повторного скачивания и мигания.
+     */
+    suspend fun seedSentAttachment(context: Context, fileId: String, file: File, isVideo: Boolean, decodePreview: Boolean) {
+        val cached = FileCache.adopt(fileId, file) ?: return
+        if (!decodePreview) return
+        AvatarLoader.getImageLoader(context).execute(
+            ImageRequest.Builder(context)
+                .data(cached)
+                .memoryCacheKey("attachment:$fileId")
+                .size(1024)
+                .apply { if (isVideo) decoderFactory { result, options, _ -> VideoFrameDecoder(result.source, options) } }
+                .build()
+        )
     }
 
     /** Historical preview caches remain usable without resolving a URL or issuing HTTP. */

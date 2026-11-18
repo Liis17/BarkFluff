@@ -1,7 +1,7 @@
 # BarkFluff Datenschutzerklärung
 
 **Gültig ab:** 24. Januar 2026  
-**Letzte Aktualisierung:** 29. Juli 2026
+**Letzte Aktualisierung:** 13. November 2026
 
 > Diese Übersetzung dient nur der Bequemlichkeit. Im Falle von Abweichungen ist die russische Fassung maßgebend.
 
@@ -28,7 +28,7 @@ Dieses Dokument beschreibt das Verhalten der Software in der Standardkonfigurati
 
 | Daten | Verwendung | Speicherung |
 | --- | --- | --- |
-| E-Mail | Registrierung, Anmeldung, Bestätigungen, Zugangswiederherstellung, Benachrichtigungen | Users / Identity |
+| E-Mail | Registrierung, Anmeldung, Bestätigungen, Zugangswiederherstellung, Benachrichtigungen, einschließlich Mitteilungen über Kontosperrung und -löschung | Users / Identity; Grund und Datum einer Beschränkung werden beim Konto gespeichert |
 | Benutzername | Anmeldung, Suche, öffentliche Profilseite, Anzeige in Chats | Users |
 | Passwort-Hash | Passwortprüfung; das Passwort im Klartext wird nicht gespeichert | Identity |
 | Vorname, Nachname, Bio | Nutzerprofil und öffentliche Profildaten | Users |
@@ -98,7 +98,7 @@ Wichtig zu verstehen:
 - Zustellung von Nachrichten, Dateien, Lesebestätigungen, Echtzeit-Updates und Push-Benachrichtigungen;
 - Nachrichtenaustausch mit Nutzern anderer Knoten, wenn die Föderation aktiviert ist;
 - Export der Nutzerdaten über `Users.ExportData`;
-- Nutzerunterstützung über die vom Knotenadministrator eingerichteten Kanäle;
+- Nutzerunterstützung über die vom Knotenadministrator eingerichteten Kanäle; Bearbeitung von Anträgen auf Kontobeschränkung und -löschung, Versand entsprechender Mitteilungen an die Konto-E-Mail-Adresse und Speicherung des Grundes und Datums einer Beschränkung zusammen mit dem Konto. Der Grund wird bei endgültiger Kontolöschung entfernt;
 - Protokollierung von Fehlern, Metriken und Sicherheitsereignissen.
 
 ## 6. Datenschutzmaßnahmen
@@ -141,7 +141,7 @@ Richten Sie Anfragen zu Ihren Daten an den Administrator Ihres Knotens — nur e
 
 - **Auskunft und Export:** Der Export liefert die JSON-Dateien `profile.json`, `messages.json` und `files.json`.
 - **Berichtigung:** Profil, Bio, Avatar, Poster, Datenschutz, Geräte und Passwort lassen sich über die Client-Funktionen ändern, soweit verfügbar.
-- **Löschung:** siehe „Richtlinie zur Kontolöschung“.
+- **Löschung:** Nach Bearbeitung des Antrags durch den Knotenadministrator wird das Konto nach 7 Tagen endgültig gelöscht; Einzelheiten enthält die [Richtlinie zur Kontolöschung](/legal/account-deletion).
 - **Sitzungsentzug:** Eine aktive Sitzung kann über die Geräteverwaltung beendet werden.
 - **Einschränkung der Föderation:** Eingehende föderierte Einzelchats können in den Datenschutzeinstellungen abgelehnt werden.
 
@@ -151,7 +151,7 @@ Richten Sie Anfragen zu Ihren Daten an den Administrator Ihres Knotens — nur e
 - Private verschlüsselte Nachrichten werden beim Löschen als gelöscht markiert, der Geheimtext wird entfernt.
 - Geheime Nachrichten werden nach Zustellbestätigung oder Ablauf der TTL aus dem temporären Puffer entfernt.
 - Die Löschung wirkt innerhalb Ihres Knotens. Kopien, die bereits an einen anderen Knoten zugestellt wurden, kann nur dessen Administrator löschen.
-- Für die Löschung eines Kontos und von Daten, die nicht über Client-Funktionen abgedeckt sind, wenden Sie sich an den Knotenadministrator.
+- Für die Löschung eines Kontos und von Daten, die nicht über Client-Funktionen abgedeckt sind, wenden Sie sich an den Knotenadministrator. Nach Bearbeitung des Antrags bleibt das Konto 7 Tage im Status „wird gelöscht“ und wird anschließend endgültig gelöscht; siehe die [Richtlinie zur Kontolöschung](/legal/account-deletion).
 
 ## 10. Cookies und lokale Speicherung
 

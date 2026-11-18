@@ -178,16 +178,23 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
             cancellationToken);
 
         // Отправка уведомления об изменении метода 2FA после успешного подтверждения
-        await SendTwoFactorChangedNotification(confirmedMethod, oldMethod);
+        await SendTwoFactorChangedNotification(confirmedMethod, oldMethod, cancellationToken);
 
         return new ConfirmOtpVerificationResponse();
     }
 
-    private async Task SendTwoFactorChangedNotification(string newMethod, string oldMethod)
+    private async Task SendTwoFactorChangedNotification(string newMethod, string oldMethod, CancellationToken cancellationToken)
     {
         try
         {
             var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = _userContext.UserId });
+            var username = userInfo.User.Username;
+            if (userInfo.User.AccountStatus != AccountStatus.Active)
+            {
+                var restriction = await _usersClient.GetAccountRestrictionAsync(
+                    new GetAccountRestrictionRequest { UserId = _userContext.UserId }, cancellationToken: cancellationToken);
+                username = restriction.Username;
+            }
             var userContactInfo = await _usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = _userContext.UserId });
 
             var locationInfo = await _locationClient.GetLocationString(_requestContext.IpAddress);
@@ -199,7 +206,7 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
                 CreatedAt = DateTime.UtcNow,
                 Payload = new Dictionary<string, string>
                 {
-                    {"username", userInfo.User.Username},
+                    {"username", username},
                     {"old_method", oldMethod},
                     {"new_method", newMethod},
                     {"ip", _requestContext.IpAddress ?? string.Empty},

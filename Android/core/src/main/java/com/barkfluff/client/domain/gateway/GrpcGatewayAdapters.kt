@@ -331,6 +331,15 @@ private fun IdentityApiOuterClass.CompleteAuthChallengeResponse.toDomain(): Auth
         securityProof = securityProof.takeIf { hasSecurityProof() && it.id.isNotBlank() }?.toDomain(),
         recoveryCodes = recoveryCodesList,
         errorCode = errorCode,
+        accountRestriction = takeIf { hasAccountRestriction() }?.accountRestriction?.let { restriction ->
+            AccountRestriction(
+                status = restriction.status.toDomain(),
+                reason = restriction.reason,
+                deletionScheduledAtMillis = restriction.deletionScheduledAt
+                    .takeIf { restriction.hasDeletionScheduledAt() }
+                    ?.let { it.seconds * 1_000L + it.nanos / 1_000_000L },
+            )
+        },
     )
 
 private fun IdentityApiOuterClass.SecuritySettingsResponse.toDomain(): SecuritySettings =
@@ -367,6 +376,12 @@ class GrpcUserProfileGateway(private val grpc: GrpcApiTransport) : UserProfileGa
     override suspend fun password(password: String): Result<Unit> = grpc.setPassword(password)
     override suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit> = grpc.changePassword(oldPassword, newPassword)
     override suspend fun storageInfo(): Result<StorageInfo> = grpc.getUserStorageInfo().map(::toDomain)
+}
+
+class GrpcUserBadgeGateway(private val grpc: GrpcApiTransport) : UserBadgeGateway {
+    override suspend fun badges(userId: Long): Result<List<UserBadgeInfo>> = grpc.getUserBadges(userId)
+
+    override suspend fun setPrimary(badgeId: Int): Result<UserBadgeInfo?> = grpc.setPrimaryBadge(badgeId)
 }
 
 class GrpcUserSettingsGateway(private val grpc: GrpcApiTransport) : UserSettingsGateway {

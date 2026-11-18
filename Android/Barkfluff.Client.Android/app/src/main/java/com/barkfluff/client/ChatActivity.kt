@@ -12,7 +12,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
-import android.graphics.Typeface
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
@@ -28,14 +27,13 @@ import android.os.Environment
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
-import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.PathInterpolator
 import android.webkit.MimeTypeMap
-import androidx.core.animation.doOnEnd
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
@@ -75,6 +73,7 @@ import com.barkfluff.client.domain.gateway.StickerGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.domain.gateway.UserSettingsGateway
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.grpc.MediaHttpTransport
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.repository.PrivateChatRepository
@@ -95,8 +94,12 @@ import com.barkfluff.client.utils.MarkdownRenderer
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.barkfluff.client.utils.MessageTimeSpacingDecoration
 import com.barkfluff.client.utils.OnlineTimeFormatter
+import com.barkfluff.client.utils.accountStatusLabel
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import com.barkfluff.client.utils.applySpringPress
 import com.barkfluff.client.view.MessageActionsOverlay
+import com.barkfluff.client.view.M3ContextMenu
 import com.google.android.material.color.MaterialColors
 import com.yalantis.ucrop.UCrop
 import androidx.activity.OnBackPressedCallback
@@ -169,6 +172,8 @@ class ChatActivity : AppCompatActivity() {
     private var chatAvatarFileId: String? = null
     private var isGroupChat: Boolean = false
     private var otherUserId: Long = 0L
+    private var peerAccountStatus: AccountStatus = AccountStatus.ACTIVE
+    private var peerStatusLookupUserId: Long = 0L
     private var currentUserId: Long = 0L
     private var supportsDrafts: Boolean = false
     private var chatBackgroundLoadVersion = 0
@@ -179,15 +184,16 @@ class ChatActivity : AppCompatActivity() {
     // Индикатор набора текста ("печатает...") — подписка и heartbeat принадлежат ViewModel.
     private var suppressTypingInput = false
     private var renderedTypingUserIds: Set<Long> = emptySet()
+    private var selectionGestureController: MessageSelectionTouchController? = null
+    /** Где палец последний раз коснулся списка сообщений — меню действий открывается над этой точкой. */
+    private var lastMessageTouch: android.graphics.Point? = null
+    private var renderedSelectionCount = -1
     private val pendingTypingNameFetches = mutableSetOf<Long>()
     private var lastStatusText: CharSequence? = null
     private var lastIndicatorVisible = false
 
     // Сжатие шапки при прокрутке в историю сообщений
     private var headerCompact = false
-    private var statusExpandedHeight = 0
-    private var headerNameAnimator: ValueAnimator? = null
-    private var headerStatusAnimator: ValueAnimator? = null
 
     // Морфинг кнопки отправки (круг с микрофоном ↔ pill со стрелкой)
     private val sendButtonBackground = android.graphics.drawable.GradientDrawable().apply {
@@ -274,6 +280,7 @@ class ChatActivity : AppCompatActivity() {
         private const val EXTRA_CHAT_AVATAR_FILE_ID = "chat_avatar_file_id"
         private const val EXTRA_IS_GROUP_CHAT = "is_group_chat"
         private const val EXTRA_OTHER_USER_ID = "other_user_id"
+        private const val EXTRA_ACCOUNT_STATUS = "account_status"
         private const val EXTRA_CHAT_KIND = "chat_kind"
         private const val EXTRA_INVITE_STATE = "invite_state"
         private const val EXTRA_INVITER_USER_ID = "inviter_user_id"
@@ -284,9 +291,9 @@ class ChatActivity : AppCompatActivity() {
         private const val CLIP_LABEL = "BarkFluff message"
         private const val CLIP_LABEL_MULTIPLE = "BarkFluff messages"
         private const val LOAD_MESSAGES_DELAY_MS = 500L
+        private const val AUTO_SCROLL_FRAME_MS = 16L
         private const val VOICE_DOT_BLINK_DURATION_MS = 700L
         private const val VOICE_TIMER_TICK_MS = 200L
-        private const val HEADER_MORPH_DURATION_MS = 280L
         private const val SEND_BUTTON_MORPH_DURATION_MS = 300L
         private const val SEND_BUTTON_NARROW_DP = 52f
         private const val SEND_BUTTON_WIDE_DP = 68f
@@ -319,13 +326,17 @@ class ChatActivity : AppCompatActivity() {
             chatId: String,
             title: String,
             inviteState: Int = -1,
-            inviterUserId: Long = 0L
+            inviterUserId: Long = 0L,
+            otherUserId: Long = 0L,
+            accountStatus: AccountStatus = AccountStatus.ACTIVE,
         ): Intent = Intent(context, ChatActivity::class.java).apply {
             putExtra(EXTRA_CHAT_KIND, KIND_PRIVATE)
             putExtra(EXTRA_CHAT_ID, chatId)
             putExtra(EXTRA_CHAT_TITLE, title)
             putExtra(EXTRA_INVITE_STATE, inviteState)
             putExtra(EXTRA_INVITER_USER_ID, inviterUserId)
+            putExtra(EXTRA_OTHER_USER_ID, otherUserId)
+            putExtra(EXTRA_ACCOUNT_STATUS, accountStatus.ordinal)
         }
 
         /** Intent для секретного E2E-чата в общем ChatActivity. */
@@ -378,6 +389,9 @@ class ChatActivity : AppCompatActivity() {
         chatAvatarFileId = intent.getStringExtra(EXTRA_CHAT_AVATAR_FILE_ID)
         isGroupChat = intent.getBooleanExtra(EXTRA_IS_GROUP_CHAT, false)
         otherUserId = intent.getLongExtra(EXTRA_OTHER_USER_ID, 0L)
+        peerAccountStatus = AccountStatus.fromStoredNumber(
+            intent.getIntExtra(EXTRA_ACCOUNT_STATUS, AccountStatus.ACTIVE.ordinal)
+        )
         currentUserId = globalParam.userId
 
         // E2E-чаты (приватный/секретный) рендерятся в облегчённом shell того же Activity.
@@ -398,6 +412,7 @@ class ChatActivity : AppCompatActivity() {
         setupKeyboardTracking()
         setupChatBackground()
         setupPinnedBar()
+        if (peerAccountStatus != AccountStatus.ACTIVE) applyRestrictedPeer()
         viewModel.dispatch(ChatIntent.Initialize(
             chatId = chatId,
             title = chatTitle,
@@ -446,6 +461,16 @@ class ChatActivity : AppCompatActivity() {
                 isGroupChat = state.isGroupChat
                 isChatMuted = state.isChatMuted
                 otherUserId = state.otherUserId
+                if (!state.isGroupChat && state.otherUserId > 0L) {
+                    resolvePeerAccountStatus(state.otherUserId)
+                }
+
+                if (isSavedMessages) {
+                    binding.chatNameTextView.setText(R.string.saved_messages_title)
+                    if (!renderedSavedMessages) loadChatAvatar()
+                    renderedSavedMessages = true
+                    binding.onlineStatusTextView.visibility = View.GONE
+                }
 
                 if (previousPresence != state.presence) {
                     renderPresenceState(state.presence)
@@ -456,19 +481,31 @@ class ChatActivity : AppCompatActivity() {
                     renderTypingIndicator(renderedTypingUserIds)
                 }
 
-                if (previousTitle != state.chatTitle) {
-                    previousTitle = state.chatTitle
-                    binding.chatNameTextView.text = state.chatTitle.ifBlank { getString(R.string.chat_default_title) }
+                val displayTitle = when {
+                    isSavedMessages -> getString(R.string.saved_messages_title)
+                    !state.isGroupChat && peerAccountStatus != AccountStatus.ACTIVE -> accountStatusLabel(peerAccountStatus)
+                    else -> state.chatTitle.ifBlank { getString(R.string.chat_default_title) }
                 }
-                if (previousAvatarFileId != state.chatAvatarFileId) {
-                    previousAvatarFileId = state.chatAvatarFileId
+                chatTitle = displayTitle
+                chatAvatarFileId = if (!state.isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+                    null
+                } else {
+                    state.chatAvatarFileId
+                }
+                if (previousTitle != displayTitle) {
+                    previousTitle = displayTitle
+                    binding.chatNameTextView.text = displayTitle
+                }
+                if (previousAvatarFileId != chatAvatarFileId) {
+                    previousAvatarFileId = chatAvatarFileId
                     loadChatAvatar()
                 }
 
                 // otherUserId выяснился из chatInfo — подписываемся на онлайн-статус
                 if (!state.isGroupChat && state.otherUserId > 0 && state.otherUserId != observedOnlineUserId) {
                     observedOnlineUserId = state.otherUserId
-                    binding.onlineStatusTextView.visibility = View.VISIBLE
+                    binding.onlineStatusTextView.visibility =
+                        if (peerAccountStatus == AccountStatus.ACTIVE) View.VISIBLE else View.GONE
                 }
 
                 // Сообщения
@@ -515,6 +552,9 @@ class ChatActivity : AppCompatActivity() {
                 binding.loadingProgress.visibility = if (state.isLoading) View.VISIBLE else View.GONE
 
                 // Reply / Edit
+                if (previousState?.selection != state.selection) {
+                    renderSelectionState(previousState?.selection, state.selection, animate = previousState != null)
+                }
                 if (previousState?.pendingReply != state.pendingReply) {
                     renderPendingReply(state.pendingReply)
                 }
@@ -694,6 +734,19 @@ class ChatActivity : AppCompatActivity() {
             KIND_PRIVATE -> {
                 val inviteState = intent.getIntExtra(EXTRA_INVITE_STATE, -1)
                 val inviterUserId = intent.getLongExtra(EXTRA_INVITER_USER_ID, 0L)
+                if (inviterUserId > 0L) otherUserId = inviterUserId
+                if (otherUserId > 0L) {
+                    resolvePeerAccountStatus(otherUserId)
+                } else {
+                    lifecycleScope.launch {
+                        val peerId = chatDirectoryGateway.chat(chatId).getOrNull()?.memberIds
+                            ?.firstOrNull { it != currentUserId } ?: 0L
+                        if (peerId > 0L) {
+                            otherUserId = peerId
+                            resolvePeerAccountStatus(peerId)
+                        }
+                    }
+                }
                 PrivateChatController(
                     activity = this,
                     binding = binding,
@@ -721,6 +774,8 @@ class ChatActivity : AppCompatActivity() {
                     finish()
                     return@launch
                 }
+                otherUserId = chat.peerUserId
+                resolvePeerAccountStatus(otherUserId)
                 binding.chatNameTextView.text = getString(R.string.secret_chat_title, chat.peerUserId)
                 binding.chatAvatarPlaceholder.text = "🔒"
                 SecretChatController(
@@ -736,6 +791,8 @@ class ChatActivity : AppCompatActivity() {
                     .start()
             }
         }
+
+        if (peerAccountStatus != AccountStatus.ACTIVE) applyRestrictedPeer()
 
         OpenChatManager.setOpenChat(chatId)
         NotificationHelper.dismissForChat(applicationContext, chatId)
@@ -765,9 +822,28 @@ class ChatActivity : AppCompatActivity() {
                 binding.sendButton.height + sendBaseMargin
             )
             val inputRowBandPx = maxOf(inputRowBandBasePx, inputContentHeight)
-            binding.messagesRecyclerView.updatePadding(
-                bottom = recyclerBasePaddingBottom + inputRowBandPx + lastBottomInset
-            )
+            val recycler = binding.messagesRecyclerView
+            val newBottom = recyclerBasePaddingBottom + inputRowBandPx + lastBottomInset
+            val delta = newBottom - recycler.paddingBottom
+            if (delta == 0) return
+            // Смена нижнего отступа (клавиатура, многострочный ввод) сама не удерживает сообщения
+            // над композером: запоминаем расстояние от нижней видимой строки до края контента
+            // и восстанавливаем его после раскладки. У самого низа просто докручиваем до конца.
+            val wasAtBottom = !recycler.canScrollVertically(1)
+            val layoutManager = recycler.layoutManager as? LinearLayoutManager
+            val anchorPosition = layoutManager?.findLastVisibleItemPosition() ?: RecyclerView.NO_POSITION
+            val gapBefore = layoutManager?.findViewByPosition(anchorPosition)
+                ?.let { recycler.height - recycler.paddingBottom - it.bottom }
+            recycler.updatePadding(bottom = newBottom)
+            recycler.doOnNextLayout {
+                if (wasAtBottom) {
+                    if (delta > 0) recycler.scrollBy(0, Int.MAX_VALUE / 2)
+                } else if (gapBefore != null) {
+                    val anchor = layoutManager?.findViewByPosition(anchorPosition) ?: return@doOnNextLayout
+                    val gapAfter = recycler.height - recycler.paddingBottom - anchor.bottom
+                    recycler.scrollBy(0, gapBefore - gapAfter)
+                }
+            }
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.chatRootLayout) { _, insets ->
@@ -782,7 +858,8 @@ class ChatActivity : AppCompatActivity() {
             binding.selectionToolbar.updatePadding(top = selectionBasePaddingTop + bars.top)
             // Recyclerview остаётся edge-to-edge снизу — фон/обои ленты уходят под панель
             // ввода и жестовую навигацию, а контент просто не долистывается ниже paddingBottom.
-            binding.messagesRecyclerView.updatePadding(top = recyclerBasePaddingTop)
+            // Верхний отступ здесь не трогаем: его ведёт слушатель шапки ниже, а сброс на каждом
+            // проходе insets заставлял ленту прыгать на высоту шапки и терять позицию.
             updateRecyclerBottomPadding()
 
             binding.sendButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = sendBaseMargin + bottomInset }
@@ -807,8 +884,8 @@ class ChatActivity : AppCompatActivity() {
     }
 
     /**
-     * В отличие от списка чатов, шапка чата сжимается при прокрутке **вверх** (в историю):
-     * имя уменьшается, строка статуса схлопывается, под шапкой появляется тень.
+     * При прокрутке **вверх** (в историю) под шапкой чата появляется тень;
+     * имя и строка статуса (онлайн/был(а)) не меняются.
      */
     private fun updateHeaderCompact(dy: Int) {
         val threshold = HEADER_SCROLL_THRESHOLD_DP * resources.displayMetrics.density
@@ -822,44 +899,6 @@ class ChatActivity : AppCompatActivity() {
         if (headerCompact == compact) return
         headerCompact = compact
         val density = resources.displayMetrics.density
-        val easing = PathInterpolator(0.2f, 0f, 0f, 1f)
-
-        val nameView = binding.chatNameTextView
-        val nameFrom = nameView.textSize / resources.displayMetrics.scaledDensity
-        headerNameAnimator?.cancel()
-        headerNameAnimator = ValueAnimator.ofFloat(nameFrom, if (compact) 17f else 22f).apply {
-            duration = HEADER_MORPH_DURATION_MS
-            interpolator = easing
-            addUpdateListener {
-                nameView.setTextSize(TypedValue.COMPLEX_UNIT_SP, it.animatedValue as Float)
-            }
-            start()
-        }
-        nameView.typeface = Typeface.create(Typeface.SANS_SERIF, if (compact) 500 else 600, false)
-
-        val statusContainer = binding.chatStatusContainer
-        if (statusExpandedHeight == 0) statusExpandedHeight = statusContainer.height
-        if (statusExpandedHeight > 0) {
-            headerStatusAnimator?.cancel()
-            headerStatusAnimator = ValueAnimator.ofInt(
-                statusContainer.height,
-                if (compact) 0 else statusExpandedHeight
-            ).apply {
-                duration = HEADER_MORPH_DURATION_MS
-                interpolator = easing
-                addUpdateListener { animator ->
-                    val value = animator.animatedValue as Int
-                    statusContainer.updateLayoutParams { height = value }
-                    statusContainer.alpha = value.toFloat() / statusExpandedHeight
-                }
-                doOnEnd {
-                    if (compact) return@doOnEnd
-                    statusContainer.updateLayoutParams { height = ViewGroup.LayoutParams.WRAP_CONTENT }
-                }
-                start()
-            }
-        }
-
         binding.chatHeaderBar.animate()
             .translationZ(if (compact) HEADER_SHADOW_ELEVATION_DP * density else 0f)
             .setDuration(HEADER_SHADOW_DURATION_MS)
@@ -867,7 +906,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
-        binding.chatNameTextView.text = chatTitle.ifBlank { getString(R.string.chat_default_title) }
+        binding.chatNameTextView.text = if (isSavedMessages) getString(R.string.saved_messages_title) else chatTitle.ifBlank { getString(R.string.chat_default_title) }
 
         // Показываем статус онлайна только для личных чатов
         if (!isGroupChat && otherUserId > 0) {
@@ -926,6 +965,10 @@ class ChatActivity : AppCompatActivity() {
 
 
     private fun startCall(video: Boolean) {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+            Toast.makeText(this, R.string.account_restricted_chat_read_only, Toast.LENGTH_SHORT).show()
+            return
+        }
         lifecycleScope.launch {
             val mediaType = if (video) {
                 CallsApiOuterClass.CallMediaType.CALL_MEDIA_VIDEO
@@ -954,13 +997,29 @@ class ChatActivity : AppCompatActivity() {
                 })
             }.onFailure { error ->
                 Log.e(TAG, "Failed to start call", error)
-                Toast.makeText(this@ChatActivity, R.string.call_start_failed, Toast.LENGTH_SHORT).show()
+                if (exitToLoginIfAccountRestricted(error)) return@onFailure
+                Toast.makeText(
+                    this@ChatActivity,
+                    accountRestrictionRpcMessage(error) ?: getString(R.string.call_start_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
 
+    private var renderedSavedMessages = false
+
+    private val isSavedMessages: Boolean
+        get() = !isGroupChat && intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR) == KIND_REGULAR && otherUserId > 0 && otherUserId == currentUserId
+
     private fun loadChatAvatar() {
-        if (!chatAvatarFileId.isNullOrBlank()) {
+        if (isSavedMessages) {
+            com.barkfluff.client.utils.showSavedMessagesAvatar(binding.chatAvatar, binding.chatAvatarPlaceholder)
+            return
+        } else if (peerAccountStatus != AccountStatus.ACTIVE) {
+            AvatarLoader.showPlaceholder(binding.chatAvatarPlaceholder, accountStatusLabel(peerAccountStatus), otherUserId)
+            binding.chatAvatar.visibility = View.GONE
+        } else if (!chatAvatarFileId.isNullOrBlank()) {
             val fileId = chatAvatarFileId!!
             AvatarLoader.loadByFileId(
                 imageView = binding.chatAvatar,
@@ -975,6 +1034,78 @@ class ChatActivity : AppCompatActivity() {
         } else {
             AvatarLoader.showPlaceholder(binding.chatAvatarPlaceholder, chatTitle, chatId.hashCode().toLong())
             binding.chatAvatar.visibility = View.GONE
+        }
+    }
+
+    private fun resolvePeerAccountStatus(userId: Long) {
+        if (userId <= 0L || peerStatusLookupUserId == userId) return
+        peerStatusLookupUserId = userId
+        lifecycleScope.launch {
+            val user = userProfileGateway.user(userId).getOrNull() ?: return@launch
+            if (otherUserId != userId) return@launch
+            val wasRestricted = peerAccountStatus != AccountStatus.ACTIVE
+            peerAccountStatus = user.accountStatus
+            if (peerAccountStatus != AccountStatus.ACTIVE) {
+                applyRestrictedPeer()
+            } else if (wasRestricted) {
+                clearRestrictedPeer(user)
+            }
+        }
+    }
+
+    private var restrictedPeerVisibility: List<Pair<View, Int>>? = null
+
+    private fun applyRestrictedPeer() {
+        if (restrictedPeerVisibility == null) {
+            restrictedPeerVisibility = listOf(
+                binding.onlineStatusTextView,
+                binding.onlineIndicator,
+                binding.btnAudioCall,
+                binding.inputBar,
+                binding.sendButton,
+                binding.voiceRecordBar,
+                binding.attachmentPreviewBar,
+                binding.replyPreviewBar,
+                binding.editPreviewBar,
+                binding.stickerPanelContainer,
+                binding.e2eInviteContainer,
+                binding.readOnlyNotice,
+            ).map { it to it.visibility }
+        }
+        chatTitle = accountStatusLabel(peerAccountStatus)
+        chatAvatarFileId = null
+        binding.chatNameTextView.text = chatTitle
+        binding.chatAvatarPlaceholder.text = chatTitle.trim().firstOrNull()?.uppercase() ?: "?"
+        loadChatAvatar()
+        binding.onlineStatusTextView.visibility = View.GONE
+        binding.onlineIndicator.visibility = View.GONE
+        binding.btnAudioCall.visibility = View.GONE
+        binding.inputBar.visibility = View.GONE
+        binding.sendButton.visibility = View.GONE
+        binding.voiceRecordBar.visibility = View.GONE
+        binding.attachmentPreviewBar.visibility = View.GONE
+        binding.replyPreviewBar.visibility = View.GONE
+        binding.editPreviewBar.visibility = View.GONE
+        binding.stickerPanelContainer.visibility = View.GONE
+        binding.e2eInviteContainer.visibility = View.GONE
+        binding.readOnlyNotice.visibility = View.VISIBLE
+        WindowInsetsControllerCompat(window, binding.chatRootLayout).hide(WindowInsetsCompat.Type.ime())
+    }
+
+    private fun clearRestrictedPeer(user: UserProfile) {
+        val displayName = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
+        chatTitle = if (intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR) == KIND_SECRET) {
+            getString(R.string.secret_chat_title, user.userId)
+        } else {
+            displayName
+        }
+        chatAvatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }.ifBlank { null }
+        binding.chatNameTextView.text = chatTitle
+        loadChatAvatar()
+        restrictedPeerVisibility?.forEach { (view, visibility) -> view.visibility = visibility }
+        restrictedPeerVisibility = null
+        if (intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR) == KIND_REGULAR && !isGroupChat) {
+            renderPresenceState(viewModel.state.value.presence)
         }
     }
 
@@ -1222,6 +1353,12 @@ class ChatActivity : AppCompatActivity() {
                     toggleSelection(messageId)
                 }
 
+                override fun isSelectionActive(): Boolean = viewModel.state.value.selection.isActive
+
+                override fun onCancelOutgoing(operationId: String) {
+                    viewModel.dispatch(ChatIntent.CancelOutgoing(operationId))
+                }
+
                 override fun senderInfo(senderId: Long): Pair<String?, String?>? =
                     groupMemberInfoCache[senderId]
 
@@ -1241,6 +1378,9 @@ class ChatActivity : AppCompatActivity() {
             }
             adapter = messageAdapter
             itemAnimator = MessageItemAnimator()
+            val selectionTouchController = MessageSelectionTouchController()
+            selectionGestureController = selectionTouchController
+            addOnItemTouchListener(selectionTouchController)
             addItemDecoration(
                 MessageTimeSpacingDecoration(
                     smallSpacingPx = (2 * resources.displayMetrics.density).toInt(),  // 2dp
@@ -1394,12 +1534,16 @@ class ChatActivity : AppCompatActivity() {
 
             for (member in members) {
                 if (member.userId == currentUserId) continue
-                val name = "${member.firstName} ${member.lastName}".trim().ifBlank {
+                val user = userProfileGateway.user(member.userId).getOrNull()
+                val restricted = user?.accountStatus?.let { it != AccountStatus.ACTIVE } == true
+                val name = if (restricted) {
+                    accountStatusLabel(user!!.accountStatus)
+                } else {
+                    "${user?.firstName ?: member.firstName} ${user?.lastName ?: member.lastName}".trim()
+                }.ifBlank {
                     getString(R.string.group_member_id, member.userId)
                 }
-                val avatarSource = userProfileGateway.user(member.userId).getOrNull()?.let { user ->
-                    avatarSourceFor(user)
-                }
+                val avatarSource = user?.takeUnless { restricted }?.let(::avatarSourceFor)
                 groupMemberInfoCache[member.userId] = name to avatarSource
             }
 
@@ -1417,6 +1561,10 @@ class ChatActivity : AppCompatActivity() {
      * Если никто не печатает — восстанавливает предыдущее содержимое (статус онлайна / скрытие для группы).
      */
     private fun renderTypingIndicator(userIds: Set<Long> = renderedTypingUserIds) {
+        if ((!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) || isSavedMessages) {
+            binding.onlineStatusTextView.visibility = View.GONE
+            return
+        }
         if (userIds.isEmpty()) {
             if (isGroupChat) {
                 binding.onlineStatusTextView.visibility = View.GONE
@@ -1463,10 +1611,15 @@ class ChatActivity : AppCompatActivity() {
             try {
                 val user = userProfileGateway.user(userId).getOrNull()
                 if (user != null) {
-                    val name = "${user.firstName} ${user.lastName}".trim().ifBlank {
+                    val name = if (user.accountStatus != AccountStatus.ACTIVE) {
+                        accountStatusLabel(user.accountStatus)
+                    } else {
+                        "${user.firstName} ${user.lastName}".trim()
+                    }.ifBlank {
                         getString(R.string.group_member_id, userId)
                     }
-                    groupMemberInfoCache[userId] = name to avatarSourceFor(user)
+                    groupMemberInfoCache[userId] = name to
+                        if (user.accountStatus == AccountStatus.ACTIVE) avatarSourceFor(user) else null
                 }
             } finally {
                 pendingTypingNameFetches.remove(userId)
@@ -1884,6 +2037,7 @@ class ChatActivity : AppCompatActivity() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
     private fun startVoiceRecording(locked: Boolean = false) {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) return
         if (!audioPlayback.playbackAllowed) return
         voicePreview?.pause()
         audioPlayback.pause()
@@ -1951,6 +2105,10 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendVoiceDraft() {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+            Toast.makeText(this, R.string.account_restricted_chat_read_only, Toast.LENGTH_SHORT).show()
+            return
+        }
         val composer = viewModel.state.value.composer
         if (composer.isSending || composer.isVoiceStaging || composer.isRestoring || composer.isRestoringAttachments) return
         val source = composer.voiceSourcePath
@@ -1959,6 +2117,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun pickImages() {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) return
         val imagePicker = ImagePickerBottomSheet.newInstance { result ->
             handleSelectedImages(result)
         }
@@ -2058,6 +2217,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun showStickerPicker() {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) return
         if (inputPanelState == InputPanelState.STICKER_PANEL) {
             hideStickerPanel()
             return
@@ -2319,6 +2479,10 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendMessageWithPendingAttachments() {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+            Toast.makeText(this, R.string.account_restricted_chat_read_only, Toast.LENGTH_SHORT).show()
+            return
+        }
         if (pendingAttachmentsAwaitingOutbox) return
         if (viewModel.state.value.composer.voiceSourcePath != null) { sendVoiceDraft(); return }
         // The ViewModel copies sources asynchronously. Wait until all source URIs have either
@@ -2336,6 +2500,10 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendMessage(text: String = binding.messageEditText.text.toString(), fileIds: List<String> = emptyList()) {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+            Toast.makeText(this, R.string.account_restricted_chat_read_only, Toast.LENGTH_SHORT).show()
+            return
+        }
         val messageText = text.trim()
         val state = viewModel.state.value
 
@@ -2504,6 +2672,8 @@ class ChatActivity : AppCompatActivity() {
         const val SELECT = 12
         const val OUTGOING_RETRY = 13
         const val OUTGOING_CANCEL = 14
+        const val SAVE_AUDIO = 15
+        const val REMOVE_AUDIO_CACHE = 16
     }
 
     private fun showMessageActionMenu(bubble: View, item: MessageItem) {
@@ -2528,6 +2698,7 @@ class ChatActivity : AppCompatActivity() {
                 bubble = bubble,
                 actions = actions,
                 alignEnd = true,
+                touchPoint = messageTouchPoint(bubble),
                 onDismiss = { backCallback.isEnabled = binding.stickerPreviewOverlay.visibility == View.VISIBLE || inputPanelState == InputPanelState.STICKER_PANEL }
             ) { actionId ->
                 item.localId?.let { operationId ->
@@ -2548,30 +2719,48 @@ class ChatActivity : AppCompatActivity() {
         val docAtts = item.attachments.filter {
             it.type == barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT
         }
+        val audioAtts = item.attachments.filter {
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.VOICE ||
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.AUDIO
+        }
+        val cachedAudioAtts = audioAtts.filter { messageAdapter.isAttachmentCached(it.fileId) }
         val hasText = item.text.isNotBlank()
         val isPinned = viewModel.isMessagePinned(item.messageId)
 
-        val actions = buildList {
+        // Частые действия — иконками на панели под списком, остальные — списком.
+        val barActions = buildList {
             add(MessageActionsOverlay.Action(MessageActionId.REPLY, R.drawable.ic_action_reply, getString(R.string.msg_action_reply)))
             if (hasText) {
                 add(MessageActionsOverlay.Action(MessageActionId.COPY_TEXT, R.drawable.ic_action_copy_text, getString(R.string.msg_action_copy_text)))
-                add(MessageActionsOverlay.Action(MessageActionId.COPY_MARKDOWN, R.drawable.ic_action_copy_markdown, getString(R.string.msg_action_copy_markdown)))
             }
             if (imageAtts.size == 1) {
                 add(MessageActionsOverlay.Action(MessageActionId.COPY_IMAGE, R.drawable.ic_action_copy_image, getString(R.string.msg_action_copy_image)))
             }
+            if (isOwnMessage) {
+                add(MessageActionsOverlay.Action(MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit)))
+            }
+            add(MessageActionsOverlay.Action(MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties)))
+        }
+        val actions = buildList {
+            if (hasText) {
+                add(MessageActionsOverlay.Action(MessageActionId.COPY_MARKDOWN, R.drawable.ic_action_copy_markdown, getString(R.string.msg_action_copy_markdown)))
+            }
             if (imageAtts.isNotEmpty()) {
                 add(MessageActionsOverlay.Action(
-                    MessageActionId.SAVE_IMAGES, R.drawable.ic_action_save,
-                    getString(if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images)
+                    MessageActionId.SAVE_IMAGES, R.drawable.ic_action_save_gallery,
+                    getString(if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images),
                 ))
             }
             if (docAtts.isNotEmpty()) {
                 add(MessageActionsOverlay.Action(MessageActionId.SAVE_DOCS, R.drawable.ic_action_download, getString(R.string.msg_action_save_to_downloads)))
             }
-            if (isOwnMessage) {
-                add(MessageActionsOverlay.Action(MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit)))
-                add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.ic_action_delete, getString(R.string.msg_action_delete), danger = true))
+            if (audioAtts.isNotEmpty()) {
+                add(MessageActionsOverlay.Action(MessageActionId.SAVE_AUDIO, R.drawable.ic_action_save, getString(R.string.audio_save)))
+            }
+            if (cachedAudioAtts.isNotEmpty()) {
+                add(MessageActionsOverlay.Action(
+                    MessageActionId.REMOVE_AUDIO_CACHE, R.drawable.ic_action_delete, getString(R.string.file_remove_from_cache),
+                ))
             }
             add(MessageActionsOverlay.Action(MessageActionId.FORWARD, R.drawable.ic_action_forward, getString(R.string.msg_action_forward)))
             add(MessageActionsOverlay.Action(
@@ -2579,14 +2768,18 @@ class ChatActivity : AppCompatActivity() {
                 if (isPinned) R.drawable.ic_action_unpin else R.drawable.ic_action_pin,
                 getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
             ))
-            add(MessageActionsOverlay.Action(MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties)))
             add(MessageActionsOverlay.Action(MessageActionId.SELECT, R.drawable.ic_action_select, getString(R.string.msg_action_select)))
+            if (isOwnMessage) {
+                add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.ic_action_delete, getString(R.string.msg_action_delete), danger = true))
+            }
         }
 
         messageActionsOverlay.show(
             bubble = bubble,
             actions = actions,
             alignEnd = isOwnMessage,
+            barActions = barActions,
+            touchPoint = messageTouchPoint(bubble),
             onDismiss = {
                 // Закрытие анимированное (~180мс) — за это время действие могло уже включить
                 // режим выделения (SELECT), который сам управляет backCallback. Не перетираем.
@@ -2603,6 +2796,22 @@ class ChatActivity : AppCompatActivity() {
                 MessageActionId.COPY_IMAGE -> copyMessageImage(imageAtts.first())
                 MessageActionId.SAVE_IMAGES -> saveMessageImages(imageAtts)
                 MessageActionId.SAVE_DOCS -> saveMessageDocuments(docAtts)
+                MessageActionId.SAVE_AUDIO -> saveMessageDocuments(audioAtts.map { att ->
+                    if (att.fileName.isNotBlank()) att else att.toBuilder().setFileName(
+                        if (att.type == barkfluff.shared.Shared.MessageAttachmentType.VOICE) "voice_${att.fileId.take(8)}.ogg"
+                        else "audio_${att.fileId.take(8)}"
+                    ).build()
+                })
+                MessageActionId.REMOVE_AUDIO_CACHE -> {
+                    cachedAudioAtts.forEach { att ->
+                        messageAdapter.removeCachedAudio(
+                            att.fileId,
+                            att.type == barkfluff.shared.Shared.MessageAttachmentType.VOICE,
+                            binding.messagesRecyclerView.findViewWithTag(att.fileId),
+                        )
+                    }
+                    Toast.makeText(this, R.string.audio_removed_from_cache, Toast.LENGTH_SHORT).show()
+                }
                 MessageActionId.EDIT -> setPendingEdit(item)
                 MessageActionId.DELETE -> confirmAndDelete(item)
                 MessageActionId.FORWARD -> {
@@ -2625,6 +2834,18 @@ class ChatActivity : AppCompatActivity() {
             }
         }
         backCallback.isEnabled = true
+    }
+
+    /**
+     * Точка последнего касания списка (экранные координаты), если она внутри строки этого сообщения.
+     * Иначе (клавиатура, accessibility) меню позиционируется по пузырю.
+     */
+    private fun messageTouchPoint(bubble: View): android.graphics.Point? {
+        val point = lastMessageTouch ?: return null
+        val row = binding.messagesRecyclerView.findContainingItemView(bubble) ?: return null
+        val location = IntArray(2).also(row::getLocationOnScreen)
+        val inside = point.x in location[0]..(location[0] + row.width) && point.y in location[1]..(location[1] + row.height)
+        return point.takeIf { inside }
     }
 
     private fun copyMessageText(item: MessageItem) {
@@ -2674,39 +2895,386 @@ class ChatActivity : AppCompatActivity() {
     private fun enterSelectionMode(item: MessageItem) {
         viewModel.dispatch(ChatIntent.ClearSelection)
         viewModel.dispatch(ChatIntent.ToggleSelection(item.messageId))
-        updateSelectionToolbar()
-        // INVISIBLE, не GONE: pinnedMessageBar и e2eBanner привязаны к нижнему краю
-        // chatHeaderBar constraint-цепочкой — GONE обнулил бы её высоту, и они уехали
-        // бы под статус-бар. selectionToolbar просто перекрывает её сверху.
-        binding.chatHeaderBar.visibility = View.INVISIBLE
-        binding.selectionToolbar.visibility = View.VISIBLE
-        backCallback.isEnabled = true
     }
 
     private fun exitSelectionMode() {
         viewModel.dispatch(ChatIntent.ClearSelection)
-        binding.selectionToolbar.visibility = View.GONE
-        binding.chatHeaderBar.visibility = View.VISIBLE
-        backCallback.isEnabled = messageActionsOverlay.isShowing ||
-            binding.stickerPreviewOverlay.visibility == View.VISIBLE ||
-            inputPanelState == InputPanelState.STICKER_PANEL
     }
 
     private fun toggleSelection(messageId: Long) {
         if (!viewModel.state.value.selection.isActive) return
         viewModel.dispatch(ChatIntent.ToggleSelection(messageId))
-        if (!viewModel.state.value.selection.isActive) {
-            exitSelectionMode()
-        } else {
-            updateSelectionToolbar()
+    }
+
+    private fun renderSelectionState(previous: SelectionState?, current: SelectionState, animate: Boolean) {
+        if (previous == null || previous.isActive != current.isActive) {
+            if (current.isActive) showSelectionToolbar(animate) else hideSelectionToolbar(animate)
+        }
+        if (previous == null || previous.selectedMessageIds != current.selectedMessageIds) {
+            updateSelectionToolbar(current.selectedMessageIds.size, animate = animate && previous != null)
+        }
+        if (::backCallback.isInitialized) {
+            backCallback.isEnabled = current.isActive || messageActionsOverlay.isShowing ||
+                binding.stickerPreviewOverlay.visibility == View.VISIBLE ||
+                inputPanelState == InputPanelState.STICKER_PANEL
         }
     }
 
-    private fun updateSelectionToolbar() {
-        binding.selectionCountText.text = getString(
-            R.string.create_group_members_count,
-            viewModel.state.value.selection.selectedMessageIds.size
-        )
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun showSelectionToolbar(animate: Boolean) {
+        // INVISIBLE, не GONE: другие панели привязаны к высоте шапки и должны остаться на месте.
+        binding.chatHeaderBar.visibility = View.INVISIBLE
+        val toolbar = binding.selectionToolbar
+        toolbar.animate().cancel()
+        toolbar.visibility = View.VISIBLE
+        if (!animate || !ValueAnimator.areAnimatorsEnabled()) {
+            toolbar.alpha = 1f
+            toolbar.translationY = 0f
+            return
+        }
+        toolbar.alpha = 0f
+        toolbar.translationY = -dp(10).toFloat()
+        toolbar.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(190L)
+            .setInterpolator(PathInterpolator(0.2f, 0f, 0f, 1f))
+            .start()
+    }
+
+    private fun hideSelectionToolbar(animate: Boolean) {
+        val toolbar = binding.selectionToolbar
+        toolbar.animate().cancel()
+        binding.chatHeaderBar.animate().cancel()
+        binding.chatHeaderBar.visibility = View.VISIBLE
+        if (!animate || !ValueAnimator.areAnimatorsEnabled()) {
+            toolbar.visibility = View.GONE
+            toolbar.alpha = 1f
+            toolbar.translationY = 0f
+            binding.chatHeaderBar.alpha = 1f
+            binding.chatHeaderBar.translationY = 0f
+            renderedSelectionCount = -1
+            return
+        }
+        binding.chatHeaderBar.alpha = 0f
+        binding.chatHeaderBar.translationY = -dp(6).toFloat()
+        binding.chatHeaderBar.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(170L)
+            .setInterpolator(PathInterpolator(0.2f, 0f, 0f, 1f))
+            .start()
+        toolbar.animate()
+            .alpha(0f)
+            .translationY(-dp(8).toFloat())
+            .setDuration(140L)
+            .withEndAction {
+                toolbar.visibility = View.GONE
+                toolbar.alpha = 1f
+                toolbar.translationY = 0f
+                renderedSelectionCount = -1
+            }
+            .start()
+    }
+
+    private fun updateSelectionToolbar(count: Int, animate: Boolean) {
+        if (count == renderedSelectionCount && binding.selectionCountText.text.isNotEmpty()) return
+        renderedSelectionCount = count
+        val text = getString(R.string.create_group_members_count, count)
+        val counter = binding.selectionCountText
+        counter.animate().cancel()
+        if (!animate || !ValueAnimator.areAnimatorsEnabled()) {
+            counter.text = text
+            counter.alpha = 1f
+            counter.translationY = 0f
+            return
+        }
+        counter.animate()
+            .alpha(0f)
+            .translationY(-dp(4).toFloat())
+            .setDuration(80L)
+            .withEndAction {
+                counter.text = text
+                counter.translationY = dp(4).toFloat()
+                counter.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(120L)
+                    .setInterpolator(PathInterpolator(0.2f, 0f, 0f, 1f))
+                    .start()
+            }
+            .start()
+    }
+
+    private fun beginLongPressSelection(messageId: Long) {
+        val selection = viewModel.state.value.selection
+        if (!selection.isActive || messageId !in selection.selectedMessageIds) {
+            viewModel.dispatch(ChatIntent.ToggleSelection(messageId))
+        }
+    }
+
+    private inner class MessageSelectionTouchController : RecyclerView.OnItemTouchListener {
+        private val recycler = binding.messagesRecyclerView
+        private val touchSlop = ViewConfiguration.get(recycler.context).scaledTouchSlop.toFloat()
+        private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+        private var tracking = false
+        private var capturedSelectionTap = false
+        private var longPressTriggered = false
+        private var moved = false
+        private var activePointerId = MotionEvent.INVALID_POINTER_ID
+        private var candidateMessageId = 0L
+        private var rangeAnchorId = 0L
+        private var lastRangeMessageId = 0L
+        private var rangeSelect = true
+        private var autoScrollScheduled = false
+        private var selectionBeforeGesture: Set<Long> = emptySet()
+        private var downX = 0f
+        private var downY = 0f
+        private var pointerX = 0f
+        private var pointerY = 0f
+
+        private val longPressRunnable = Runnable {
+            if (!tracking || moved || candidateMessageId <= 0L) return@Runnable
+            longPressTriggered = true
+            rangeAnchorId = candidateMessageId
+            beginLongPressSelection(candidateMessageId)
+            rangeSelect = candidateMessageId in viewModel.state.value.selection.selectedMessageIds
+            lastRangeMessageId = candidateMessageId
+            recycler.requestDisallowInterceptTouchEvent(false)
+            val position = messageAdapter.currentList.indexOfFirst { it.messageId == candidateMessageId }
+            recycler.findViewHolderForAdapterPosition(position)?.itemView?.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                ?: recycler.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            scheduleAutoScroll()
+        }
+
+        private val autoScrollRunnable = object : Runnable {
+            override fun run() {
+                autoScrollScheduled = false
+                if (!tracking || !longPressTriggered) return
+                val viewportTop = recycler.paddingTop.toFloat()
+                val viewportBottom = (recycler.height - recycler.paddingBottom).toFloat()
+                val edgeSize = dp(64).toFloat()
+                val maxSpeed = dp(8).coerceAtLeast(1)
+                val dy = when {
+                    pointerY < viewportTop + edgeSize -> {
+                        val fraction = ((viewportTop + edgeSize - pointerY) / edgeSize).coerceIn(0f, 1f)
+                        -(maxSpeed * fraction).toInt().coerceAtLeast(1)
+                    }
+                    pointerY > viewportBottom - edgeSize -> {
+                        val fraction = ((pointerY - (viewportBottom - edgeSize)) / edgeSize).coerceIn(0f, 1f)
+                        (maxSpeed * fraction).toInt().coerceAtLeast(1)
+                    }
+                    else -> 0
+                }
+                if (dy == 0) return
+                recycler.scrollBy(0, dy)
+                applyRangeAtPointer()
+                scheduleAutoScroll()
+            }
+        }
+
+        override fun onInterceptTouchEvent(rv: RecyclerView, event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    lastMessageTouch = android.graphics.Point(event.rawX.toInt(), event.rawY.toInt())
+                    startTracking(event)
+                    return capturedSelectionTap
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (!tracking) return false
+                    updatePointer(event) ?: return longPressTriggered || capturedSelectionTap
+                    if (!longPressTriggered && distanceFromDown() > touchSlop) {
+                        moved = true
+                        recycler.removeCallbacks(longPressRunnable)
+                    }
+                    return longPressTriggered || capturedSelectionTap
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    recycler.removeCallbacks(longPressRunnable)
+                    if (longPressTriggered || capturedSelectionTap) return true
+                    finishTracking()
+                }
+            }
+            return longPressTriggered || capturedSelectionTap
+        }
+
+        override fun onTouchEvent(rv: RecyclerView, event: MotionEvent) {
+            if (!tracking) return
+            when (event.actionMasked) {
+                MotionEvent.ACTION_MOVE -> {
+                    val previousY = pointerY
+                    if (updatePointer(event) == null) return
+                    if (longPressTriggered) {
+                        applyRangeAtPointer()
+                        scheduleAutoScroll()
+                    } else if (capturedSelectionTap) {
+                        if (distanceFromDown() > touchSlop) {
+                            moved = true
+                            recycler.removeCallbacks(longPressRunnable)
+                            recycler.scrollBy(0, (previousY - pointerY).toInt())
+                        }
+                    }
+                }
+                MotionEvent.ACTION_UP -> {
+                    updatePointer(event)
+                    recycler.removeCallbacks(longPressRunnable)
+                    stopAutoScroll()
+                    when {
+                        longPressTriggered -> applyRangeAtPointer()
+                        capturedSelectionTap && !moved && candidateMessageId > 0L -> toggleSelection(candidateMessageId)
+                    }
+                    finishTracking()
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    recycler.removeCallbacks(longPressRunnable)
+                    stopAutoScroll()
+                    if (longPressTriggered) {
+                        viewModel.dispatch(ChatIntent.SetSelection(selectionBeforeGesture))
+                    }
+                    finishTracking()
+                }
+                MotionEvent.ACTION_POINTER_UP -> {
+                    if (event.getPointerId(event.actionIndex) == activePointerId) switchActivePointer(event)
+                }
+            }
+        }
+
+        override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
+            if (disallowIntercept && tracking && !capturedSelectionTap && !longPressTriggered) {
+                recycler.removeCallbacks(longPressRunnable)
+            }
+        }
+
+        fun dispose() {
+            recycler.removeCallbacks(longPressRunnable)
+            stopAutoScroll()
+            finishTracking()
+        }
+
+        private fun startTracking(event: MotionEvent) {
+            finishTracking()
+            activePointerId = event.getPointerId(0)
+            downX = event.x
+            downY = event.y
+            pointerX = downX
+            pointerY = downY
+            candidateMessageId = messageIdUnderPointer(pointerX, pointerY)
+            selectionBeforeGesture = viewModel.state.value.selection.selectedMessageIds.toSet()
+            capturedSelectionTap = viewModel.state.value.selection.isActive && candidateMessageId > 0L
+            tracking = candidateMessageId > 0L
+            if (tracking) recycler.postDelayed(longPressRunnable, longPressTimeout)
+        }
+
+        private fun updatePointer(event: MotionEvent): Int? {
+            val index = event.findPointerIndex(activePointerId)
+            if (index < 0) return null
+            pointerX = event.getX(index)
+            pointerY = event.getY(index)
+            return index
+        }
+
+        private fun distanceFromDown(): Float {
+            val dx = pointerX - downX
+            val dy = pointerY - downY
+            return kotlin.math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+        }
+
+        private fun messageIdUnderPointer(x: Float, y: Float): Long {
+            val child = recycler.findChildViewUnder(x, y) ?: return 0L
+            val position = recycler.getChildAdapterPosition(child)
+            val item = messageAdapter.currentList.getOrNull(position) ?: return 0L
+            return item.messageId.takeIf { item.type == MessageType.MESSAGE && it > 0L } ?: 0L
+        }
+
+        private fun nearestMessageIdAtPointer(x: Float, y: Float): Long {
+            val directId = messageIdUnderPointer(x, y)
+            if (directId > 0L) return directId
+            val layoutManager = recycler.layoutManager as? LinearLayoutManager ?: return 0L
+            val first = layoutManager.findFirstVisibleItemPosition().coerceAtLeast(0)
+            val last = layoutManager.findLastVisibleItemPosition().coerceAtLeast(first)
+            var nearestId = 0L
+            var nearestDistance = Float.MAX_VALUE
+            for (position in first..last) {
+                val item = messageAdapter.getMessageAt(position) ?: continue
+                if (item.messageId <= 0L) continue
+                val row = layoutManager.findViewByPosition(position) ?: continue
+                val distance = when {
+                    y < row.top -> row.top - y
+                    y > row.bottom -> y - row.bottom
+                    else -> 0f
+                }
+                if (distance < nearestDistance) {
+                    nearestId = item.messageId
+                    nearestDistance = distance
+                }
+            }
+            return nearestId
+        }
+
+        private fun applyRangeAtPointer() {
+            if (rangeAnchorId <= 0L) return
+            val targetId = nearestMessageIdAtPointer(pointerX, pointerY)
+            if (targetId <= 0L || targetId == lastRangeMessageId) return
+            val orderedIds = messageAdapter.currentList.asSequence()
+                .filter { it.type == MessageType.MESSAGE && it.messageId > 0L }
+                .map { it.messageId }
+                .toList()
+            if (rangeAnchorId !in orderedIds || targetId !in orderedIds) return
+            viewModel.dispatch(ChatIntent.SelectRange(
+                orderedMessageIds = orderedIds,
+                startMessageId = rangeAnchorId,
+                endMessageId = targetId,
+                selected = rangeSelect,
+                baseSelection = selectionBeforeGesture,
+            ))
+            lastRangeMessageId = targetId
+        }
+
+        private fun scheduleAutoScroll() {
+            val nearEdge = pointerY < recycler.paddingTop + dp(64) ||
+                pointerY > recycler.height - recycler.paddingBottom - dp(64)
+            if (!nearEdge) {
+                stopAutoScroll()
+            } else if (!autoScrollScheduled) {
+                autoScrollScheduled = true
+                recycler.postDelayed(autoScrollRunnable, AUTO_SCROLL_FRAME_MS)
+            }
+        }
+
+        private fun stopAutoScroll() {
+            recycler.removeCallbacks(autoScrollRunnable)
+            autoScrollScheduled = false
+        }
+
+        private fun switchActivePointer(event: MotionEvent) {
+            val replacement = if (event.actionIndex == 0) 1 else 0
+            if (replacement >= event.pointerCount) {
+                if (longPressTriggered) {
+                    viewModel.dispatch(ChatIntent.SetSelection(selectionBeforeGesture))
+                }
+                finishTracking()
+                return
+            }
+            activePointerId = event.getPointerId(replacement)
+            downX = event.getX(replacement)
+            downY = event.getY(replacement)
+            pointerX = downX
+            pointerY = downY
+        }
+
+        private fun finishTracking() {
+            recycler.removeCallbacks(longPressRunnable)
+            stopAutoScroll()
+            tracking = false
+            capturedSelectionTap = false
+            longPressTriggered = false
+            moved = false
+            activePointerId = MotionEvent.INVALID_POINTER_ID
+            candidateMessageId = 0L
+            rangeAnchorId = 0L
+            lastRangeMessageId = 0L
+        }
     }
 
     /** Сообщения из выбранных ID в порядке их следования в текущем списке чата. */
@@ -2846,18 +3414,17 @@ class ChatActivity : AppCompatActivity() {
 
     /** Контекстное меню чата (кнопка «три точки»): переключение уведомлений. */
     private fun showChatMenu(anchor: View) {
-        val popup = android.widget.PopupMenu(this, anchor)
         val muteTitle = if (isChatMuted) getString(R.string.chat_menu_unmute) else getString(R.string.chat_menu_mute)
-        val muteItem = popup.menu.add(muteTitle)
-        popup.setOnMenuItemClickListener { item ->
-            if (item === muteItem) {
-                toggleChatMute()
-                true
-            } else {
-                false
-            }
-        }
-        popup.show()
+        M3ContextMenu.show(
+            anchor = anchor,
+            items = listOf(M3ContextMenu.Item(
+                id = 1,
+                title = muteTitle,
+                icon = if (isChatMuted) R.drawable.ic_notifications else R.drawable.ic_notifications_off,
+            )),
+            alignEnd = true,
+            onItemSelected = { toggleChatMute() },
+        )
     }
 
     private fun toggleChatMute() {
@@ -2891,7 +3458,12 @@ class ChatActivity : AppCompatActivity() {
 
     /** Renders the immutable presence snapshot; subscriptions and polling stay in ChatViewModel. */
     private fun renderPresenceState(presence: PresenceState) {
-        if (isGroupChat) {
+        if (!isGroupChat && peerAccountStatus != AccountStatus.ACTIVE) {
+            binding.onlineStatusTextView.visibility = View.GONE
+            binding.onlineIndicator.visibility = View.GONE
+            return
+        }
+        if (isGroupChat || isSavedMessages) {
             if (presence.typingUserIds.isEmpty()) {
                 binding.onlineStatusTextView.visibility = View.GONE
             }
@@ -3044,13 +3616,16 @@ class ChatActivity : AppCompatActivity() {
             PerfTrace.endChatOpen()
             chatOpenTraceEnded = true
         }
+        selectionGestureController?.let { controller ->
+            binding.messagesRecyclerView.removeOnItemTouchListener(controller)
+            controller.dispose()
+        }
+        selectionGestureController = null
         binding.messagesRecyclerView.adapter = null
         super.onDestroy()
         // Сбрасываем открытый чат
         OpenChatManager.closeChat()
         stopTypingHeartbeat(sendCancel = true)
-        headerNameAnimator?.cancel()
-        headerStatusAnimator?.cancel()
         sendButtonMorphAnimator?.cancel()
         voiceTimerJob?.cancel()
         voiceDotAnimator?.cancel()

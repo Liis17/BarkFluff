@@ -4,9 +4,11 @@ using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Proto.FastAuth;
 using BarkFluff.Proto.Identity;
+using BarkFluff.Proto.Users;
 
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Google.Protobuf.WellKnownTypes;
 
 namespace BarkFluff.Client.WinUI.Tests;
 
@@ -725,6 +727,47 @@ public sealed class LoginViewModelTests
         await viewModel.CleanupAsync();
     }
 
+    [Theory]
+    [InlineData("account_blocked", "Error_AccountBlocked")]
+    [InlineData("account_pending_deletion", "Error_AccountPendingDeletion")]
+    public async Task RestrictedAccountCompletion_ShowsDetailsAndDoesNotRetry(string errorCode, string errorKey)
+    {
+        var authentication = new FakeAuthenticationService { LoginMode = AuthLoginMode.Password };
+        authentication.BeginResults.Enqueue(Challenge(AuthChallengeState.Approved, OtpTypeId.Unknown, false));
+        var restriction = new IdentityAccountRestrictionInfo
+        {
+            Status = errorCode == "account_blocked" ? AccountStatus.Blocked : AccountStatus.PendingDeletion,
+            Reason = "<b>server reason</b>",
+            DeletionScheduledAt = Timestamp.FromDateTime(DateTime.SpecifyKind(new DateTime(2031, 4, 5, 12, 30, 0), DateTimeKind.Utc))
+        };
+        authentication.CompleteResults.Enqueue(AuthenticationOperationResult.Failure(errorKey, restriction));
+        var viewModel = new LoginViewModel(authentication, new TestNavigationService(), new AccountRestrictionLocalizationService());
+        viewModel.LoginOrEmail = "restricted";
+        await viewModel.LoginCommand.ExecuteAsync(null);
+        viewModel.Password = "secret";
+
+        await viewModel.LoginCommand.ExecuteAsync(null);
+
+        Assert.Equal(LoginStep.Challenge, viewModel.Step);
+        Assert.True(viewModel.IsChallengeTerminal);
+        Assert.False(viewModel.CanRetry);
+        Assert.True(viewModel.ChangeLoginCommand.CanExecute(null));
+        Assert.Contains(errorCode == "account_blocked" ? "Login_AccountBlockedTitle" : "Login_AccountPendingDeletionTitle", viewModel.ErrorMessage);
+        Assert.Contains("<b>server reason</b>", viewModel.ErrorMessage);
+        if (errorCode == "account_pending_deletion")
+        {
+            Assert.Contains("Login_AccountDeletionDate:", viewModel.ErrorMessage);
+            Assert.Contains("2031", viewModel.ErrorMessage);
+            Assert.Contains("Login_AccountPendingDeletionHelp", viewModel.ErrorMessage);
+        }
+        else
+        {
+            Assert.Contains("Login_AccountBlockedHelp", viewModel.ErrorMessage);
+        }
+        Assert.Empty(authentication.CancelledAttempts);
+        await viewModel.CleanupAsync();
+    }
+
     [Fact]
     public async Task InvalidCode_LeavesChallengeActiveAndPreservesEnteredCode()
     {
@@ -1353,6 +1396,18 @@ public sealed class LoginViewModelTests
         public string ResolveSupportedLanguage(string? requestedLanguage) => "en";
         public void Apply(string language) { }
         public string GetString(string resourceKey) => resourceKey;
+    }
+
+    private sealed class AccountRestrictionLocalizationService : ILocalizationService
+    {
+        public string ResolveSupportedLanguage(string? requestedLanguage) => "en";
+        public void Apply(string language) { }
+        public string GetString(string resourceKey) => resourceKey switch
+        {
+            "Login_AccountRestrictionReason" => "Login_AccountRestrictionReason: {0}",
+            "Login_AccountDeletionDate" => "Login_AccountDeletionDate: {0}",
+            _ => resourceKey
+        };
     }
 
     private sealed class TestClock : TimeProvider

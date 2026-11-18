@@ -27,6 +27,7 @@ import com.barkfluff.client.domain.model.MediaUpload
 import com.barkfluff.client.domain.model.PinnedMessagePage
 import com.barkfluff.client.domain.model.ServerInfo
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.UserBadgeInfo
 import com.barkfluff.client.domain.model.UserPresence
 import com.barkfluff.client.domain.model.InvalidOldPasswordException
 import com.barkfluff.client.domain.model.PrivateChatCreateResult
@@ -143,6 +144,11 @@ interface UserProfileGateway {
     suspend fun password(password: String): Result<Unit>
     suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit>
     suspend fun storageInfo(): Result<StorageInfo>
+}
+
+interface UserBadgeGateway {
+    suspend fun badges(userId: Long): Result<List<UserBadgeInfo>>
+    suspend fun setPrimary(badgeId: Int): Result<UserBadgeInfo?>
 }
 
 interface UserSettingsGateway {

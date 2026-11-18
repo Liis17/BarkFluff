@@ -41,6 +41,7 @@ class OutgoingMessageForegroundServiceTest {
             state = OutgoingMessageState.PREPARING,
             progress = 0,
             previewPaths = emptyList(),
+            attachments = emptyList(),
             failureCategory = null,
             serverMessageId = 0L,
         )

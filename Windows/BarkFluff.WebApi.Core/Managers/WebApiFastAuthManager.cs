@@ -30,6 +30,14 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 throw;
             }
+            catch (BarkFluff.Shared.Exceptions.Identity.AccountBlockedException)
+            {
+                return (new ErrorReturner(false, errorResourceKey: "Error_AccountBlocked"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.AccountPendingDeletionException)
+            {
+                return (new ErrorReturner(false, errorResourceKey: "Error_AccountPendingDeletion"), null);
+            }
             catch (Exception ex)
             {
                 return (new ErrorReturner(false, ex.Message), null);
@@ -88,6 +96,14 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (BarkFluff.Shared.Exceptions.FastAuth.FastAuthInvalidStateException)
             {
                 return (new ErrorReturner(false, "Эта сессия входа уже обработана"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.AccountBlockedException)
+            {
+                return (new ErrorReturner(false, errorResourceKey: "Error_AccountBlocked"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.AccountPendingDeletionException)
+            {
+                return (new ErrorReturner(false, errorResourceKey: "Error_AccountPendingDeletion"), null);
             }
             catch (Exception)
             {
@@ -150,6 +166,14 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (BarkFluff.Shared.Exceptions.FastAuth.FastAuthInvalidStateException)
             {
                 return new ErrorReturner(false, "Эта сессия входа уже обработана");
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.AccountBlockedException)
+            {
+                return new ErrorReturner(false, errorResourceKey: "Error_AccountBlocked");
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.AccountPendingDeletionException)
+            {
+                return new ErrorReturner(false, errorResourceKey: "Error_AccountPendingDeletion");
             }
             catch (Exception)
             {

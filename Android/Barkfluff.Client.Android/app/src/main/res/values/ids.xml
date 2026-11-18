@@ -2,4 +2,7 @@
 <resources>
     <item name="tag_download_job" type="id" />
     <item name="tag_audio_file_id" type="id" />
+    <item name="tag_message_selection_checked" type="id" />
+    <item name="tag_message_selection_background" type="id" />
+    <item name="tag_message_selection_animator" type="id" />
 </resources>

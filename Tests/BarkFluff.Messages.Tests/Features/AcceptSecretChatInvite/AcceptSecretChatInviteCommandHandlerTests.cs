@@ -4,6 +4,7 @@ using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Messages.Persistence.Services.Dtos;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
 
 namespace BarkFluff.Messages.Tests.Features.AcceptSecretChatInvite;
@@ -13,11 +14,21 @@ public class AcceptSecretChatInviteCommandHandlerTests
     private readonly TestHelper _h = new();
     private readonly Mock<SecretMessageBuffer> _buffer;
     private readonly Mock<SecretMessageQueueSender> _queueSender;
+    private readonly Mock<UsersServerApi.UsersServerApiClient> _usersClient;
 
     public AcceptSecretChatInviteCommandHandlerTests()
     {
         _buffer = new Mock<SecretMessageBuffer>(Mock.Of<StackExchange.Redis.IConnectionMultiplexer>(), TestHelper.CreateLogger<SecretMessageBuffer>());
         _queueSender = new Mock<SecretMessageQueueSender>(_h.PublishEndpointMock.Object);
+        _usersClient = new Mock<UsersServerApi.UsersServerApiClient>();
+        SetupUserStatus(AccountStatus.Active);
+    }
+
+    private void SetupUserStatus(AccountStatus status)
+    {
+        _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns((GetByIdRequest request, Grpc.Core.Metadata? _, DateTime? _, CancellationToken _) =>
+                TestHelper.CreateAsyncCall(new GetByIdResponse { User = new User { Id = request.UserId, AccountStatus = status } }));
     }
 
     private AcceptSecretChatInviteCommandHandler CreateHandler(long userId, string? deviceId = "00000000-0000-0000-0000-000000000001")
@@ -25,9 +36,36 @@ public class AcceptSecretChatInviteCommandHandlerTests
         return new AcceptSecretChatInviteCommandHandler(
             _buffer.Object,
             _queueSender.Object,
+            _usersClient.Object,
             _h.CreateUserContext(userId, deviceId),
             _h.Metrics,
             TestHelper.CreateLogger<AcceptSecretChatInviteCommandHandler>());
+    }
+
+    [Fact]
+    public async Task Handle_InviteCreatedBeforePeerRestriction_IsRejectedWhenAccepted()
+    {
+        var deviceId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var invite = new SecretInviteRecord
+        {
+            InviteId = "invite-1",
+            SenderUserId = 10,
+            SenderDeviceId = Guid.NewGuid(),
+            RecipientUserId = 1,
+            RecipientDeviceId = deviceId
+        };
+        _buffer.Setup(b => b.ConsumeInviteAsync(deviceId, "invite-1")).ReturnsAsync(invite);
+        SetupUserStatus(AccountStatus.PendingDeletion);
+        var handler = CreateHandler(1);
+
+        var act = () => handler.Handle(new AcceptSecretChatInviteCommand
+        {
+            InviteId = "invite-1",
+            ResponseEnvelope = new byte[100]
+        }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BarkFluff.Shared.Exceptions.Users.UserUnavailableException>();
+        _queueSender.Verify(q => q.SendInviteResolution(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<Guid>(), true, It.IsAny<byte[]>()), Times.Never);
     }
 
     [Fact]

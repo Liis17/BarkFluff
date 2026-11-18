@@ -19,6 +19,10 @@ public class GetUserBadgesQueryHandler : IRequestHandler<GetUserBadgesQuery, Get
 
     public async Task<GetUserBadgesResponse> Handle(GetUserBadgesQuery request, CancellationToken cancellationToken)
     {
+        var user = await _usersStorage.GetById(request.UserId);
+        if (user is not null && user.AccountStatus != Domain.AccountStatus.Active)
+            return new GetUserBadgesResponse();
+
         _logger.LogDebug(
             "Получение бейджей пользователя {UserId}. Лимит: {Limit}",
             request.UserId,

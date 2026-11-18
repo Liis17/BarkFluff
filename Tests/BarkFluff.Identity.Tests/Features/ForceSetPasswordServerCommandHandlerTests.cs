@@ -109,4 +109,25 @@ public class ForceSetPasswordServerCommandHandlerTests
         Assert.Empty(_context.UserPasswords);
         _publishEndpoint.Verify(p => p.Publish(It.IsAny<EmailNotification>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task Handle_DeletedAccount_RejectsPasswordBeforeChangingCredentials()
+    {
+        _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<GetByIdResponse>(
+                Task.FromResult(new GetByIdResponse { User = new User { Id = 1, AccountStatus = AccountStatus.Deleted } }),
+                Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+        _usersClient.Setup(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, CancellationToken.None))
+            .Returns(new AsyncUnaryCall<GetAccountRestrictionResponse>(
+                Task.FromResult(new GetAccountRestrictionResponse
+                {
+                    Restriction = new AccountRestrictionInfo { Status = AccountStatus.Deleted }
+                }), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        var ex = await Assert.ThrowsAsync<RpcException>(() => CreateHandler().Handle(
+            new ForceSetPasswordServerCommand { UserId = 1, NewPassword = "adminpass" }, CancellationToken.None));
+
+        Assert.Equal(StatusCode.FailedPrecondition, ex.StatusCode);
+        Assert.Empty(_context.UserPasswords);
+    }
 }

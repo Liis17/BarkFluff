@@ -6,6 +6,8 @@ using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Shared.Queue.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 
 using Grpc.Core;
@@ -84,13 +86,21 @@ public class CreateSessionForUserServerCommandHandlerTests
             .Returns(new AsyncUnaryCall<GetByIdResponse>(
                 Task.FromResult(new GetByIdResponse { User = new User { Id = 1 } }),
                 Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+
+        _usersClient
+            .Setup(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<GetAccountRestrictionResponse>(
+                Task.FromResult(new GetAccountRestrictionResponse
+                {
+                    Restriction = new AccountRestrictionInfo { Status = AccountStatus.Active }
+                }), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
     }
 
     private CreateSessionForUserServerCommandHandler CreateHandler()
     {
         return new CreateSessionForUserServerCommandHandler(
             _usersClient.Object, _mediator.Object, _loginNotifications,
-            _refreshTokensStorage, _locationClient, _metrics, _logger.Object);
+            _refreshTokensStorage, _locationClient, _publishEndpoint.Object, new JwtSettings(), _metrics, _logger.Object);
     }
 
     [Fact]
@@ -238,4 +248,42 @@ public class CreateSessionForUserServerCommandHandlerTests
         Assert.Equal(StatusCode.InvalidArgument, ex.StatusCode);
         Assert.Empty(_context.RefreshTokens);
     }
+
+    [Fact]
+    public async Task Handle_RestrictionAppearingAfterTokenWriteRevokesAndDeletesSession()
+    {
+        _usersClient
+            .SetupSequence(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(Restriction(AccountStatus.Active))
+            .Returns(Restriction(AccountStatus.Blocked));
+        _usersClient
+            .Setup(c => c.DeleteUserDeviceAsync(It.IsAny<DeleteUserDeviceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<DeleteUserDeviceResponse>(
+                Task.FromResult(new DeleteUserDeviceResponse()), Task.FromResult(new Metadata()),
+                () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+        _publishEndpoint
+            .Setup(endpoint => endpoint.Publish(It.IsAny<SessionRevokedEvent>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await Assert.ThrowsAsync<AccountBlockedException>(() => CreateHandler().Handle(new CreateSessionForUserServerCommand
+        {
+            UserId = 1,
+            DeviceId = ValidDeviceId,
+            DeviceName = "MyPhone",
+            OperationSystem = "Android",
+            AppName = "BF v1"
+        }, CancellationToken.None));
+
+        Assert.Empty(_context.RefreshTokens);
+        _publishEndpoint.Verify(endpoint => endpoint.Publish(It.Is<SessionRevokedEvent>(message => message.DeviceId == ValidDeviceId),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _usersClient.Verify(client => client.DeleteUserDeviceAsync(It.Is<DeleteUserDeviceRequest>(request => request.DeviceId == ValidDeviceId),
+            null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private static AsyncUnaryCall<GetAccountRestrictionResponse> Restriction(AccountStatus status) => new(
+        Task.FromResult(new GetAccountRestrictionResponse
+        {
+            Restriction = new AccountRestrictionInfo { Status = status }
+        }), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { });
 }

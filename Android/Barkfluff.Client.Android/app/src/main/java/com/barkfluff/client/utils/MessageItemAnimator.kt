@@ -67,6 +67,12 @@ class MessageItemAnimator : DefaultItemAnimator() {
         return true
     }
 
+    // Изменившееся сообщение перерисовывается в том же holder, а не через пару «старый/новый».
+    override fun canReuseUpdatedViewHolder(
+        viewHolder: RecyclerView.ViewHolder,
+        payloads: MutableList<Any>
+    ): Boolean = true
+
     override fun animateChange(
         oldHolder: RecyclerView.ViewHolder,
         newHolder: RecyclerView.ViewHolder,
@@ -75,31 +81,13 @@ class MessageItemAnimator : DefaultItemAnimator() {
         toX: Int,
         toY: Int
     ): Boolean {
-        // Для изменений используем плавную fade анимацию с масштабированием
-        val view = newHolder.itemView
-        view.alpha = 0f
-        view.scaleX = SCALE_INITIAL
-        view.scaleY = SCALE_INITIAL
-        
-        view.animate()
-            .alpha(1f)
-            .scaleX(SCALE_FINAL)
-            .scaleY(SCALE_FINAL)
-            .setDuration(ANIMATION_DURATION)
-            .setInterpolator(DECELERATE_INTERPOLATOR)
-            .setListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    dispatchChangeFinished(newHolder, true)
-                }
-                override fun onAnimationCancel(animation: Animator) {
-                    view.alpha = 1f
-                    view.scaleX = SCALE_FINAL
-                    view.scaleY = SCALE_FINAL
-                }
-            })
-            .start()
-        
-        return true
+        // Содержимое обновляется на месте без затухания: смена статуса отправки или
+        // подтверждение сервером не должны заставлять пузырь и картинки мигать.
+        if (fromX == toX && fromY == toY) {
+            dispatchMoveFinished(newHolder)
+            return false
+        }
+        return animateMove(newHolder, fromX, fromY, toX, toY)
     }
 
     override fun animateMove(

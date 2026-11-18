@@ -4,7 +4,7 @@ using MediatR;
 
 namespace BarkFluff.Users.Features.ChatFolders.ReorderChatFolders;
 
-public class ReorderChatFoldersCommand : IRequest<ReorderChatFoldersResponse>
+public class ReorderChatFoldersCommand : IRequest<ReorderChatFoldersResponse>, IChatFoldersMutation
 {
     public IReadOnlyList<ChatFolderOrder>? Orders { get; set; }
 }

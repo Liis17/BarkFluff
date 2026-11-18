@@ -1,6 +1,14 @@
 using BarkFluff.Files.Features.UploadBadgeImage;
 using BarkFluff.Files.Infrastructure;
 using BarkFluff.GrpcServer.Settings;
+using BarkFluff.Proto.Files;
+
+using Grpc.Core;
+
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace BarkFluff.Files.Tests.Features.UploadBadgeImage;
 
@@ -17,7 +25,7 @@ public class UploadBadgeImageCommandHandlerTests
         _bucketRegistry = _helper.S3BucketRegistryMock;
 
         var configMock = new Mock<IConfiguration>();
-        configMock.Setup(c => c["ExternalEndpoint:Host"]).Returns("https://files.example.com");
+        configMock.Setup(config => config["ExternalEndpoint:Host"]).Returns("https://files.example.com");
 
         _handler = new UploadBadgeImageCommandHandler(
             _helper.BadgeImagesStorage,
@@ -25,86 +33,100 @@ public class UploadBadgeImageCommandHandlerTests
             _bucketRegistry.Object,
             configMock.Object,
             new RunSettings(),
-            TestHelper.CreateLogger<UploadBadgeImageCommandHandler>()
-        );
+            TestHelper.CreateLogger<UploadBadgeImageCommandHandler>());
     }
 
-    [Fact]
-    public async Task Handle_UploadsBadgeImageToS3()
+    [Theory]
+    [InlineData(BadgeImageKind.Full, 256)]
+    [InlineData(BadgeImageKind.Mini, 32)]
+    public async Task Handle_ValidPngOfExpectedSize_UploadsAndStores(BadgeImageKind kind, int size)
     {
-        var imageData = new byte[] { 1, 2, 3, 4 };
-        _bucketRegistry.Setup(r => r.GetBadgeImageBucketName()).Returns("badge-images");
-        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        var bytes = CreatePng(size, size);
+        _bucketRegistry.Setup(registry => registry.GetBadgeImageBucketName()).Returns("badge-images");
+        _s3Uploader.Setup(uploader => uploader.UploadAsync(
+                "badge-images", It.IsAny<string>(), It.IsAny<Stream>(), "image/png", It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-badge");
 
         var result = await _handler.Handle(new UploadBadgeImageCommand
         {
-            ImageData = imageData,
-            Filename = "badge.png"
+            ImageData = bytes,
+            Filename = "badge-not-trusted.jpg",
+            Kind = kind
         }, CancellationToken.None);
 
-        result.Should().NotBeNull();
         result.BadgeImageId.Should().NotBeNullOrEmpty();
         result.PermanentUrl.Should().Contain("/download/");
+        _s3Uploader.Verify(uploader => uploader.UploadAsync(
+            "badge-images", It.IsAny<string>(), It.IsAny<Stream>(), "image/png", It.IsAny<CancellationToken>()), Times.Once);
+
+        var stored = _helper.DbContext.BadgeImages.Should().ContainSingle().Subject;
+        stored.Filename.Should().Be("badge-not-trusted.jpg");
+        stored.Size.Should().Be(bytes.Length);
+        stored.Etag.Should().Be("etag-badge");
     }
 
     [Fact]
-    public async Task Handle_SavesBadgeImageToDb()
+    public async Task Handle_NonPngImage_RejectsBeforeS3Write()
     {
-        var imageData = new byte[] { 1, 2, 3, 4 };
-        _bucketRegistry.Setup(r => r.GetBadgeImageBucketName()).Returns("badge-images");
-        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync("etag-badge");
+        await AssertRejectedBeforeWrite(CreateJpeg(256, 256), BadgeImageKind.Full);
+    }
 
-        await _handler.Handle(new UploadBadgeImageCommand
-        {
-            ImageData = imageData,
-            Filename = "badge.png"
-        }, CancellationToken.None);
-
-        var badge = _helper.DbContext.BadgeImages.Single();
-        badge.Filename.Should().Be("badge.png");
-        badge.Size.Should().Be(4);
-        badge.Etag.Should().Be("etag-badge");
-        badge.UploadedAt.Should().NotBeNull();
+    [Theory]
+    [InlineData(BadgeImageKind.Full, 32)]
+    [InlineData(BadgeImageKind.Mini, 256)]
+    public async Task Handle_WrongDimensionsForKind_RejectsBeforeS3Write(BadgeImageKind kind, int size)
+    {
+        await AssertRejectedBeforeWrite(CreatePng(size, size), kind);
     }
 
     [Fact]
-    public async Task Handle_UsesBadgeBucket()
+    public async Task Handle_UnspecifiedKind_RejectsBeforeS3Write()
     {
-        var imageData = new byte[] { 1, 2, 3 };
-        _bucketRegistry.Setup(r => r.GetBadgeImageBucketName()).Returns("badge-images");
-        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync("etag");
-
-        await _handler.Handle(new UploadBadgeImageCommand
-        {
-            ImageData = imageData,
-            Filename = "badge.png"
-        }, CancellationToken.None);
-
-        _bucketRegistry.Verify(r => r.GetBadgeImageBucketName(), Times.Once());
-        _s3Uploader.Verify(
-            u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), "image/png", It.IsAny<CancellationToken>()),
-            Times.Once());
+        await AssertRejectedBeforeWrite(CreatePng(256, 256), BadgeImageKind.Unspecified);
     }
 
     [Fact]
-    public async Task Handle_JpegBadge_UsesJpegContentType()
+    public async Task Handle_ImageOver256Kb_RejectsBeforeS3Write()
     {
-        var imageData = new byte[] { 1, 2, 3 };
-        _bucketRegistry.Setup(r => r.GetBadgeImageBucketName()).Returns("badge-images");
-        _s3Uploader.Setup(u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync("etag");
+        await AssertRejectedBeforeWrite(new byte[256 * 1024 + 1], BadgeImageKind.Full);
+    }
 
-        await _handler.Handle(new UploadBadgeImageCommand
+    [Fact]
+    public async Task Handle_UnknownKind_RejectsBeforeS3Write()
+    {
+        await AssertRejectedBeforeWrite(CreatePng(256, 256), (BadgeImageKind)99);
+    }
+
+    private async Task AssertRejectedBeforeWrite(byte[] imageData, BadgeImageKind kind)
+    {
+        var act = () => _handler.Handle(new UploadBadgeImageCommand
         {
             ImageData = imageData,
-            Filename = "badge.jpg"
+            Filename = "badge.png",
+            Kind = kind
         }, CancellationToken.None);
 
-        _s3Uploader.Verify(
-            u => u.UploadAsync("badge-images", It.IsAny<string>(), It.IsAny<Stream>(), "image/jpeg", It.IsAny<CancellationToken>()),
-            Times.Once());
+        var exception = await act.Should().ThrowAsync<RpcException>();
+        exception.Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
+        _s3Uploader.Verify(uploader => uploader.UploadAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _bucketRegistry.Verify(registry => registry.GetBadgeImageBucketName(), Times.Never);
+        _helper.DbContext.BadgeImages.Should().BeEmpty();
+    }
+
+    private static byte[] CreatePng(int width, int height)
+    {
+        using var image = new Image<Rgba32>(width, height, new Rgba32(35, 130, 210, 255));
+        using var stream = new MemoryStream();
+        image.Save(stream, new PngEncoder());
+        return stream.ToArray();
+    }
+
+    private static byte[] CreateJpeg(int width, int height)
+    {
+        using var image = new Image<Rgba32>(width, height, new Rgba32(35, 130, 210, 255));
+        using var stream = new MemoryStream();
+        image.Save(stream, new JpegEncoder());
+        return stream.ToArray();
     }
 }

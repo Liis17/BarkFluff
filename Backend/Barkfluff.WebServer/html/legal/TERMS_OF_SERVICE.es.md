@@ -1,7 +1,7 @@
 # Términos de servicio de BarkFluff
 
 **En vigor desde:** 24 de enero de 2026  
-**Última actualización:** 29 de julio de 2026
+**Última actualización:** 13 de noviembre de 2026
 
 > Esta traducción se proporciona únicamente por comodidad. En caso de discrepancia, prevalece la versión en ruso.
 
@@ -60,8 +60,8 @@ El administrador de un nodo puede ampliar esta lista con sus propias normas.
 
 ## 7. Moderación y bloqueos
 
-- En caso de infracción, el administrador del nodo puede restringir el acceso, eliminar el contenido infractor, cerrar sesiones, bloquear o eliminar la cuenta y dirigirse a las autoridades competentes cuando la ley lo exija.
-- La moderación actúa dentro del nodo. El administrador de su nodo no puede eliminar contenido en un nodo ajeno y no responde de la moderación de otros.
+- En caso de incumplimiento de estas Condiciones de uso o de requisitos legales, el administrador del nodo puede restringir el acceso, retirar el contenido infractor, cerrar sesiones o bloquear la cuenta, y ponerse en contacto con las autoridades competentes cuando la ley lo exija. El administrador elimina la cuenta a petición del usuario conforme a la Política de eliminación de cuenta. Mientras la cuenta esté bloqueada, no se puede iniciar sesión, se cierran todas las sesiones y los bots de la cuenta dejan de funcionar, pero los datos de la cuenta no se eliminan. El usuario recibe un correo con el motivo del bloqueo; si intenta iniciar sesión, la aplicación muestra ese motivo.
+- La moderación se limita al nodo. El administrador de su nodo no puede eliminar contenido en un nodo ajeno y no responde de la moderación de otros. Los demás usuarios ven el perfil como «Usuario bloqueado», sin avatar ni hora de última conexión, y el chat queda en modo de solo lectura. Solo el administrador del nodo puede levantar el bloqueo; se puede recurrir por correo electrónico al administrador mediante los contactos de la sección «Contactos». El usuario recibe un correo cuando se levanta el bloqueo.
 - El administrador puede bloquear un nodo entero. En tal caso cesa la conversación con sus usuarios, mientras que los mensajes ya recibidos permanecen en su nodo.
 - Su nodo responde únicamente de sus propios usuarios y acredita su identidad ante los nodos vecinos. Del contenido procedente de otros nodos responden esos nodos y sus usuarios.
 

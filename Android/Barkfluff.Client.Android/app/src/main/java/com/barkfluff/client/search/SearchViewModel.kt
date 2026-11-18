@@ -3,6 +3,7 @@ package com.barkfluff.client.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.domain.model.AccountStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -138,9 +139,10 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun toSearchUser(user: UserProfile): SearchUser {
+        val restricted = user.accountStatus != AccountStatus.ACTIVE
         val displayName = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
-        val displayUsername = user.username.takeIf { it.isNotBlank() }?.let { "@$it" }.orEmpty()
-        val avatarFileId = user.profilePicturePreviewFileId
+        val displayUsername = if (restricted) "" else user.username.takeIf { it.isNotBlank() }?.let { "@$it" }.orEmpty()
+        val avatarFileId = if (restricted) null else user.profilePicturePreviewFileId
             .ifBlank { user.profilePictureFileId }
             .ifBlank { null }
 

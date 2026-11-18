@@ -155,7 +155,7 @@ function makeEvent(type, extra) {
     return Object.assign(event, extra || {});
 }
 
-function createHarness(chatCount) {
+function createHarness(chatCount, restrictedUser) {
     var document = new FakeElement('#document');
     document.ownerDocument = document;
     document.body = new FakeElement('body', document);
@@ -196,6 +196,11 @@ function createHarness(chatCount) {
     for (var i = 0; i < chatCount; i++) {
         chats.push({ id: 1000 + i, title: 'Chat ' + i, chatType: 0, lastMessage: null, countUnread: 0 });
     }
+    if (restrictedUser && chats.length > 0) {
+        chats[0].isGroupChat = false;
+        chats[0].picture = 'https://example.test/avatar.png';
+        chats[0].members = [{ userId: 1 }, { userId: 2 }];
+    }
     var opened = [];
     var mobileShown = 0;
     var closedChatCount = 0;
@@ -208,6 +213,8 @@ function createHarness(chatCount) {
     var rejectDelete;
     var toastCalls = [];
     var frames = [];
+    var muteCalls = [];
+    var muteResult = Promise.resolve();
     var BF = {
         api: {
             listChats: function () {
@@ -222,6 +229,15 @@ function createHarness(chatCount) {
             },
             leaveChat: function () {
                 return Promise.resolve();
+            },
+            setChatMuted: function (chatId, muted) {
+                muteCalls.push([chatId, muted]);
+                return muteResult;
+            }
+        },
+        attention: {
+            isChatMuted: function (chat) {
+                return !!chat.muted;
             }
         },
         folders: {
@@ -251,6 +267,12 @@ function createHarness(chatCount) {
             }
         },
         utils: {
+            isRestrictedUser: function (user) { return !!user && Number(user.accountStatus) > 0; },
+            restrictedUserName: function (user) {
+                return BF.i18n.t(Number(user.accountStatus) === 1
+                    ? 'accountRestriction.userBlocked'
+                    : 'accountRestriction.userDeleted');
+            },
             openOverlay: function (overlay) { overlay.classList.add('visible'); },
             closeOverlay: function (overlay) { overlay.classList.remove('visible'); },
             escapeHtml: function (value) {
@@ -307,8 +329,8 @@ function createHarness(chatCount) {
         getMyUserId: function () {
             return 1;
         },
-        getCachedUser: function () {
-            return null;
+        getCachedUser: function (userId) {
+            return restrictedUser && userId === 2 ? restrictedUser : null;
         },
         getUser: function () {
             return Promise.resolve(null);
@@ -355,6 +377,10 @@ function createHarness(chatCount) {
         resolveDelete: function () { return resolveDelete; },
         rejectDelete: function () { return rejectDelete; },
         toastCalls: toastCalls,
+        muteCalls: muteCalls,
+        setMuteResult: function (value) {
+            muteResult = value;
+        },
         chats: function () {
             return chats;
         },
@@ -396,6 +422,14 @@ test('only the visible window (+overscan) of 200 chats is rendered', function ()
     assert.equal(h.row(1000).getAttribute('aria-setsize'), '200');
     assert.equal(h.row(1000).getAttribute('aria-posinset'), '1');
     assert.equal(h.row(1000).getAttribute('role'), 'option');
+});
+
+test('restricted peers use a local title and have no avatar or online indicator', function () {
+    var h = createHarness(1, { accountStatus: 1 });
+    h.BF.chatList.render();
+    var row = h.row(1000);
+    assert.match(row.innerHTML, /accountRestriction\.userBlocked/);
+    assert.doesNotMatch(row.innerHTML, /avatar\.png|online-dot/);
 });
 
 test('scrolling moves the window and keeps the rover row in the DOM', function () {
@@ -1081,6 +1115,36 @@ async function runAsyncTests() {
         assert.equal(h.deleteChatOk.textContent, 'common.delete');
         assert.equal(h.deleteChatOk.classList.contains('is-loading'), false);
         assert.deepEqual(h.toastCalls, [['error.deleteChat', true]]);
+    });
+
+    await runAsyncTest('mute toggles through SetChatMuted and greys the unread badge', async function () {
+        var h = createHarness(2);
+        h.chats()[0].countUnread = 3;
+        openChatAction(h, 1000, 'toggle-mute');
+        await new Promise(function (resolve) { setImmediate(resolve); });
+        assert.deepEqual(h.muteCalls, [[1000, true]]);
+        assert.equal(h.chats()[0].muted, true);
+        assert.match(h.row(1000).innerHTML, /chat-unread visible muted/);
+
+        h.row(1000).dispatchEvent(makeEvent('contextmenu', { clientX: 20, clientY: 20 }));
+        var label = h.contextMenu.children.find(function (child) {
+            return child.dataset.act === 'toggle-mute';
+        }).innerHTML;
+        assert.match(label, /chat\.unmute/);
+        openChatAction(h, 1000, 'toggle-mute');
+        await new Promise(function (resolve) { setImmediate(resolve); });
+        assert.deepEqual(h.muteCalls, [[1000, true], [1000, false]]);
+        assert.equal(h.chats()[0].muted, false);
+        assert.doesNotMatch(h.row(1000).innerHTML, /muted/);
+    });
+
+    await runAsyncTest('failed mute keeps the state and shows an error', async function () {
+        var h = createHarness(1);
+        h.setMuteResult(Promise.reject(new Error('mute failed')));
+        openChatAction(h, 1000, 'toggle-mute');
+        await new Promise(function (resolve) { setImmediate(resolve); });
+        assert.equal(!!h.chats()[0].muted, false);
+        assert.deepEqual(h.toastCalls, [['common.error', true]]);
     });
 }
 

@@ -488,6 +488,10 @@
                                Style="{StaticResource MutedText}"
                                Text="{x:Bind ViewModel.SelectedChat.PresenceLabel, Mode=OneWay}"
                                Visibility="{x:Bind ViewModel.IsPresenceLabelVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <TextBlock Opacity=".7"
+                               Style="{StaticResource MutedText}"
+                               Text="{x:Bind ViewModel.SelectedChat.RestrictionMessage, Mode=OneWay}"
+                               Visibility="{x:Bind ViewModel.SelectedChat.IsRestricted, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     <!--  Пока связь восстанавливается, статус собеседника устарел и показывать его нельзя.  -->
                     <TextBlock Opacity=".7"
                                Style="{StaticResource MutedText}"
@@ -631,6 +635,7 @@
                 <TextBox MinHeight="42"
                          MaxHeight="120"
                          AcceptsReturn="True"
+                         IsEnabled="{x:Bind ViewModel.SelectedChat.CanSend, Mode=OneWay}"
                          Text="{x:Bind ViewModel.DraftText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          TextWrapping="Wrap"
                          behaviors:SendOnEnterBehavior.Command="{x:Bind ViewModel.SendCommand}" />
@@ -638,6 +643,7 @@
                         Margin="8,0,0,0"
                         VerticalAlignment="Bottom"
                         Command="{x:Bind ViewModel.SendCommand}"
+                        IsEnabled="{x:Bind ViewModel.SelectedChat.CanSend, Mode=OneWay}"
                         Content="{StaticResource Messenger_Send}"
                         Style="{StaticResource AccentButtonStyle}" />
             </Grid>

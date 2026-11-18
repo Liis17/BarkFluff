@@ -7,6 +7,7 @@ using BarkFluff.Identity.Features.GetActiveSessionsServer;
 using BarkFluff.Identity.Features.GetBotTokenServer;
 using BarkFluff.Identity.Features.ListOtpVerificationServer;
 using BarkFluff.Identity.Features.RemoveActiveSessionServer;
+using BarkFluff.Identity.Features.SetAccountRestrictionServer;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Shared.Identity;
 
@@ -130,5 +131,17 @@ public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
             BotUserId = request.BotUserId,
             TokenId = request.TokenId
         });
+    }
+
+    public override Task<SetAccountRestrictionServerResponse> SetAccountRestrictionServer(
+        SetAccountRestrictionServerRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("server_account_restriction_updates");
+        return _mediator.Send(new SetAccountRestrictionServerCommand
+        {
+            UserId = request.UserId,
+            Action = request.Action,
+            Reason = request.Reason,
+        }, context.CancellationToken);
     }
 }

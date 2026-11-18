@@ -4,6 +4,8 @@ namespace BarkFluff.Client.Core.Services;
 
 public interface IAuthenticationService
 {
+    string? RestoreSessionErrorResourceKey => null;
+
     Task<bool> TryRestoreSessionAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
 
     AuthenticationAttempt? CreateAuthenticationAttempt();

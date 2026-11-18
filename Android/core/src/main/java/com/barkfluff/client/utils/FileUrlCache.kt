@@ -65,6 +65,19 @@ class FileUrlCache private constructor(context: Context) {
         }
     }
 
+    /** Удалить истёкший URL, не затрагивая значение, которое параллельно уже обновили. */
+    suspend fun removeUrl(fileId: String, expectedUrl: String? = null) = withContext(Dispatchers.IO) {
+        synchronized(this@FileUrlCache) {
+            val hashedKey = hashKey(fileId)
+            if (expectedUrl == null || cache[hashedKey] == expectedUrl) {
+                cache.remove(hashedKey)
+            }
+            if (expectedUrl == null || sharedPreferences.getString(hashedKey, null) == expectedUrl) {
+                sharedPreferences.edit().remove(hashedKey).apply()
+            }
+        }
+    }
+
     /**
      * Очистить весь кэш.
      */

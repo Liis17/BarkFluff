@@ -54,6 +54,8 @@
     <application
         android:name=".BarkFluffApplication"
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
@@ -101,6 +103,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="bfdev" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="bft" />
+            </intent-filter>
         </activity>
 
         <activity
@@ -110,9 +118,16 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".ProxySettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".SelectServerActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />
 
         <activity
@@ -168,12 +183,14 @@
             android:name=".UserProfileActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />
 
         <activity
             android:name=".GroupInfoActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />
 
         <activity
@@ -234,6 +251,12 @@
 
         <activity
             android:name=".AccountSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".BadgesSettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid.Settings2A"
             android:screenOrientation="portrait" />
@@ -392,7 +415,8 @@
             android:name=".widget.WidgetConfigureActivity"
             android:exported="true"
             android:theme="@style/Theme.BarkfluffClientAndroid"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>

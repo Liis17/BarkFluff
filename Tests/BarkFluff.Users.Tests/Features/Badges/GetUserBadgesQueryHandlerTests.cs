@@ -59,5 +59,20 @@ public class GetUserBadgesQueryHandlerTests : IAsyncDisposable
         result.Badges.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Handle_RestrictedUser_ReturnsNoBadges()
+    {
+        var user = await _h.SeedUser();
+        var badge = await _h.SeedBadge();
+        await _h.UsersStorage.AssignBadgeToUserAsync(user.Id, badge.Id, 1);
+        user.AccountStatus = BarkFluff.Users.Domain.AccountStatus.PendingDeletion;
+        await _h.DbContext.SaveChangesAsync();
+        var handler = new GetUserBadgesQueryHandler(_h.UsersStorage, TestHelper.CreateLogger<GetUserBadgesQueryHandler>());
+
+        var result = await handler.Handle(new GetUserBadgesQuery { UserId = user.Id }, CancellationToken.None);
+
+        result.Badges.Should().BeEmpty();
+    }
+
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();
 }

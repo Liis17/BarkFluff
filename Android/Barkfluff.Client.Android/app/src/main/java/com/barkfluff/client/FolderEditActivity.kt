@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.databinding.ActivityFolderEditBinding
 import com.barkfluff.client.databinding.ItemFolderIconBinding
 import com.barkfluff.client.domain.gateway.ChatFolderGateway
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -61,6 +62,7 @@ class FolderEditActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityFolderEditBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applyImeInsetsToBottomPadding()
 
         folderId = intent.getStringExtra(EXTRA_FOLDER_ID)
         val initialName = intent.getStringExtra(EXTRA_FOLDER_NAME).orEmpty()

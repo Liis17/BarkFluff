@@ -469,7 +469,8 @@
           var link = document.getElementById(c.link);
           var badge = document.getElementById(c.status);
           var version = versions && versions[c.apiKey] ? versions[c.apiKey][channel] : '';
-          link.href = 'https://storage.barkfluff.com/get/barkfluff' + c.slug + '/' + channel;
+          // Версия в query делает URL уникальным: иначе браузер (Chrome Android) предлагает «открыть существующий» старый файл.
+          link.href = 'https://storage.barkfluff.com/get/barkfluff' + c.slug + '/' + channel + (version ? '?v=' + encodeURIComponent(version) : '');
           if (state === 'loading') badge.textContent = t('Проверяем', 'Checking');
           else if (state === 'error') badge.textContent = t('Нет данных', 'No data');
           else badge.textContent = version ? 'v' + version : t('Ожидает сборку', 'Build pending');

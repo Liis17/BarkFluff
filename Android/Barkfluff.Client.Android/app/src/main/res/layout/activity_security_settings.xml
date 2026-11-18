@@ -64,13 +64,15 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/security_hero_title"
+                            android:id="@+id/textSecurityHeroTitle"
+                            android:text="@string/security_hero_title_unprotected"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
-                            android:textColor="@color/white"
+                            android:textColor="@color/profile_settings_on_primary_container"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:id="@+id/textSecurityHeroSubtitle"
                             android:text="@string/security_hero_subtitle"
                             android:textAppearance="?attr/textAppearanceBodySmall"
                             android:textColor="@color/profile_settings_on_primary_container" />
@@ -143,68 +145,84 @@
                 android:text="@string/security_section_login"
                 android:textAppearance="@style/TextAppearance.Barkfluff.Settings2A.Section" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/telegramBindingButton"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textAllCaps="false" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/emailBindingButton"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textAllCaps="false" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/loginPolicyButton"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textAllCaps="false" />
-
             <LinearLayout
-                android:id="@+id/itemTwoFactorTelegram"
-                android:layout_width="match_parent"
-                android:layout_height="58dp"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/bg_settings_item_middle"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingHorizontal="20dp"
-                android:visibility="gone">
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:importantForAccessibility="no"
-                    android:src="@drawable/ic_two_factor"
-                    app:tint="@color/profile_settings_icon" />
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_weight="1"
-                    android:text="@string/security_2fa_telegram"
-                    android:textAppearance="?attr/textAppearanceBodyLarge"
-                    android:textColor="@color/profile_settings_on_surface" />
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switchTwoFactorTelegram"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:thumbTint="@color/settings_switch_thumb"
-                    app:trackTint="@color/settings_switch_track" />
-            </LinearLayout>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/recoveryCodesButton"
-                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textAllCaps="false" />
+                android:orientation="vertical">
+                <LinearLayout
+                    android:id="@+id/itemTelegramBinding"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:layout_marginTop="0dp"
+                    android:background="@drawable/bg_settings_item_top"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="20dp">
+                    <ImageView android:layout_width="24dp" android:layout_height="24dp" android:importantForAccessibility="no" android:src="@drawable/ic_link" app:tint="@color/profile_settings_icon" />
+                    <TextView android:id="@+id/textTelegramBinding" android:text="@string/security_link_telegram" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_weight="1" android:ellipsize="end" android:maxLines="1" android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="@color/profile_settings_on_surface" />
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/ic_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/itemTwoFactorTelegram"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:layout_marginTop="3dp"
+                    android:background="@drawable/bg_settings_item_middle"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="20dp"
+                    android:visibility="gone">
+                    <ImageView android:layout_width="24dp" android:layout_height="24dp" android:importantForAccessibility="no" android:src="@drawable/ic_two_factor" app:tint="@color/profile_settings_icon" />
+                    <TextView android:id="@+id/textTwoFactorTelegram" android:text="@string/security_2fa_telegram" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_weight="1" android:ellipsize="end" android:maxLines="1" android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="@color/profile_settings_on_surface" />
+                    <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switchTwoFactorTelegram" android:layout_width="wrap_content" android:layout_height="wrap_content" app:thumbTint="@color/settings_switch_thumb" app:trackTint="@color/settings_switch_track" />
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/itemEmailBinding"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:layout_marginTop="3dp"
+                    android:background="@drawable/bg_settings_item_middle"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="20dp">
+                    <ImageView android:layout_width="24dp" android:layout_height="24dp" android:importantForAccessibility="no" android:src="@drawable/ic_mail" app:tint="@color/profile_settings_icon" />
+                    <TextView android:id="@+id/textEmailBinding" android:text="@string/security_bind_email" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_weight="1" android:ellipsize="end" android:maxLines="1" android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="@color/profile_settings_on_surface" />
+                    <TextView android:id="@+id/textEmailBindingValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_marginEnd="12dp" android:ellipsize="end" android:maxLines="1" android:maxWidth="180dp" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="@color/profile_settings_on_surface_variant" />
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/ic_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/itemLoginPolicy"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:layout_marginTop="3dp"
+                    android:background="@drawable/bg_settings_item_middle"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="20dp">
+                    <ImageView android:layout_width="24dp" android:layout_height="24dp" android:importantForAccessibility="no" android:src="@drawable/ic_person" app:tint="@color/profile_settings_icon" />
+                    <TextView android:id="@+id/textLoginPolicy" android:text="@string/login_mode_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_weight="1" android:ellipsize="end" android:maxLines="1" android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="@color/profile_settings_on_surface" />
+                    <TextView android:id="@+id/textLoginPolicyValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_marginEnd="12dp" android:ellipsize="end" android:maxLines="1" android:maxWidth="180dp" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="@color/profile_settings_on_surface_variant" />
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/ic_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/itemRecoveryCodes"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:layout_marginTop="3dp"
+                    android:background="@drawable/bg_settings_item_bottom"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="20dp">
+                    <ImageView android:layout_width="24dp" android:layout_height="24dp" android:importantForAccessibility="no" android:src="@drawable/ic_history" app:tint="@color/profile_settings_icon" />
+                    <TextView android:id="@+id/textRecoveryCodes" android:text="@string/security_recovery_codes_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_weight="1" android:ellipsize="end" android:maxLines="1" android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="@color/profile_settings_on_surface" />
+                    <TextView android:id="@+id/textRecoveryCodesValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_marginEnd="12dp" android:ellipsize="end" android:maxLines="1" android:maxWidth="180dp" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="@color/profile_settings_on_surface_variant" />
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/ic_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

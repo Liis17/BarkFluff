@@ -5,6 +5,7 @@ import com.barkfluff.client.domain.model.AuthenticationChallenge
 import com.barkfluff.client.domain.model.AuthenticationChallengeReference
 import com.barkfluff.client.domain.model.AuthenticationChallengeState
 import com.barkfluff.client.domain.model.AuthenticationCompletion
+import com.barkfluff.client.domain.model.AuthenticationErrorCodes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -63,12 +64,27 @@ class AuthenticationChallengeController(
         }.also { result ->
             result.getOrNull()?.let { completion ->
                 if (completion.state != AuthenticationChallengeState.WAITING &&
-                    completion.state != AuthenticationChallengeState.APPROVED
+                    completion.state != AuthenticationChallengeState.APPROVED ||
+                    completion.errorCode == AuthenticationErrorCodes.ACCOUNT_BLOCKED ||
+                    completion.errorCode == AuthenticationErrorCodes.ACCOUNT_PENDING_DELETION
                 ) {
                     activeReference = null
                 }
             }
         }
+
+    /**
+     * Identity approves a password-only challenge right in Begin. Such a challenge needs no
+     * confirmation UI, so it is completed immediately; null means the user has to act.
+     */
+    suspend fun completeIfApproved(
+        challenge: AuthenticationChallenge,
+        useRecoveryCode: Boolean = false,
+    ): AuthenticationCompletion? {
+        if (challenge.errorCode.isNotBlank() || challenge.state != AuthenticationChallengeState.APPROVED) return null
+        return complete(useRecoveryCode = useRecoveryCode).getOrNull()
+            ?.takeIf { it.state == AuthenticationChallengeState.COMPLETED && it.errorCode.isBlank() }
+    }
 
     suspend fun resend(): Result<AuthenticationChallenge> = withActive { reference ->
         gateway.resendChallenge(reference)

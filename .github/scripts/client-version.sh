@@ -2,7 +2,6 @@
 set -euo pipefail
 
 : "${CLIENT_APP:?CLIENT_APP is required}"
-: "${CA_FILE:?CA_FILE is required}"
 : "${GITHUB_OUTPUT:?GITHUB_OUTPUT is required}"
 
 if [[ "${GITHUB_REF_TYPE:-}" != branch ]]; then
@@ -15,11 +14,18 @@ case "${GITHUB_REF_NAME:-}" in
   *) echo 'Ветка не привязана к каналу обновлений' >&2; exit 1 ;;
 esac
 
+# CA_FILE необязателен: без него используется системное хранилище сертификатов.
+ca_args=()
+if [[ -n "${CA_FILE:-}" ]]; then
+  ca_args=(--cacert "$CA_FILE")
+fi
+python_command=$(command -v python3 || command -v python)
+
 response=$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
-  --cacert "$CA_FILE" \
+  ${ca_args[@]+"${ca_args[@]}"} \
   "https://storage.barkfluff.com/get/${CLIENT_APP}/${source_channel}/version")
 
-version=$(printf '%s' "$response" | python3 -c '
+version=$(printf '%s' "$response" | "$python_command" -c '
 import json, os, re, sys
 try:
     data = json.load(sys.stdin)

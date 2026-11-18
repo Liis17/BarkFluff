@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.BftProxy.Tests";
+package barkfluff.bftproxy.tests;
+
+service ProxyTest {
+  rpc Unary(EchoRequest) returns (EchoReply);
+  rpc ServerStream(EchoRequest) returns (stream EchoReply);
+  rpc Duplex(stream EchoRequest) returns (stream EchoReply);
+}
+
+message EchoRequest {
+  string value = 1;
+}
+
+message EchoReply {
+  string value = 1;
+}

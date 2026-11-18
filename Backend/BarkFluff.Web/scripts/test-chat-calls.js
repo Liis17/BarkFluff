@@ -9,7 +9,15 @@ async function settle() {
 
 function createHarness() {
     var buttons = {};
-    ['btnCallAudio', 'btnCallVideo', 'profileCallAudioBtn', 'profileCallVideoBtn'].forEach(function (id) {
+    [
+        'btnCallAudio',
+        'btnCallVideo',
+        'profileCallAudioBtn',
+        'profileCallVideoBtn',
+        'chatCallBanner',
+        'chatCallBannerText',
+        'chatCallBannerJoin'
+    ].forEach(function (id) {
         buttons[id] = {
             hidden: false,
             listeners: {},
@@ -19,16 +27,41 @@ function createHarness() {
         };
     });
     var initiated = [];
+    var joined = [];
+    var activeCallRequests = [];
+    var callListeners = {};
     var permissionCalls = [];
     var errors = [];
     var permissionResults = [];
-    var state = { chatId: 7, chatInfo: null, peerIsBot: false };
+    var state = { chatId: 7, chatInfo: null, peerIsBot: false, currentCall: null };
     var BF = {
         calls: {
             MediaType: { AUDIO: 'audio', VIDEO: 'video' },
             initiate: function (target, media) {
                 initiated.push({ target: target, media: media });
                 return Promise.resolve();
+            },
+            join: function (callId, chatId, media) {
+                joined.push([callId, chatId, media]);
+                return Promise.resolve();
+            },
+            on: function (event, callback) {
+                callListeners[event] = callback;
+            },
+            getCurrent: function () {
+                return state.currentCall;
+            }
+        },
+        api: {
+            getActiveCalls: function (chatIds) {
+                return new Promise(function (resolve, reject) {
+                    activeCallRequests.push({ chatIds: chatIds, resolve: resolve, reject: reject });
+                });
+            }
+        },
+        i18n: {
+            tp: function (key, count) {
+                return key + ':' + count;
             }
         },
         callsUI: {
@@ -74,6 +107,11 @@ function createHarness() {
         buttons: buttons,
         state: state,
         initiated: initiated,
+        joined: joined,
+        activeCallRequests: activeCallRequests,
+        emitCall: function (event) {
+            callListeners[event]({});
+        },
         permissionCalls: permissionCalls,
         errors: errors,
         queuePermission: function (promise) {
@@ -166,6 +204,56 @@ async function main() {
         assert.equal(h.buttons.profileCallVideoBtn.hidden, true);
         h.BF.chatCalls.setChatButtonsVisible(true);
         assert.equal(h.buttons.btnCallAudio.hidden, false);
+    });
+
+    function activeCall(overrides) {
+        return Object.assign({ callId: 'call-1', chatId: 7, mediaType: 'audio', participantUserIds: [2, 3] }, overrides);
+    }
+
+    await test('a running group call shows the join banner; joining asks for permissions and calls JoinCall', async function () {
+        var h = createHarness();
+        h.state.chatInfo = { isGroupChat: true };
+        h.BF.chatCalls.refreshJoinBanner();
+        assert.equal(h.buttons.chatCallBanner.hidden, true, 'hidden until Calls answers');
+        assert.deepEqual(Array.from(h.activeCallRequests[0].chatIds), [7]);
+        h.activeCallRequests[0].resolve({ calls: [activeCall({ chatId: '7' })] });
+        await settle();
+        assert.equal(h.buttons.chatCallBanner.hidden, false);
+        assert.equal(h.buttons.chatCallBannerText.textContent, 'call.activeBanner:2');
+
+        h.buttons.chatCallBannerJoin.listeners.click();
+        await settle();
+        assert.deepEqual(h.permissionCalls, ['audio']);
+        assert.deepEqual(h.joined, [['call-1', 7, 'audio']]);
+        assert.equal(h.buttons.chatCallBanner.hidden, true);
+    });
+
+    await test('no banner for personal chats, without an active call, or while already in a call', async function () {
+        var h = createHarness();
+        h.state.chatInfo = { isGroupChat: false, membersId: [1, 2] };
+        h.BF.chatCalls.refreshJoinBanner();
+        assert.equal(h.activeCallRequests.length, 0);
+
+        h.state.chatInfo = { isGroupChat: true };
+        h.BF.chatCalls.refreshJoinBanner();
+        h.activeCallRequests[0].resolve({ calls: [] });
+        await settle();
+        assert.equal(h.buttons.chatCallBanner.hidden, true);
+
+        h.state.currentCall = { callId: 'mine' };
+        h.emitCall('ended');
+        assert.equal(h.activeCallRequests.length, 1, 'no request while the user is in a call');
+    });
+
+    await test('a response for a chat that is no longer open is dropped', async function () {
+        var h = createHarness();
+        h.state.chatInfo = { isGroupChat: true };
+        h.BF.chatCalls.refreshJoinBanner();
+        h.state.chatId = 8;
+        h.BF.chatCalls.hideJoinBanner();
+        h.activeCallRequests[0].resolve({ calls: [activeCall()] });
+        await settle();
+        assert.equal(h.buttons.chatCallBanner.hidden, true);
     });
 }
 

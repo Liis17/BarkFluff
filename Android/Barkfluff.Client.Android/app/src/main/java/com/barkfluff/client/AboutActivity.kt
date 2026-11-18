@@ -7,16 +7,20 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.barkfluff.client.bft.BftProxyManager
+import com.barkfluff.client.bft.BftProxyViewState
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityAboutBinding
 import com.barkfluff.client.utils.ServicePingChecker
 import com.barkfluff.client.utils.ServicePingResult
-import com.google.android.material.divider.MaterialDivider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
@@ -27,6 +31,7 @@ class AboutActivity : AppCompatActivity() {
     private val servicePingChecker by lazy { ServicePingChecker(applicationContext) }
     private var pingResults = emptyMap<String, ServicePingResult>()
     private var isChecking = false
+    private var bftProxyState: BftProxyViewState? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,11 +39,26 @@ class AboutActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         globalParam = GlobalParam(this)
+        val proxyManager = BftProxyManager.get(applicationContext)
+        bftProxyState = proxyManager.state.value
 
         setupToolbar()
         fillAppInfo()
         fillDeviceInfo()
         setupServerInfo()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                proxyManager.state.collect { state ->
+                    val previous = bftProxyState
+                    bftProxyState = state
+                    if (binding.serverInfoCard.visibility == View.VISIBLE &&
+                        (previous?.enabled != state.enabled || previous?.name != state.name)
+                    ) {
+                        fillServerInfo()
+                    }
+                }
+            }
+        }
     }
 
     private fun setupToolbar() {
@@ -82,28 +102,22 @@ class AboutActivity : AppCompatActivity() {
         val services = serverServices()
 
         services.forEachIndexed { index, service ->
-            if (index > 0) {
-                val divider = MaterialDivider(this)
-                divider.layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    marginStart = dp(16)
-                }
-                container.addView(divider)
-            }
-
             val row = LinearLayout(this).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = resources.getDimensionPixelSize(R.dimen.settings_split_gap)
+                }
+                // Строка проверки — верх группы, поэтому сервисы — середина, последний — низ.
+                setBackgroundResource(
+                    if (index == services.lastIndex) R.drawable.bg_settings_item_bottom
+                    else R.drawable.bg_settings_item_middle
                 )
-                minimumHeight = dp(56)
+                minimumHeight = dp(58)
                 orientation = LinearLayout.HORIZONTAL
                 gravity = android.view.Gravity.CENTER_VERTICAL
-                setPadding(
-                    dp(16), dp(8), dp(16), dp(8)
-                )
+                setPadding(dp(20), dp(10), dp(20), dp(10))
             }
 
             val details = LinearLayout(this).apply {
@@ -113,21 +127,41 @@ class AboutActivity : AppCompatActivity() {
 
             val nameView = TextView(this).apply {
                 text = service.name
-                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
-                setTextColor(getColorFromAttr(com.google.android.material.R.attr.colorOnSurface))
+                setTextAppearance(R.style.TextAppearance_Barkfluff_Profile_Item)
+                setTextColor(getColor(R.color.profile_settings_on_surface))
             }
 
             val addressView = TextView(this).apply {
                 text = service.address.ifBlank { "—" }
                 setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-                setTextColor(getColorFromAttr(com.google.android.material.R.attr.colorOnSurfaceVariant))
+                setTextColor(getColor(R.color.profile_settings_on_surface_variant))
                 setTextIsSelectable(true)
                 maxLines = 2
                 ellipsize = TextUtils.TruncateAt.END
             }
 
+            val proxyRouteView = bftProxyState
+                ?.takeIf { it.enabled && service.pingable && service.address.isNotBlank() }
+                ?.let { state ->
+                    TextView(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+                        text = getString(
+                            R.string.bft_proxy_via_name,
+                            state.name?.takeIf { it.isNotBlank() } ?: getString(R.string.bft_proxy_name_unknown)
+                        )
+                        setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                        setTextColor(getColor(R.color.profile_settings_on_surface_variant))
+                        maxLines = 1
+                        ellipsize = TextUtils.TruncateAt.END
+                    }
+                }
+
             details.addView(nameView)
             details.addView(addressView)
+            if (proxyRouteView != null) details.addView(proxyRouteView)
             row.addView(details)
 
             val statusView = TextView(this).apply {
@@ -150,7 +184,7 @@ class AboutActivity : AppCompatActivity() {
     }
 
     private fun serviceStatus(service: ServiceDefinition): Pair<String, Int> {
-        val secondaryColor = getColorFromAttr(com.google.android.material.R.attr.colorOnSurfaceVariant)
+        val secondaryColor = getColor(R.color.profile_settings_on_surface_variant)
         if (!service.pingable) {
             return getString(R.string.about_service_not_checked) to secondaryColor
         }
@@ -242,11 +276,4 @@ class AboutActivity : AppCompatActivity() {
         val pingable: Boolean = true,
         val fileEndpoint: Boolean = false
     )
-
-    private fun getColorFromAttr(attr: Int): Int {
-        val typedArray = obtainStyledAttributes(intArrayOf(attr))
-        val color = typedArray.getColor(0, 0)
-        typedArray.recycle()
-        return color
-    }
 }

@@ -48,7 +48,7 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
         var message = Message.Parser.ParseFrom(context.Message.Message);
 
         var botIds = _registryCache.FilterBotIds(context.Message.ChatMembers)
-            .Where(id => id != message.SenderId)
+            .Where(id => id != message.SenderId && _registryCache.Get(id)?.OwnerRestricted != true)
             .ToList();
 
         if (botIds.Count == 0)

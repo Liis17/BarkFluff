@@ -15,6 +15,15 @@ public class DeployJobServiceTests
     private const string MessagesImage = "docker.barkfluff.com/barkfluff-messages-nightly:latest";
 
     [Fact]
+    public void BulkDeploy_IncludesAllPlatformServicesAndExcludesInfrastructure()
+    {
+        Assert.Equal(
+            PlatformServiceRegistry.BarkFluff.Select(s => s.Container).OrderBy(s => s),
+            DeployJobService.DeployOrder.OrderBy(s => s));
+        Assert.Equal("settings", DeployJobService.DeployOrder[0]);
+    }
+
+    [Fact]
     public async Task Update_UsesComposeServiceAndResolvedContainerName()
     {
         var runner = CreateOperationalRunner("running|healthy");

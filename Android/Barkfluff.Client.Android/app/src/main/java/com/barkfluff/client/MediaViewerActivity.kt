@@ -6,7 +6,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
-import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -19,6 +18,7 @@ import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.FileSaveUtils
 import com.barkfluff.client.utils.SwipeToDismissHelper
+import com.barkfluff.client.view.M3ContextMenu
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -258,15 +258,17 @@ class MediaViewerActivity : AppCompatActivity() {
     }
 
     private fun showMoreMenu(anchor: View) {
-        val popup = PopupMenu(this, anchor)
-        popup.menu.add(0, 1, 0, R.string.file_remove_from_cache)
-        popup.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                1 -> { deleteFromCacheAndClose(); true }
-                else -> false
-            }
-        }
-        popup.show()
+        M3ContextMenu.show(
+            anchor = anchor,
+            items = listOf(M3ContextMenu.Item(
+                id = 1,
+                title = getString(R.string.file_remove_from_cache),
+                icon = R.drawable.ic_action_delete,
+                danger = true,
+            )),
+            alignEnd = true,
+            onItemSelected = { deleteFromCacheAndClose() },
+        )
     }
 
     private fun deleteFromCacheAndClose() {

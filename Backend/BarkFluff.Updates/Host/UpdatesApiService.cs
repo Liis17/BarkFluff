@@ -31,6 +31,7 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
     private readonly Features.SubscribeMessagesUnpinned.StreamSubscriptionsManager _unpinnedSubscriptionsManager;
     private readonly Features.SubscribeAllMessagesUnpinned.StreamSubscriptionsManager _allUnpinnedSubscriptionsManager;
     private readonly Features.SubscribeChatHidden.StreamSubscriptionsManager _chatHiddenSubscriptionsManager;
+    private readonly Features.SubscribeChatFoldersChanged.StreamSubscriptionsManager _chatFoldersChangedSubscriptionsManager;
     private readonly Features.SubscribePrivateMessages.StreamSubscriptionsManager _privateMessagesSubscriptionsManager;
     private readonly Features.SubscribePrivateMessageEdits.StreamSubscriptionsManager _privateMessageEditsSubscriptionsManager;
     private readonly Features.SubscribePrivateMessageDeletes.StreamSubscriptionsManager _privateMessageDeletesSubscriptionsManager;
@@ -52,6 +53,7 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         Features.SubscribeMessagesUnpinned.StreamSubscriptionsManager unpinnedSubscriptionsManager,
         Features.SubscribeAllMessagesUnpinned.StreamSubscriptionsManager allUnpinnedSubscriptionsManager,
         Features.SubscribeChatHidden.StreamSubscriptionsManager chatHiddenSubscriptionsManager,
+        Features.SubscribeChatFoldersChanged.StreamSubscriptionsManager chatFoldersChangedSubscriptionsManager,
         Features.SubscribePrivateMessages.StreamSubscriptionsManager privateMessagesSubscriptionsManager,
         Features.SubscribePrivateMessageEdits.StreamSubscriptionsManager privateMessageEditsSubscriptionsManager,
         Features.SubscribePrivateMessageDeletes.StreamSubscriptionsManager privateMessageDeletesSubscriptionsManager,
@@ -72,6 +74,7 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         _unpinnedSubscriptionsManager = unpinnedSubscriptionsManager;
         _allUnpinnedSubscriptionsManager = allUnpinnedSubscriptionsManager;
         _chatHiddenSubscriptionsManager = chatHiddenSubscriptionsManager;
+        _chatFoldersChangedSubscriptionsManager = chatFoldersChangedSubscriptionsManager;
         _privateMessagesSubscriptionsManager = privateMessagesSubscriptionsManager;
         _privateMessageEditsSubscriptionsManager = privateMessageEditsSubscriptionsManager;
         _privateMessageDeletesSubscriptionsManager = privateMessageDeletesSubscriptionsManager;
@@ -93,6 +96,7 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         + _unpinnedSubscriptionsManager.ActiveCount
         + _allUnpinnedSubscriptionsManager.ActiveCount
         + _chatHiddenSubscriptionsManager.ActiveCount
+        + _chatFoldersChangedSubscriptionsManager.ActiveCount
         + _privateMessagesSubscriptionsManager.ActiveCount
         + _privateMessageEditsSubscriptionsManager.ActiveCount
         + _privateMessageDeletesSubscriptionsManager.ActiveCount
@@ -342,6 +346,32 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
             _metrics.Increment("chats_hidden_subscriptions_closed");
             _metrics.Increment("active_subscriptions_removed"); // обратная совместимость
             _metrics.Set("chats_hidden_subscriptions_active", _chatHiddenSubscriptionsManager.ActiveCount);
+            _metrics.Set("subscriptions_active_total", TotalActive);
+        }
+    }
+
+    public override async Task SubscribeChatFoldersChanged(SubscribeChatFoldersChangedRequest request,
+        IServerStreamWriter<ChatFoldersChangedEvent> responseStream, ServerCallContext context)
+    {
+        long userId = _userContext.UserId;
+
+        var subscriptionId = _chatFoldersChangedSubscriptionsManager.RegisterSubscription(userId, responseStream);
+        _metrics.Increment("chat_folders_changed_subscriptions_opened");
+        _metrics.Set("chat_folders_changed_subscriptions_active", _chatFoldersChangedSubscriptionsManager.ActiveCount);
+        _metrics.Set("subscriptions_active_total", TotalActive);
+
+        try
+        {
+            await Task.Delay(Timeout.Infinite, context.CancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _chatFoldersChangedSubscriptionsManager.RemoveSubscription(userId, subscriptionId);
+            _metrics.Increment("chat_folders_changed_subscriptions_closed");
+            _metrics.Set("chat_folders_changed_subscriptions_active", _chatFoldersChangedSubscriptionsManager.ActiveCount);
             _metrics.Set("subscriptions_active_total", TotalActive);
         }
     }

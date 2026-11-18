@@ -1,0 +1,72 @@
+# Android — карта проекта
+
+Parent: [[Clients/Android]]
+
+Эта заметка показывает, как связаны основные точки входа и модули. Обзор контрактов и инвариантов — [[Clients/Android]]; перечень областей кода и тестов — [[Clients/Android-FileIndex|Android-FileIndex]].
+
+Для краткости app/… обозначает Android/Barkfluff.Client.Android/app/src/main/java/com/barkfluff/client/…, core/… — Android/core/src/main/java/com/barkfluff/client/…. Пути Gradle, manifest, resources и proto указаны от корня репозитория.
+
+## Gradle-модули
+
+| Путь | Ответственность |
+|---|---|
+| Android/settings.gradle.kts | Единственный Gradle root; подключает :core и :app-v1 |
+| Android/core | gRPC/proto, gateway contracts/adapters, security, repositories и общие data utilities |
+| Android/Barkfluff.Client.Android/app | V1: UI, Hilt composition root, Room cache/outbox, notifications, widgets, calls orchestration |
+
+## Потоки
+
+### Запуск и выбор ноды
+
+AndroidManifest.xml → SplashActivity → WelcomeActivity при первом запуске или SelectServerActivity → LoginActivity. При наличии сессии переход идёт в MainActivity. SelectServerActivity использует ServerDiscoveryGateway: Navigator возвращает каталог и Files media origin; Beacon возвращает service endpoints. ServerInfoPrefs.applyServerInfo сохраняет актуальную конфигурацию в GlobalParam. При включённом BFT прокси выбор из Navigator отключён: Beacon вызывается по service ID 1 через `bft.internal`, а ServerInfo по-прежнему сохраняется обычным способом.
+
+`bft://` открывает `DeepLinkActivity` и требует подтверждения в `BftProxyLinkImporter` до записи. После согласия `BftProxyManager` сохраняет ссылку и включает прокси, затем запускается выбор ноды через Beacon; если текущая редакция соглашений не принята, `restartAtNodeSelection` сначала возвращает на WelcomeActivity с обязательным согласием. ProxySettingsActivity открывается с Welcome, SelectServer и профиля; настройки переживают logout.
+
+LoginActivity делегирует challenge-поток AuthenticationChallengeController; серверная блокировка или ожидающее удаление показываются отдельным состоянием с причиной и, для удаления, локальной датой. Ограничение refresh/FastAuth по gRPC-коду завершает сессию и возвращает на вход с понятным сообщением.
+
+Основные исходники: Android/Barkfluff.Client.Android/app/src/main/AndroidManifest.xml, app/SplashActivity.kt, app/SelectServerActivity.kt, app/LoginActivity.kt, app/utils/ServerInfoPrefs.kt, core/domain/gateway/DomainGateways.kt.
+
+### RPC и TLS
+
+Activities/ViewModels → typed gateway → production gateway adapter → GrpcApiTransport / repository → GrpcClientRegistry → gRPC stub. RPC registry не передаётся UI. RealtimeService использует registry для стримов и публикует events через RealtimeGateway; app-слой подключает NotificationHelper и WidgetUpdater через RealtimeSideEffects.
+
+MediaHttpTransport обрабатывает Files upload/download отдельно от gRPC через OkHttp. При включённом прокси `TlsTransportFactory` связывает endpoint с логическим BFT service ID, подменяет DNS на loopback и создаёт внутренний TLS `bft.internal` с pin из HELLO. `GrpcClientRegistry`, `TlsCallFactory` и HTTP pools инвалидируются по transport generation; неизвестный BarkFluff host не уходит напрямую. Только LiveKit и FCM используют явные прямые исключения. TLS политика сосредоточена в core/security/TlsTransportFactory.kt, core/security/TlsTrustStore.kt и core/security/TlsCertificateProbe.kt; процессный туннель и маршрутизация — в core/bft/BftProxyManager.kt и core/bft/BftServiceRouter.kt.
+
+Точки входа: core/grpc/GrpcClientRegistry.kt, core/grpc/GrpcApiTransport.kt, core/grpc/TokenCoordinator.kt, core/grpc/MediaHttpTransport.kt; core/domain/gateway/DomainGateways.kt и core/domain/gateway/GrpcGatewayAdapters.kt; core/bft/BftProxyManager.kt, core/bft/BftServiceRouter.kt, core/security/TlsTransportFactory.kt; app/di/AppModule.kt.
+
+### Профиль и бейджи
+
+`ProfileFragment` открывает `BadgesSettingsActivity` для просмотра и выбора primary; `UserProfileActivity` показывает primary у имени и остальные бейджи отдельной карточкой. Оба экрана используют `UserBadgeRepository`: поток Room-кеша отображается первым, полный список пользователя затем обновляется через `UserBadgeGateway`/`GrpcApiTransport`. Успешный SetPrimaryBadge меняет флаги в `cached_user_badges` транзакционно; ошибка сохраняет текущее выделение и показывается Snackbar. `BadgeViewerSheet` общий для профиля и настроек, а Coil использует ImageLoader/OkHttp аватаров с TLS ноды и URL-ключами обоих кешей.
+
+Основные исходники: core/domain/model/UserBadgeInfo.kt, core/domain/gateway/DomainGateways.kt, core/domain/gateway/GrpcGatewayAdapters.kt, core/grpc/GrpcApiTransport.kt; app/BadgesSettingsActivity.kt, app/UserProfileActivity.kt, app/badges/BadgeViewerSheet.kt, app/cache/UserBadgeRepository.kt, app/cache/ChatCacheRepository.kt.
+
+### Обычный чат
+
+MainActivity → ChatsFragment → ChatActivity. ChatActivity создаёт ChatViewModel; ViewModel управляет ChatUiState через intents/effects и делегирует историю RegularChatSession. MessageRowProjector строит immutable rows для MessageAdapter.
+
+ComposerAttachmentStore сохраняет preview-файлы и metadata. ChatDraftRepository синхронизирует текстовый черновик; OutgoingMessageQueue передаёт принятый текст/media в SQLCipher outbox. WorkManager запускает OutgoingMessageWorker, который использует ChatRepository через MessageGateway/FileMediaGateway. Идемпотентность send/upload обеспечивается стабильным client operation ID.
+
+Для ограниченного peer ChatDisplayResolver и Room сохраняют статус аккаунта; UI показывает локализованное имя и заглушку аватара. В direct-чате отключены отправка, вложения, голосовые и звонок, история остаётся доступной. UserUnavailable считается постоянной ошибкой outbox.
+
+Основные исходники: app/ChatActivity.kt, app/ChatViewModel.kt, app/ChatStateModules.kt, app/chat/RegularChatSession.kt, app/adapter/MessageRowProjector.kt, app/adapter/MessageAdapter.kt, app/drafts/ChatDraftRepository.kt, app/drafts/ComposerAttachmentStore.kt, app/send/OutgoingMessageQueue.kt, app/send/OutgoingMessageWorker.kt, app/cache/ChatCacheRepository.kt.
+
+### Фоновые события и уведомления
+
+BarkFluffApplication задаёт process lifecycle. RealtimeService при возобновлении поддерживает серверные стримы; FCM service обрабатывает data payload при фоне/убитом процессе. RealtimeSideEffectsImpl разделяет обработку событий и app UI побочные эффекты. Уведомления имеют receiver-ы с explicit PendingIntent; Direct Reply передаётся через scope-checked durable outbox.
+
+Основные исходники: app/BarkFluffApplication.kt, core/grpc/RealtimeService.kt, app/notifications/RealtimeSideEffectsImpl.kt, app/notifications/NotificationHelper.kt, app/notifications/BarkFluffFirebaseMessagingService.kt, app/notifications/NotificationActionReceiver.kt, app/send/OutgoingMessageWorker.kt.
+
+### Другие области
+
+- Calls: CallsFragment → CallActivity → LiveKitCallEngine; CallsApi и события принадлежат core/calls и app/calls orchestration. Incoming-call service связывает FCM/realtime, Android Telecom и foreground UI.
+- E2E: PrivateChatRepository обрабатывает passphrase-based private chat; SecretChatRepository содержит libsignal scaffold, но текущий handshake заблокирован отсутствующими Kyber-полями в server prekey proto.
+- Поиск: SearchActivity → SearchViewModel/SearchScreen; ограниченные результаты показываются с локальным статусным именем и без username/аватара. ChatSearchActivity → ChatSearchViewModel/MessageSearchViewModel/ChatSearchScreen.
+- Share: внешний ACTION_SEND → ShareReceiverActivity → ShareConfirmBottomSheet → OutgoingMessageQueue.
+
+## Границы ответственности
+
+- ChatViewModel — внешний state/effect/intent контракт регулярного чата; ChatActivity не владеет основным timeline/composer/presence state.
+- MessageAdapter только отображает MessageRowUi и поднимает события через MessageRowEventSink. Projector определяет rows, отдельные контроллеры загружают вложения и воспроизводят audio.
+- UI/background adapters зависят от gateways, не от generated RPC stubs.
+- Room v8 владеет scoped cache, AccountStatus профиля чата и `cached_user_badges`, draft/composer metadata, outbox и журналом pending read actions. `MIGRATION_6_7` добавляет кеш бейджей, `MIGRATION_7_8` — статус peer; файлы composer/outbox находятся в app-private noBackup staging.
+- Clear cache (StorageSettingsActivity) — выборочный диалог с подтверждением необратимых категорий. Границы очистки, account/server scope, синхронизация черновиков и сохранение worker для pending reads описаны в [[Clients/Android#Состояние обычного чата и durable отправка|Android — durable отправка]]. Logout использует полную очистку clearAll() и остаётся источником clearedEvents.

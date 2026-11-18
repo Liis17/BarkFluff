@@ -52,6 +52,12 @@ public class BotRegistryCache
     /// <summary>Локальное применение удаления из fan-out события (без повторной публикации).</summary>
     public void ApplyRemove(long botId) => _bots.TryRemove(botId, out _);
 
+    public void ApplyOwnerRestriction(long ownerUserId, bool restricted)
+    {
+        foreach (var bot in _bots.Values.Where(bot => bot.OwnerUserId == ownerUserId))
+            bot.OwnerRestricted = restricted;
+    }
+
     public Bot? Get(long botId) => _bots.GetValueOrDefault(botId);
 
     public bool IsBot(long userId) => _bots.ContainsKey(userId);

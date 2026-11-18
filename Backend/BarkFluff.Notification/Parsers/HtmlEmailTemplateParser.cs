@@ -21,6 +21,10 @@ public partial class HtmlEmailTemplateParser
         { NotificationType.PasswordChanged, "password_changed.html"},
         { NotificationType.TwoFactorMethodChanged, "two_factor_method_changed.html"},
         { NotificationType.PasswordChangedByAdmin, "password_changed_by_admin.html"},
+        { NotificationType.AccountBlocked, "account_blocked.html"},
+        { NotificationType.AccountUnblocked, "account_unblocked.html"},
+        { NotificationType.AccountDeletionScheduled, "account_deletion_scheduled.html"},
+        { NotificationType.AccountDeletionCancelled, "account_deletion_cancelled.html"},
     };
 
     public virtual async Task<string> Parse(NotificationType type, Dictionary<string, string> payload)

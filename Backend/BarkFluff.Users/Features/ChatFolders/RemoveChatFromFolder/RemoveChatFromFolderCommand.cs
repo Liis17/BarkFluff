@@ -4,7 +4,7 @@ using MediatR;
 
 namespace BarkFluff.Users.Features.ChatFolders.RemoveChatFromFolder;
 
-public class RemoveChatFromFolderCommand : IRequest<RemoveChatFromFolderResponse>
+public class RemoveChatFromFolderCommand : IRequest<RemoveChatFromFolderResponse>, IChatFoldersMutation
 {
     public string? FolderId { get; set; }
 

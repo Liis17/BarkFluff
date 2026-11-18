@@ -6,7 +6,11 @@ using BarkFluff.Bots.Services;
 using BarkFluff.Bots.Tests.Fakes;
 using BarkFluff.Shared.Exceptions.Bots;
 
+using MassTransit;
+
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 
 using Xunit;
 
@@ -16,6 +20,7 @@ public class GetBotUpdatesQueryHandlerTests
 {
     private readonly BotsContext _context;
     private readonly InMemoryBotPollingGuard _pollingGuard = new();
+    private readonly BotRegistryCache _registryCache;
     private readonly GetBotUpdatesQueryHandler _handler;
 
     public GetBotUpdatesQueryHandlerTests()
@@ -25,8 +30,9 @@ public class GetBotUpdatesQueryHandlerTests
             .Options;
         _context = new BotsContext(options);
 
+        _registryCache = new BotRegistryCache(Mock.Of<IBus>(), NullLogger<BotRegistryCache>.Instance);
         _handler = new GetBotUpdatesQueryHandler(
-            new BotUpdatesStorage(_context), new BotUpdateNotifier(), _pollingGuard);
+            new BotUpdatesStorage(_context), new BotUpdateNotifier(), _pollingGuard, _registryCache);
     }
 
     [Fact]
@@ -63,5 +69,19 @@ public class GetBotUpdatesQueryHandlerTests
 
         // Слот освобождён — повторный вызов не бросает конфликт
         await _handler.Handle(query, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedOwnerReceivesNoQueuedUpdates()
+    {
+        _context.Bots.Add(new Bot { Id = 1, OwnerUserId = 7, OwnerRestricted = true });
+        _context.BotUpdates.Add(new BotUpdate { BotId = 1, Payload = "{}", CreatedAt = DateTime.UtcNow });
+        await _context.SaveChangesAsync();
+        _registryCache.Load([new Bot { Id = 1, OwnerUserId = 7, OwnerRestricted = true }]);
+
+        var result = await _handler.Handle(
+            new GetBotUpdatesQuery { BotId = 1, Offset = 0, Limit = 10 }, CancellationToken.None);
+
+        Assert.Empty(result);
     }
 }

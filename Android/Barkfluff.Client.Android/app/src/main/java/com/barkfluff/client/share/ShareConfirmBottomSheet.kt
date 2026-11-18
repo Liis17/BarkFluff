@@ -21,6 +21,7 @@ import com.barkfluff.client.databinding.SheetShareConfirmBinding
 import com.barkfluff.client.editor.EditedVideoSpec
 import com.barkfluff.client.send.AttachmentSpec
 import com.barkfluff.client.send.SendJob
+import com.barkfluff.client.utils.configureImeInsets
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.launch
 import java.text.DecimalFormat
@@ -93,6 +94,12 @@ class ShareConfirmBottomSheet : BottomSheetDialogFragment() {
             v.updatePadding(bottom = baseBottom + maxOf(ime, nav))
             insets
         }
+        ViewCompat.requestApplyInsets(binding.sheetRoot)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        dialog?.configureImeInsets()
     }
 
     private fun bindPreview(p: SharePayload) {

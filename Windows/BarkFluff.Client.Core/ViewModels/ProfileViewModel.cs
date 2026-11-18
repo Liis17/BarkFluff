@@ -2,6 +2,7 @@ using BarkFluff.Client.Core.Infrastructure.Localization;
 using BarkFluff.Client.Core.Infrastructure.Presence;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Proto.Shared;
+using BarkFluff.Proto.Users;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -41,6 +42,7 @@ public sealed partial class ProfileViewModel : ObservableObject
     [ObservableProperty] private string _registeredAtLabel = string.Empty;
     [ObservableProperty] private string _presenceLabel = string.Empty;
     [ObservableProperty] private bool _isOwnProfile;
+    [ObservableProperty] private bool _isRestricted;
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private string? _errorMessage;
     [ObservableProperty] private int _selectedAttachmentTabIndex;
@@ -71,7 +73,7 @@ public sealed partial class ProfileViewModel : ObservableObject
                 return;
             }
 
-            PresenceLabel = CreatePresenceLabel(peerUserId);
+            PresenceLabel = IsRestricted ? string.Empty : CreatePresenceLabel(peerUserId);
             await ApplyChatIdAsync(chatId);
         }
         finally
@@ -119,15 +121,18 @@ public sealed partial class ProfileViewModel : ObservableObject
             return false;
         }
 
+        IsRestricted = data.AccountStatus is AccountStatus.Blocked or AccountStatus.PendingDeletion or AccountStatus.Deleted;
         var fullName = string.Join(' ', new[] { data.FirstName, data.LastName }.Where(name => !string.IsNullOrWhiteSpace(name)));
-        DisplayName = string.IsNullOrWhiteSpace(fullName) ? data.Username : fullName;
-        Username = string.IsNullOrWhiteSpace(data.Username) ? string.Empty : "@" + data.Username;
+        DisplayName = IsRestricted
+            ? _localization.GetString(data.AccountStatus == AccountStatus.Blocked ? "Messenger_UserBlocked" : "Messenger_UserDeleted")
+            : string.IsNullOrWhiteSpace(fullName) ? data.Username : fullName;
+        Username = IsRestricted || string.IsNullOrWhiteSpace(data.Username) ? string.Empty : "@" + data.Username;
         // Почту сервер отдаёт только для собственного профиля; пустая строка прячет строку в разметке.
-        Email = data.Email;
-        Description = data.Description;
-        AvatarUrl = data.ProfilePicturePreviewUrl;
+        Email = IsRestricted ? string.Empty : data.Email;
+        Description = IsRestricted ? string.Empty : data.Description;
+        AvatarUrl = IsRestricted ? string.Empty : data.ProfilePicturePreviewUrl;
         Initials = CreateInitials(DisplayName);
-        RegisteredAtLabel = data.RegistrationDate == DateTime.MinValue
+        RegisteredAtLabel = IsRestricted || data.RegistrationDate == DateTime.MinValue
             ? string.Empty
             : data.RegistrationDate.ToLocalTime().ToString("d");
         return true;
@@ -149,6 +154,7 @@ public sealed partial class ProfileViewModel : ObservableObject
         RegisteredAtLabel = string.Empty;
         PresenceLabel = string.Empty;
         IsOwnProfile = false;
+        IsRestricted = false;
         ErrorMessage = null;
         SelectedAttachmentTabIndex = 0;
         _chatId = null;

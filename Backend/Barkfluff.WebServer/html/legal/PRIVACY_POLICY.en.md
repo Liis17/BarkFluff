@@ -1,7 +1,7 @@
 # BarkFluff Privacy Policy
 
 **Effective from:** January 24, 2026  
-**Last updated:** July 29, 2026
+**Last updated:** November 13, 2026
 
 > This translation is provided for convenience. In case of any discrepancy, the Russian version prevails.
 
@@ -28,7 +28,7 @@ This document describes the behaviour of the software in its default configurati
 
 | Data | Where used | Storage |
 | --- | --- | --- |
-| Email | Registration, login, confirmations, access recovery, notifications | Users / Identity |
+| Email | Registration, login, confirmations, access recovery, notifications, including account blocking and deletion emails | Users / Identity; restriction reason and date are kept with the account |
 | Username | Login, search, public profile page, display in chats | Users |
 | Password hash | Password verification; the plaintext password is not stored | Identity |
 | First name, last name, bio | User profile and public profile data | Users |
@@ -98,7 +98,7 @@ What matters here:
 - delivery of messages, files, read receipts, realtime updates and push notifications;
 - messaging with users of other nodes when federation is enabled;
 - user data export via `Users.ExportData`;
-- user support through the channels configured by the node administrator;
+- user support through the channels configured by the node administrator; processing account restriction and deletion requests, sending related notices to the account email, and storing the reason and date of a restriction with the account. The restriction reason is removed when the account is permanently deleted;
 - logging of errors, metrics and security events.
 
 ## 6. Data protection
@@ -141,7 +141,7 @@ Send requests about your data to your node's administrator — only they can act
 
 - **Access and export:** export returns the JSON files `profile.json`, `messages.json` and `files.json`.
 - **Correction:** profile, bio, avatar, poster, privacy, devices and password can be changed through client features where available.
-- **Deletion:** see the "Account Deletion Policy".
+- **Deletion:** after the node administrator processes the request, the account is permanently deleted after 7 days; details are in the [Account Deletion Policy](/legal/account-deletion).
 - **Session revocation:** an active session can be terminated via device management features.
 - **Limiting federation:** incoming federated private chats can be refused in the privacy settings.
 
@@ -151,7 +151,7 @@ Send requests about your data to your node's administrator — only they can act
 - Private encrypted messages are marked as deleted on deletion, and the ciphertext is cleared.
 - Secret messages are removed from the temporary buffer after delivery confirmation or TTL expiry.
 - Deletion applies within your node. Copies already delivered to another node can only be deleted by that node's administrator.
-- For deletion of an account and data not covered by client features, contact the node administrator.
+- For deletion of an account and data not covered by client features, contact the node administrator. After the request is processed, the account remains pending deletion for 7 days and is then permanently deleted; see the [Account Deletion Policy](/legal/account-deletion).
 
 ## 10. Cookies and local storage
 

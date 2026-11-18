@@ -88,4 +88,13 @@ assert.equal(
     '**literal** file_name https://example.com/a_b'
 );
 
+// escapeHtml используется внутри src="...": кавычки не должны закрывать атрибут.
+assert.equal(
+    utils.escapeHtml('x" onerror="alert(1)\' <b>&'),
+    'x&quot; onerror=&quot;alert(1)&#39; &lt;b&gt;&amp;'
+);
+const quotedMarkdown = utils.renderMarkdown('it\'s "x" [a](https://e.com/?q="x")');
+assert.ok(!quotedMarkdown.includes('&amp;quot;') && !quotedMarkdown.includes('&amp;#39;'), quotedMarkdown);
+assert.ok(quotedMarkdown.includes('href="https://e.com/?q=&quot;x&quot;"'), quotedMarkdown);
+
 console.log('PASS: markdown chat previews contain readable plain text');

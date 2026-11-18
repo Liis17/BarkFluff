@@ -725,7 +725,7 @@
     function updatableContainers() {
         return servicesData
             .filter(s => s.name.startsWith('BarkFluff.') && s.updateAvailable)
-            .map(s => getContainerNameFromServiceName(s.name));
+            .map(s => s.container || s.name);
     }
 
     const DEPLOY_KIND_LABELS = { Update: 'Обновление', Restart: 'Перезапуск', SwitchBranch: 'Переключение ветки' };

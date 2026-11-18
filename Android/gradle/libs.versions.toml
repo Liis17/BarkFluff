@@ -14,6 +14,7 @@ recyclerview = "1.4.0"
 fragment = "1.8.9"
 libsignal = "0.86.16"
 argon2kt = "1.6.0"
+bouncycastle = "1.86"
 dynamicAnimation = "1.0.0"
 room = "2.7.1"
 sqlite = "2.6.2"
@@ -43,6 +44,7 @@ androidx-fragment = { group = "androidx.fragment", name = "fragment", version.re
 libsignal-android = { group = "org.signal", name = "libsignal-android", version.ref = "libsignal" }
 libsignal-client = { group = "org.signal", name = "libsignal-client", version.ref = "libsignal" }
 argon2kt = { group = "com.lambdapioneer.argon2kt", name = "argon2kt", version.ref = "argon2kt" }
+bouncycastle-crypto = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
 androidx-dynamic-animation = { group = "androidx.dynamicanimation", name = "dynamicanimation", version.ref = "dynamicAnimation" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

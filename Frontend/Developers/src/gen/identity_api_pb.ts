@@ -5,6 +5,7 @@
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3, protoInt64, Timestamp } from "@bufbuild/protobuf";
+import { AccountRestrictionAction, AccountRestrictionInfo, AccountStatus } from "./users_api_pb.js";
 
 /**
  * @generated from enum barkfluff.identity.OtpTypeId
@@ -151,6 +152,92 @@ proto3.util.setEnumType(LoginNotificationChannel, "barkfluff.identity.LoginNotif
   { no: 1, name: "LOGIN_NOTIFICATION_CHANNEL_EMAIL" },
   { no: 2, name: "LOGIN_NOTIFICATION_CHANNEL_TELEGRAM" },
 ]);
+
+/**
+ * @generated from message barkfluff.identity.SetAccountRestrictionServerRequest
+ */
+export class SetAccountRestrictionServerRequest extends Message<SetAccountRestrictionServerRequest> {
+  /**
+   * @generated from field: int64 user_id = 1;
+   */
+  userId = protoInt64.zero;
+
+  /**
+   * @generated from field: barkfluff.users.AccountRestrictionAction action = 2;
+   */
+  action = AccountRestrictionAction.ACCOUNT_RESTRICTION_ACTION_UNSPECIFIED;
+
+  /**
+   * @generated from field: string reason = 3;
+   */
+  reason = "";
+
+  constructor(data?: PartialMessage<SetAccountRestrictionServerRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.SetAccountRestrictionServerRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "action", kind: "enum", T: proto3.getEnumType(AccountRestrictionAction) },
+    { no: 3, name: "reason", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetAccountRestrictionServerRequest {
+    return new SetAccountRestrictionServerRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetAccountRestrictionServerRequest {
+    return new SetAccountRestrictionServerRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetAccountRestrictionServerRequest {
+    return new SetAccountRestrictionServerRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetAccountRestrictionServerRequest | PlainMessage<SetAccountRestrictionServerRequest> | undefined, b: SetAccountRestrictionServerRequest | PlainMessage<SetAccountRestrictionServerRequest> | undefined): boolean {
+    return proto3.util.equals(SetAccountRestrictionServerRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.SetAccountRestrictionServerResponse
+ */
+export class SetAccountRestrictionServerResponse extends Message<SetAccountRestrictionServerResponse> {
+  /**
+   * @generated from field: barkfluff.users.AccountRestrictionInfo restriction = 1;
+   */
+  restriction?: AccountRestrictionInfo;
+
+  constructor(data?: PartialMessage<SetAccountRestrictionServerResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.SetAccountRestrictionServerResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "restriction", kind: "message", T: AccountRestrictionInfo },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetAccountRestrictionServerResponse {
+    return new SetAccountRestrictionServerResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetAccountRestrictionServerResponse {
+    return new SetAccountRestrictionServerResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetAccountRestrictionServerResponse {
+    return new SetAccountRestrictionServerResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetAccountRestrictionServerResponse | PlainMessage<SetAccountRestrictionServerResponse> | undefined, b: SetAccountRestrictionServerResponse | PlainMessage<SetAccountRestrictionServerResponse> | undefined): boolean {
+    return proto3.util.equals(SetAccountRestrictionServerResponse, a, b);
+  }
+}
 
 /**
  * @generated from message barkfluff.identity.CreateSessionForUserServerRequest
@@ -2296,6 +2383,86 @@ export class GetAuthCapabilitiesResponse extends Message<GetAuthCapabilitiesResp
 }
 
 /**
+ * @generated from message barkfluff.identity.ResolveSignInRequest
+ */
+export class ResolveSignInRequest extends Message<ResolveSignInRequest> {
+  /**
+   * @generated from field: string login = 1;
+   */
+  login = "";
+
+  constructor(data?: PartialMessage<ResolveSignInRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.ResolveSignInRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "login", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResolveSignInRequest {
+    return new ResolveSignInRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResolveSignInRequest {
+    return new ResolveSignInRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResolveSignInRequest {
+    return new ResolveSignInRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ResolveSignInRequest | PlainMessage<ResolveSignInRequest> | undefined, b: ResolveSignInRequest | PlainMessage<ResolveSignInRequest> | undefined): boolean {
+    return proto3.util.equals(ResolveSignInRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.ResolveSignInResponse
+ */
+export class ResolveSignInResponse extends Message<ResolveSignInResponse> {
+  /**
+   * @generated from field: barkfluff.identity.AuthLoginMode login_mode = 1;
+   */
+  loginMode = AuthLoginMode.LOGIN_MODE_UNSPECIFIED;
+
+  /**
+   * @generated from field: string error_code = 2;
+   */
+  errorCode = "";
+
+  constructor(data?: PartialMessage<ResolveSignInResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.ResolveSignInResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "login_mode", kind: "enum", T: proto3.getEnumType(AuthLoginMode) },
+    { no: 2, name: "error_code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResolveSignInResponse {
+    return new ResolveSignInResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResolveSignInResponse {
+    return new ResolveSignInResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResolveSignInResponse {
+    return new ResolveSignInResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ResolveSignInResponse | PlainMessage<ResolveSignInResponse> | undefined, b: ResolveSignInResponse | PlainMessage<ResolveSignInResponse> | undefined): boolean {
+    return proto3.util.equals(ResolveSignInResponse, a, b);
+  }
+}
+
+/**
  * @generated from message barkfluff.identity.AuthChallengeReference
  */
 export class AuthChallengeReference extends Message<AuthChallengeReference> {
@@ -2519,6 +2686,11 @@ export class BeginSignInRequest extends Message<BeginSignInRequest> {
    */
   useRecoveryCode = false;
 
+  /**
+   * @generated from field: bool report_login_mode_mismatch = 6;
+   */
+  reportLoginModeMismatch = false;
+
   constructor(data?: PartialMessage<BeginSignInRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -2532,6 +2704,7 @@ export class BeginSignInRequest extends Message<BeginSignInRequest> {
     { no: 3, name: "login_mode", kind: "enum", T: proto3.getEnumType(AuthLoginMode) },
     { no: 4, name: "factor", kind: "enum", T: proto3.getEnumType(OtpTypeId) },
     { no: 5, name: "use_recovery_code", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 6, name: "report_login_mode_mismatch", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BeginSignInRequest {
@@ -2629,6 +2802,11 @@ export class CompleteAuthChallengeResponse extends Message<CompleteAuthChallenge
    */
   errorCode = "";
 
+  /**
+   * @generated from field: barkfluff.identity.IdentityAccountRestrictionInfo account_restriction = 6;
+   */
+  accountRestriction?: IdentityAccountRestrictionInfo;
+
   constructor(data?: PartialMessage<CompleteAuthChallengeResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -2642,6 +2820,7 @@ export class CompleteAuthChallengeResponse extends Message<CompleteAuthChallenge
     { no: 3, name: "security_proof", kind: "message", T: AuthChallengeReference },
     { no: 4, name: "recovery_codes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 5, name: "error_code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "account_restriction", kind: "message", T: IdentityAccountRestrictionInfo },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CompleteAuthChallengeResponse {
@@ -2658,6 +2837,55 @@ export class CompleteAuthChallengeResponse extends Message<CompleteAuthChallenge
 
   static equals(a: CompleteAuthChallengeResponse | PlainMessage<CompleteAuthChallengeResponse> | undefined, b: CompleteAuthChallengeResponse | PlainMessage<CompleteAuthChallengeResponse> | undefined): boolean {
     return proto3.util.equals(CompleteAuthChallengeResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message barkfluff.identity.IdentityAccountRestrictionInfo
+ */
+export class IdentityAccountRestrictionInfo extends Message<IdentityAccountRestrictionInfo> {
+  /**
+   * @generated from field: barkfluff.users.AccountStatus status = 1;
+   */
+  status = AccountStatus.ACTIVE;
+
+  /**
+   * @generated from field: string reason = 2;
+   */
+  reason = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp deletion_scheduled_at = 3;
+   */
+  deletionScheduledAt?: Timestamp;
+
+  constructor(data?: PartialMessage<IdentityAccountRestrictionInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "barkfluff.identity.IdentityAccountRestrictionInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "status", kind: "enum", T: proto3.getEnumType(AccountStatus) },
+    { no: 2, name: "reason", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "deletion_scheduled_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): IdentityAccountRestrictionInfo {
+    return new IdentityAccountRestrictionInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): IdentityAccountRestrictionInfo {
+    return new IdentityAccountRestrictionInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): IdentityAccountRestrictionInfo {
+    return new IdentityAccountRestrictionInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: IdentityAccountRestrictionInfo | PlainMessage<IdentityAccountRestrictionInfo> | undefined, b: IdentityAccountRestrictionInfo | PlainMessage<IdentityAccountRestrictionInfo> | undefined): boolean {
+    return proto3.util.equals(IdentityAccountRestrictionInfo, a, b);
   }
 }
 

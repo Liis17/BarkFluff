@@ -17,8 +17,8 @@ public class LiveKitTokenService
         _settings = settings;
     }
 
-    /// <summary>WS/WSS-адрес LiveKit для клиента (дублируется в Beacon).</summary>
-    public string Url => _settings.Url;
+    /// <summary>Публичный WSS-адрес LiveKit для клиента (дублируется в Beacon).</summary>
+    public string Url => _settings.PublicUrl;
 
     /// <summary>
     /// Токен на вход в комнату звонка с правом публиковать аудио/видео.

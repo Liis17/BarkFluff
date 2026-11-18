@@ -21,6 +21,7 @@ import com.barkfluff.client.utils.AudioWaveformExtractor
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.voice.VoicePlaybackSpeed
 import com.barkfluff.client.utils.FileMediaUrl
+import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.ImageLoadHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -147,7 +148,9 @@ class AttachmentPreviewAdapter(
                     val url = directUrl.ifBlank {
                         withContext(Dispatchers.IO) { getFileUrl(attachment.previewFileId.ifBlank { attachment.fileId }) }.orEmpty()
                     }
-                    if (url.isNotBlank()) binding.previewImageView.load(url)
+                    if (url.isNotBlank()) {
+                        binding.previewImageView.load(url, AvatarLoader.getImageLoader(binding.root.context))
+                    }
                 }
             } else {
                 viewOperations.launch(binding.previewImageView) {
@@ -252,6 +255,11 @@ class AttachmentPreviewAdapter(
             binding.audioWaveform.resetAmplitudes()
             binding.voiceSpeed.visibility = if (voice) View.VISIBLE else View.GONE
             binding.voiceSpeed.setOnClickListener { playback.cycleSpeed() }
+            binding.audioWaveform.onScrubChanged = { started ->
+                if (playback.state.value.track?.fileId == fileId) {
+                    if (started) playback.beginScrub() else playback.endScrub()
+                }
+            }
             binding.audioWaveform.onSeekRequested = { fraction ->
                 val state = playback.state.value
                 if (state.track?.fileId == fileId) playback.seekTo((state.durationMillis * fraction).toLong())

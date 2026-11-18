@@ -85,6 +85,10 @@ public partial class App : Application
                 else
                 {
                     navigation.ShowLogin();
+                    if (authentication.RestoreSessionErrorResourceKey is { } errorResourceKey)
+                    {
+                        services.GetRequiredService<LoginViewModel>().ShowSessionRestrictionNotice(errorResourceKey);
+                    }
                 }
             }
             else if (await dataStore.HasSeenWelcomeAsync())
@@ -98,6 +102,18 @@ public partial class App : Application
 
             var mainWindow = services.GetRequiredService<MainWindow>();
             _window = mainWindow;
+
+            var webApi = services.GetRequiredService<WebApiClient>();
+            webApi.TokenInvalidated += (_, _) =>
+            {
+                var errorResourceKey = webApi.LastTokenRefreshErrorResourceKey;
+                if (errorResourceKey is not ("Error_AccountBlocked" or "Error_AccountPendingDeletion")) return;
+                mainWindow.DispatcherQueue.TryEnqueue(() =>
+                {
+                    navigation.ShowLogin();
+                    services.GetRequiredService<LoginViewModel>().ShowSessionRestrictionNotice(errorResourceKey);
+                });
+            };
 
             themeService.Attach(mainWindow.RootElement);
             themeService.Apply(theme);

@@ -5,6 +5,8 @@ using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Calls;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Users;
 using BarkFluff.Shared.Queue.Messages;
 
 using Google.Protobuf.WellKnownTypes;
@@ -32,6 +34,7 @@ public class CallLifecycleHandler
     private readonly ICallEventDispatcher _dispatcher;
     private readonly CallQualityStore _quality;
     private readonly MessagesServerApi.MessagesServerApiClient _messagesClient;
+    private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly IPublishEndpoint _publish;
     private readonly UserContext _userContext;
     private readonly MetricsCollector _metrics;
@@ -43,6 +46,7 @@ public class CallLifecycleHandler
         ICallEventDispatcher dispatcher,
         CallQualityStore quality,
         MessagesServerApi.MessagesServerApiClient messagesClient,
+        UsersServerApi.UsersServerApiClient usersClient,
         IPublishEndpoint publish,
         UserContext userContext,
         MetricsCollector metrics,
@@ -53,6 +57,7 @@ public class CallLifecycleHandler
         _dispatcher = dispatcher;
         _quality = quality;
         _messagesClient = messagesClient;
+        _usersClient = usersClient;
         _publish = publish;
         _userContext = userContext;
         _metrics = metrics;
@@ -84,6 +89,7 @@ public class CallLifecycleHandler
                     throw new RpcException(new Status(StatusCode.InvalidArgument, "Нельзя позвонить самому себе"));
                 }
 
+                await EnsureUserActiveAsync(request.CalleeUserId, ct);
                 session.CalleeUserId = request.CalleeUserId;
                 break;
 
@@ -169,6 +175,7 @@ public class CallLifecycleHandler
         }
 
         await EnsureCanAnswerAsync(session, userId, ct);
+        await EnsureDirectPeerActiveAsync(session, userId, ct);
 
         if (session.Status == CallStatus.Ringing)
         {
@@ -211,6 +218,7 @@ public class CallLifecycleHandler
         }
 
         await EnsureParticipantAsync(session, userId, ct);
+        await EnsureDirectPeerActiveAsync(session, userId, ct);
 
         // Гасим ринг на остальных устройствах присоединившегося.
         var accepted = new CallEvent { Accepted = new CallAcceptedEvent { CallId = session.Id.ToString(), AcceptedByUserId = userId } };
@@ -649,6 +657,27 @@ public class CallLifecycleHandler
         else if (userId != session.CalleeUserId)
         {
             throw new RpcException(new Status(StatusCode.PermissionDenied, "Звонок адресован не вам"));
+        }
+    }
+
+    private async Task EnsureDirectPeerActiveAsync(CallSession session, long userId, CancellationToken ct)
+    {
+        if (!session.IsGroup)
+        {
+            var peerId = session.CallerUserId == userId ? session.CalleeUserId : session.CallerUserId;
+            if (peerId.HasValue)
+            {
+                await EnsureUserActiveAsync(peerId.Value, ct);
+            }
+        }
+    }
+
+    private async Task EnsureUserActiveAsync(long userId, CancellationToken ct)
+    {
+        var user = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = userId }, cancellationToken: ct);
+        if (user.User.AccountStatus != AccountStatus.Active)
+        {
+            throw new UserUnavailableException();
         }
     }
 

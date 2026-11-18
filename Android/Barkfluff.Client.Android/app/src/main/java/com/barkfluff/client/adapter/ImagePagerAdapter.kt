@@ -36,14 +36,13 @@ class ImagePagerAdapter(
         }
         container.addView(photoView)
 
-        val progress = com.google.android.material.progressindicator.CircularProgressIndicator(parent.context).apply {
+        val progress = com.google.android.material.loadingindicator.LoadingIndicator(parent.context).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = android.view.Gravity.CENTER
             }
-            isIndeterminate = true
             visibility = View.VISIBLE
         }
         container.addView(progress)

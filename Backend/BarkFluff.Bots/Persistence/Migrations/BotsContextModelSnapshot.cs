@@ -17,7 +17,7 @@ namespace BarkFluff.Bots.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -39,6 +39,9 @@ namespace BarkFluff.Bots.Persistence.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("OwnerRestricted")
+                        .HasColumnType("boolean");
 
                     b.Property<long?>("OwnerUserId")
                         .HasColumnType("bigint");

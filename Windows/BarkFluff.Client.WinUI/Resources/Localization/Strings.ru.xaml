@@ -435,4 +435,17 @@
     <x:String x:Key="Error_DevicesLoadFailed">Не удалось загрузить список устройств.</x:String>
     <x:String x:Key="Error_UpdateCheckFailed">Не удалось проверить обновления.</x:String>
     <x:String x:Key="Error_LogoutFailed">Не удалось выйти из аккаунта.</x:String>
+    <x:String x:Key="Error_AccountBlocked">Аккаунт заблокирован. Снять блокировку может только администратор ноды.</x:String>
+    <x:String x:Key="Error_AccountPendingDeletion">Аккаунт удаляется. Чтобы отменить удаление до назначенной даты, обратитесь к администратору ноды.</x:String>
+    <x:String x:Key="Login_AccountBlockedTitle">Аккаунт заблокирован</x:String>
+    <x:String x:Key="Login_AccountPendingDeletionTitle">Аккаунт удаляется</x:String>
+    <x:String x:Key="Login_AccountRestrictionReason">Причина: {0}</x:String>
+    <x:String x:Key="Login_AccountDeletionDate">Окончательное удаление: {0}</x:String>
+    <x:String x:Key="Login_AccountBlockedHelp">Снять блокировку может только администратор ноды.</x:String>
+    <x:String x:Key="Login_AccountPendingDeletionHelp">До этой даты удаление можно отменить, обратившись к администратору ноды.</x:String>
+    <x:String x:Key="Messenger_UserBlocked">Заблокированный пользователь</x:String>
+    <x:String x:Key="Messenger_UserDeleted">Удалённый пользователь</x:String>
+    <x:String x:Key="Messenger_ReadOnlyBlocked">Пользователь заблокирован</x:String>
+    <x:String x:Key="Messenger_ReadOnlyDeleted">Аккаунт удалён</x:String>
+    <x:String x:Key="Messenger_UserUnavailable">Пользователь заблокирован или удалён и недоступен.</x:String>
 </ResourceDictionary>

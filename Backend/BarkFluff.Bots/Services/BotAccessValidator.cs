@@ -31,7 +31,7 @@ public class BotAccessValidator
 
         var bot = _registryCache.Get(botId);
 
-        if (bot is null || bot.SystemRole != SystemBotRole.None)
+        if (bot is null || bot.SystemRole != SystemBotRole.None || bot.OwnerRestricted)
             return BotAccessStatus.Unauthenticated;
 
         var tokenId = principal.FindFirst(IdentityClaims.BotTokenId)?.Value;

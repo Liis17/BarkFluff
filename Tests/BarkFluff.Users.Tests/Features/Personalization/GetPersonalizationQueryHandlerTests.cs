@@ -21,7 +21,7 @@ public class GetPersonalizationQueryHandlerTests : IAsyncDisposable
         var user = await _h.SeedUser();
         await _h.PersonalizationStorage.Update(user.Id, "poster-123", ["bg1", "bg2"]);
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new GetPersonalizationQueryHandler(ctx, _h.PersonalizationStorage, TestHelper.CreateLogger<GetPersonalizationQueryHandler>());
+        var handler = new GetPersonalizationQueryHandler(ctx, _h.PersonalizationStorage, _h.UsersStorage, TestHelper.CreateLogger<GetPersonalizationQueryHandler>());
 
         var result = await handler.Handle(new GetPersonalizationQuery(), CancellationToken.None);
 
@@ -34,7 +34,7 @@ public class GetPersonalizationQueryHandlerTests : IAsyncDisposable
     {
         var user = await _h.SeedUser();
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new GetPersonalizationQueryHandler(ctx, _h.PersonalizationStorage, TestHelper.CreateLogger<GetPersonalizationQueryHandler>());
+        var handler = new GetPersonalizationQueryHandler(ctx, _h.PersonalizationStorage, _h.UsersStorage, TestHelper.CreateLogger<GetPersonalizationQueryHandler>());
 
         var result = await handler.Handle(new GetPersonalizationQuery(), CancellationToken.None);
 

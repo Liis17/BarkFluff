@@ -29,6 +29,38 @@ class ChatStateModulesTest {
     }
 
     @Test
+    fun selectionRangeFollowsMessageOrderInEitherDirectionAndCanClearThatRange() {
+        val initial = selection.selectAll(listOf(1L, 9L))
+
+        val range = selection.selectRange(
+            state = initial,
+            orderedMessageIds = listOf(1L, 2L, 3L, 4L, 5L),
+            startMessageId = 4L,
+            endMessageId = 2L,
+        )
+        assertEquals(setOf(1L, 2L, 3L, 4L, 9L), range.selectedMessageIds)
+
+        val clearedRange = selection.selectRange(
+            state = range,
+            orderedMessageIds = listOf(1L, 2L, 3L, 4L, 5L),
+            startMessageId = 4L,
+            endMessageId = 2L,
+            selected = false,
+        )
+        assertEquals(setOf(1L, 9L), clearedRange.selectedMessageIds)
+    }
+
+    @Test
+    fun selectionRangeIgnoresEndpointsMissingFromTheCurrentMessageList() {
+        val initial = selection.selectAll(listOf(2L))
+
+        assertEquals(
+            initial,
+            selection.selectRange(initial, listOf(1L, 3L), startMessageId = 2L, endMessageId = 3L),
+        )
+    }
+
+    @Test
     fun missingMessagesAreDroppedFromRestoredSelection() {
         val state = SelectionState(setOf(1L, 2L, 3L), isActive = true)
         val restored = selection.removeMissing(state, setOf(2L, 4L))

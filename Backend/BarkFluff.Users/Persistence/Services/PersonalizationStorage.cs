@@ -2,6 +2,7 @@ using BarkFluff.Users.Domain;
 using BarkFluff.Users.Persistence.Contexts;
 
 using Microsoft.EntityFrameworkCore;
+using BarkFluff.Shared.Exceptions.Identity;
 
 namespace BarkFluff.Users.Persistence.Services;
 
@@ -46,6 +47,7 @@ public class PersonalizationStorage
 
     public async Task<UserPersonalization> Update(long userId, string? profilePosterFileId, string[] chatBackgroundFileIds)
     {
+        await EnsureActiveAccount(userId);
         var personalization = await GetOrCreate(userId);
 
         personalization.ProfilePosterFileId = profilePosterFileId;
@@ -57,8 +59,15 @@ public class PersonalizationStorage
 
     public async Task UpdatePoster(long userId, string? profilePosterFileId)
     {
+        await EnsureActiveAccount(userId);
         var personalization = await GetOrCreate(userId);
         personalization.ProfilePosterFileId = profilePosterFileId;
         await _usersContext.SaveChangesAsync();
+    }
+
+    private async Task EnsureActiveAccount(long userId)
+    {
+        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        AccountRestrictionGuard.EnsureActive(user);
     }
 }

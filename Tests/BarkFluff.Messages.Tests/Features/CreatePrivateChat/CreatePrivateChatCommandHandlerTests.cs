@@ -36,15 +36,32 @@ public class CreatePrivateChatCommandHandlerTests
             TestHelper.CreateLogger<CreatePrivateChatCommandHandler>());
     }
 
-    private void SetupUsersClient()
+    private void SetupUsersClient(AccountStatus accountStatus = AccountStatus.Active)
     {
         _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
             .Returns(new AsyncUnaryCall<GetByIdResponse>(
-                Task.FromResult(new GetByIdResponse {                 User = new User { Id = 2, FirstName = "Peer", LastName = "User" } }),
+                Task.FromResult(new GetByIdResponse { User = new User { Id = 2, FirstName = "Peer", LastName = "User", AccountStatus = accountStatus } }),
                 Task.FromResult(new Metadata()),
                 () => Status.DefaultSuccess,
                 () => new Metadata(),
                 () => { }));
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedPeer_DoesNotCreatePrivateChat()
+    {
+        SetupUsersClient(AccountStatus.PendingDeletion);
+        var handler = CreateHandler(1);
+
+        var act = () => handler.Handle(new CreatePrivateChatCommand
+        {
+            PeerUserId = 2,
+            KdfSalt = new byte[32],
+            PassphraseVerifier = new byte[32]
+        }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BarkFluff.Shared.Exceptions.Users.UserUnavailableException>();
+        _h.DbContext.Chats.Should().BeEmpty();
     }
 
     [Fact]

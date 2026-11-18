@@ -51,6 +51,7 @@ function createHarness(options) {
     var state = {
         chatId: options.chatId === undefined ? 'chat-a' : options.chatId,
         chatType: options.chatType || 0,
+        canSend: options.canSend !== false,
         myUserId: 1,
         chats: options.chats || [],
         messages: options.messages || [],
@@ -289,6 +290,9 @@ function createHarness(options) {
         getMessages: function () {
             return state.messages;
         },
+        canSend: function () {
+            return state.canSend;
+        },
         renderChatList: function () {
             calls.push(['renderChatList']);
         },
@@ -338,6 +342,13 @@ async function test(name, fn) {
 
 async function main() {
     // --- sendMessage: guards and the private-chat branch ---
+
+    await test('restricted personal chats do not send text or attachments', async function () {
+        var h = createHarness({ canSend: false, text: 'hello' });
+        h.BF.sendQueue.sendMessage();
+        h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, 'hello');
+        assert.deepEqual(h.calls(), []);
+    });
 
     await test('sendMessage does nothing without an open chat', async function () {
         var h = createHarness({ chatId: null, text: 'hi' });

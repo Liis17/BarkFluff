@@ -35,9 +35,11 @@
             return c.id === chatId;
         });
         var chatTitle = '';
+        var muted = false;
         if (chatIdx >= 0) {
             var chat = chats[chatIdx];
             chatTitle = chat.title || '';
+            muted = deps.isChatMuted(chat);
             chat.lastMessage = msg;
             if (chatId !== deps.getCurrentChatId() && msg.senderId !== myUserId) {
                 chat.countUnread = (chat.countUnread || 0) + 1;
@@ -50,8 +52,8 @@
             deps.loadChats(true);
         }
 
-        // Browser notification for messages from others
-        if (msg.senderId !== myUserId) {
+        // Browser notification for messages from others, unless the chat is muted
+        if (msg.senderId !== myUserId && !muted) {
             BF.sound.play('chime');
             deps.showNewMessageNotification(chatTitle, msg);
         }

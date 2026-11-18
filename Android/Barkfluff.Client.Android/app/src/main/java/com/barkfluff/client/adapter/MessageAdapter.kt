@@ -1,19 +1,23 @@
 package com.barkfluff.client.adapter
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.PathInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.PopupMenu
 import android.widget.SeekBar
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import coil.imageLoader
 import coil.load
 import coil.dispose
 import com.barkfluff.client.R
@@ -21,6 +25,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.imageview.ShapeableImageView
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.shape.CornerFamily
 import com.google.android.material.shape.ShapeAppearanceModel
 import com.barkfluff.client.databinding.ItemAttachmentDocumentBinding
@@ -31,14 +36,18 @@ import com.barkfluff.client.databinding.ItemMessageSentBinding
 import com.barkfluff.client.databinding.ViewMessageQuoteBinding
 import com.barkfluff.client.audio.AudioPlayback
 import com.barkfluff.client.audio.AudioTrack
-import com.barkfluff.client.voice.VoicePlaybackSpeed
 import com.barkfluff.client.utils.AudioWaveformExtractor
 import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.cache.OutgoingMessageState
+import com.barkfluff.client.cache.OutgoingAttachmentKind
+import com.barkfluff.client.send.OutgoingAttachmentUi
+import com.barkfluff.client.send.OutgoingAttachmentUploadState
 import com.barkfluff.client.utils.ImageLoadHelper
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.view.M3ContextMenu
 import barkfluff.shared.Shared
 import android.content.res.ColorStateList
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,6 +83,28 @@ class MessageAdapter(
     private val audioRenderer = MessageAudioRenderer(audioPlaybackController)
 
     /** Возвращает MessageItem по позиции для обработчика свайпа (ItemTouchHelper). null если позиция вне диапазона или не сообщение. */
+    fun isAttachmentCached(fileId: String): Boolean = attachmentLoader.hasCached(fileId)
+
+    /** Удаляет аудио из кеша; [row] — видимая строка вложения, её сразу переводим в состояние «не скачано». */
+    fun removeCachedAudio(fileId: String, isVoice: Boolean, row: View?) {
+        if (audioPlaybackController.isActiveFile(fileId)) audioPlaybackController.stop()
+        attachmentLoader.deleteCached(fileId)
+        audioPlaybackController.remove(fileId)
+        val binding = row?.let(ItemAttachmentAudioBinding::bind) ?: return
+        binding.downloadButton.visibility = View.VISIBLE
+        binding.downloadButton.isEnabled = true
+        binding.downloadButton.alpha = 1f
+        binding.downloadProgressBar.visibility = View.GONE
+        binding.audioSeekBar.visibility = View.GONE
+        binding.voiceWaveform.resetAmplitudes()
+        binding.voiceWaveform.visibility = if (isVoice) View.VISIBLE else View.GONE
+        binding.voiceWaveform.isEnabled = false
+        binding.fileNameText.visibility = if (isVoice) View.GONE else View.VISIBLE
+        binding.playPauseButton.isEnabled = false
+        binding.playPauseButton.alpha = 0.4f
+        binding.durationText.text = formatAudioTime(0L)
+    }
+
     fun getMessageAt(position: Int): MessageItem? {
         if (position < 0 || position >= itemCount) return null
         val item = getItem(position)
@@ -85,26 +116,136 @@ class MessageAdapter(
      * Для [contentColumn] (только у входящих — у исходящих под индикатор уже есть готовый
      * отступ) сдвигает содержимое вправо через translationX, освобождая место слева.
      */
-    private fun bindSelectionIndicator(indicator: ImageView, contentColumn: View?, item: MessageItem) {
+    private fun bindSelectionIndicator(root: View, indicator: ImageView, contentColumn: View?, item: MessageItem) {
         val isSelectable = item.selectionEnabled && item.type == MessageType.MESSAGE
-        indicator.visibility = if (isSelectable) View.VISIBLE else View.GONE
+        val density = root.resources.displayMetrics.density
+        val hiddenOffset = -12f * density
+        indicator.animate().cancel()
         if (isSelectable) {
+            val wasVisible = indicator.visibility == View.VISIBLE
+            if (!wasVisible) {
+                indicator.visibility = View.VISIBLE
+                indicator.alpha = 0f
+                indicator.translationX = hiddenOffset
+            }
+            val previousSelection = indicator.getTag(R.id.tag_message_selection_checked) as? Boolean
             indicator.setImageResource(
                 if (item.isSelected) R.drawable.ic_action_select else R.drawable.ic_circle_outline
             )
+            indicator.setTag(R.id.tag_message_selection_checked, item.isSelected)
+            if (!ValueAnimator.areAnimatorsEnabled()) {
+                indicator.alpha = 1f
+                indicator.translationX = 0f
+                indicator.scaleX = 1f
+                indicator.scaleY = 1f
+            } else {
+                indicator.animate()
+                    .alpha(1f)
+                    .translationX(0f)
+                    .setDuration(SELECTION_ANIMATION_MS)
+                    .setInterpolator(SELECTION_INTERPOLATOR)
+                    .start()
+                if (wasVisible && previousSelection != null && previousSelection != item.isSelected) {
+                    indicator.scaleX = 0.72f
+                    indicator.scaleY = 0.72f
+                    indicator.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(CHECK_ANIMATION_MS)
+                        .setInterpolator(SELECTION_INTERPOLATOR)
+                        .start()
+                }
+            }
             indicator.setOnClickListener {
                 eventSink?.onSelectionToggle(item.messageId)
             }
         } else {
             indicator.setOnClickListener(null)
+            if (indicator.visibility == View.VISIBLE && ValueAnimator.areAnimatorsEnabled()) {
+                indicator.animate()
+                    .alpha(0f)
+                    .translationX(hiddenOffset)
+                    .setDuration(SELECTION_ANIMATION_MS)
+                    .setInterpolator(SELECTION_INTERPOLATOR)
+                    .withEndAction {
+                        indicator.visibility = View.GONE
+                        indicator.alpha = 1f
+                        indicator.translationX = 0f
+                    }
+                    .start()
+            } else {
+                indicator.visibility = View.GONE
+                indicator.alpha = 1f
+                indicator.translationX = 0f
+            }
         }
         if (contentColumn != null) {
-            val density = contentColumn.resources.displayMetrics.density
-            contentColumn.translationX = if (isSelectable) SELECTION_SHIFT_DP * density else 0f
+            val targetTranslation = if (isSelectable) SELECTION_SHIFT_DP * density else 0f
+            contentColumn.animate().cancel()
+            if (ValueAnimator.areAnimatorsEnabled()) {
+                contentColumn.animate()
+                    .translationX(targetTranslation)
+                    .setDuration(SELECTION_ANIMATION_MS)
+                    .setInterpolator(SELECTION_INTERPOLATOR)
+                    .start()
+            } else {
+                contentColumn.translationX = targetTranslation
+            }
         }
+        bindSelectionBackground(root, item.isSelected && isSelectable)
+    }
+
+    private fun bindSelectionBackground(root: View, selected: Boolean) {
+        val existing = root.getTag(R.id.tag_message_selection_background) as? ColorDrawable
+        val oldAnimator = root.getTag(R.id.tag_message_selection_animator) as? ValueAnimator
+        root.setTag(R.id.tag_message_selection_animator, null)
+        oldAnimator?.cancel()
+        if (!selected && existing == null) return
+
+        val drawable = existing ?: ColorDrawable().also {
+            it.alpha = 0
+            root.setTag(R.id.tag_message_selection_background, it)
+            root.foreground = it
+        }
+        drawable.color = MaterialColors.getColor(root, androidx.appcompat.R.attr.colorPrimary)
+        if (root.foreground !== drawable) root.foreground = drawable
+        val targetAlpha = if (selected) SELECTION_BACKGROUND_ALPHA else 0
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            drawable.alpha = targetAlpha
+            if (!selected) {
+                root.foreground = null
+                root.setTag(R.id.tag_message_selection_background, null)
+            }
+            return
+        }
+        val animator = ValueAnimator.ofInt(drawable.alpha, targetAlpha).apply {
+            duration = SELECTION_ANIMATION_MS
+            interpolator = SELECTION_INTERPOLATOR
+            addUpdateListener { drawable.alpha = it.animatedValue as Int }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (root.getTag(R.id.tag_message_selection_animator) !== animation) return
+                    root.setTag(R.id.tag_message_selection_animator, null)
+                    if (!selected) {
+                        root.foreground = null
+                        root.setTag(R.id.tag_message_selection_background, null)
+                    }
+                }
+            })
+        }
+        root.setTag(R.id.tag_message_selection_animator, animator)
+        animator.start()
     }
 
     companion object {
+        /** Совпадает с layout_marginTop у timeStatusLayout в item_message_sent/received. */
+        private const val TIME_STATUS_TOP_MARGIN_DP = 2f
+        /** Поднимает строку времени на уровень длительности под волной голосового. */
+        private const val VOICE_INLINE_TIME_OVERLAP_DP = 27f
+        /** Насколько низ строки времени выше низа последней строки текста. */
+        private const val INLINE_TIME_RAISE_DP = 2f
+        /** Зазор между концом текста и временем в одной строке. */
+        private const val INLINE_TIME_GAP_DP = 8f
         private const val VIEW_TYPE_SENT = 1
         private const val VIEW_TYPE_RECEIVED = 2
         private const val VIEW_TYPE_DATE_SEPARATOR = 3
@@ -119,6 +260,32 @@ class MessageAdapter(
          */
         const val PAYLOAD_SENDER_INFO = "sender_info"
 
+        /** Only outgoing upload indicators/status changed; media views stay bound and keep previews. */
+        const val PAYLOAD_OUTGOING_PROGRESS = 1 shl 0
+        /** Selection state changed; only the indicator, row tint and inbound content offset are rebound. */
+        const val PAYLOAD_SELECTION = 1 shl 1
+
+        internal data class MergedPayload(val flags: Int, val senderInfoChanged: Boolean)
+
+        internal fun mergePayloads(payloads: List<Any>): MergedPayload? {
+            if (payloads.isEmpty()) return null
+            var flags = 0
+            var senderInfoChanged = false
+            val knownFlags = PAYLOAD_OUTGOING_PROGRESS or PAYLOAD_SELECTION
+            payloads.forEach { payload ->
+                when (payload) {
+                    PAYLOAD_SENDER_INFO -> senderInfoChanged = true
+                    is Int -> {
+                        if (payload and knownFlags.inv() != 0) return null
+                        flags = flags or payload
+                    }
+                    else -> return null
+                }
+            }
+            return if (flags == 0 && !senderInfoChanged) null
+            else MergedPayload(flags = flags, senderInfoChanged = senderInfoChanged)
+        }
+
         /** «Хвостик» последнего пузыря в серии. */
         private const val BUBBLE_TAIL_CORNER_DP = 8f
         /** Отступ между сериями сообщений. */
@@ -129,6 +296,10 @@ class MessageAdapter(
         private val ZERO_CORNERS = floatArrayOf(0f, 0f, 0f, 0f)
         /** Сдвиг contentColumn у входящих в режиме выделения: 24dp индикатор + 8dp зазор. */
         private const val SELECTION_SHIFT_DP = 32f
+        private const val SELECTION_ANIMATION_MS = 180L
+        private const val CHECK_ANIMATION_MS = 150L
+        private const val SELECTION_BACKGROUND_ALPHA = 36
+        private val SELECTION_INTERPOLATOR = PathInterpolator(0.2f, 0f, 0f, 1f)
 
     }
 
@@ -238,13 +409,29 @@ class MessageAdapter(
         position: Int,
         payloads: MutableList<Any>
     ) {
-        // Незнакомый payload или пустой список — обычный полный бинд.
-        if (payloads.isEmpty() || payloads.any { it != PAYLOAD_SENDER_INFO }) {
+        if (payloads.isEmpty()) {
             super.onBindViewHolder(holder, position, payloads)
             return
         }
-        if (holder is ReceivedMessageViewHolder) {
-            holder.bindSenderInfo(getItem(position))
+
+        val mergedPayload = mergePayloads(payloads)
+        if (mergedPayload == null) {
+            super.onBindViewHolder(holder, position, payloads)
+            return
+        }
+
+        val item = getItem(position)
+        if (mergedPayload.senderInfoChanged && holder is ReceivedMessageViewHolder) {
+            holder.bindSenderInfo(item)
+        }
+        if (mergedPayload.flags and PAYLOAD_OUTGOING_PROGRESS != 0 && holder is SentMessageViewHolder) {
+            holder.bindOutgoingProgress(item)
+        }
+        if (mergedPayload.flags and PAYLOAD_SELECTION != 0) {
+            when (holder) {
+                is SentMessageViewHolder -> holder.bindSelection(item)
+                is ReceivedMessageViewHolder -> holder.bindSelection(item)
+            }
         }
     }
 
@@ -360,11 +547,16 @@ class MessageAdapter(
     private fun applyBubbleShape(card: MaterialCardView, group: GroupPosition, isSentByMe: Boolean) {
         val density = card.resources.displayMetrics.density
         val c = computeBubbleCorners(density, group, isSentByMe)
+        // Однострочный пузырь ниже двух радиусов из настроек: без ограничения соседние углы
+        // перекрываются и форма рисуется с «шипом» сбоку.
+        fun clamped(px: Float) = com.google.android.material.shape.CornerSize { bounds ->
+            minOf(px, bounds.height() / 2f, bounds.width() / 2f)
+        }
         card.shapeAppearanceModel = ShapeAppearanceModel.builder()
-            .setTopLeftCornerSize(c[0])
-            .setTopRightCornerSize(c[1])
-            .setBottomRightCornerSize(c[2])
-            .setBottomLeftCornerSize(c[3])
+            .setTopLeftCornerSize(clamped(c[0]))
+            .setTopRightCornerSize(clamped(c[1]))
+            .setBottomRightCornerSize(clamped(c[2]))
+            .setBottomLeftCornerSize(clamped(c[3]))
             .build()
     }
 
@@ -384,6 +576,11 @@ class MessageAdapter(
         }
     }
 
+    /** Тап в пустую часть строки сообщения ведёт себя как тап по видимому пузырю (или стикеру). */
+    private fun bindRowClick(row: View, card: View, sticker: View, listener: View.OnClickListener) {
+        row.setOnClickListener { listener.onClick(if (sticker.visibility == View.VISIBLE) sticker else card) }
+    }
+
     // ─── Sent Message ViewHolder ───────────────────────────────────────────────
 
     inner class FooterViewHolder(view: View) : RecyclerView.ViewHolder(view)
@@ -395,13 +592,13 @@ class MessageAdapter(
         fun bind(item: MessageItem, group: GroupPosition) {
             applyGroupSpacing(binding.root, group)
             // Индикатор выделения уже попадает в существующий отступ слева — сдвигать нечего.
-            bindSelectionIndicator(binding.selectionIndicator, contentColumn = null, item)
+            bindSelectionIndicator(binding.root, binding.selectionIndicator, contentColumn = null, item)
 
-            // Клик открывает меню действий только по самому пузырю — тап в пустое
-            // место строки (широкий paddingStart для отступа от края экрана) меню не открывает.
+            // Клик по пузырю или в пустое место строки рядом с ним открывает меню действий:
+            // у сообщения из одной картинки тап по пузырю открывает просмотр, а удержание — выделение.
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
-                if (item.selectionEnabled) {
+                if (eventSink?.isSelectionActive() ?: item.selectionEnabled) {
                     eventSink?.onSelectionToggle(item.messageId)
                 } else {
                     eventSink?.onMessageActionRequested(v, item)
@@ -409,6 +606,7 @@ class MessageAdapter(
             }
             binding.messageCard.setOnClickListener(bubbleClickListener)
             binding.stickerContainer.setOnClickListener(bubbleClickListener)
+            bindRowClick(binding.root, binding.messageCard, binding.stickerContainer, bubbleClickListener)
 
             // Цитата reply (выше текста) и forward (ниже текста) — выбираем какую показать
             bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
@@ -469,11 +667,38 @@ class MessageAdapter(
 
                 applyDeliveryStatusIcon(binding.readStatusImageView, item.readStatus)
 
+                val hasOutgoingMedia = item.outgoingAttachments.any { it.isOutgoingMedia() }
                 val showMediaTimeOverlay = item.text.isBlank() &&
-                    (item.localPreviewUris.isNotEmpty() || displayedAttachments.isPureMedia())
+                    (hasOutgoingMedia || item.localPreviewUris.isNotEmpty() || displayedAttachments.isPureMedia())
                 binding.timeStatusLayout.visibility = if (showMediaTimeOverlay) View.GONE else View.VISIBLE
+                applyTimePlacement(
+                    binding.timeStatusLayout,
+                    binding.messageTextView,
+                    binding.messageMarkdownContainer,
+                    item,
+                    displayedAttachments,
+                    binding.forwardQuotesContainer,
+                )
 
-                if (item.localPreviewUris.isNotEmpty()) {
+                if (item.outgoingAttachments.isNotEmpty()) {
+                    val mediaWidthPx = if (hasOutgoingMedia) calcMediaWidthPx(binding.root.context) else 0
+                    binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
+                        it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
+                    }
+                    binding.attachmentsContainer.removeAllViews()
+                    val (outgoingView, mediaGrid) = buildOutgoingAttachments(
+                        binding.attachmentsContainer,
+                        item.outgoingAttachments,
+                        item,
+                        mediaWidthPx,
+                        bubbleCorners,
+                        roundMediaTop,
+                        roundMediaBottom,
+                    )
+                    binding.attachmentsContainer.addView(outgoingView)
+                    if (showMediaTimeOverlay && mediaGrid != null) bindMediaTimeOverlay(mediaGrid, item)
+                    binding.attachmentsContainer.visibility = View.VISIBLE
+                } else if (item.localPreviewUris.isNotEmpty()) {
                     // Оптимистичное сообщение: вложения ещё не на сервере — рендерим локальные превью.
                     val mediaWidthPx = calcMediaWidthPx(binding.root.context)
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
@@ -522,26 +747,19 @@ class MessageAdapter(
                     binding.attachmentsContainer.removeAllViews()
                 }
 
-                // Inline upload progress overlay (M3 Expressive feedback) — рендерится
-                // поверх attachmentsContainer пока активен upload.
-                val progress = item.uploadProgress
-                if (progress != null) {
-                    binding.uploadProgressOverlay.visibility = View.VISIBLE
-                    binding.uploadProgressBar.progress = progress
-                    binding.uploadProgressLabel.text = binding.root.context.getString(
-                        R.string.message_upload_progress,
-                        progress
-                    )
-                    binding.uploadProgressOverlay.layoutParams = binding.uploadProgressOverlay.layoutParams.also {
-                        it.width = if (binding.attachmentsContainer.visibility == View.VISIBLE)
-                            binding.attachmentsContainer.layoutParams.width
-                        else ViewGroup.LayoutParams.MATCH_PARENT
-                        it.height = ViewGroup.LayoutParams.MATCH_PARENT
-                    }
-                } else {
-                    binding.uploadProgressOverlay.visibility = View.GONE
-                }
             }
+        }
+
+        fun bindOutgoingProgress(item: MessageItem) {
+            applyDeliveryStatusIcon(binding.readStatusImageView, item.readStatus)
+            binding.attachmentsContainer.findViewById<ImageView>(R.id.mediaReadStatusImageView)?.let {
+                applyDeliveryStatusIcon(it, item.readStatus, useLightTint = true)
+            }
+            updateOutgoingUploadViews(binding.attachmentsContainer, item)
+        }
+
+        fun bindSelection(item: MessageItem) {
+            bindSelectionIndicator(binding.root, binding.selectionIndicator, contentColumn = null, item)
         }
     }
 
@@ -588,17 +806,21 @@ class MessageAdapter(
             }
         }
 
+        fun bindSelection(item: MessageItem) {
+            bindSelectionIndicator(binding.root, binding.selectionIndicator, binding.contentColumn, item)
+        }
+
         fun bind(item: MessageItem, group: GroupPosition) {
             applyGroupSpacing(binding.root, group)
             // У входящих своего отступа под индикатор нет — в режиме выделения сдвигаем
             // весь контент вправо, освобождая место индикатору у левого края.
-            bindSelectionIndicator(binding.selectionIndicator, binding.contentColumn, item)
+            bindSelectionIndicator(binding.root, binding.selectionIndicator, binding.contentColumn, item)
 
-            // Клик открывает меню действий только по самому пузырю — тап в пустое
-            // место строки (широкий paddingEnd для отступа от края экрана) меню не открывает.
+            // Клик по пузырю или в пустое место строки рядом с ним открывает меню действий:
+            // у сообщения из одной картинки тап по пузырю открывает просмотр, а удержание — выделение.
             // В режиме выделения клик по пузырю переключает выбор вместо открытия меню.
             val bubbleClickListener = View.OnClickListener { v ->
-                if (item.selectionEnabled) {
+                if (eventSink?.isSelectionActive() ?: item.selectionEnabled) {
                     eventSink?.onSelectionToggle(item.messageId)
                 } else {
                     eventSink?.onMessageActionRequested(v, item)
@@ -606,6 +828,7 @@ class MessageAdapter(
             }
             binding.messageCard.setOnClickListener(bubbleClickListener)
             binding.stickerContainer.setOnClickListener(bubbleClickListener)
+            bindRowClick(binding.root, binding.messageCard, binding.stickerContainer, bubbleClickListener)
 
             // Цитата reply (выше текста) и forward (ниже текста)
             bindQuoteSplit(binding.replyQuote, binding.forwardQuotesContainer, item.attachments, item.replyTo)
@@ -667,6 +890,14 @@ class MessageAdapter(
 
                 val showMediaTimeOverlay = item.text.isBlank() && displayedAttachments.isPureMedia()
                 binding.timeStatusLayout.visibility = if (showMediaTimeOverlay) View.GONE else View.VISIBLE
+                applyTimePlacement(
+                    binding.timeStatusLayout,
+                    binding.messageTextView,
+                    binding.messageMarkdownContainer,
+                    item,
+                    displayedAttachments,
+                    binding.forwardQuotesContainer,
+                )
 
                 if (displayedAttachments.isNotEmpty()) {
                     val hasMedia = displayedAttachments.any {
@@ -1194,6 +1425,265 @@ class MessageAdapter(
         return column
     }
 
+    private fun OutgoingAttachmentUi.isOutgoingMedia(): Boolean = when (kind) {
+        OutgoingAttachmentKind.RAW_IMAGE,
+        OutgoingAttachmentKind.EDITED_IMAGE,
+        OutgoingAttachmentKind.VIDEO,
+        OutgoingAttachmentKind.STICKER -> true
+        else -> false
+    }
+
+    private fun OutgoingAttachmentUi.isOutgoingAudio(): Boolean =
+        kind == OutgoingAttachmentKind.VOICE || mimeType.startsWith("audio/", ignoreCase = true)
+
+    private fun buildOutgoingAttachments(
+        container: ViewGroup,
+        attachments: List<OutgoingAttachmentUi>,
+        item: MessageItem,
+        mediaWidthPx: Int,
+        bubbleCorners: FloatArray,
+        roundMediaTop: Boolean,
+        roundMediaBottom: Boolean,
+    ): Pair<View, android.widget.FrameLayout?> {
+        val context = container.context
+        val ordered = attachments.sortedBy { it.index }
+        val media = ordered.filter { it.isOutgoingMedia() }
+        val other = ordered.filterNot { it.isOutgoingMedia() }
+        val wrapper = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                if (mediaWidthPx > 0) ViewGroup.LayoutParams.MATCH_PARENT else ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        var mediaGrid: android.widget.FrameLayout? = null
+        if (media.isNotEmpty() && mediaWidthPx > 0) {
+            mediaGrid = buildOutgoingMediaGrid(
+                context = context,
+                attachments = media,
+                item = item,
+                maxWidth = mediaWidthPx,
+                bubbleCorners = bubbleCorners,
+                roundTop = roundMediaTop,
+                roundBottom = roundMediaBottom && other.isEmpty(),
+            )
+            wrapper.addView(mediaGrid)
+        }
+        other.forEach { attachment ->
+            val row = if (attachment.isOutgoingAudio()) {
+                buildOutgoingAudioRow(container, attachment, item)
+            } else {
+                buildOutgoingDocumentRow(container, attachment, item)
+            }
+            wrapper.addView(row)
+        }
+        return wrapper to mediaGrid
+    }
+
+    private fun buildOutgoingMediaGrid(
+        context: Context,
+        attachments: List<OutgoingAttachmentUi>,
+        item: MessageItem,
+        maxWidth: Int,
+        bubbleCorners: FloatArray,
+        roundTop: Boolean,
+        roundBottom: Boolean,
+    ): android.widget.FrameLayout {
+        val dm = context.resources.displayMetrics
+        val spacingPx = (2 * dm.density + 0.5f).toInt()
+        val capped = attachments.take(10)
+        val layout = determineLayout(capped.size)
+        val grid = android.widget.FrameLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(maxWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        val column = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                maxWidth,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+        }
+
+        var itemIndex = 0
+        for ((rowIdx, itemsInRow) in layout.withIndex()) {
+            val cellWidth = (maxWidth - spacingPx * (itemsInRow - 1)) / itemsInRow
+            val rowAttachments = capped.subList(itemIndex, (itemIndex + itemsInRow).coerceAtMost(capped.size))
+            val rowRatios = if (capped.size == 1) {
+                rowAttachments.mapNotNull { outgoingMediaRatio(context, it) }
+            } else {
+                emptyList()
+            }
+            val avgRatio = if (rowRatios.isNotEmpty()) rowRatios.average().toFloat() else 1f
+            val cellHeight = (cellWidth / avgRatio).toInt().coerceIn(cellWidth / 3, cellWidth * 2)
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(maxWidth, cellHeight).apply {
+                    if (rowIdx > 0) topMargin = spacingPx
+                }
+            }
+            for (col in 0 until itemsInRow) {
+                if (itemIndex >= capped.size) break
+                val attachment = capped[itemIndex]
+                val cell = LayoutInflater.from(context)
+                    .inflate(R.layout.item_attachment_media_cell, row, false)
+                cell.layoutParams = LinearLayout.LayoutParams(cellWidth, cellHeight).apply {
+                    if (col > 0) marginStart = spacingPx
+                }
+                val corners = mediaCellCorners(
+                    bubbleCorners, roundTop, roundBottom,
+                    isTopRow = rowIdx == 0,
+                    isBottomRow = rowIdx == layout.lastIndex,
+                    isLeftCol = col == 0,
+                    isRightCol = col == itemsInRow - 1,
+                )
+                applyMediaCellCorners(cell, corners)
+                cell.tag = attachment
+                val thumbnail = cell.findViewById<ImageView>(R.id.thumbnailImage)
+                val localFile = File(attachment.previewPath ?: attachment.stagedPath)
+                // Перерисовка пузыря во время отправки берёт уже декодированное превью из памяти,
+                // чтобы картинка не пропадала на кадр-заглушку.
+                val memoryKey = "outgoing:${localFile.path}"
+                val seeded = ImageLoadHelper.peekMemory(context.imageLoader, memoryKey)
+                if (seeded != null) {
+                    thumbnail.setImageBitmap(seeded)
+                } else {
+                    thumbnail.setImageResource(R.drawable.ic_image_placeholder)
+                    if (localFile.isFile) {
+                        thumbnail.load(localFile) {
+                            memoryCacheKey(memoryKey)
+                            crossfade(150)
+                            error(R.drawable.ic_image_placeholder)
+                        }
+                    }
+                }
+                renderOutgoingAttachmentIndicator(cell, attachment, item)
+                row.addView(cell)
+                itemIndex++
+            }
+            column.addView(row)
+        }
+        grid.addView(column)
+        return grid
+    }
+
+    private fun outgoingMediaRatio(context: Context, attachment: OutgoingAttachmentUi): Float? {
+        val uri = Uri.fromFile(File(attachment.previewPath ?: attachment.stagedPath))
+        val dimensions = if (attachment.kind == OutgoingAttachmentKind.VIDEO) {
+            getVideoDimensions(uri, context)
+        } else {
+            ImageCompressor.getImageDimensions(uri, context)
+        }
+        return dimensions?.takeIf { it.first > 0 && it.second > 0 }
+            ?.let { (width, height) -> width.toFloat() / height.toFloat() }
+    }
+
+    private fun buildOutgoingAudioRow(
+        container: ViewGroup,
+        attachment: OutgoingAttachmentUi,
+        item: MessageItem,
+    ): View {
+        val binding = ItemAttachmentAudioBinding.inflate(LayoutInflater.from(container.context), container, false)
+        binding.root.tag = attachment
+        binding.fileNameText.text = attachment.fileName.ifBlank { container.context.getString(R.string.attachment_file) }
+        binding.fileNameText.visibility = View.VISIBLE
+        binding.voiceWaveform.visibility = View.GONE
+        binding.durationText.text = formatFileSize(container.context, attachment.sizeBytes)
+        binding.downloadButton.visibility = View.GONE
+        binding.downloadProgressBar.visibility = View.GONE
+        binding.audioSeekBar.visibility = View.GONE
+        binding.playPauseButton.isEnabled = false
+        binding.playPauseButton.alpha = 0.6f
+        binding.outgoingUploadProgress.setIndicatorColor(resolveOnPrimaryContainerColor(container.context))
+        renderOutgoingAttachmentIndicator(binding.root, attachment, item)
+        return binding.root
+    }
+
+    private fun buildOutgoingDocumentRow(
+        container: ViewGroup,
+        attachment: OutgoingAttachmentUi,
+        item: MessageItem,
+    ): View {
+        val binding = ItemAttachmentDocumentBinding.inflate(LayoutInflater.from(container.context), container, false)
+        binding.root.tag = attachment
+        binding.docFileName.text = attachment.fileName.ifBlank { container.context.getString(R.string.attachment_file) }
+        binding.docFileSize.text = formatFileSize(container.context, attachment.sizeBytes)
+        binding.docDownloadButton.visibility = View.GONE
+        binding.docOpenButton.visibility = View.GONE
+        binding.docMenuButton.visibility = View.GONE
+        binding.docDownloadProgress.visibility = View.GONE
+        applySentDocumentColors(binding)
+        renderOutgoingAttachmentIndicator(binding.root, attachment, item)
+        return binding.root
+    }
+
+    private fun updateOutgoingUploadViews(root: View, item: MessageItem) {
+        val boundAttachment = root.tag as? OutgoingAttachmentUi
+        if (boundAttachment != null) {
+            val attachment = item.outgoingAttachments.firstOrNull { it.index == boundAttachment.index }
+                ?: boundAttachment
+            updateOutgoingAttachmentMetadata(root, boundAttachment, attachment)
+            root.tag = attachment
+            renderOutgoingAttachmentIndicator(root, attachment, item)
+        }
+        if (root is ViewGroup) {
+            for (index in 0 until root.childCount) updateOutgoingUploadViews(root.getChildAt(index), item)
+        }
+    }
+
+    private fun updateOutgoingAttachmentMetadata(
+        root: View,
+        old: OutgoingAttachmentUi,
+        new: OutgoingAttachmentUi,
+    ) {
+        if (old.fileName == new.fileName && old.sizeBytes == new.sizeBytes) return
+        val fileName = new.fileName.ifBlank { root.context.getString(R.string.attachment_file) }
+        root.findViewById<android.widget.TextView>(R.id.docFileName)?.text = fileName
+        root.findViewById<android.widget.TextView>(R.id.fileNameText)?.text = fileName
+        val size = formatFileSize(root.context, new.sizeBytes)
+        root.findViewById<android.widget.TextView>(R.id.docFileSize)?.text = size
+        root.findViewById<android.widget.TextView>(R.id.durationText)?.text = size
+    }
+
+    private fun renderOutgoingAttachmentIndicator(
+        root: View,
+        attachment: OutgoingAttachmentUi,
+        item: MessageItem,
+    ) {
+        val context = root.context
+        val progress = root.findViewById<com.google.android.material.progressindicator.CircularProgressIndicator>(
+            R.id.outgoingUploadProgress,
+        )
+        val mediaIndicator = root.findViewById<View>(R.id.outgoingUploadIndicator)
+        val cancelButton = root.findViewById<View>(R.id.outgoingCancelButton)
+        val showProgress = item.outgoingState != OutgoingMessageState.FAILED &&
+            attachment.uploadState != OutgoingAttachmentUploadState.DONE
+        mediaIndicator?.visibility = if (showProgress) View.VISIBLE else View.GONE
+        if (mediaIndicator == null) progress?.visibility = if (showProgress) View.VISIBLE else View.GONE
+        progress?.let {
+            it.isIndeterminate = attachment.uploadState != OutgoingAttachmentUploadState.UPLOADING
+            if (!it.isIndeterminate) it.progress = attachment.progress
+            if (mediaIndicator == null) it.contentDescription = context.getString(
+                R.string.message_upload_progress,
+                attachment.progress,
+            )
+        }
+        cancelButton?.let { button ->
+            button.visibility = if (showProgress && !item.localId.isNullOrBlank()) View.VISIBLE else View.GONE
+            button.contentDescription = context.getString(R.string.btn_cancel)
+            button.setOnClickListener {
+                item.localId?.takeIf(String::isNotBlank)?.let { operationId ->
+                    eventSink?.onCancelOutgoing(operationId)
+                }
+            }
+        }
+        root.findViewById<View>(R.id.mediaDownloadIcon)?.visibility = View.GONE
+        root.findViewById<View>(R.id.mediaDownloadProgress)?.visibility = View.GONE
+        root.findViewById<View>(R.id.videoOverlay)?.visibility = if (attachment.kind == OutgoingAttachmentKind.VIDEO) View.VISIBLE else View.GONE
+        root.findViewById<ImageView>(R.id.playIcon)?.visibility = if (
+            attachment.kind == OutgoingAttachmentKind.VIDEO && attachment.uploadState == OutgoingAttachmentUploadState.DONE
+        ) View.VISIBLE else View.GONE
+    }
+
     /**
      * Привязывает данные к ячейке медиа-сетки: превью, оверлей видео, клик.
      */
@@ -1218,8 +1708,10 @@ class MessageAdapter(
 
         val downloadIcon = cellView.findViewById<View>(R.id.mediaDownloadIcon)
         val progress = cellView.findViewById<com.google.android.material.progressindicator.CircularProgressIndicator>(R.id.mediaDownloadProgress)
-        thumbnail.setImageResource(R.drawable.ic_image_placeholder)
-        downloadIcon.visibility = View.VISIBLE
+        // Только что отправленное вложение уже лежит в памяти — показываем его без кадра-заглушки.
+        val seeded = ImageLoadHelper.peekMemory(thumbnail.context, attachment.fileId)
+        if (seeded != null) thumbnail.setImageBitmap(seeded) else thumbnail.setImageResource(R.drawable.ic_image_placeholder)
+        downloadIcon.visibility = if (seeded != null) View.GONE else View.VISIBLE
         cellView.contentDescription = thumbnail.context.getString(R.string.cd_download_file)
         viewOperations.launch(thumbnail) {
             if (ImageLoadHelper.loadCached(thumbnail, attachment)) {
@@ -1293,6 +1785,91 @@ class MessageAdapter(
         }
     }
 
+    /** У голосового без текста время и статус встают справа в строку длительности, как в Telegram. */
+    /**
+     * Положение строки времени: у голосового — на уровне длительности, у простого текста —
+     * в конце последней строки (как в Telegram), иначе — отдельной строкой под содержимым.
+     * Вызывать после renderText и установки текста времени/метки «изменено».
+     */
+    private fun applyTimePlacement(
+        timeStatus: ViewGroup,
+        textView: android.widget.TextView,
+        markdownContainer: ViewGroup,
+        item: MessageItem,
+        displayed: List<Shared.MessageAttachment>,
+        forwardQuotes: View,
+    ) {
+        val density = timeStatus.resources.displayMetrics.density
+        val forwardHidden = forwardQuotes.visibility != View.VISIBLE
+        val voiceInline = item.text.isBlank() && item.outgoingAttachments.isEmpty() && forwardHidden &&
+            displayed.size == 1 && displayed[0].type == Shared.MessageAttachmentType.VOICE
+        val text = textView.text
+        val textInline = !voiceInline && forwardHidden &&
+            timeStatus.visibility == View.VISIBLE &&
+            textView.visibility == View.VISIBLE && !text.isNullOrEmpty() &&
+            markdownContainer.childCount == 1 && markdownContainer.getChildAt(0) === textView &&
+            !android.text.TextDirectionHeuristics.FIRSTSTRONG_LTR.isRtl(text, 0, text.length)
+        val topMargin = when {
+            voiceInline -> -(VOICE_INLINE_TIME_OVERLAP_DP * density).toInt()
+            textInline -> -(appendInlineTimeSpacer(timeStatus, textView) + (INLINE_TIME_RAISE_DP * density).toInt())
+            else -> (TIME_STATUS_TOP_MARGIN_DP * density).toInt()
+        }
+        val params = timeStatus.layoutParams as ViewGroup.MarginLayoutParams
+        if (params.topMargin != topMargin) {
+            params.topMargin = topMargin
+            timeStatus.layoutParams = params
+        }
+    }
+
+    /**
+     * Дописывает в конец текста невидимый отступ шириной со строку времени, чтобы время
+     * встало в последнюю строку, а если места нет — перенеслось на новую. Возвращает высоту
+     * строки времени в px. Слот иконки статуса резервируется всегда: частичный ребинд
+     * (PAYLOAD_OUTGOING_PROGRESS) может показать её без пересчёта текста.
+     */
+    private fun appendInlineTimeSpacer(timeStatus: ViewGroup, textView: android.widget.TextView): Int {
+        val density = timeStatus.resources.displayMetrics.density
+        val time = timeStatus.findViewById<android.widget.TextView>(R.id.timeTextView)
+        val edited = timeStatus.findViewById<android.widget.TextView>(R.id.editedLabelTextView)
+        val hasStatusIcon = timeStatus.findViewById<View>(R.id.readStatusImageView) != null
+        var width = time.paint.measureText(time.text.toString()) + INLINE_TIME_GAP_DP * density
+        if (edited.visibility == View.VISIBLE) {
+            width += edited.paint.measureText(edited.text.toString()) + 6 * density
+        }
+        if (hasStatusIcon) width += (4 + 16) * density
+        val spacer = android.text.SpannableStringBuilder(textView.text).append(' ')
+        val start = spacer.length
+        spacer.append('￼')
+        spacer.setSpan(InlineTimeSpacerSpan(kotlin.math.ceil(width).toInt()), start, spacer.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        textView.text = spacer
+        val fm = time.paint.fontMetricsInt
+        val iconHeight = if (hasStatusIcon) (16 * density).toInt() else 0
+        return maxOf(fm.bottom - fm.top, iconHeight)
+    }
+
+    /** Пустое место фиксированной ширины в конце текста под строку времени. */
+    private class InlineTimeSpacerSpan(private val widthPx: Int) : android.text.style.ReplacementSpan() {
+        override fun getSize(
+            paint: android.graphics.Paint,
+            text: CharSequence?,
+            start: Int,
+            end: Int,
+            fm: android.graphics.Paint.FontMetricsInt?,
+        ): Int = widthPx
+
+        override fun draw(
+            canvas: android.graphics.Canvas,
+            text: CharSequence?,
+            start: Int,
+            end: Int,
+            x: Float,
+            top: Int,
+            y: Int,
+            bottom: Int,
+            paint: android.graphics.Paint,
+        ) = Unit
+    }
+
     // ─── Audio Row ────────────────────────────────────────────────────────────
 
     private fun inflateAudioRow(container: ViewGroup, attachment: Shared.MessageAttachment, isSentByMe: Boolean = false, sourceMessageId: Long? = null): View {
@@ -1313,8 +1890,6 @@ class MessageAdapter(
         binding.voiceWaveform.resetAmplitudes()
         var cachedDurationMillis = 0L
         binding.durationText.text = formatAudioTime(0L)
-        binding.voiceSpeed.visibility = if (isVoice) View.VISIBLE else View.GONE
-        binding.voiceSpeed.setOnClickListener { playback.cycleSpeed() }
 
         if (isSentByMe) {
             val onContainer = resolveOnPrimaryContainerColor(context)
@@ -1502,9 +2077,6 @@ class MessageAdapter(
             playback.state.collect { state ->
                 val active = state.track?.fileId == fileId
                 updateAudioPlaybackUI(binding, active && state.isPlaying)
-                val speed = VoicePlaybackSpeed.label(context, state.speed)
-                binding.voiceSpeed.text = speed
-                binding.voiceSpeed.contentDescription = context.getString(R.string.cd_voice_speed, speed)
                 if (active && state.durationMillis > 0L) {
                     val progress = (state.positionMillis.toFloat() / state.durationMillis).coerceIn(0f, 1f)
                     if (!binding.voiceWaveform.isPressed) binding.voiceWaveform.setProgress(progress)
@@ -1530,10 +2102,19 @@ class MessageAdapter(
                     }
                 }
             }
-            override fun onStartTrackingTouch(seekBar: SeekBar) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar) {}
+            override fun onStartTrackingTouch(seekBar: SeekBar) {
+                if (audioPlaybackController.isActiveFile(fileId)) audioPlaybackController.beginScrub()
+            }
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                if (audioPlaybackController.isActiveFile(fileId)) audioPlaybackController.endScrub()
+            }
         })
 
+        binding.voiceWaveform.onScrubChanged = { started ->
+            if (audioPlaybackController.isActiveFile(fileId)) {
+                if (started) audioPlaybackController.beginScrub() else audioPlaybackController.endScrub()
+            }
+        }
         binding.voiceWaveform.onSeekRequested = { progress ->
             if (audioPlaybackController.isActiveFile(fileId)) {
                 val duration = audioPlaybackController.duration()
@@ -1543,72 +2124,7 @@ class MessageAdapter(
             }
         }
 
-        binding.root.setOnLongClickListener { view ->
-            showAudioContextMenu(view, context, fileId, fileName, binding, isVoice)
-            true
-        }
-
         return binding.root
-    }
-    private fun showAudioContextMenu(
-        anchor: View,
-        context: Context,
-        fileId: String,
-        fileName: String,
-        binding: ItemAttachmentAudioBinding,
-        isVoice: Boolean
-    ) {
-        val popup = PopupMenu(context, anchor)
-        val menuInflater = popup.menuInflater
-        menuInflater.inflate(R.menu.menu_audio_attachment, popup.menu)
-
-        val isCached = attachmentLoader.hasCached(fileId)
-        popup.menu.findItem(R.id.action_delete_from_cache).isVisible = isCached
-
-        popup.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.action_save_audio -> {
-                    if (attachmentLoader.hasCached(fileId)) {
-                        val cachedFile = attachmentLoader.cached(fileId)
-                        if (cachedFile != null) {
-                            eventSink?.onAttachmentAction(
-                                MessageAttachmentAction.Save(fileName = fileName, cachedFile = cachedFile)
-                            )
-                        }
-                    } else {
-                        eventSink?.onAttachmentAction(
-                            MessageAttachmentAction.ToastRes(R.string.audio_download_required)
-                        )
-                    }
-                    true
-                }
-                R.id.action_delete_from_cache -> {
-                    if (audioPlaybackController.isActiveFile(fileId)) {
-                        audioPlaybackController.stop()
-                    }
-                    attachmentLoader.deleteCached(fileId)
-                    audioPlaybackController.remove(fileId)
-                    binding.downloadButton.visibility = View.VISIBLE
-                    binding.downloadButton.isEnabled = true
-                    binding.downloadButton.alpha = 1f
-                    binding.downloadProgressBar.visibility = View.GONE
-                    binding.audioSeekBar.visibility = View.GONE
-                    binding.voiceWaveform.resetAmplitudes()
-                    binding.voiceWaveform.visibility = if (isVoice) View.VISIBLE else View.GONE
-                    binding.voiceWaveform.isEnabled = false
-                    binding.fileNameText.visibility = if (isVoice) View.GONE else View.VISIBLE
-                    binding.playPauseButton.isEnabled = false
-                    binding.playPauseButton.alpha = 0.4f
-                    binding.durationText.text = "0:00"
-                    eventSink?.onAttachmentAction(
-                        MessageAttachmentAction.ToastRes(R.string.audio_removed_from_cache)
-                    )
-                    true
-                }
-                else -> false
-            }
-        }
-        popup.show()
     }
     private fun getVideoDimensions(uri: Uri, context: Context): Pair<Int, Int>? {
         return try {
@@ -1746,30 +2262,20 @@ class MessageAdapter(
         binding.docFileSize.text = formatFileSize(context, attachment.attachmentSize)
         binding.docDownloadProgress.visibility = View.GONE
 
-        // Перекраска для отправленных сообщений (контраст на primaryContainer)
-        if (isSentByMe) {
-            val onContainer = resolveOnPrimaryContainerColor(context)
-            val onContainerVariant = resolveOnPrimaryContainerVariantColor(context)
-            val onContainerCsl = ColorStateList.valueOf(onContainer)
-
-            binding.docFileIcon.imageTintList = onContainerCsl
-            binding.docFileName.setTextColor(onContainer)
-            binding.docFileSize.setTextColor(onContainerVariant)
-            binding.docDownloadButton.imageTintList = onContainerCsl
-            binding.docOpenButton.imageTintList = onContainerCsl
-            binding.docDownloadProgress.setIndicatorColor(onContainer)
-        }
+        if (isSentByMe) applySentDocumentColors(binding)
 
         fun updateUiForCached() {
             binding.docDownloadButton.visibility = View.GONE
             binding.docOpenButton.visibility = View.VISIBLE
             binding.docDownloadProgress.visibility = View.GONE
+            binding.docMenuButton.visibility = View.VISIBLE
         }
 
         fun updateUiForNotCached() {
             binding.docDownloadButton.visibility = View.VISIBLE
             binding.docOpenButton.visibility = View.GONE
             binding.docDownloadProgress.visibility = View.GONE
+            binding.docMenuButton.visibility = View.GONE
             binding.docDownloadButton.isEnabled = true
         }
 
@@ -1780,6 +2286,7 @@ class MessageAdapter(
             binding.docDownloadProgress.isIndeterminate = false
             binding.docDownloadProgress.visibility = View.VISIBLE
             binding.docDownloadProgress.progress = 0
+            binding.docMenuButton.visibility = View.GONE
         }
 
         if (attachmentLoader.hasCached(fileId)) {
@@ -1835,13 +2342,29 @@ class MessageAdapter(
             )
         }
 
-        // Long press → context menu
-        binding.root.setOnLongClickListener { view ->
+        binding.docMenuButton.setOnClickListener { view ->
             showDocumentContextMenu(view, context, fileId, fileName, binding)
-            true
         }
 
         return binding.root
+    }
+
+    /** Перекраска строки файла для отправленных сообщений (контраст на primaryContainer). */
+    private fun applySentDocumentColors(binding: ItemAttachmentDocumentBinding) {
+        val context = binding.root.context
+        val onContainer = resolveOnPrimaryContainerColor(context)
+        val onContainerCsl = ColorStateList.valueOf(onContainer)
+        val containerCsl = ColorStateList.valueOf(resolvePrimaryContainerColor(context))
+
+        binding.docFileIcon.backgroundTintList = onContainerCsl
+        binding.docFileIcon.imageTintList = containerCsl
+        binding.docDownloadButton.backgroundTintList = onContainerCsl
+        binding.docDownloadButton.imageTintList = containerCsl
+        binding.docFileName.setTextColor(onContainer)
+        binding.docFileSize.setTextColor(resolveOnPrimaryContainerVariantColor(context))
+        binding.docDownloadProgress.setIndicatorColor(onContainer)
+        binding.docMenuButton.imageTintList = onContainerCsl
+        binding.outgoingUploadProgress.setIndicatorColor(onContainer)
     }
 
     private fun showDocumentContextMenu(
@@ -1856,18 +2379,24 @@ class MessageAdapter(
             // Меню сводилось к одному пункту "Удалить из кеша" — для нескачанного файла нет смысла показывать
             return
         }
-        val popup = PopupMenu(context, anchor)
-        val menuInflater = popup.menuInflater
-        menuInflater.inflate(R.menu.menu_document_attachment, popup.menu)
-
-        popup.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
+        M3ContextMenu.show(
+            anchor = anchor,
+            items = listOf(M3ContextMenu.Item(
+                id = R.id.action_delete_doc_from_cache,
+                title = context.getString(R.string.file_remove_from_cache),
+                icon = R.drawable.ic_action_delete,
+                danger = true,
+            )),
+            alignEnd = true,
+            onItemSelected = { menuItem ->
+            when (menuItem.id) {
                 R.id.action_delete_doc_from_cache -> {
                     attachmentLoader.deleteCached(fileId)
                     binding.docDownloadButton.visibility = View.VISIBLE
                     binding.docDownloadButton.isEnabled = true
                     binding.docOpenButton.visibility = View.GONE
                     binding.docDownloadProgress.visibility = View.GONE
+                    binding.docMenuButton.visibility = View.GONE
                     eventSink?.onAttachmentAction(
                         MessageAttachmentAction.ToastRes(R.string.file_removed_from_cache)
                     )
@@ -1875,8 +2404,8 @@ class MessageAdapter(
                 }
                 else -> false
             }
-        }
-        popup.show()
+            },
+        )
     }
 
     // ─── Formatting Helpers ───────────────────────────────────────────────────
@@ -1913,11 +2442,33 @@ class MessageAdapter(
             if (oldItem.type == MessageType.FOOTER || newItem.type == MessageType.FOOTER) return false
             if (oldItem.type != newItem.type) return false
             if (oldItem.type == MessageType.UNREAD_SEPARATOR) return true
+            if (!oldItem.localId.isNullOrBlank() && oldItem.localId == newItem.localId) return true
             return oldItem.messageId == newItem.messageId
         }
         override fun areContentsTheSame(oldItem: MessageItem, newItem: MessageItem) =
             if (oldItem.type == MessageType.FOOTER && newItem.type == MessageType.FOOTER) true
             else oldItem == newItem
+
+        override fun getChangePayload(oldItem: MessageItem, newItem: MessageItem): Any? {
+            val progressChanged = oldItem.uploadProgress != newItem.uploadProgress ||
+                oldItem.outgoingState != newItem.outgoingState ||
+                oldItem.outgoingAttachments != newItem.outgoingAttachments ||
+                oldItem.readStatus != newItem.readStatus
+            val selectionChanged = oldItem.isSelected != newItem.isSelected ||
+                oldItem.selectionEnabled != newItem.selectionEnabled
+            var flags = 0
+            if (progressChanged) flags = flags or PAYLOAD_OUTGOING_PROGRESS
+            if (selectionChanged) flags = flags or PAYLOAD_SELECTION
+            if (flags == 0) return null
+            return oldItem.copy(
+                uploadProgress = newItem.uploadProgress,
+                outgoingState = newItem.outgoingState,
+                outgoingAttachments = newItem.outgoingAttachments,
+                readStatus = newItem.readStatus,
+                isSelected = newItem.isSelected,
+                selectionEnabled = newItem.selectionEnabled,
+            ).takeIf { it == newItem }?.let { flags }
+        }
     }
 }
 

@@ -1,0 +1,13 @@
+services:
+  relay:
+    image: docker.barkfluff.com/barkfluff-bftproxy-nightly:latest
+    restart: always
+    env_file:
+      - ./relay.env
+    ports:
+      - "443:8443/tcp"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

@@ -33,11 +33,11 @@ public class GetPersonChatIdCommandHandlerTests
             TestHelper.CreateLogger<GetPersonChatIdCommandHandler>());
     }
 
-    private void SetupUsersClient(long userId, string firstName = "Test", string lastName = "User")
+    private void SetupUsersClient(long userId, string firstName = "Test", string lastName = "User", AccountStatus accountStatus = AccountStatus.Active)
     {
         var response = new GetByIdResponse
         {
-            User = new User { Id = userId, FirstName = firstName, LastName = lastName }
+            User = new User { Id = userId, FirstName = firstName, LastName = lastName, AccountStatus = accountStatus }
         };
         _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
             .Returns(new AsyncUnaryCall<GetByIdResponse>(
@@ -46,6 +46,30 @@ public class GetPersonChatIdCommandHandlerTests
                 () => Status.DefaultSuccess,
                 () => new Metadata(),
                 () => { }));
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedPeerWithoutChat_DoesNotCreateChat()
+    {
+        SetupUsersClient(2, accountStatus: AccountStatus.Blocked);
+        var handler = CreateHandler(1);
+
+        var act = () => handler.Handle(new GetPersonChatIdCommand { UserId = 2 }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BarkFluff.Shared.Exceptions.Users.UserUnavailableException>();
+        _h.DbContext.Chats.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedPeerWithExistingChat_ReturnsChatForReadOnlyAccess()
+    {
+        SetupUsersClient(2, accountStatus: AccountStatus.PendingDeletion);
+        var chat = await _h.SeedChat(memberUserIds: [1, 2]);
+        var handler = CreateHandler(1);
+
+        var result = await handler.Handle(new GetPersonChatIdCommand { UserId = 2 }, CancellationToken.None);
+
+        result.ChatId.Should().Be(chat.Id.ToString());
     }
 
     [Fact]

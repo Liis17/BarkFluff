@@ -127,6 +127,8 @@
             members: ch.getMembersList().map(function (m) { return { userId: m.getUserId() }; }),
             countUnread: ch.getCountUnread(),
             firstUnreadMessageId: ch.getFirstUnreadMessageId(),
+            muted: ch.getMuted(),
+            mutedUntil: tsToMs(ch.getMutedUntil()),
             // Приватные чаты (ChatType: 0=REGULAR, 1=PRIVATE, 2=SECRET)
             chatType: ch.getChatType ? ch.getChatType() : 0,
             kdfSalt: ch.getKdfSalt_asU8 ? ch.getKdfSalt_asU8() : new Uint8Array(0),
@@ -167,6 +169,7 @@
             profilePicturePreview: mediaUrl(u.getProfilePicturePreview()),
             profilePosterFileId: u.getProfilePosterFileId ? u.getProfilePosterFileId() : '',
             isBot: u.getIsBot ? u.getIsBot() : false,
+            accountStatus: u.getAccountStatus ? u.getAccountStatus() : 0,
             bio: u.getBio(),
             registrationDate: tsToMs(u.getRegistrationDate()),
             badges: u.getBadgesList().map(function (b) {
@@ -444,6 +447,128 @@
         });
     }
 
+    // Серверный поиск по обычным чатам; только первая страница, без курсора.
+    function searchMessages(query, pageSize) {
+        var req = new (msgPb().SearchMessagesRequest)();
+        req.setQuery(query);
+        req.setPageSize(pageSize || 20);
+        return readCall(messages().searchMessages.bind(messages()), req).then(function (resp) {
+            return {
+                hits: resp.getHitsList().map(function (h) {
+                    var author = h.getAuthor();
+                    return {
+                        messageId: h.getMessageId(),
+                        chatId: h.getChatId(),
+                        chatTitle: h.getChatTitle(),
+                        isGroupChat: h.getIsGroupChat(),
+                        otherUserId: h.getOtherUserId(),
+                        authorUserId: author ? author.getUserId() : 0,
+                        authorName: author ? author.getDisplayName() : '',
+                        sentAt: tsToMs(h.getSentAt()),
+                        text: h.getText(),
+                        attachmentTypes: h.getAttachmentTypesList().map(enumName)
+                    };
+                })
+            };
+        });
+    }
+
+    // --- Calls: история и активные звонки (enum-поля остаются числами CallsApi) ---
+
+    function listCallHistory(missedOnly, beforeStartedAt, limit) {
+        var pb = window.proto.barkfluff.calls;
+        var req = new pb.ListCallHistoryRequest();
+        req.setFilter(missedOnly ? pb.CallHistoryFilter.CALL_HISTORY_MISSED : pb.CallHistoryFilter.CALL_HISTORY_ALL);
+        req.setLimit(limit || 30);
+        if (beforeStartedAt) {
+            var ts = new window.proto.google.protobuf.Timestamp();
+            ts.fromDate(new Date(beforeStartedAt));
+            req.setBeforeStartedAt(ts);
+        }
+        return readCall(c().calls.listCallHistory.bind(c().calls), req).then(function (resp) {
+            return {
+                items: resp.getItemsList().map(function (i) {
+                    return {
+                        callId: i.getCallId(),
+                        chatId: i.getChatId(),
+                        peerUserId: i.getPeerUserId(),
+                        isGroup: i.getIsGroup(),
+                        mediaType: i.getMediaType(),
+                        direction: i.getDirection(),
+                        endReason: i.getEndReason(),
+                        startedAt: tsToMs(i.getStartedAt()),
+                        answeredAt: tsToMs(i.getAnsweredAt()),
+                        durationSeconds: i.getDurationSeconds()
+                    };
+                }),
+                hasMore: resp.getHasMore()
+            };
+        });
+    }
+
+    function getActiveCalls(chatIds) {
+        var req = new window.proto.barkfluff.calls.GetActiveCallsRequest();
+        req.setChatIdsList(chatIds);
+        return readCall(c().calls.getActiveCalls.bind(c().calls), req).then(function (resp) {
+            return {
+                calls: resp.getCallsList().map(function (a) {
+                    return {
+                        callId: a.getCallId(),
+                        chatId: a.getChatId(),
+                        mediaType: a.getMediaType(),
+                        startedAt: tsToMs(a.getStartedAt()),
+                        participantUserIds: a.getParticipantUserIdsList()
+                    };
+                })
+            };
+        });
+    }
+
+    function mapUserBadge(b) {
+        var badge = b.getBadge();
+        return {
+            id: badge ? badge.getId() : 0,
+            name: badge ? badge.getName() : '',
+            description: badge ? badge.getDescription() : '',
+            imageUrl: badge ? mediaUrl(badge.getImageUrl()) : '',
+            priority: b.getPriority(),
+            isPrimary: b.getIsPrimary()
+        };
+    }
+
+    // Все назначенные бейджи пользователя (limit не задан — полный список).
+    function getUserBadges(userId) {
+        var req = new (usrPb().GetUserBadgesRequest)();
+        req.setUserId(userId);
+        return readCall(users().getUserBadges.bind(users()), req).then(function (resp) {
+            return { badges: resp.getBadgesList().map(mapUserBadge) };
+        });
+    }
+
+    // badgeId = 0 снимает основной бейдж.
+    function setPrimaryBadge(badgeId) {
+        var req = new (usrPb().SetPrimaryBadgeRequest)();
+        req.setBadgeId(badgeId || 0);
+        return mutationCall(users().setPrimaryBadge.bind(users()), req).then(function (resp) {
+            var primary = resp.getPrimaryBadge();
+            return { primaryBadge: primary ? mapUserBadge(primary) : null };
+        });
+    }
+
+    // Байты — int64 приходят числами (grpc-web без jstype=JS_STRING).
+    function getUserStorageInfo() {
+        var req = new (filePb().GetUserStorageInfoRequest)();
+        return readCall(files().getUserStorageInfo.bind(files()), req).then(function (resp) {
+            return {
+                totalUsed: resp.getTotalUsedStorage(),
+                limit: resp.getStorageLimit(),
+                byType: resp.getStorageByTypesList().map(function (t) {
+                    return { fileType: t.getFileType(), used: t.getUsedStorage() };
+                })
+            };
+        });
+    }
+
     function getUser(userId) {
         var req = new (usrPb().GetUserRequest)();
         req.setUserId(userId);
@@ -682,6 +807,14 @@
         var req = new (usrPb().SetNotificationsEnabledRequest)();
         req.setEnabled(!!enabled);
         return mutationCall(users().setNotificationsEnabled.bind(users()), req);
+    }
+
+    // muted=true без muted_until — mute навсегда; muted=false снимает mute.
+    function setChatMuted(chatId, muted) {
+        var req = new (usrPb().SetChatMutedRequest)();
+        req.setChatId(chatId);
+        req.setMuted(!!muted);
+        return mutationCall(users().setChatMuted.bind(users()), req);
     }
 
     function setFirebaseToken(token, pushPlatform) {
@@ -1048,6 +1181,12 @@
         leaveChat: leaveChat,
         updateGroupChat: updateGroupChat,
         searchUsers: searchUsers,
+        searchMessages: searchMessages,
+        getUserBadges: getUserBadges,
+        setPrimaryBadge: setPrimaryBadge,
+        getUserStorageInfo: getUserStorageInfo,
+        listCallHistory: listCallHistory,
+        getActiveCalls: getActiveCalls,
         getUser: getUser,
         getUploadUrl: getUploadUrl,
         checkFileHash: checkFileHash,
@@ -1077,6 +1216,7 @@
         // User devices / notifications / privacy / personalization
         renameDevice: renameDevice,
         setNotificationsEnabled: setNotificationsEnabled,
+        setChatMuted: setChatMuted,
         setFirebaseToken: setFirebaseToken,
         clearFirebaseToken: clearFirebaseToken,
         getPrivacySettings: getPrivacySettings,

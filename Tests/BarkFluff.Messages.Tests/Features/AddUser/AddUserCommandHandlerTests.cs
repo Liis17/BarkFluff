@@ -32,19 +32,35 @@ public class AddUserCommandHandlerTests
             TestHelper.CreateLogger<AddUserCommandHandler>());
     }
 
-    private void SetupUsersClient()
+    private void SetupUsersClient(AccountStatus accountStatus = AccountStatus.Active)
     {
         _usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
             .Returns<GetByIdRequest, Metadata, DateTime?, CancellationToken>((req, _, _, _) =>
                 new AsyncUnaryCall<GetByIdResponse>(
                     Task.FromResult(new GetByIdResponse
                     {
-                        User = new User { Id = req.UserId, FirstName = "Test", LastName = "User" }
+                        User = new User { Id = req.UserId, FirstName = "Test", LastName = "User", AccountStatus = accountStatus }
                     }),
                     Task.FromResult(new Metadata()),
                     () => Status.DefaultSuccess,
                     () => new Metadata(),
                     () => { }));
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedUser_IsNotAddedToGroup()
+    {
+        var adminId = 1L;
+        var addedId = 99L;
+        var chat = await _h.SeedChat(isGroupChat: true, memberUserIds: [adminId, 2]);
+        await _h.SeedGroupChatInfo(chat.Id, adminId, [adminId]);
+        SetupUsersClient(AccountStatus.Blocked);
+        var handler = CreateHandler(adminId);
+
+        var act = () => handler.Handle(new AddUserCommand { ChatId = chat.Id, UserId = addedId }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BarkFluff.Shared.Exceptions.Users.UserUnavailableException>();
+        (await _h.ChatsStorage.GetChatMembers(chat.Id, 0, int.MaxValue)).Should().NotContain(m => m.UserId == addedId);
     }
 
     [Fact]

@@ -14,6 +14,8 @@ import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.crypto.E2EBootstrap
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.repository.SecretChatRepository
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -130,8 +132,10 @@ class SecretChatController(
                         binding.messageEditText.setText(text)
                         binding.messageEditText.setSelection(text.length)
                     }
+                    if (activity.exitToLoginIfAccountRestricted(outcome.error)) return@launch
                     Toast.makeText(activity,
-                        activity.getString(R.string.private_chat_message_send_failed, outcome.error.message.orEmpty()),
+                        activity.accountRestrictionRpcMessage(outcome.error)
+                            ?: activity.getString(R.string.private_chat_message_send_failed, outcome.error.message.orEmpty()),
                         Toast.LENGTH_LONG).show()
                 }
                 // The server accepted it; the pending handoff is recovered on the next refresh.

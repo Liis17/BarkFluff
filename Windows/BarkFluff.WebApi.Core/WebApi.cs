@@ -31,6 +31,8 @@ namespace BarkFluff.WebApi.Core
             remove => TokenManager.TokenRefreshed -= value;
         }
 
+        public string? LastTokenRefreshErrorResourceKey => TokenManager.LastRefreshErrorResourceKey;
+
         #region ApiClients (internal для доступа менеджеров)
         internal BarkFluff.Proto.Users.UsersApi.UsersApiClient? UsersAC;
         internal BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? BeaconAC;

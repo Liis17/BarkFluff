@@ -212,6 +212,7 @@ public static class SettingsCatalog
         AddServiceBase(entries, ServiceId.Calls, "CallsDb");
         AddLiteral(entries, ServiceId.Calls, "RunSettings", "Http1Port", "7026");
         AddServiceClient(entries, ServiceId.Calls, "MessagesService", ServiceId.Messages);
+        AddServiceClient(entries, ServiceId.Calls, "UsersService", ServiceId.Users);
         AddLiteral(entries, ServiceId.Calls, "LiveKit", "Url", "ws://livekit:7880");
         AddDefault(entries, ServiceId.Calls, "LiveKit", "PublicUrl", v =>
             string.IsNullOrWhiteSpace(v.NodePublicDomain)

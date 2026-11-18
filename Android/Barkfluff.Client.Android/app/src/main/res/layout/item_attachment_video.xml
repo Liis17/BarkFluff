@@ -53,12 +53,11 @@
     </FrameLayout>
 
     <!-- Прогресс загрузки -->
-    <com.google.android.material.progressindicator.CircularProgressIndicator
+    <com.google.android.material.loadingindicator.LoadingIndicator
         android:id="@+id/videoDownloadProgress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:indeterminate="true"
         android:visibility="gone"
         app:indicatorColor="@android:color/white"
         app:indicatorSize="40dp" />

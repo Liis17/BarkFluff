@@ -5,11 +5,13 @@
   "bypass_actors": [],
   "conditions": {
     "ref_name": {
-      "include": ["refs/heads/nightly", "refs/heads/dev", "refs/heads/master"],
+      "include": ["refs/heads/nightly"],
       "exclude": []
     }
   },
   "rules": [
+    {"type": "deletion"},
+    {"type": "non_fast_forward"},
     {
       "type": "pull_request",
       "parameters": {

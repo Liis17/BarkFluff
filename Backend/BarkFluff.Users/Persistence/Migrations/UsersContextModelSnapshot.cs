@@ -46,6 +46,10 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("MiniImageUrl")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -328,8 +332,26 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<string>("AcceptedLegalRevision")
                         .HasColumnType("text");
 
+                    b.Property<int>("AccountStatus")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Bio")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("CleanupCompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletionScheduledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("PreDeletionAccountStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PreDeletionRestrictionReason")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("PreDeletionRestrictedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -354,6 +376,12 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<DateTime>("RegistrationDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("RestrictedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RestrictionReason")
+                        .HasColumnType("text");
+
                     b.Property<int>("StorageLimitGb")
                         .HasColumnType("integer");
 
@@ -370,6 +398,8 @@ namespace BarkFluff.Users.Persistence.Migrations
 
                     b.HasIndex("Uuid")
                         .IsUnique();
+
+                    b.HasIndex("AccountStatus", "DeletionScheduledAt");
 
                     b.ToTable("Users");
                 });
@@ -388,6 +418,9 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<int>("BadgeId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
@@ -397,6 +430,11 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BadgeId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserBadges_UserId_Primary")
+                        .HasFilter("\"IsPrimary\" = TRUE");
 
                     b.HasIndex("UserId", "BadgeId")
                         .IsUnique();

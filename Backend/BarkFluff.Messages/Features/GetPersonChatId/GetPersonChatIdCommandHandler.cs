@@ -3,6 +3,7 @@ using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Shared.Exceptions.Messages;
 
 using MediatR;
@@ -85,6 +86,8 @@ public class GetPersonChatIdCommandHandler : IRequestHandler<GetPersonChatIdComm
 
         if (existingChatId is null)
         {
+            UserAccountStatusGuard.EnsureActive(personResponse.User.AccountStatus);
+
             _logger.LogInformation(
                 "Создание нового личного чата между пользователями {UserId} и {TargetUserId}",
                 _userContext.UserId,

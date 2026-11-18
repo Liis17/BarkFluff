@@ -18,6 +18,7 @@ import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.showImeAware
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -230,7 +231,7 @@ class AccountSettingsActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton(R.string.btn_cancel, null)
-            .show()
+            .showImeAware()
     }
 
     private fun startUCrop(uri: Uri) {

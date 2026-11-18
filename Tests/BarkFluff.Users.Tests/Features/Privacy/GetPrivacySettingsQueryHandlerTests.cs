@@ -15,7 +15,7 @@ public class GetPrivacySettingsQueryHandlerTests : IAsyncDisposable
         var user = await _h.SeedUser();
         await _h.SeedPrivacy(user.Id);
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new GetPrivacySettingsQueryHandler(ctx, _h.PrivacyStorage, TestHelper.CreateLogger<GetPrivacySettingsQueryHandler>());
+        var handler = new GetPrivacySettingsQueryHandler(ctx, _h.PrivacyStorage, _h.UsersStorage, TestHelper.CreateLogger<GetPrivacySettingsQueryHandler>());
 
         var result = await handler.Handle(new GetPrivacySettingsQuery(), CancellationToken.None);
 
@@ -28,7 +28,7 @@ public class GetPrivacySettingsQueryHandlerTests : IAsyncDisposable
     {
         var user = await _h.SeedUser();
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new GetPrivacySettingsQueryHandler(ctx, _h.PrivacyStorage, TestHelper.CreateLogger<GetPrivacySettingsQueryHandler>());
+        var handler = new GetPrivacySettingsQueryHandler(ctx, _h.PrivacyStorage, _h.UsersStorage, TestHelper.CreateLogger<GetPrivacySettingsQueryHandler>());
 
         var result = await handler.Handle(new GetPrivacySettingsQuery(), CancellationToken.None);
 

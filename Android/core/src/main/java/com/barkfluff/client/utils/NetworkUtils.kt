@@ -1,10 +1,11 @@
 package com.barkfluff.client.utils
 
 import android.util.Log
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
+import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
 /**
@@ -24,16 +25,20 @@ object NetworkUtils {
      */
     suspend fun getExternalIp(): String = withContext(Dispatchers.IO) {
         try {
-            val url = URL(IP_CHECK_URL)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.connectTimeout = TIMEOUT_MS
-            connection.readTimeout = TIMEOUT_MS
-            connection.requestMethod = "GET"
-            connection.setRequestProperty("User-Agent", "BarkFluff-Android")
+            val client = OkHttpClient.Builder()
+                .connectTimeout(TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+                .readTimeout(TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+                .retryOnConnectionFailure(false)
+                .build()
+            val request = Request.Builder()
+                .url(IP_CHECK_URL)
+                .header("User-Agent", "BarkFluff-Android")
+                .get()
+                .build()
 
-            val responseCode = connection.responseCode
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val response = connection.inputStream.bufferedReader().use { it.readText() }
+            client.newCall(request).execute().use { result ->
+                if (result.code == 200) {
+                    val response = result.body?.string().orEmpty()
 
                 // Проверяем формат HTML с id="ip_address"
                 val htmlPattern = Pattern.compile("""<strong\s+id="ip_address">\s*([\da-fA-F\.:]+)\s*</strong>""", Pattern.CASE_INSENSITIVE)
@@ -50,8 +55,9 @@ object NetworkUtils {
                 }
             }
 
-            Log.w(TAG, "Не удалось получить IP: код ответа $responseCode")
+            Log.w(TAG, "Не удалось получить IP: код ответа ${result.code}")
             ""
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения внешнего IP", e)
             ""

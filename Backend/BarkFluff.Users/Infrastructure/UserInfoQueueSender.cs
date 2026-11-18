@@ -83,4 +83,11 @@ public class UserInfoQueueSender
         _metrics.Increment("user_events_published");
         _metrics.Increment("user_bio_changed_published");
     }
+
+    public async Task ChatFoldersChangedEvent(long userId)
+    {
+        await _publishEndpoint.Publish(new ChatFoldersChanged { UserId = userId });
+        _metrics.Increment("user_events_published");
+        _metrics.Increment("chat_folders_changed_published");
+    }
 }

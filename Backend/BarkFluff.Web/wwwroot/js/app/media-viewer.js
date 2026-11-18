@@ -263,6 +263,17 @@
                 event.stopPropagation();
                 navigate(1);
             });
+        // Capture: Escape закрывает только просмотрщик, а не оверлей под ним (например, список закреплённых).
+        document.addEventListener(
+            'keydown',
+            function (event) {
+                if (event.key !== 'Escape' || !imageOverlay.classList.contains('visible')) return;
+                event.preventDefault();
+                event.stopPropagation();
+                close();
+            },
+            true
+        );
         document.addEventListener('keydown', function (event) {
             if (!imageOverlay.classList.contains('visible')) return;
             if (event.key === 'ArrowLeft') {

@@ -2,6 +2,7 @@ package com.barkfluff.client
 
 import android.animation.ValueAnimator
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -9,27 +10,40 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.PathInterpolator
 import androidx.core.animation.doOnEnd
+import androidx.core.content.ContextCompat
 import androidx.core.view.doOnLayout
 import androidx.core.view.updateLayoutParams
+import androidx.core.widget.ImageViewCompat
 import androidx.fragment.app.Fragment
 import androidx.core.os.bundleOf
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.activity.result.contract.ActivityResultContracts
 import com.barkfluff.client.adapter.ChatAdapter
 import com.barkfluff.client.adapter.ChatSkeletonAdapter
 import com.barkfluff.client.adapter.FolderTabsAdapter
+import com.barkfluff.client.bft.BftProxyManager
+import com.barkfluff.client.bft.BftProxyStatus
+import com.barkfluff.client.bft.BftProxyViewState
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.FragmentChatsBinding
 import com.barkfluff.client.domain.model.ChatSummary
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.perf.PerfTrace
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.accountRestrictionSessionMessage
+import com.barkfluff.client.grpc.TokenValidity
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -46,6 +60,9 @@ class ChatsFragment : Fragment() {
     private lateinit var chatAdapter: ChatAdapter
     private lateinit var foldersAdapter: FolderTabsAdapter
     private lateinit var skeletonAdapter: ChatSkeletonAdapter
+    private var subtitleHideJob: Job? = null
+    private var lastHeaderSubtitle: String? = null
+    private var bftProxyState: BftProxyViewState? = null
     private var titleAnimationGeneration = 0
     private var initialScrollPending = true
 
@@ -89,10 +106,33 @@ class ChatsFragment : Fragment() {
         globalParam = GlobalParam(requireContext())
         initialScrollPending = true
 
+        binding.userAvatarButton.setOnClickListener {
+            startActivity(UserProfileActivity.createIntent(
+                context = requireContext(),
+                chatId = "",
+                otherUserId = globalParam.userId,
+                isGroupChat = false,
+                chatTitle = "${globalParam.firstName} ${globalParam.lastName}".trim(),
+                chatAvatarFileId = globalParam.pictureFileId.ifBlank { globalParam.picturePreviewFileId }.ifBlank { null },
+            ))
+        }
+        val proxyManager = BftProxyManager.get(requireContext().applicationContext)
+        bftProxyState = proxyManager.state.value
+        binding.proxyButton.setOnClickListener {
+            startActivity(Intent(requireContext(), ProxySettingsActivity::class.java))
+        }
         setupToolbar()
+        renderProxyState(proxyManager.state.value)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                proxyManager.state.collect { state -> renderProxyState(state) }
+            }
+        }
         setupChatList()
         setupFolderTabs()
         setupSearchButton()
+        miniPlayerHost.attachSlot(requireActivity(), binding.chatsMiniPlayerSlot)
+        miniPlayerHost.setSlotActive(requireActivity(), binding.chatsMiniPlayerSlot, !isHidden)
         showSkeleton()
 
         observeViewModel()
@@ -116,8 +156,14 @@ class ChatsFragment : Fragment() {
                     if (binding.chatRecyclerView.adapter !== chatAdapter) {
                         binding.chatRecyclerView.adapter = chatAdapter
                     }
+                    val preserveTop = previousItems.isNotEmpty() &&
+                        !binding.chatRecyclerView.canScrollVertically(-1)
                     val hasRealChat = state.displayItems.any { !it.isFooter }
                     chatAdapter.submitList(state.displayItems) {
+                        if (preserveTop && isAdded && _binding != null) {
+                            (binding.chatRecyclerView.layoutManager as? LinearLayoutManager)
+                                ?.scrollToPositionWithOffset(0, 0)
+                        }
                         if (hasRealChat && isAdded && PerfTrace.markFirstChatDisplayed()) {
                             PerfTrace.endAppToChats()
                             requireActivity().reportFullyDrawn()
@@ -164,7 +210,7 @@ class ChatsFragment : Fragment() {
             viewModel.events.collect { event ->
                 when (event) {
                     ChatsEvent.NavigateToLogin -> navigateToLogin()
-                    ChatsEvent.SessionRejected -> exitRejectedSession()
+                    is ChatsEvent.SessionRejected -> exitRejectedSession(event.validity)
                     ChatsEvent.RefreshUserAvatar -> loadUserAvatar()
                     is ChatsEvent.ChatLoadError -> Snackbar.make(
                         binding.root,
@@ -219,13 +265,51 @@ class ChatsFragment : Fragment() {
         }
     }
 
+    private fun renderProxyState(state: BftProxyViewState) {
+        bftProxyState = state
+        if (_binding == null) return
+        binding.proxyButton.visibility = if (state.enabled) View.VISIBLE else View.GONE
+        binding.proxyButton.contentDescription = getString(
+            R.string.bft_proxy_button_description,
+            proxyStatusLabel(state)
+        )
+        val tint = when (state.status) {
+            BftProxyStatus.CONNECTED -> ContextCompat.getColor(requireContext(), R.color.success)
+            BftProxyStatus.NO_CONNECTION,
+            BftProxyStatus.KEY_REJECTED,
+            BftProxyStatus.SERVER_MISMATCH -> ContextCompat.getColor(requireContext(), R.color.error)
+            BftProxyStatus.CONNECTING -> com.google.android.material.color.MaterialColors.getColor(
+                binding.proxyButton,
+                com.google.android.material.R.attr.colorOnSurfaceVariant
+            )
+            BftProxyStatus.DISABLED -> com.google.android.material.color.MaterialColors.getColor(
+                binding.proxyButton,
+                com.google.android.material.R.attr.colorOnSurfaceVariant
+            )
+        }
+        ImageViewCompat.setImageTintList(binding.proxyButton, ColorStateList.valueOf(tint))
+        updateHeaderSubtitle()
+    }
+
+    private fun proxyStatusLabel(state: BftProxyViewState): String = when (state.status) {
+        BftProxyStatus.DISABLED -> getString(R.string.bft_proxy_status_disabled)
+        BftProxyStatus.CONNECTING -> getString(R.string.bft_proxy_chat_connecting)
+        BftProxyStatus.CONNECTED -> getString(
+            R.string.bft_proxy_via_name,
+            state.name?.takeIf { it.isNotBlank() } ?: getString(R.string.bft_proxy_name_unknown)
+        )
+        BftProxyStatus.NO_CONNECTION -> getString(R.string.bft_proxy_status_no_connection)
+        BftProxyStatus.KEY_REJECTED -> getString(R.string.bft_proxy_key_rejected_summary)
+        BftProxyStatus.SERVER_MISMATCH -> getString(R.string.bft_proxy_status_server_mismatch)
+    }
+
     /**
-     * Вторая строка шапки: статус синхронизации, если он есть, иначе — счётчик непрочитанных.
+     * Сабтитул показывает статус прокси вместе со статусом синхронизации или непрочитанными.
      */
     private fun updateHeaderSubtitle(animate: Boolean = true) {
         if (_binding == null) return
         val state = viewModel.uiState.value
-        val subtitle = when {
+        val updateSubtitle = when {
             state.isRealtimeReconnecting -> getString(R.string.connecting)
             state.syncStatus == ChatsSyncStatus.UPDATING -> getString(R.string.chats_sync_updating)
             state.syncStatus == ChatsSyncStatus.OFFLINE -> getString(R.string.chats_sync_offline)
@@ -235,18 +319,28 @@ class ChatsFragment : Fragment() {
                 else resources.getQuantityString(R.plurals.chats_unread_summary, unread, unread)
             }
         }
+        val proxyState = bftProxyState?.takeIf { it.enabled }
+        val subtitle = when {
+            proxyState == null -> updateSubtitle
+            // Проблему прокси ставим первой, чтобы её не обрезало многоточием.
+            proxyState.status == BftProxyStatus.CONNECTED -> "$updateSubtitle · ${proxyStatusLabel(proxyState)}"
+            else -> "${proxyStatusLabel(proxyState)} · $updateSubtitle"
+        }
 
-        if (binding.headerSubtitle.text == subtitle) return
+        if (lastHeaderSubtitle == subtitle) return
+        lastHeaderSubtitle = subtitle
+        subtitleHideJob?.cancel()
+        val generation = ++titleAnimationGeneration
 
         binding.headerSubtitle.animate().cancel()
         if (!animate) {
             binding.headerSubtitle.alpha = 1f
             binding.headerSubtitle.translationY = 0f
             binding.headerSubtitle.text = subtitle
+            scheduleSubtitleHide()
             return
         }
 
-        val generation = ++titleAnimationGeneration
         val offset = 4 * resources.displayMetrics.density
         binding.headerSubtitle.animate()
             .alpha(0f)
@@ -255,14 +349,29 @@ class ChatsFragment : Fragment() {
             .withEndAction {
                 if (_binding == null || generation != titleAnimationGeneration) return@withEndAction
                 binding.headerSubtitle.text = subtitle
+                binding.headerSubtitle.visibility = View.VISIBLE
                 binding.headerSubtitle.translationY = offset
                 binding.headerSubtitle.animate()
                     .alpha(1f)
                     .translationY(0f)
                     .setDuration(TITLE_FADE_IN_DURATION_MS)
+                    .withEndAction {
+                        if (_binding != null && generation == titleAnimationGeneration) {
+                            scheduleSubtitleHide()
+                        }
+                    }
                     .start()
             }
             .start()
+    }
+
+    private fun scheduleSubtitleHide() {
+        binding.headerSubtitle.visibility = View.VISIBLE
+        subtitleHideJob?.cancel()
+        subtitleHideJob = viewLifecycleOwner.lifecycleScope.launch {
+            delay(3_000L)
+            _binding?.headerSubtitle?.visibility = View.INVISIBLE
+        }
     }
 
     /**
@@ -492,7 +601,9 @@ class ChatsFragment : Fragment() {
                 chatId = chat.id,
                 title = displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.create_chat_private) },
                 inviteState = chat.privateInviteState.number,
-                inviterUserId = chat.privateInviterUserId
+                inviterUserId = chat.privateInviterUserId,
+                otherUserId = displayItem?.otherUserId ?: 0L,
+                accountStatus = displayItem?.accountStatus ?: AccountStatus.ACTIVE,
             ).putExtra(PerfTrace.EXTRA_CHAT_OPEN, true))
             return
         }
@@ -502,7 +613,8 @@ class ChatsFragment : Fragment() {
             putExtra("chat_title", displayItem?.displayTitle ?: chat.title.ifBlank { getString(R.string.chat_title_default) })
             putExtra("chat_avatar_file_id", displayItem?.displayAvatarFileId ?: chat.pictureFileId.ifBlank { null })
             putExtra("is_group_chat", chat.isGroupChat)
-            putExtra("other_user_id", displayItem?.otherUserId ?: 0L)
+            putExtra("other_user_id", if (com.barkfluff.client.utils.isSelfChat(chat.memberIds, globalParam.userId) && !chat.isGroupChat) globalParam.userId else displayItem?.otherUserId ?: 0L)
+            putExtra("account_status", displayItem?.accountStatus?.ordinal ?: AccountStatus.ACTIVE.ordinal)
             putExtra(PerfTrace.EXTRA_CHAT_OPEN, true)
         }
 
@@ -527,10 +639,10 @@ class ChatsFragment : Fragment() {
     }
 
     /** Ordinary cache and outbox stay scoped for a later login; only crypto state is wiped. */
-    private suspend fun exitRejectedSession() {
+    private suspend fun exitRejectedSession(validity: TokenValidity) {
         val app = requireContext().applicationContext as BarkFluffApplication
         if (com.barkfluff.client.utils.LogoutHelper.exitRejectedSession(app, app.prekeyManager)) {
-            if (isAdded) navigateToLogin()
+            if (isAdded) navigateToLogin(requireContext().accountRestrictionSessionMessage(validity))
             return
         }
         val root = _binding?.root ?: return
@@ -539,13 +651,28 @@ class ChatsFragment : Fragment() {
             .show()
     }
 
-    private fun navigateToLogin() {
-        val intent = Intent(requireContext(), LoginActivity::class.java)
+    private fun navigateToLogin(restrictionNotice: String? = null) {
+        val intent = Intent(requireContext(), LoginActivity::class.java).apply {
+            restrictionNotice?.let { putExtra(LoginActivity.EXTRA_ACCOUNT_RESTRICTION_NOTICE, it) }
+        }
         startActivity(intent)
         requireActivity().finish()
     }
 
+    private val miniPlayerHost get() = (requireActivity().application as BarkFluffApplication).audioMiniPlayerHost
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        _binding?.let { miniPlayerHost.setSlotActive(requireActivity(), it.chatsMiniPlayerSlot, !hidden) }
+    }
+
     override fun onDestroyView() {
+        subtitleHideJob?.cancel()
+        subtitleHideJob = null
+        lastHeaderSubtitle = null
+        titleAnimationGeneration++
+        _binding?.headerSubtitle?.animate()?.cancel()
+        _binding?.let { miniPlayerHost.detachSlot(requireActivity(), it.chatsMiniPlayerSlot) }
         super.onDestroyView()
         headerAnimator?.cancel()
         headerAnimator = null

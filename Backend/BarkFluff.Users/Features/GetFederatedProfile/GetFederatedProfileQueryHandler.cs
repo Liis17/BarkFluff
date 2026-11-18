@@ -39,7 +39,7 @@ public class GetFederatedProfileQueryHandler : IRequestHandler<GetFederatedProfi
             user = await _usersStorage.GetUserByUsername(request.Username?.Trim() ?? string.Empty);
         }
 
-        if (user is null || user.IsDraft)
+        if (user is null || user.IsDraft || user.AccountStatus != Domain.AccountStatus.Active)
         {
             _metrics.Increment("federated_profile_not_found");
             return new GetFederatedProfileResponse { Found = false };

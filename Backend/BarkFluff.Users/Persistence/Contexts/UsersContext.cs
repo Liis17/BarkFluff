@@ -57,6 +57,9 @@ public class UsersContext : DbContext
             .Property(u => u.Uuid)
             .HasDefaultValueSql("gen_random_uuid()");
 
+        modelBuilder.Entity<User>()
+            .HasIndex(u => new { u.AccountStatus, u.DeletionScheduledAt });
+
         // Настройка связей для UserBadge
         modelBuilder.Entity<UserBadge>()
             .HasOne(ub => ub.User)
@@ -74,6 +77,12 @@ public class UsersContext : DbContext
         modelBuilder.Entity<UserBadge>()
             .HasIndex(ub => new { ub.UserId, ub.BadgeId })
             .IsUnique();
+
+        modelBuilder.Entity<UserBadge>()
+            .HasIndex(ub => ub.UserId)
+            .IsUnique()
+            .HasFilter("\"IsPrimary\" = TRUE")
+            .HasDatabaseName("IX_UserBadges_UserId_Primary");
 
         // Настройка связей для UserDevice
         modelBuilder.Entity<UserDevice>()

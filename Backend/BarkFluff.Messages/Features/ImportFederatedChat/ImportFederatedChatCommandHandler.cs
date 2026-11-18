@@ -67,7 +67,8 @@ public class ImportFederatedChatCommandHandler : IRequestHandler<ImportFederated
         var inviteeResp = await _usersClient.GetUsersByUuidAsync(
             new GetUsersByUuidRequest { Uuids = { inviteeUuid.ToString() } }, cancellationToken: cancellationToken);
         var invitee = inviteeResp.Users.FirstOrDefault();
-        if (invitee is not { Found: true } || invitee.IsRemote || invitee.IsDeactivated || invitee.UserId == 0)
+        if (invitee is not { Found: true } || invitee.IsRemote || invitee.IsDeactivated || invitee.UserId == 0 ||
+            invitee.AccountStatus != AccountStatus.Active)
         {
             _logger.LogWarning("ImportFederatedChat: invitee {InviteeUuid} не локальный/деактивирован", inviteeUuid);
             throw new UnknownInviteeException();

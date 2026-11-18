@@ -185,6 +185,9 @@ function createHarness(options) {
         updateTitleBadge: function () {
             calls.push(['badge']);
         },
+        isChatMuted: function (c) {
+            return !!c.muted;
+        },
         appendMessageToView: function (msg) {
             calls.push(['append', msg.id]);
             return Promise.resolve();
@@ -272,6 +275,15 @@ async function main() {
             ['notify', 'Title chat-b', 10],
             ['badge']
         ]);
+    });
+
+    await test('a message in a muted chat counts as unread but plays no chime and shows no notification', async function () {
+        var h = createHarness({ chats: [chat('chat-a'), chat('chat-b', { muted: true })] });
+        h.emit('new_message', { chatId: 'chat-b', message: msg(10, 2) });
+        await settle();
+        assert.equal(h.state.chats[0].id, 'chat-b');
+        assert.equal(h.state.chats[0].countUnread, 1);
+        assert.deepEqual(h.calls(), [['renderChatList'], ['badge']]);
     });
 
     await test('own messages from another device do not add unread, sound or notifications', async function () {

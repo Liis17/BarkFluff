@@ -15,6 +15,10 @@ import com.barkfluff.client.databinding.BottomSheetForwardChatsBinding
 import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.MessageGateway
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.configureImeInsets
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -56,7 +60,9 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = super.onCreateDialog(savedInstanceState) as BottomSheetDialog
+        dialog.configureImeInsets()
         dialog.setOnShowListener {
+            dialog.configureImeInsets()
             val sheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
             sheet?.let {
                 BottomSheetBehavior.from(it).apply {
@@ -79,6 +85,7 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        binding.root.applyImeInsetsToBottomPadding()
 
         messageIds = arguments?.getLongArray(ARG_MESSAGE_IDS) ?: longArrayOf()
         if (messageIds.isEmpty()) {
@@ -151,15 +158,23 @@ class ForwardChatPickerBottomSheet : BottomSheetDialogFragment() {
                 }
             }.awaitAll()
 
+            val accountRestrictionError = results.firstNotNullOfOrNull { it.exceptionOrNull() }
+            if (accountRestrictionError != null && activity?.exitToLoginIfAccountRestricted(accountRestrictionError) == true) {
+                return@launch
+            }
+
             val successCount = results.count { it.isSuccess }
             val failCount = results.size - successCount
+            val unavailableMessage = results.firstNotNullOfOrNull { result ->
+                result.exceptionOrNull()?.let { requireContext().accountRestrictionRpcMessage(it) }
+            }
 
             val msg = when {
                 failCount == 0 -> getString(
                     R.string.forward_success,
                     resources.getQuantityString(R.plurals.forward_chat_count, successCount, successCount)
                 )
-                successCount == 0 -> getString(R.string.forward_failed)
+                successCount == 0 -> unavailableMessage ?: getString(R.string.forward_failed)
                 else -> getString(R.string.forward_partial, successCount, failCount)
             }
             Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()

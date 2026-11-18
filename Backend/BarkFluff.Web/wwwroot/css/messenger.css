@@ -572,6 +572,7 @@
         }
 
         .chat-unread.visible { display: block; }
+        .chat-unread.muted { background: var(--text-sub); }
 
         .search-results {
             display: none;
@@ -598,6 +599,31 @@
 
         .search-result-info .user-name { font-size: 15px; font-weight: 600; }
         .search-result-info .user-username { font-size: 13px; color: var(--text-sub); }
+
+        .search-section-title {
+            padding: 12px 16px 4px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-sub);
+        }
+
+        .search-hit .search-result-info { flex: 1; min-width: 0; }
+        .search-hit .user-name { display: flex; gap: 8px; }
+        .search-result-time {
+            margin-left: auto;
+            flex-shrink: 0;
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-sub);
+        }
+        .search-result-text {
+            font-size: 13px;
+            color: var(--text-sub);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .search-result-text .preview-icon { width: 15px; height: 15px; vertical-align: -3px; margin-right: 4px; }
 
         /* === CHAT AREA === */
 
@@ -745,6 +771,48 @@
         }
 
         .chat-header.visible { display: flex; }
+
+        .chat-readonly-banner {
+            width: calc(100% - 40px);
+            max-width: var(--chat-content-width);
+            margin: 8px auto 0;
+            padding: 9px 14px;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: var(--text-sub);
+            background: var(--header-bg);
+            font-size: 13px;
+        }
+
+        .chat-readonly-banner[hidden] { display: none; }
+
+        .chat-call-banner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: calc(100% - 40px);
+            max-width: var(--chat-content-width);
+            margin: 8px auto 0;
+            padding: 8px 8px 8px 14px;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            background: var(--header-bg);
+            color: var(--success);
+            font-size: 13px;
+        }
+        .chat-call-banner[hidden] { display: none; }
+        .chat-call-banner-text { flex: 1; min-width: 0; color: var(--text-main); }
+        .chat-call-banner-join {
+            border: none;
+            border-radius: 8px;
+            padding: 6px 14px;
+            background: var(--success);
+            color: white;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .chat-call-banner-join:disabled { opacity: 0.6; cursor: default; }
 
         .chat-header-avatar {
             width: 40px;
@@ -2951,6 +3019,46 @@
 
         .sd-hint { font-size: 12px; color: var(--text-sub); }
         .sd-hint.error { color: var(--error); }
+
+        .sd-badge-list { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; color: var(--text-sub); font-size: 14px; }
+        .sd-badge-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            background: none;
+            text-align: left;
+            font: inherit;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+        .sd-badge-item:disabled { opacity: 0.6; cursor: default; }
+        .sd-badge-item.primary { border-color: var(--primary); background: var(--primary-alpha); }
+        .sd-badge-item img { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+        .sd-badge-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .sd-badge-name { font-size: 14px; font-weight: 600; }
+        .sd-badge-desc { font-size: 12px; color: var(--text-sub); }
+        .sd-badge-mark { font-size: 12px; font-weight: 600; color: var(--primary); flex-shrink: 0; }
+
+        .sd-storage-bar { height: 6px; margin: 10px 0 16px; border-radius: 3px; background: var(--card-border); overflow: hidden; }
+        .sd-storage-bar > div { height: 100%; background: var(--primary); }
+
+        /* Подключение устройства по QR (fast-auth-link.js) */
+        .fal-video { display: block; width: 100%; max-height: 320px; margin: 12px 0; border-radius: 12px; background: #000; object-fit: cover; }
+        .fal-video[hidden] { display: none; }
+        .fal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+        .fal-actions .sd-input { flex: 1; min-width: 200px; }
+        .fal-actions .sd-btn:not(.sd-btn-primary) { background: var(--primary-alpha); color: var(--primary); }
+        .fal-warning {
+            margin: 4px 0 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--primary-alpha);
+            color: var(--text-main);
+            font-size: 13px;
+        }
 
         .sd-btn {
             padding: 11px 20px;
@@ -5235,6 +5343,76 @@
             padding: 40px 0;
             font-size: 14px;
         }
+
+        /* === CALL HISTORY MODAL === */
+        .call-history-dialog {
+            width: 480px;
+            max-width: 95vw;
+            max-height: 85vh;
+        }
+        .call-history-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .call-history-title {
+            flex: 1;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .call-history-filter { display: flex; gap: 4px; }
+        .call-history-filter button {
+            border: none;
+            border-radius: 8px;
+            padding: 5px 10px;
+            background: none;
+            color: var(--text-sub);
+            font: inherit;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .call-history-filter button.active { background: var(--primary-alpha); color: var(--primary); }
+        .call-history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        .call-history-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            width: 100%;
+            padding: 10px 20px;
+            border: none;
+            background: none;
+            text-align: left;
+            font: inherit;
+            cursor: pointer;
+        }
+        .call-history-item:hover { background: rgba(0, 0, 0, 0.04); }
+        .call-history-name { font-size: 15px; font-weight: 600; color: var(--text-main); }
+        .call-history-meta { font-size: 13px; color: var(--text-sub); }
+        .call-history-item.missed .call-history-meta { color: var(--error); }
+        .call-history-empty {
+            text-align: center;
+            color: var(--text-sub);
+            padding: 40px 0;
+            font-size: 14px;
+        }
+        .call-history-more {
+            margin: 0 20px 16px;
+            padding: 8px;
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            background: none;
+            color: var(--text-main);
+            font: inherit;
+            cursor: pointer;
+        }
+        .call-history-more[hidden] { display: none; }
         /* Устойчивая загрузка медиа: плейсхолдер для протухших/недоступных файлов */
         .bf-load-failed {
             opacity: 0.6;
