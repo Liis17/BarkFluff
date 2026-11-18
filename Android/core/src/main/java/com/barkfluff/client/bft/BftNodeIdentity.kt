@@ -40,7 +40,15 @@ object BftProxySessionPolicy {
     fun beaconAddressForSelection(proxyEnabled: Boolean, selectedAddress: String): String =
         if (proxyEnabled) "" else selectedAddress
 
-    fun needsServerSelectionForDirectBeacon(beaconAddress: String): Boolean = beaconAddress.isBlank()
+    /**
+     * A proxy-only login never stores a direct Beacon, but the node's service endpoints come from its
+     * ServerInfo; an authenticated session keeps using them directly instead of selecting a node again.
+     */
+    fun needsServerSelectionAfterProxyDisabled(
+        beaconAddress: String,
+        identityEndpoint: String,
+        hasSession: Boolean
+    ): Boolean = beaconAddress.isBlank() && !(hasSession && identityEndpoint.isNotBlank())
 }
 
 enum class BftProxyErrorCode { NO_CONNECTION, KEY_REJECTED, SERVER_MISMATCH, SERVER_IDENTITY_UNAVAILABLE, SERVICE_UNAVAILABLE }
