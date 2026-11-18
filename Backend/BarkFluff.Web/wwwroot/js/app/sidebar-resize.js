@@ -34,6 +34,8 @@
     function resetSearchForCompact() {
         var input = document.getElementById('searchInput');
         var results = document.getElementById('searchResults');
+        var filters = document.getElementById('searchFilters');
+        if (filters) filters.hidden = true;
         if (input) input.value = '';
         if (results) {
             results.classList.remove('visible');

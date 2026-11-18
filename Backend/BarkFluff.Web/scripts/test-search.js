@@ -5,12 +5,16 @@ const vm = require('node:vm');
 
 function makeEl() {
     var names = [];
-    return {
+    var el = {
         className: '',
         innerHTML: '',
         value: '',
         children: [],
         listeners: {},
+        attributes: {},
+        setAttribute: function (name, value) {
+            this.attributes[name] = value;
+        },
         classList: {
             add: function (name) {
                 if (names.indexOf(name) < 0) names.push(name);
@@ -32,6 +36,19 @@ function makeEl() {
             return child;
         }
     };
+    // как настоящий innerHTML: присваивание очищает дочерние элементы
+    var html = '';
+    Object.defineProperty(el, 'innerHTML', {
+        configurable: true,
+        get: function () {
+            return html;
+        },
+        set: function (value) {
+            html = value;
+            el.children = [];
+        }
+    });
+    return el;
 }
 
 async function settle() {
@@ -42,6 +59,7 @@ function createHarness(options) {
     var input = makeEl();
     var results = makeEl();
     results.scrollTop = 0;
+    var filtersEl = makeEl();
     // как настоящий innerHTML: присваивание очищает дочерние элементы
     var html = '';
     Object.defineProperty(results, 'innerHTML', {
@@ -89,6 +107,9 @@ function createHarness(options) {
         i18n: {
             t: function (key) {
                 return key;
+            },
+            current: function () {
+                return 'en';
             }
         },
         utils: {
@@ -115,7 +136,7 @@ function createHarness(options) {
         BF: BF,
         document: {
             querySelector: function (selector) {
-                return selector === '#searchInput' ? input : results;
+                return selector === '#searchInput' ? input : selector === '#searchFilters' ? filtersEl : results;
             },
             createElement: function () {
                 return makeEl();
@@ -153,6 +174,7 @@ function createHarness(options) {
     return {
         input: input,
         results: results,
+        filters: filtersEl,
         opened: opened,
         focused: focused,
         toastCalls: toastCalls,
@@ -346,6 +368,24 @@ async function main() {
         assert.match(h.results.children[0].innerHTML, /@rel/);
     });
 
+    // Элементы фильтров: [0] — строка чипов, [1] — панель.
+    function chips(h) {
+        return h.filters.children[0].children;
+    }
+
+    function panelControls(h) {
+        return h.filters.children[1].children;
+    }
+
+    function openFilter(h, index) {
+        chips(h)[index].listeners.click();
+        return panelControls(h);
+    }
+
+    function lastLabelInput(label) {
+        return label.children[label.children[0].type ? 0 : 1];
+    }
+
     function moreButton(h) {
         return h.results.children[h.results.children.length - 1];
     }
@@ -380,6 +420,9 @@ async function main() {
         assert.equal(ids.length, 3, 'duplicate hit from the next page is dropped');
         assert.equal(h.results.scrollTop, 480);
         assert.notEqual(moreButton(h).className, 'search-more', 'no button after the last page');
+
+        h.type('releases');
+        assert.equal(h.results.scrollTop, 0, 'a new query starts from the top');
     });
 
     await test('a failed page keeps the hits and offers retry; stale pages after a new query are ignored', async function () {
@@ -408,6 +451,142 @@ async function main() {
                 .join(''),
             /stale/
         );
+    });
+
+    await test('filters stay hidden for short queries and appear once the message search is possible', async function () {
+        var h = createHarness();
+        assert.equal(h.filters.hidden, true);
+        h.type('r');
+        assert.equal(h.filters.hidden, true);
+        h.type('re');
+        assert.equal(h.filters.hidden, false);
+        assert.equal(chips(h).length, 3, 'author, period and attachments; no reset without filters');
+    });
+
+    await test('an author picked from the hits narrows the search, and show more keeps the same filters', async function () {
+        var h = createHarness();
+        h.type('report');
+        h.fireDebounce();
+        h.answer(0, []);
+        h.answerMessages(0, [
+            hit({ messageId: 1, authorUserId: 3, authorName: 'Bob' }),
+            hit({ messageId: 2, authorUserId: 0, authorUserUuid: 'remote-uuid', authorName: 'Eve' }),
+            hit({ messageId: 3, authorUserId: 1, authorName: 'Me again' })
+        ]);
+        await settle();
+        var panel = openFilter(h, 0);
+        var labels = panel
+            .filter(function (el) {
+                return el.className.indexOf('search-filter-option') === 0;
+            })
+            .map(function (el) {
+                return el.textContent;
+            });
+        assert.deepEqual(labels, ['search.author.any', 'search.author.me', 'Bob', 'Eve'], 'I appear once, as "me"');
+
+        panel[3].listeners.click(); // Eve — федеративный автор
+        assert.equal(h.filters.children[1].hidden, true, 'the panel closes after the pick');
+        h.fireDebounce();
+        var options = h.messageOptions[1];
+        assert.equal(options.authorUserUuid, 'remote-uuid');
+        assert.equal(options.authorUserId, undefined, 'only one side of the author oneof');
+        assert.equal(chips(h)[0].textContent, 'Eve');
+        assert.equal(chips(h)[3].className, 'search-filter-reset');
+
+        h.answer(1, []);
+        var cursor = { opaque: 2 };
+        h.answerMessages(1, [hit({ messageId: 7 })], cursor);
+        await settle();
+        moreButton(h).listeners.click();
+        assert.equal(h.messageOptions[2].cursor, cursor);
+        assert.equal(h.messageOptions[2].authorUserUuid, 'remote-uuid');
+    });
+
+    await test('period maps local days to [from, before) and swaps reversed bounds', async function () {
+        var h = createHarness();
+        h.type('report');
+        var panel = openFilter(h, 1);
+        var from = lastLabelInput(panel[0]);
+        var through = lastLabelInput(panel[1]);
+        from.value = '2026-10-31';
+        through.value = '2026-10-01';
+        through.listeners.change();
+        h.fireDebounce();
+        var options = h.messageOptions[h.messageOptions.length - 1];
+        assert.equal(from.value, '2026-10-01');
+        assert.equal(through.value, '2026-10-31');
+        assert.equal(options.sentFrom, new Date(2026, 9, 1).getTime());
+        assert.equal(options.sentBefore, new Date(2026, 10, 1).getTime(), 'the "to" day is inclusive');
+        assert.equal(h.filters.children[1].hidden, false, 'the period panel stays open while editing');
+    });
+
+    await test('attachment types imply "with attachments"; "without" clears and disables them', async function () {
+        var h = createHarness();
+        h.type('report');
+        var panel = openFilter(h, 2);
+        var radios = panel.slice(0, 3).map(lastLabelInput);
+        var docs = lastLabelInput(panel[6]);
+        assert.equal(docs.value, 'DOCUMENT');
+        docs.checked = true;
+        docs.listeners.change();
+        h.fireDebounce();
+        var options = h.messageOptions[h.messageOptions.length - 1];
+        assert.equal(options.attachmentPresence, 'WITH');
+        assert.deepEqual(Array.from(options.attachmentTypes), ['DOCUMENT']);
+        assert.equal(radios[1].checked, true);
+
+        radios[2].checked = true;
+        radios[2].listeners.change();
+        h.fireDebounce();
+        options = h.messageOptions[h.messageOptions.length - 1];
+        assert.equal(options.attachmentPresence, 'WITHOUT');
+        assert.equal(options.attachmentTypes, undefined, 'the server rejects types together with "without"');
+        assert.equal(docs.checked, false);
+        assert.equal(docs.disabled, true);
+    });
+
+    await test('filters alone search messages without text; an empty or failed filtered search says so', async function () {
+        var h = createHarness();
+        h.type('report');
+        openFilter(h, 0);
+        panelControls(h)[1].listeners.click(); // «Я»
+        h.type('');
+        assert.equal(h.filters.hidden, false, 'active filters keep the bar visible');
+        h.fireDebounce();
+        assert.equal(h.userSearches.length, 0, 'no user search without text');
+        assert.equal(h.messageSearches[h.messageSearches.length - 1], '');
+        assert.equal(h.messageOptions[h.messageOptions.length - 1].authorUserId, 1);
+        h.failMessages(h.messageSearches.length - 1);
+        await settle();
+        assert.equal(h.results.children[0].className, 'search-section-title');
+        assert.equal(h.results.children[1].textContent, 'search.messagesFailed');
+
+        h.type('zzz');
+        h.fireDebounce();
+        h.answer(h.userSearches.length - 1, []);
+        h.answerMessages(h.messageSearches.length - 1, []);
+        await settle();
+        assert.match(h.results.innerHTML, /common\.nothingFound/);
+
+        chips(h)[3].listeners.click(); // сброс
+        h.fireDebounce();
+        assert.equal(h.messageOptions[h.messageOptions.length - 1].authorUserId, undefined);
+    });
+
+    await test('opening a hit resets the filters', async function () {
+        var h = createHarness();
+        h.type('report');
+        openFilter(h, 0);
+        panelControls(h)[1].listeners.click();
+        h.fireDebounce();
+        h.answer(h.userSearches.length - 1, []);
+        h.answerMessages(h.messageSearches.length - 1, [hit()]);
+        await settle();
+        h.results.children[1].listeners.click();
+        assert.equal(h.filters.hidden, true);
+        h.type('report');
+        h.fireDebounce();
+        assert.equal(h.messageOptions[h.messageOptions.length - 1].authorUserId, undefined);
     });
 
     await test('closing the search drops a page still in flight', async function () {
