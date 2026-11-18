@@ -1,7 +1,7 @@
 # Política de privacidad de BarkFluff
 
 **En vigor desde:** 24 de enero de 2026  
-**Última actualización:** 19 de noviembre de 2026
+**Última actualización:** 19 de noviembre de 2026 (revisión 2)
 
 > Esta traducción se proporciona únicamente por comodidad. En caso de discrepancia, prevalece la versión en ruso.
 
@@ -11,7 +11,7 @@ BarkFluff es una red federada de servidores independientes («nodos»). Cada nod
 
 En el nodo público barkfluff.com, el responsable del tratamiento es una persona física: el desarrollador principal de BarkFluff, que opera desde Armenia. El servidor principal del nodo está en Alemania. BarkFluff es un proyecto de código abierto y no está registrado como persona jurídica. Los contactos del operador figuran al final de este documento.
 
-Los desarrolladores de BarkFluff publican el software y la especificación del protocolo. **No** alojan nodos ajenos, **no** tienen acceso a sus datos, claves, tráfico ni copias de seguridad, **no** pueden entregar, modificar ni eliminar datos en un nodo ajeno y **no** son responsables del tratamiento de sus datos.
+Los desarrolladores de BarkFluff publican el software y la especificación del protocolo para otros nodos gestionados por sus propios administradores. En su función de autores del software, no gestionan esos nodos, no acceden a sus datos, claves, tráfico ni copias de seguridad y no tramitan solicitudes sobre esos datos. El desarrollador principal opera por separado el nodo público barkfluff.com como persona física, tal como se indica arriba.
 
 Este documento describe el comportamiento del software en su configuración estándar y se aplica al nodo **barkfluff.com**. El administrador de cualquier otro nodo publica su propia versión y puede modificar la configuración o el código fuente; en ese caso rigen sus condiciones. Si su cuenta no se creó en barkfluff.com, diríjase al administrador de su nodo.
 
@@ -46,7 +46,7 @@ Este documento describe el comportamiento del software en su configuración est�
 | Token de Firebase | Notificaciones push mediante Firebase Cloud Messaging | Users.UserDevices |
 | Refresh token | Renovación de la sesión y cierre de sesión en el dispositivo | Identity.RefreshTokens |
 
-La dirección IP se transmite en las cabeceras de metadatos de servicio de gRPC y se usa para procesar las solicitudes en curso. Estos datos no salen de su nodo ni se transmiten a otros nodos.
+Algunos clientes envían un valor de IP en la cabecera de metadatos gRPC x-ip-address. El nodo usa este valor proporcionado por el cliente en el contexto de la solicitud; no es una fuente de IP de confianza ni forma parte de las cabeceras XFed de las solicitudes entre nodos. Esto no significa que la IP de red quede oculta a servicios externos: el extremo remoto puede ver la IP de origen de su conexión; véase la sección 7.
 
 ### 3.3 Mensajes, chats y archivos
 
@@ -64,9 +64,9 @@ Onliner almacena y sirve el estado de conexión y la hora de la última activida
 
 ### 3.5 Sitio web y soporte
 
-WebServer ofrece el sitio público, las páginas de perfil, los documentos legales y la API REST de perfiles públicos. En barkfluff.com, los mensajes del formulario de soporte se mantienen en la memoria del proceso WebServer y se reenvían al chat de soporte de Telegram. Según el operador, el chat de soporte de Telegram se limpia automáticamente una vez por semana; se trata de una limpieza periódica del chat, no de un plazo individual para cada mensaje. El historial local del chat de soporte web también se mantiene en la memoria del proceso WebServer y no se ha confirmado un calendario de limpieza.
+WebServer ofrece el sitio público, las páginas de perfil, los documentos legales y la API REST de perfiles públicos. En barkfluff.com, los mensajes del formulario de soporte se guardan en el historial en proceso de WebServer y se reenvían al chat de soporte de Telegram. El historial local se pierde al reiniciarse el proceso. Según el operador, el chat de soporte de Telegram se limpia automáticamente una vez por semana; se trata de una limpieza periódica del chat, no de un plazo individual para cada mensaje. No se ha confirmado un calendario de limpieza del historial local.
 
-Las solicitudes enviadas a las direcciones de servicio del operador pueden conservarse sin un plazo máximo establecido. El operador indica que los correos generados automáticamente por el servicio, incluidos los códigos, no se guardan en su propio buzón; esto no describe el tratamiento en Identity ni el almacenamiento en el buzón del destinatario.
+Las solicitudes enviadas a las direcciones de servicio del operador pueden conservarse sin un plazo máximo establecido. El operador indica que los códigos enviados por el servicio no se guardan en su propio buzón; esto no describe el tratamiento en Identity ni el almacenamiento en el buzón del destinatario.
 
 Al pulsar «Escribir en el navegador» en una página pública de perfil, WebServer crea una cookie de corta duración `bf_open_chat` para que el cliente web abra el chat con el usuario seleccionado.
 
@@ -74,7 +74,7 @@ Al pulsar «Escribir en el navegador» en una página pública de perfil, WebSer
 
 Calls guarda en la base de datos del nodo datos técnicos de la sesión de llamada, incluidos los participantes, el tipo y el estado de la llamada, y las horas de inicio, respuesta y finalización. Los medios de la llamada se retransmiten mediante LiveKit. El operador del nodo público indica que el servidor no graba los medios de las llamadas. Esta declaración no abarca los metadatos, los datos en los dispositivos de los participantes ni otros nodos; no se han confirmado el alojamiento de LiveKit ni sus plazos de conservación.
 
-Si envía un mensaje o archivo a un bot, se entrega a ese bot mediante la API. El operador del bot puede tratar o guardar lo que recibe según sus propias reglas. El token push del dispositivo se guarda en Users; el código backend envía notificaciones mediante Firebase Cloud Messaging cuando está habilitado. No se ha confirmado si se usa APNs ni la configuración de entrega push de otras plataformas.
+Si envía un mensaje o archivo a un bot, se entrega a ese bot mediante la API. El operador del bot puede tratar o guardar lo que recibe según sus propias reglas. El token push del dispositivo se guarda en Users; el código backend envía notificaciones mediante Firebase Cloud Messaging cuando está habilitado. Un payload FCM móvil ordinario puede incluir chat_id, sender_id, sender_name, avatar_url, chat_title, chat_avatar_url, is_group_chat, content_type, image_url, message_id, message_text (una vista previa truncada a 100 caracteres) y attachment_count. El payload de un mensaje privado contiene private_chat_id, event_id y sender_user_id; el de un mensaje secreto contiene event_id, sender_user_id y sender_device_id. Ninguno de esos dos payloads incluye texto del mensaje. No se ha confirmado si se usa APNs ni la configuración de entrega push de otras plataformas.
 
 ## 4. Intercambio federado de datos
 
@@ -114,7 +114,7 @@ Lo importante que debe entender:
 ### 6.1 Transmisión de datos
 
 - Los clientes y los microservicios usan gRPC/HTTP/2 y HTTPS/TLS en el perímetro externo.
-- La autorización de las solicitudes gRPC usa metadatos XAuth: `x-auth-token`, `x-device-id`, `x-device-name`, `x-ip`, `x-os`, `x-app-name`, `x-app-version`.
+- La autorización de las solicitudes gRPC usa metadatos XAuth: `x-auth-token`, `x-device-id`, `x-device-name`, `x-ip-address`, `x-os`, `x-app-name`, `x-app-version`.
 - Los eventos asíncronos internos pasan por RabbitMQ / MassTransit.
 - El tráfico entre nodos va por un canal seguro aparte; véase «Cifrado».
 
@@ -142,7 +142,7 @@ Los datos personales no se venden. Según la función y la configuración del no
 - el servidor LiveKit configurado para llamadas; no se han confirmado su alojamiento, operador ni tratamiento de metadatos;
 - Las respuestas de la página principal y la política comprobadas incluían los encabezados server: cloudflare y Network Error Logging (NEL); el navegador carga Google Fonts desde fonts.googleapis.com y fonts.gstatic.com.
 
-Los proveedores externos pueden recibir datos técnicos de red necesarios para entregar solicitudes o informes. No se han confirmado su configuración, ubicaciones de tratamiento ni plazos de conservación, salvo los datos sobre el operador indicados aquí. No deben inferirse las prácticas de los proveedores a partir del almacenamiento del nodo.
+Un servicio externo puede ver la IP de origen de su conexión de red: en una solicitud directa del navegador, la IP del navegador; en una solicitud del servidor, la IP de salida del servidor del nodo. Esto no significa que el proveedor la conserve; no se han confirmado sus tratamientos ni plazos de conservación. No deben inferirse las prácticas de los proveedores a partir del almacenamiento del nodo.
 
 
 ## 8. Derechos del usuario

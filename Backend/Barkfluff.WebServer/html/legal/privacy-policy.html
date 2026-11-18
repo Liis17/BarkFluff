@@ -86,7 +86,7 @@
 
     <section class="hero">
       <h1><span lang="ru">Политика конфиденциальности</span><span lang="en">Privacy Policy</span></h1>
-      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 19 ноября 2026 г.</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> November 19, 2026.</span></p>
+      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 19 ноября 2026 г. (редакция 2)</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> November 19, 2026 (revision 2).</span></p>
     </section>
 
   <section class="sec">
@@ -96,14 +96,14 @@
       <div class="callout">
         <p>Для публичной ноды <strong>barkfluff.com</strong> оператором персональных данных является физическое лицо — главный разработчик Barkfluff, действующий из Армении. Основной сервер ноды находится в Германии. Barkfluff — проект с открытым исходным кодом, не зарегистрированный как юридическое лицо. Оператор управляет публичной нодой и отвечает на запросы по её данным.</p>
       </div>
-      <p>Разработчики Barkfluff публикуют программное обеспечение и спецификацию протокола. Они не управляют чужими нодами, не имеют доступа к данным на них и не могут исполнять запросы по таким данным. Для публичной ноды barkfluff.com оператор указан выше.</p>
+      <p>Разработчики Barkfluff публикуют программное обеспечение и спецификацию протокола для нод, управляемых другими администраторами. В роли авторов ПО они не управляют этими нодами, не имеют доступа к их данным и не обрабатывают запросы об этих данных. Главный разработчик отдельно выступает оператором публичной ноды barkfluff.com как физическое лицо, как указано выше.</p>
       <p>Этот документ описывает поведение программного обеспечения в стандартной конфигурации и относится к ноде <strong>barkfluff.com</strong>. Администратор любой другой ноды публикует собственную редакцию и вправе изменить конфигурацию или исходный код — тогда действуют его условия. Если ваш аккаунт создан не на barkfluff.com, обращайтесь к администратору своей ноды.</p>
       </div>
       <div lang="en"><p>Barkfluff is a federated network of independent servers (“nodes”). Each node is deployed and operated by its administrator; nodes talk to each other to connect users of different nodes.</p>
       <div class="callout">
         <p>For the public <strong>barkfluff.com</strong> node, the controller is an individual operator — Barkfluff's lead developer, acting from Armenia. The node's main server is in Germany. Barkfluff is an open-source project and is not registered as a legal entity. The operator runs the public node and handles requests about its data.</p>
       </div>
-      <p>The Barkfluff developers publish the software and protocol specification. They do not operate other people's nodes, have access to data on them, or handle requests about that data. The operator of the public barkfluff.com node is identified above.</p>
+      <p>The Barkfluff developers publish the software and protocol specification for nodes operated by other administrators. In their role as software authors, they do not operate those nodes, access their data or handle requests about it. The lead developer separately operates the public barkfluff.com node as an individual, as identified above.</p>
       <p>This document describes the behaviour of the software in its default configuration and applies to the <strong>barkfluff.com</strong> node. The administrator of any other node publishes their own version and may change the configuration or the source code — in that case their terms apply. If your account was not created on barkfluff.com, contact your own node's administrator.</p>
       </div>
     </div>
@@ -155,7 +155,7 @@
           <tr><td>Refresh token</td><td>Продление сессии и выход с устройства</td><td>Identity.RefreshTokens</td></tr>
         </tbody>
       </table></div>
-      <p>IP-адрес передается в служебных metadata-заголовках gRPC и используется для обработки текущих запросов. Эти данные не покидают вашу ноду и на другие ноды не передаются.</p>
+      <p>Некоторые клиенты передают IP-адрес в gRPC metadata-заголовке x-ip-address. Нода использует это клиентское значение в контексте запроса; оно не является доверенным источником IP и не входит в перечень XFed-заголовков для межнодовых запросов. Это не означает, что сетевой IP скрыт от внешних служб: внешний endpoint видит IP-адрес источника своего соединения; см. раздел 7.</p>
 
       <h3>3.3 Сообщения, чаты и файлы</h3>
       <div class="scroll-x" tabindex="0"><table>
@@ -173,12 +173,12 @@
       <p>Onliner хранит и отдает онлайн-статус и время последней активности. Updates передает realtime-события клиентам через gRPC streaming.</p>
 
       <h3>3.5 Сайт и поддержка</h3>
-      <p>WebServer отдает публичный сайт и его REST API. Сообщения формы поддержки на barkfluff.com находятся в памяти процесса WebServer и пересылаются в Telegram-чат поддержки. По сведениям оператора, Telegram-чат поддержки автоматически очищается раз в неделю; это периодическая очистка чата, а не срок хранения каждого сообщения. Локальная история веб-чата поддержки также находится в памяти процесса WebServer; подтвержденного графика ее очистки нет.</p>
-      <p>Обращения на служебные адреса оператора могут храниться без установленного максимального срока. Оператор сообщает, что автоматически отправленные сервисом письма, включая коды, не сохраняются в его собственной почте; это не описывает обработку в Identity или хранение письма в почте получателя.</p>
+      <p>WebServer отдает публичный сайт и его REST API. Сообщения формы поддержки на barkfluff.com сохраняются в локальной истории WebServer в памяти процесса и пересылаются в Telegram-чат поддержки. Локальная история утрачивается при перезапуске процесса. По сведениям оператора, Telegram-чат поддержки автоматически очищается раз в неделю; это периодическая очистка чата, а не срок хранения каждого сообщения. Подтвержденного графика очистки локальной истории нет.</p>
+      <p>Обращения на служебные адреса оператора могут храниться без установленного максимального срока. Оператор сообщает, что отправленные сервисом коды не сохраняются в его собственной почте; это не описывает обработку данных в Identity или хранение письма в почте получателя.</p>
       <p>При клике «Написать в браузере» на публичной странице профиля WebServer создает краткоживущую cookie <code>bf_open_chat</code>, чтобы web-клиент открыл чат с выбранным пользователем.</p>
       <h3>3.6 Звонки, боты и push-уведомления</h3>
       <p>Calls хранит в базе данных ноды технические сведения о сеансах звонков, включая участников, тип звонка, статус и время начала, ответа и завершения. Медиа звонков передается через настроенный LiveKit-сервер. Оператор публичной ноды сообщает, что сервер только ретранслирует медиа и не записывает его. Это не относится к метаданным, устройствам участников или другим нодам; размещение LiveKit и сроки хранения его данных не подтверждены.</p>
-      <p>Сообщения и файлы, отправленные боту, передаются ему через API; оператор бота может обрабатывать или хранить полученные данные по своим правилам. Токен push-уведомлений хранится в Users; backend может отправлять уведомления через Firebase Cloud Messaging, если функция включена. Использование APNs и настройки доставки для других платформ не подтверждены.</p>
+      <p>Сообщения и файлы, отправленные боту, передаются ему через API; оператор бота может обрабатывать или хранить полученные данные по своим правилам. Токен push-уведомлений хранится в Users; backend может отправлять уведомления через Firebase Cloud Messaging, если функция включена. Обычный мобильный FCM data-payload может содержать chat_id, sender_id, sender_name, avatar_url, chat_title, chat_avatar_url, is_group_chat, content_type, image_url, message_id, message_text (превью до 100 символов) и attachment_count. Payload private-сообщения содержит private_chat_id, event_id и sender_user_id; payload secret-сообщения — event_id, sender_user_id и sender_device_id. Эти два payload не содержат текст сообщения. Использование APNs и настройки доставки для других платформ не подтверждены.</p>
       </div>
       <div lang="en"><h3>3.1 Account and profile</h3>
       <div class="scroll-x" tabindex="0"><table>
@@ -205,7 +205,7 @@
           <tr><td>Refresh token</td><td>Session renewal and sign-out from device</td><td>Identity.RefreshTokens</td></tr>
         </tbody>
       </table></div>
-      <p>The IP address is passed in gRPC service metadata headers and is used to process current requests. This data does not leave your node and is not sent to other nodes.</p>
+      <p>Some clients send an IP value in the gRPC metadata header x-ip-address. The node uses this client-supplied value in the request context; it is not a trusted IP source and is not one of the XFed headers used for inter-node requests. This does not mean the network IP is hidden from external services: a remote endpoint can see the source IP of its connection; see section 7.</p>
 
       <h3>3.3 Messages, chats and files</h3>
       <div class="scroll-x" tabindex="0"><table>
@@ -223,12 +223,12 @@
       <p>Onliner stores and serves the online status and last activity time. Updates delivers realtime events to clients via gRPC streaming.</p>
 
       <h3>3.5 Website and support</h3>
-      <p>WebServer serves the public site and its REST API. On barkfluff.com, website support messages are held in WebServer process memory and forwarded to the support Telegram chat. The operator reports that the Telegram support chat is automatically cleared once a week; this is periodic chat cleanup, not a per-message retention period. The local web support chat history is also held in WebServer process memory, and no cleanup schedule for it has been confirmed.</p>
-      <p>Requests sent to the operator's service email addresses may be kept without an established maximum retention period. The operator reports that service-generated emails, including codes, are not retained in the operator's own mailbox; this does not describe processing by Identity or storage in the recipient's mailbox.</p>
+      <p>WebServer serves the public site and its REST API. On barkfluff.com, website support messages are stored in WebServer's in-process history and forwarded to the support Telegram chat. The local history is lost when the process restarts. The operator reports that the Telegram support chat is automatically cleared once a week; this is periodic chat cleanup, not a per-message retention period. No cleanup schedule for the local history has been confirmed.</p>
+      <p>Requests sent to the operator's service email addresses may be kept without an established maximum retention period. The operator reports that codes sent by the service are not kept in the operator's own mailbox; this says nothing about processing by Identity or storage in the recipient's mailbox.</p>
       <p>On clicking “Message in browser” on a public profile page, WebServer creates a short-lived cookie <code>bf_open_chat</code> so the web client opens a chat with the selected user.</p>
       <h3>3.6 Calls, bots and push notifications</h3>
       <p>Calls stores technical call-session details in the node database, including participants, call type, status, and start, answer and end times. Call media is relayed through the configured LiveKit server. The public-node operator reports that the server only relays call media and does not record it. This does not cover call metadata, participants' devices or other nodes; LiveKit hosting and data-retention details have not been confirmed.</p>
-      <p>Messages and files sent to a bot are delivered to it through the API; the bot operator may process or store what it receives under its own rules. A push token is stored in Users; the backend can send notifications through Firebase Cloud Messaging when enabled. Whether APNs or other platform delivery services are used has not been confirmed.</p>
+      <p>Messages and files sent to a bot are delivered to it through the API; the bot operator may process or store what it receives under its own rules. A push token is stored in Users; the backend can send notifications through Firebase Cloud Messaging when enabled. An ordinary mobile FCM data payload may include chat_id, sender_id, sender_name, avatar_url, chat_title, chat_avatar_url, is_group_chat, content_type, image_url, message_id, message_text (a preview truncated to 100 characters), and attachment_count. A private-message payload contains private_chat_id, event_id and sender_user_id; a secret-message payload contains event_id, sender_user_id and sender_device_id. Neither payload contains message text. Whether APNs or other platform delivery services are used has not been confirmed.</p>
       </div>
     </div>
   </section>
@@ -316,7 +316,7 @@
       <div lang="ru"><h3>6.1 Передача данных</h3>
       <ul>
         <li>Клиенты и микросервисы используют gRPC/HTTP/2 и HTTPS/TLS на внешнем контуре.</li>
-        <li>Авторизация gRPC-запросов использует XAuth metadata: <code>x-auth-token</code>, <code>x-device-id</code>, <code>x-device-name</code>, <code>x-ip</code>, <code>x-os</code>, <code>x-app-name</code>, <code>x-app-version</code>.</li>
+        <li>Авторизация gRPC-запросов использует XAuth metadata: <code>x-auth-token</code>, <code>x-device-id</code>, <code>x-device-name</code>, <code>x-ip-address</code>, <code>x-os</code>, <code>x-app-name</code>, <code>x-app-version</code>.</li>
         <li>Внутренние асинхронные события проходят через RabbitMQ / MassTransit.</li>
         <li>Трафик между нодами идет по отдельному защищенному каналу — см. страницу <a href="/legal/encryption">«Шифрование»</a>.</li>
       </ul>
@@ -340,7 +340,7 @@
       <div lang="en"><h3>6.1 Data transfer</h3>
       <ul>
         <li>Clients and microservices use gRPC/HTTP/2 and HTTPS/TLS on the external perimeter.</li>
-        <li>gRPC request authorization uses XAuth metadata: <code>x-auth-token</code>, <code>x-device-id</code>, <code>x-device-name</code>, <code>x-ip</code>, <code>x-os</code>, <code>x-app-name</code>, <code>x-app-version</code>.</li>
+        <li>gRPC request authorization uses XAuth metadata: <code>x-auth-token</code>, <code>x-device-id</code>, <code>x-device-name</code>, <code>x-ip-address</code>, <code>x-os</code>, <code>x-app-name</code>, <code>x-app-version</code>.</li>
         <li>Internal asynchronous events go through RabbitMQ / MassTransit.</li>
         <li>Inter-node traffic uses a separate secured channel — see the <a href="/legal/encryption">“Encryption”</a> page.</li>
       </ul>
@@ -377,7 +377,7 @@
         <li><strong>Google Fonts:</strong> браузер загружает шрифты с <code>fonts.googleapis.com</code> и <code>fonts.gstatic.com</code>.</li>
         <li><strong>Хостинг и инфраструктура:</strong> основной сервер публичной ноды расположен в Германии; состав и обработка у сторонних инфраструктурных поставщиков не подтверждены.</li>
       </ul>
-      <p>Для публичной ноды подтверждены перечисленные выше потоки; настройки, местонахождение и сроки хранения у внешних поставщиков не установлены оператором в рамках этой политики и не выводятся из практики хранения самой ноды.</p>
+      <p>Внешняя служба видит IP-адрес источника сетевого соединения: при прямом запросе из браузера — IP браузера, при запросе сервера — внешний IP сервера ноды. Это не означает, что поставщик сохраняет адрес. Настройки, места обработки и сроки хранения у внешних поставщиков не подтверждены и не выводятся из практики хранения самой ноды.</p>
       </div>
       <div lang="en"><p>Personal data is not sold. Data is shared with external providers only to operate the features the node administrator has enabled:</p>
       <ul>
@@ -390,7 +390,7 @@
         <li><strong>Google Fonts:</strong> the browser loads fonts from <code>fonts.googleapis.com</code> and <code>fonts.gstatic.com</code>.</li>
         <li><strong>Hosting and infrastructure:</strong> the public node's main server is in Germany; the full set of third-party infrastructure providers and their processing details have not been confirmed.</li>
       </ul>
-      <p>The flows listed above are confirmed for the public node. The operator has not established provider locations or retention periods in this policy; the node's own storage practices should not be attributed to providers.</p>
+      <p>An external service can see the source IP address of its network connection: for a direct browser request, the browser's IP; for a server request, the node server's egress IP. This does not mean the provider stores the address. Provider locations and retention periods have not been confirmed, and the node's own storage practices should not be attributed to providers.</p>
       </div>
     </div>
   </section>

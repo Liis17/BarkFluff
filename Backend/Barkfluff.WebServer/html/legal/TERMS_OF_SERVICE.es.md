@@ -1,7 +1,7 @@
 # Términos de servicio de BarkFluff
 
 **En vigor desde:** 24 de enero de 2026  
-**Última actualización:** 19 de noviembre de 2026
+**Última actualización:** 19 de noviembre de 2026 (revisión 2)
 
 > Esta traducción se proporciona únicamente por comodidad. En caso de discrepancia, prevalece la versión en ruso.
 
@@ -9,7 +9,7 @@
 
 BarkFluff es una red federada de servidores independientes («nodos»). Cada nodo lo despliega y mantiene su administrador; los nodos se comunican entre sí para conectar a usuarios de nodos distintos.
 
-El servicio se lo presta **el administrador del nodo en el que se creó su cuenta**. Este acuerdo se celebra entre usted y él. Los desarrolladores de BarkFluff no son parte de este acuerdo: publican el software, pero no le prestan un servicio de comunicación ni gestionan nodos ajenos.
+El servicio lo presta el administrador del nodo en el que se creó su cuenta, y el acuerdo se celebra con ese administrador. En el nodo público barkfluff.com, el desarrollador principal es el operador y parte contratante, y actúa como persona física desde Armenia; los detalles figuran más abajo. La función de los desarrolladores de BarkFluff como autores del software para otros nodos gestionados de forma independiente no los convierte en parte de los acuerdos entre usuarios y los administradores de esos nodos.
 
 Este texto se refiere al nodo **barkfluff.com**. El administrador de cualquier otro nodo publica su propia versión de los términos y puede establecer sus propias normas. Si su cuenta no se creó en barkfluff.com, rigen los términos de su nodo.
 
@@ -19,7 +19,7 @@ Al usar BarkFluff, usted acepta estos Términos y los documentos relacionados: l
 
 ## 2. Funciones y ámbitos de responsabilidad
 
-- **El desarrollador de BarkFluff** escribe el código, publica las versiones de los clientes y la especificación del protocolo, y recibe los informes de vulnerabilidades. No aloja nodos ajenos, no tiene acceso a sus datos y no responde de su funcionamiento, disponibilidad, moderación ni de los actos de sus administradores.
+- **Los desarrolladores de BarkFluff, como autores del software para otros nodos gestionados de forma independiente,** escriben el código, publican las versiones de los clientes y la especificación del protocolo, y reciben los informes de vulnerabilidades. En esa función no gestionan esos nodos, no acceden a sus datos ni responden de su funcionamiento, disponibilidad, moderación o de los actos de sus administradores. El desarrollador principal opera por separado el nodo público barkfluff.com, como se indica en la sección 1.
 - **El administrador del nodo** despliega, actualiza y configura el nodo, responde de la seguridad y la licitud del tratamiento de los datos de sus usuarios, de las copias de seguridad, de la moderación y de la atención a las solicitudes. También decide si activa la federación y con qué nodos se comunica.
 - **Usted** responde de sus dispositivos, su contraseña y sus códigos 2FA, así como del contenido que envía y publica.
 
@@ -95,7 +95,7 @@ El nodo se ofrece «tal cual». Son posibles fallos, tareas de mantenimiento y e
 
 ## 12. Limitación de responsabilidad
 
-- **El desarrollador** no responde del funcionamiento ni de la disponibilidad de ningún nodo, de los actos u omisiones de sus administradores, de la conservación y el tratamiento de los datos en ellos, del contenido de los usuarios, ni de los daños derivados del uso del software.
+- **Los desarrolladores de BarkFluff en su función de autores del software para otros nodos gestionados de forma independiente** no responden del funcionamiento ni de la disponibilidad de esos nodos, de los actos u omisiones de sus administradores, de la conservación y el tratamiento de los datos en ellos, del contenido de sus usuarios ni de las pérdidas derivadas del uso del software en esos nodos. Esta cláusula no describe el papel separado del desarrollador principal como operador del nodo público barkfluff.com (sección 1).
 - **El administrador del nodo** no responde de daños indirectos, de la pérdida de datos por actos del usuario, del compromiso del dispositivo o de la contraseña, de los actos de terceros, del contenido recibido de otros nodos ni de la indisponibilidad de proveedores externos, incluidos correo electrónico, Firebase, Telegram, alojamiento e infraestructura de red.
 
 ## 13. Modificación del acuerdo

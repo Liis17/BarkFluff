@@ -1,7 +1,7 @@
 # BarkFluff Datenschutzerklärung
 
 **Gültig ab:** 24. Januar 2026  
-**Letzte Aktualisierung:** 19. November 2026
+**Letzte Aktualisierung:** 19. November 2026 (Fassung 2)
 
 > Diese Übersetzung dient nur der Bequemlichkeit. Im Falle von Abweichungen ist die russische Fassung maßgebend.
 
@@ -11,7 +11,7 @@ BarkFluff ist ein föderiertes Netzwerk unabhängiger Server („Knoten“). Jed
 
 Für den öffentlichen Knoten barkfluff.com ist eine natürliche Person verantwortlich: der Hauptentwickler von BarkFluff mit Sitz in Armenien. Der Hauptserver des Knotens befindet sich in Deutschland. BarkFluff ist ein Open-Source-Projekt und nicht als juristische Person registriert. Die Kontaktadressen des Betreibers stehen am Ende dieses Dokuments.
 
-Die Entwickler von BarkFluff veröffentlichen die Software und die Protokollspezifikation. Sie betreiben **keine** fremden Knoten, haben **keinen** Zugriff auf deren Daten, Schlüssel, Datenverkehr oder Sicherungskopien, **können** Daten auf einem fremden Knoten weder herausgeben noch ändern oder löschen und sind **nicht** Verantwortliche für Ihre Daten.
+Die Entwickler von BarkFluff veröffentlichen Software und Protokollspezifikation für andere, von ihren jeweiligen Administratoren betriebene Knoten. In ihrer Rolle als Softwareautoren betreiben sie diese Knoten nicht, haben keinen Zugriff auf deren Daten, Schlüssel, Datenverkehr oder Sicherungskopien und bearbeiten keine Anfragen zu diesen Daten. Der Hauptentwickler betreibt den öffentlichen Knoten barkfluff.com, wie oben beschrieben, gesondert als natürliche Person.
 
 Dieses Dokument beschreibt das Verhalten der Software in der Standardkonfiguration und gilt für den Knoten **barkfluff.com**. Der Administrator jedes anderen Knotens veröffentlicht seine eigene Fassung und darf Konfiguration oder Quellcode ändern — dann gelten seine Bedingungen. Wurde Ihr Konto nicht auf barkfluff.com angelegt, wenden Sie sich an den Administrator Ihres Knotens.
 
@@ -46,7 +46,7 @@ Dieses Dokument beschreibt das Verhalten der Software in der Standardkonfigurati
 | Firebase-Token | Push-Benachrichtigungen über Firebase Cloud Messaging | Users.UserDevices |
 | Refresh-Token | Verlängerung der Sitzung und Abmeldung vom Gerät | Identity.RefreshTokens |
 
-Die IP-Adresse wird in den gRPC-Metadaten-Headern übertragen und zur Bearbeitung der aktuellen Anfragen verwendet. Diese Daten verlassen Ihren Knoten nicht und werden nicht an andere Knoten übermittelt.
+Einige Clients senden einen IP-Wert im gRPC-Metadaten-Header x-ip-address. Der Knoten übernimmt diesen clientseitig übermittelten Wert in den Request-Kontext; er ist keine vertrauenswürdige IP-Quelle und gehört nicht zu den XFed-Headern für Knoten-zu-Knoten-Anfragen. Das bedeutet nicht, dass die Netzwerk-IP externen Diensten verborgen bleibt: Der entfernte Endpunkt sieht die Quell-IP seiner Verbindung; siehe Abschnitt 7.
 
 ### 3.3 Nachrichten, Chats und Dateien
 
@@ -64,9 +64,9 @@ Onliner speichert und liefert den Online-Status und den Zeitpunkt der letzten Ak
 
 ### 3.5 Website und Support
 
-WebServer stellt die öffentliche Website, Profilseiten, Rechtsdokumente und die öffentliche Profil-REST-API bereit. Auf barkfluff.com werden Nachrichten aus dem Support-Formular im Arbeitsspeicher des WebServer-Prozesses gehalten und an den Telegram-Support-Chat weitergeleitet. Laut Betreiber wird der Telegram-Support-Chat automatisch einmal pro Woche geleert; dies ist eine regelmäßige Chat-Bereinigung und keine individuelle Aufbewahrungsfrist je Nachricht. Der lokale Verlauf des Web-Support-Chats wird ebenfalls im Arbeitsspeicher des WebServer-Prozesses gehalten; ein Bereinigungszeitplan dafür ist nicht bestätigt.
+WebServer stellt die öffentliche Website, Profilseiten, Rechtsdokumente und die öffentliche Profil-REST-API bereit. Auf barkfluff.com werden Nachrichten aus dem Support-Formular im Arbeitsspeicher des WebServer-Prozesses als lokaler Verlauf gehalten und an den Telegram-Support-Chat weitergeleitet. Der lokale Verlauf geht beim Neustart des Prozesses verloren. Laut Betreiber wird der Telegram-Support-Chat automatisch einmal pro Woche geleert; dies ist eine regelmäßige Chat-Bereinigung und keine individuelle Aufbewahrungsfrist je Nachricht. Ein Zeitplan für die Bereinigung des lokalen Verlaufs ist nicht bestätigt.
 
-Anfragen an die dienstlichen E-Mail-Adressen des Betreibers können ohne festgelegte Höchstfrist gespeichert werden. Laut Betreiber werden automatisch vom Dienst versandte E-Mails, einschließlich Codes, nicht im eigenen Postfach aufbewahrt; dies sagt nichts über die Verarbeitung in Identity oder das Postfach des Empfängers aus.
+Anfragen an die dienstlichen E-Mail-Adressen des Betreibers können ohne festgelegte Höchstfrist gespeichert werden. Laut Betreiber werden vom Dienst versandte Codes nicht im eigenen Postfach aufbewahrt; dies sagt nichts über die Verarbeitung in Identity oder das Postfach des Empfängers aus.
 
 Beim Klick auf „Im Browser schreiben“ auf einer öffentlichen Profilseite erstellt WebServer ein kurzlebiges Cookie `bf_open_chat`, damit der Web-Client den Chat mit dem gewählten Nutzer öffnet.
 
@@ -74,7 +74,7 @@ Beim Klick auf „Im Browser schreiben“ auf einer öffentlichen Profilseite er
 
 Calls speichert technische Angaben zur Anrufsitzung in der Knotendatenbank, darunter Teilnehmer, Anruftyp, Status sowie Start-, Annahme- und Endzeit. Anrufmedien werden über LiveKit weitergeleitet. Laut Betreiber des öffentlichen Knotens zeichnet der Server Anrufmedien nicht auf. Diese Aussage bezieht sich nicht auf Anrufmetadaten, Daten auf den Geräten der Teilnehmer oder andere Knoten; Hosting und Aufbewahrungsfristen von LiveKit sind nicht bestätigt.
 
-Wenn Sie einem Bot eine Nachricht oder Datei senden, wird sie über die API an diesen Bot übermittelt. Der Bot-Betreiber kann die empfangenen Daten nach eigenen Regeln verarbeiten oder speichern. Ein Push-Token des Geräts wird in Users gespeichert; der Backend-Code sendet Benachrichtigungen bei aktivierter Funktion über Firebase Cloud Messaging. Die Nutzung von APNs oder Push-Diensten anderer Plattformen ist nicht bestätigt.
+Wenn Sie einem Bot eine Nachricht oder Datei senden, wird sie über die API an diesen Bot übermittelt. Der Bot-Betreiber kann die empfangenen Daten nach eigenen Regeln verarbeiten oder speichern. Ein Push-Token des Geräts wird in Users gespeichert; der Backend-Code sendet Benachrichtigungen bei aktivierter Funktion über Firebase Cloud Messaging. Ein gewöhnlicher mobiler FCM-Daten-Payload kann chat_id, sender_id, sender_name, avatar_url, chat_title, chat_avatar_url, is_group_chat, content_type, image_url, message_id, message_text (eine auf 100 Zeichen gekürzte Vorschau) und attachment_count enthalten. Ein Payload für private Nachrichten enthält private_chat_id, event_id und sender_user_id; eines für geheime Nachrichten enthält event_id, sender_user_id und sender_device_id. Beide Payloads enthalten keinen Nachrichtentext. Die Nutzung von APNs oder Push-Diensten anderer Plattformen ist nicht bestätigt.
 
 ## 4. Föderierter Datenaustausch
 
@@ -114,7 +114,7 @@ Wichtig zu verstehen:
 ### 6.1 Datenübertragung
 
 - Clients und Microservices nutzen gRPC/HTTP/2 und HTTPS/TLS am äußeren Perimeter.
-- Die Autorisierung von gRPC-Anfragen nutzt XAuth-Metadaten: `x-auth-token`, `x-device-id`, `x-device-name`, `x-ip`, `x-os`, `x-app-name`, `x-app-version`.
+- Die Autorisierung von gRPC-Anfragen nutzt XAuth-Metadaten: `x-auth-token`, `x-device-id`, `x-device-name`, `x-ip-address`, `x-os`, `x-app-name`, `x-app-version`.
 - Interne asynchrone Ereignisse laufen über RabbitMQ / MassTransit.
 - Der Verkehr zwischen Knoten läuft über einen separaten gesicherten Kanal — siehe „Verschlüsselung“.
 
@@ -142,7 +142,7 @@ Personenbezogene Daten werden nicht verkauft. Abhängig von Funktion und Konfigu
 - den konfigurierten LiveKit-Server für Anrufe; Hosting, Betreiber und Verarbeitung von Metadaten sind nicht bestätigt;
 - Die geprüften Antworten der Startseite und der Datenschutzerklärung enthielten die Header server: cloudflare und Network Error Logging (NEL); der Browser lädt Google Fonts von fonts.googleapis.com und fonts.gstatic.com.
 
-Externe Anbieter können technische Netzwerkdaten erhalten, die für die Übermittlung einer Anfrage oder eines Berichts erforderlich sind. Konfiguration, Verarbeitungsorte und Aufbewahrungsfristen sind, abgesehen von den hier genannten Betreiberangaben, nicht bestätigt. Aus der Speicherung des Knotens lassen sich keine Anbieterpraktiken ableiten.
+Ein externer Dienst kann die Quell-IP seiner Netzwerkverbindung sehen: Bei einer direkten Browseranfrage ist dies die IP des Browsers, bei einer Serveranfrage die ausgehende IP des Knotens. Das bedeutet nicht, dass der Anbieter diese Adresse speichert; seine Verarbeitung und Aufbewahrungsfristen sind nicht bestätigt. Anbieterpraktiken lassen sich nicht aus der Speicherung des Knotens ableiten.
 
 
 ## 8. Rechte der Nutzer

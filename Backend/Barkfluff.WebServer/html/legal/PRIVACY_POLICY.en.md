@@ -1,7 +1,7 @@
 # BarkFluff Privacy Policy
 
 **Effective from:** January 24, 2026  
-**Last updated:** November 19, 2026
+**Last updated:** November 19, 2026 (revision 2)
 
 > This translation is provided for convenience. In case of any discrepancy, the Russian version prevails.
 
@@ -11,7 +11,7 @@ BarkFluff is a federated network of independent servers ("nodes"). Each node is 
 
 For the public barkfluff.com node, the controller is an individual operator: BarkFluff's lead developer, based in Armenia. The node's main server is in Germany. BarkFluff is an open-source project and is not registered as a legal entity. The operator's contact addresses are listed at the end of this document.
 
-The BarkFluff developers publish the software and the protocol specification. They do **not** host other people's nodes, do **not** have access to their data, keys, traffic or backups, **cannot** disclose, modify or delete data on someone else's node, and are **not** the controller of your data.
+The BarkFluff developers publish the software and protocol specification for nodes operated by other administrators. In their role as software authors, they do not operate those nodes, access their data, keys, traffic or backups, or handle requests about that data. The lead developer separately operates the public barkfluff.com node as an individual, as stated above.
 
 This document describes the behaviour of the software in its default configuration and applies to the **barkfluff.com** node. The administrator of any other node publishes their own version and may change the configuration or the source code — in that case their terms apply. If your account was not created on barkfluff.com, contact your own node's administrator.
 
@@ -46,7 +46,7 @@ This document describes the behaviour of the software in its default configurati
 | Firebase token | Push notifications via Firebase Cloud Messaging | Users.UserDevices |
 | Refresh token | Session renewal and sign-out from device | Identity.RefreshTokens |
 
-The IP address is passed in gRPC service metadata headers and is used to process current requests. This data does not leave your node and is not sent to other nodes.
+Some clients send an IP value in the gRPC metadata header x-ip-address. The node uses this client-supplied value in the request context; it is not a trusted IP source and is not one of the XFed headers used for inter-node requests. This does not mean the network IP is hidden from external services: a remote endpoint can see the source IP of its connection; see section 7.
 
 ### 3.3 Messages, chats and files
 
@@ -64,9 +64,9 @@ Onliner stores and serves the online status and last activity time. Updates deli
 
 ### 3.5 Website and support
 
-WebServer serves the public site, profile pages, legal documents and the public profile REST API. On barkfluff.com, website support messages are held in WebServer process memory and forwarded to the support Telegram chat. The operator reports that the Telegram support chat is automatically cleared once a week; this is periodic chat cleanup, not a per-message retention period. The local web support chat history is also held in WebServer process memory, and no cleanup schedule for it has been confirmed.
+WebServer serves the public site, profile pages, legal documents and the public profile REST API. On barkfluff.com, website support messages enter WebServer's in-process history and are forwarded to the support Telegram chat. The local history is lost when the process restarts. The operator reports that the Telegram support chat is automatically cleared once a week; this is periodic chat cleanup, not a per-message retention period. No cleanup schedule for the local history has been confirmed.
 
-Requests sent to the operator's service email addresses may be kept without an established maximum retention period. The operator reports that service-generated emails, including codes, are not retained in the operator's own mailbox; this does not describe processing by Identity or storage in the recipient's mailbox.
+Requests sent to the operator's service email addresses may be kept without an established maximum retention period. The operator reports that codes sent by the service are not kept in the operator's own mailbox; this says nothing about processing by Identity or storage in the recipient's mailbox.
 
 On clicking "Message in browser" on a public profile page, WebServer creates a short-lived cookie `bf_open_chat` so the web client opens a chat with the selected user.
 
@@ -74,7 +74,7 @@ On clicking "Message in browser" on a public profile page, WebServer creates a s
 
 Calls stores technical call-session details in the node database, including participants, call type, status, and start, answer and end times. Call media is relayed through LiveKit. The public-node operator reports that the server does not record call media. This statement does not cover call metadata, data on participants' devices or other nodes; LiveKit hosting and data-retention details have not been confirmed.
 
-If you send a message or file to a bot, it is delivered to that bot through the API. The bot operator may process or store what it receives under its own rules. A device push token is stored in Users; backend code sends notifications through Firebase Cloud Messaging when enabled. Whether APNs or other platform delivery services are used has not been confirmed.
+If you send a message or file to a bot, it is delivered to that bot through the API. The bot operator may process or store what it receives under its own rules. A device push token is stored in Users; backend code sends notifications through Firebase Cloud Messaging when enabled. An ordinary mobile FCM data payload may include chat_id, sender_id, sender_name, avatar_url, chat_title, chat_avatar_url, is_group_chat, content_type, image_url, message_id, message_text (a preview truncated to 100 characters), and attachment_count. A private-message payload contains private_chat_id, event_id and sender_user_id; a secret-message payload contains event_id, sender_user_id and sender_device_id. Neither payload contains message text. Whether APNs or other platform delivery services are used has not been confirmed.
 
 ## 4. Federated data exchange
 
@@ -114,7 +114,7 @@ What matters here:
 ### 6.1 Data transfer
 
 - Clients and microservices use gRPC/HTTP/2 and HTTPS/TLS on the external perimeter.
-- gRPC request authorization uses XAuth metadata: `x-auth-token`, `x-device-id`, `x-device-name`, `x-ip`, `x-os`, `x-app-name`, `x-app-version`.
+- gRPC request authorization uses XAuth metadata: `x-auth-token`, `x-device-id`, `x-device-name`, `x-ip-address`, `x-os`, `x-app-name`, `x-app-version`.
 - Internal asynchronous events go through RabbitMQ / MassTransit.
 - Inter-node traffic uses a separate secured channel — see "Encryption".
 
@@ -142,7 +142,7 @@ Personal data is not sold. Depending on the feature and public-node configuratio
 - the configured LiveKit server for calls; its hosting, operator and handling of metadata have not been confirmed;
 - The checked main page and privacy policy responses contained the server: cloudflare and Network Error Logging (NEL) headers; the browser loads Google Fonts from fonts.googleapis.com and fonts.gstatic.com.
 
-External providers may receive technical network data needed to deliver a request or report. Their configuration, processing locations and retention periods have not been confirmed, except for the node operator facts stated in this notice. Provider practices should not be inferred from the node's storage practices.
+An external service can see the source IP address of its network connection: for a direct browser request, the browser's IP; for a server request, the node server's egress IP. This does not mean the provider stores the address; its processing and retention periods have not been confirmed. Provider practices should not be inferred from the node's storage practices.
 
 
 ## 8. User rights

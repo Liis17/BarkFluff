@@ -1,7 +1,7 @@
 # BarkFluff Nutzungsbedingungen
 
 **Gültig ab:** 24. Januar 2026  
-**Letzte Aktualisierung:** 19. November 2026
+**Letzte Aktualisierung:** 19. November 2026 (Fassung 2)
 
 > Diese Übersetzung dient nur der Bequemlichkeit. Im Falle von Abweichungen ist die russische Fassung maßgebend.
 
@@ -9,7 +9,7 @@
 
 BarkFluff ist ein föderiertes Netzwerk unabhängiger Server („Knoten“). Jeder Knoten wird von seinem Administrator bereitgestellt und betrieben; die Knoten kommunizieren untereinander, um Nutzer verschiedener Knoten zu verbinden.
 
-Der Dienst wird Ihnen von **dem Administrator des Knotens erbracht, auf dem Ihr Konto angelegt wurde**. Diese Vereinbarung wird zwischen Ihnen und ihm geschlossen. Die Entwickler von BarkFluff sind nicht Partei dieser Vereinbarung: Sie veröffentlichen die Software, erbringen Ihnen aber keinen Kommunikationsdienst und betreiben keine fremden Knoten.
+Der Dienst wird vom Administrator des Knotens erbracht, auf dem Ihr Konto angelegt wurde; die Vereinbarung besteht mit diesem Administrator. Beim öffentlichen Knoten barkfluff.com ist der Hauptentwickler als natürliche Person aus Armenien Betreiber und Vertragspartner; weitere Angaben stehen unten. Die Rolle der Entwickler als Softwareautoren für andere unabhängig betriebene Knoten macht sie nicht zu Parteien der Vereinbarungen zwischen Nutzern und den Administratoren dieser Knoten.
 
 Dieser Text gilt für den Knoten **barkfluff.com**. Der Administrator jedes anderen Knotens veröffentlicht seine eigene Fassung der Bedingungen und darf eigene Regeln aufstellen. Wurde Ihr Konto nicht auf barkfluff.com angelegt, gelten die Bedingungen Ihres Knotens.
 
@@ -19,7 +19,7 @@ Mit der Nutzung von BarkFluff stimmen Sie diesen Bedingungen und den zugehörige
 
 ## 2. Rollen und Verantwortungsbereiche
 
-- **Der BarkFluff-Entwickler** schreibt den Code, veröffentlicht Client-Releases und die Protokollspezifikation und nimmt Schwachstellenmeldungen entgegen. Er betreibt keine fremden Knoten, hat keinen Zugriff auf deren Daten und ist nicht verantwortlich für deren Betrieb, Verfügbarkeit, Moderation oder das Handeln ihrer Administratoren.
+- **Die BarkFluff-Entwickler als Softwareautoren für andere unabhängig betriebene Knoten** schreiben den Code, veröffentlichen Client-Releases und die Protokollspezifikation und nehmen Schwachstellenmeldungen entgegen. In dieser Rolle betreiben sie diese Knoten nicht, greifen nicht auf deren Daten zu und übernehmen keine Verantwortung für deren Betrieb, Verfügbarkeit, Moderation oder das Handeln ihrer Administratoren. Der Hauptentwickler betreibt den öffentlichen Knoten barkfluff.com gesondert, wie in Abschnitt 1 beschrieben.
 - **Der Knotenadministrator** stellt den Knoten bereit, aktualisiert und konfiguriert ihn, ist verantwortlich für die Sicherheit und Rechtmäßigkeit der Verarbeitung der Daten seiner Nutzer, für Sicherungskopien, für die Moderation und für die Beantwortung von Anfragen. Er entscheidet auch, ob die Föderation aktiviert wird und mit welchen Knoten kommuniziert wird.
 - **Sie** sind verantwortlich für Ihre Geräte, Ihr Passwort und Ihre 2FA-Codes sowie für die Inhalte, die Sie senden und veröffentlichen.
 
@@ -95,7 +95,7 @@ Ein Knoten wird „wie besehen“ bereitgestellt. Störungen, Wartungsarbeiten s
 
 ## 12. Haftungsbeschränkung
 
-- **Der Entwickler** haftet nicht für Betrieb und Verfügbarkeit irgendeines Knotens, für Handeln oder Unterlassen seiner Administratoren, für die Sicherheit und Verarbeitung der dortigen Daten, für Nutzerinhalte oder für Schäden, die aus der Nutzung der Software entstehen.
+- **Die BarkFluff-Entwickler in ihrer Rolle als Softwareautoren für andere unabhängig betriebene Knoten** haften nicht für Betrieb und Verfügbarkeit dieser Knoten, das Handeln oder Unterlassen ihrer Administratoren, die Sicherheit und Verarbeitung der dortigen Daten, Nutzerinhalte auf diesen Knoten oder Verluste aus der Softwarenutzung im Zusammenhang mit diesen Knoten. Diese Aussage beschreibt nicht die gesonderte Rolle des Hauptentwicklers als Betreiber des öffentlichen Knotens barkfluff.com (Abschnitt 1).
 - **Der Knotenadministrator** haftet nicht für mittelbare Schäden, Datenverlust durch Handlungen des Nutzers, Kompromittierung von Gerät oder Passwort, Handlungen Dritter, von anderen Knoten empfangene Inhalte sowie die Nichtverfügbarkeit externer Anbieter, einschließlich E-Mail, Firebase, Telegram, Hosting und Netzinfrastruktur.
 
 ## 13. Änderung der Vereinbarung

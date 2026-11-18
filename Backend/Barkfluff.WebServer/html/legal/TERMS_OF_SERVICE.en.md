@@ -1,7 +1,7 @@
 # BarkFluff Terms of Service
 
 **Effective from:** January 24, 2026  
-**Last updated:** November 19, 2026
+**Last updated:** November 19, 2026 (revision 2)
 
 > This translation is provided for convenience. In case of any discrepancy, the Russian version prevails.
 
@@ -9,7 +9,7 @@
 
 BarkFluff is a federated network of independent servers ("nodes"). Each node is deployed and operated by its administrator; nodes talk to each other to connect users of different nodes.
 
-The service is provided to you by **the administrator of the node where your account was created**. This agreement is made between you and them. The BarkFluff developers are not a party to it: they publish the software, but they do not provide you with a communication service and do not operate other people's nodes.
+The service is provided by the administrator of the node where your account was created, and the agreement is with that administrator. For the public barkfluff.com node, the lead developer is the operator and contracting party, acting as an individual from Armenia; further details are below. The BarkFluff developers' role as software authors for other independently operated nodes does not make them party to agreements between users and those node administrators.
 
 This text applies to the **barkfluff.com** node. The administrator of any other node publishes their own version of the terms and may set their own rules. If your account was not created on barkfluff.com, your node's terms apply.
 
@@ -19,7 +19,7 @@ By using BarkFluff, you agree to these Terms and the related documents: the Priv
 
 ## 2. Roles and areas of responsibility
 
-- **The BarkFluff developer** writes the code, publishes client releases and the protocol specification, and receives vulnerability reports. They do not host other people's nodes, have no access to their data, and are not responsible for their operation, availability, moderation or the actions of their administrators.
+- **The BarkFluff developers as software authors for other independently operated nodes** write code, publish client releases and the protocol specification, and receive vulnerability reports. In that role, they do not operate those nodes, access their data, or take responsibility for their operation, availability, moderation or their administrators' actions. The lead developer separately operates the public barkfluff.com node as described in section 1.
 - **The node administrator** deploys, updates and configures the node, is responsible for the safety and lawfulness of the processing of their users' data, for backups, for moderation and for answering requests. They also decide whether to enable federation and which nodes to talk to.
 - **You** are responsible for your devices, password and 2FA codes, and for the content you send and publish.
 
@@ -95,7 +95,7 @@ A node is provided "as is". Outages, maintenance, and client or backend service 
 
 ## 12. Limitation of liability
 
-- **The developer** is not liable for the operation or availability of any node, for the acts or omissions of its administrators, for the safety and processing of data on it, for user content, or for damages arising from the use of the software.
+- **The BarkFluff developers in their role as software authors for other independently operated nodes** are not liable for those nodes' operation or availability, their administrators' acts or omissions, the safety and processing of data on those nodes, user content there, or losses from software use in the context of those nodes. This statement does not describe the lead developer's separate role as operator of the public barkfluff.com node (section 1).
 - **The node administrator** is not liable for indirect damages, data loss caused by user actions, device or password compromise, third-party actions, content received from other nodes, and the unavailability of external providers, including email, Firebase, Telegram, hosting and network infrastructure.
 
 ## 13. Changes to the agreement

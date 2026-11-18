@@ -1,7 +1,7 @@
 # BarkFluff 隐私政策
 
 **生效日期：** 2026 年 1 月 24 日  
-**最后更新：** 2026 年 11 月 19 日
+**最后更新：** 2026 年 11 月 19 日（第 2 版）
 
 > 本译文仅供参考。如有歧义，以俄文版本为准。
 
@@ -11,7 +11,7 @@ BarkFluff 是由相互独立的服务器（“节点”）组成的联邦网络�
 
 对于 barkfluff.com 公共节点，个人数据控制者是以个人身份运营的 BarkFluff 首席开发者，位于亚美尼亚。该节点的主服务器位于德国。BarkFluff 是开源项目，并未注册为法人实体。运营者的联系邮箱列于本文末尾。
 
-BarkFluff 的开发者发布软件和协议规范。他们**不**托管他人的节点，**无法**访问这些节点的数据、密钥、流量和备份，**不能**在他人节点上提供、修改或删除数据，也**不是**您数据的控制者。
+BarkFluff 的开发者为由其他管理员独立运营的节点发布软件和协议规范。作为软件作者，他们不运营这些节点、无法访问其数据、密钥、流量或备份，也不处理有关这些数据的请求。首席开发者另以个人身份运营 barkfluff.com 公共节点，详见上文。
 
 本文件描述软件在默认配置下的行为，适用于 **barkfluff.com** 节点。任何其他节点的管理员都会发布自己的版本，并有权修改配置或源代码——届时以其条款为准。如果您的账户不是在 barkfluff.com 上创建的，请联系您所在节点的管理员。
 
@@ -46,7 +46,7 @@ BarkFluff 的开发者发布软件和协议规范。他们**不**托管他人的
 | Firebase 令牌 | 通过 Firebase Cloud Messaging 推送通知 | Users.UserDevices |
 | 刷新令牌 | 续期会话与从设备退出登录 | Identity.RefreshTokens |
 
-IP 地址在 gRPC 服务元数据头中传递，用于处理当前请求。这些数据不会离开您的节点，也不会传给其他节点。
+部分客户端会在 gRPC 元数据头 x-ip-address 中发送 IP 值。节点会在请求上下文中使用这个由客户端提供的值；它不是可信的 IP 来源，也不属于节点间请求使用的 XFed 标头。这并不表示外部服务看不到网络 IP：远端服务端点可看到其连接的源 IP；详见第 7 节。
 
 ### 3.3 消息、聊天与文件
 
@@ -64,9 +64,9 @@ Onliner 保存并提供在线状态和最后活动时间。Updates 通过 gRPC s
 
 ### 3.5 网站与支持
 
-WebServer 提供公共网站、个人资料页面、法律文件和公开资料 REST API。在 barkfluff.com，网站支持表单消息保存在 WebServer 进程内存中，并转发至 Telegram 支持聊天。运营者表示，Telegram 支持聊天会每周自动清理一次；这是对聊天的定期清理，不是每条消息各自的保存期限。网页支持聊天的本地历史记录也保存在 WebServer 进程内存中，目前尚未确认其清理计划。
+WebServer 提供公共网站、个人资料页面、法律文件和公开资料 REST API。在 barkfluff.com，网站支持消息保存在 WebServer 进程内的本地历史记录中，并转发至 Telegram 支持聊天。进程重启时，本地历史记录会丢失。运营者表示，Telegram 支持聊天会每周自动清理一次；这是对聊天的定期清理，不是每条消息各自的保存期限。目前尚未确认本地历史记录的清理计划。
 
-发送到运营者服务邮箱的请求可能在没有既定最长期限的情况下保存。运营者表示，服务自动发送的邮件（包括验证码）不会保存在运营者自己的邮箱中；这不代表 Identity 的处理情况，也不代表收件人邮箱中的保存情况。
+发送到运营者服务邮箱的请求可能在没有既定最长期限的情况下保存。运营者表示，服务发送的验证码不会保存在运营者自己的邮箱中；这不代表 Identity 的处理情况，也不代表收件人邮箱中的保存情况。
 
 在公开个人资料页面点击“在浏览器中发消息”时，WebServer 会创建短时 cookie `bf_open_chat`，以便 Web 客户端打开与所选用户的聊天。
 
@@ -74,7 +74,7 @@ WebServer 提供公共网站、个人资料页面、法律文件和公开资料 
 
 Calls 会在节点数据库中保存通话会话的技术信息，包括参与者、通话类型、状态以及开始、接听和结束时间。通话媒体通过 LiveKit 转发。公共节点运营者表示，服务器不会录制通话媒体。此说明不涵盖通话元数据、参与者设备上的数据或其他节点；LiveKit 的托管方式和数据保存期限尚未确认。
 
-如果您向机器人发送消息或文件，这些内容会通过 API 交付给该机器人。机器人运营者可按其自身规则处理或保存收到的内容。设备推送令牌存储在 Users 中；启用相关功能时，后端代码通过 Firebase Cloud Messaging 发送通知。是否使用 APNs 或其他平台推送服务尚未确认。
+如果您向机器人发送消息或文件，这些内容会通过 API 交付给该机器人。机器人运营者可按其自身规则处理或保存收到的内容。设备推送令牌存储在 Users 中；启用相关功能时，后端代码通过 Firebase Cloud Messaging 发送通知。普通移动 FCM data payload 可能包含 chat_id、sender_id、sender_name、avatar_url、chat_title、chat_avatar_url、is_group_chat、content_type、image_url、message_id、message_text（最多 100 个字符的预览）和 attachment_count。私密消息 payload 包含 private_chat_id、event_id 和 sender_user_id；秘密消息 payload 包含 event_id、sender_user_id 和 sender_device_id。这两种 payload 均不包含消息文本。是否使用 APNs 或其他平台推送服务尚未确认。
 
 ## 4. 联邦数据交换
 
@@ -114,7 +114,7 @@ Calls 会在节点数据库中保存通话会话的技术信息，包括参与�
 ### 6.1 数据传输
 
 - 客户端与微服务在外部边界使用 gRPC/HTTP/2 与 HTTPS/TLS。
-- gRPC 请求的鉴权使用 XAuth 元数据：`x-auth-token`、`x-device-id`、`x-device-name`、`x-ip`、`x-os`、`x-app-name`、`x-app-version`。
+- gRPC 请求的鉴权使用 XAuth 元数据：`x-auth-token`、`x-device-id`、`x-device-name`、`x-ip-address`、`x-os`、`x-app-name`、`x-app-version`。
 - 内部异步事件通过 RabbitMQ / MassTransit 传递。
 - 节点之间的流量走单独的安全通道，详见《加密》。
 
@@ -142,7 +142,7 @@ Calls 会在节点数据库中保存通话会话的技术信息，包括参与�
 - 用于通话的已配置 LiveKit 服务器；其托管方式、运营者和元数据处理情况尚未确认；
 - 已检查的首页和隐私政策页面响应包含 server: cloudflare 和 Network Error Logging (NEL) 标头；浏览器从 fonts.googleapis.com 和 fonts.gstatic.com 加载 Google Fonts。
 
-外部服务商可能会收到传递请求或报告所需的技术网络数据。除本文所列运营者信息外，其配置、处理地点和保存期限尚未确认。请勿根据节点自身的存储实践推断服务商的做法。
+外部服务可看到其网络连接的源 IP：浏览器直接发起请求时是浏览器的 IP，服务器发起请求时是节点服务器的出口 IP。这并不表示服务商会保存该地址；其处理方式和保存期限尚未确认。请勿根据节点自身的存储实践推断服务商的做法。
 
 
 ## 8. 用户权利

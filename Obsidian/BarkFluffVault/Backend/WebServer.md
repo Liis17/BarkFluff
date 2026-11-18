@@ -6,7 +6,7 @@
 
 HomeController отдаёт / и /about. FallbackController обслуживает /legal/{privacy-policy,terms-of-service,account-deletion,encryption}, /selfhosted и публичные profile pages; прочие пути завершаются HTML 404. Profile path допускает только ^[a-zA-Z0-9_]{3,32}$ и HTML-экранируется перед подстановкой. /api/user/{username} возвращает публичные данные через UsersServerApi, с 30-минутным кешем найденных профилей и 5-минутным negative cache.
 
-Другие endpoints: /api/versions (Android, Windows/WinUI и macOS, четыре release channels), /api/support/send и /api/support/messages/{chatId}. Support API принимает до 4000 символов и сохраняет локальную историю; пересылка в Telegram может не пройти, при этом сообщение остаётся сохранено. /install*.ps1/.sh и /download/installer сохраняют legacy установочные маршруты.
+Другие endpoints: /api/versions (Android, Windows/WinUI и macOS, четыре release channels), /api/support/send и /api/support/messages/{chatId}. Support API принимает до 4000 символов и держит локальную историю в памяти процесса WebServer; перезапуск процесса её теряет. В коде нет графика очистки локальной истории. Пересылка в Telegram может не пройти, при этом сообщение остаётся в памяти процесса. По сообщению оператора, Telegram-чат поддержки очищается автоматически раз в неделю. /install*.ps1/.sh и /download/installer сохраняют legacy установочные маршруты.
 
 ## Клиенты и содержимое
 
@@ -15,7 +15,7 @@ HomeController отдаёт / и /about. FallbackController обслуживае
 
 UsersServerApi client вручную прикладывает plain x-auth-token service token. VersionPollingService опрашивает ClientStorage каждые 10 минут по Android Kotlin, WinUI и macOS для release/beta/dev/nightly; iOS не входит в /api/versions.
 
-LegalPageService отдаёт существующие HTML-файлы из html/legal; Markdown языковые файлы в этой папке напрямую этим маршрутом не читаются. Cookie notice находится в files/cookie-notice.js. Статические страницы и юридические тексты лежат в html/.
+LegalPageService обслуживает ровно четыре маршрута — /legal/privacy-policy, /legal/terms-of-service, /legal/account-deletion и /legal/encryption — из соответствующих HTML-файлов в html/legal; неизвестный slug даёт 404. Markdown-файлы PRIVACY_POLICY.*.md и TERMS_OF_SERVICE.*.md напрямую не маршрутизируются: Web-проект копирует их в свои wwwroot/legal, а Android-клиент читает их из assets. Android LegalDocsRepository и Web legal.js берут версию согласия из заголовка TERMS_OF_SERVICE.ru.md в первых восьми строках; при изменении этой строки требуют повторного согласия. Cookie notice имеет отдельную версию в files/cookie-notice.js, зеркальную для Web в legal.js. Статические страницы и юридические тексты лежат в html/.
 
 /, /about, /selfhosted и все страницы /legal/* построены по шаблону: общие токены, шапка, уведомление и подвал лежат в files/site-landing.css, поведение языка — в files/site-landing.js (оба в whitelist AssetsController и публикации csproj). Скрипт сохраняет выбор в bf_lang, ставит lang на <html>, переписывает элементы с data-ru/data-en и отправляет событие bf:langchange; window.bfLang() возвращает текущий язык. Двуязычные фрагменты — элементы lang="ru"/lang="en", которые скрывает CSS по атрибуту lang у <html>. Стили конкретной страницы — в её <style>. domain-notice.js и cookie-notice.js подключены на всех этих страницах. Юридические страницы делят разметку encryption.html: .legal-nav с aria-current, .hero, секции .sec с парными блоками lang="ru"/lang="en".
 
