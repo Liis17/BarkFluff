@@ -73,6 +73,19 @@ class AuthenticationChallengeController(
             }
         }
 
+    /**
+     * Identity approves a password-only challenge right in Begin. Such a challenge needs no
+     * confirmation UI, so it is completed immediately; null means the user has to act.
+     */
+    suspend fun completeIfApproved(
+        challenge: AuthenticationChallenge,
+        useRecoveryCode: Boolean = false,
+    ): AuthenticationCompletion? {
+        if (challenge.errorCode.isNotBlank() || challenge.state != AuthenticationChallengeState.APPROVED) return null
+        return complete(useRecoveryCode = useRecoveryCode).getOrNull()
+            ?.takeIf { it.state == AuthenticationChallengeState.COMPLETED && it.errorCode.isBlank() }
+    }
+
     suspend fun resend(): Result<AuthenticationChallenge> = withActive { reference ->
         gateway.resendChallenge(reference)
     }

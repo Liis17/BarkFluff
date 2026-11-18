@@ -193,6 +193,52 @@ class AuthenticationChallengeControllerTest {
     }
 
     @Test
+    fun `password-only sign-in approved by Begin completes without user confirmation`() = runBlocking {
+        val gateway = FakeGateway().apply {
+            currentChallenge = challenge.copy(state = AuthenticationChallengeState.APPROVED, needsCode = false)
+            completion = completion.copy(state = AuthenticationChallengeState.COMPLETED)
+        }
+        val controller = AuthenticationChallengeController(gateway)
+
+        val started = controller.begin { beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD)) }
+        val completion = controller.completeIfApproved(started.getOrThrow())
+
+        assertEquals(AuthenticationChallengeState.COMPLETED, completion?.state)
+        assertEquals(1, gateway.completeCalls)
+        assertFalse(controller.hasActiveChallenge)
+    }
+
+    @Test
+    fun `waiting second factor challenge is left for the confirmation UI`() = runBlocking {
+        val gateway = FakeGateway()
+        val controller = AuthenticationChallengeController(gateway)
+
+        val started = controller.begin {
+            beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD_SECOND_FACTOR))
+        }
+
+        assertEquals(null, controller.completeIfApproved(started.getOrThrow()))
+        assertEquals(0, gateway.completeCalls)
+        assertTrue(controller.hasActiveChallenge)
+    }
+
+    @Test
+    fun `blocked account after approval is left for the dialog to explain`() = runBlocking {
+        val gateway = FakeGateway().apply {
+            currentChallenge = challenge.copy(state = AuthenticationChallengeState.APPROVED, needsCode = false)
+            completion = completion.copy(
+                state = AuthenticationChallengeState.COMPLETED,
+                errorCode = AuthenticationErrorCodes.ACCOUNT_BLOCKED,
+            )
+        }
+        val controller = AuthenticationChallengeController(gateway)
+
+        val started = controller.begin { beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD)) }
+
+        assertEquals(null, controller.completeIfApproved(started.getOrThrow()))
+    }
+
+    @Test
     fun `terminal poll result clears the active challenge even when UI stops polling`() = runBlocking {
         val gateway = FakeGateway().apply {
             currentChallenge = challenge.copy(state = AuthenticationChallengeState.EXPIRED)

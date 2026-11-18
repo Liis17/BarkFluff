@@ -42,6 +42,29 @@ class AuthenticationChallengeDialog(
         useRecoveryCode: Boolean = false,
         restartWithFactor: (suspend (AuthenticationFactor) -> Result<AuthenticationChallenge>)? = null,
         begin: suspend () -> Result<AuthenticationChallenge>,
+    ): Result<AuthenticationCompletion> {
+        // An in-memory challenge survives a configuration change: rejoin it in the dialog.
+        if (!controller.hasActiveChallenge) {
+            val started = controller.begin { begin() }.getOrElse { return Result.failure(it) }
+            if (started.errorCode.isNotBlank()) {
+                return Result.failure(AuthenticationChallengeErrorException(started.errorCode, errorMessage(started.errorCode)))
+            }
+            controller.completeIfApproved(started, useRecoveryCode)?.let { return Result.success(it) }
+        }
+        return showDialog(title, useRecoveryCode, restartWithFactor, begin)
+    }
+
+    private fun errorMessage(errorCode: String): String = when (errorCode) {
+        AuthenticationErrorCodes.ACCOUNT_NOT_FOUND -> activity.getString(R.string.login_account_not_found)
+        AuthenticationErrorCodes.LOGIN_MODE_DISABLED -> activity.getString(R.string.auth_login_mode_disabled)
+        else -> activity.getString(R.string.auth_error)
+    }
+
+    private suspend fun showDialog(
+        title: String,
+        useRecoveryCode: Boolean,
+        restartWithFactor: (suspend (AuthenticationFactor) -> Result<AuthenticationChallenge>)?,
+        begin: suspend () -> Result<AuthenticationChallenge>,
     ): Result<AuthenticationCompletion> = suspendCancellableCoroutine { continuation ->
         val padding = (24 * activity.resources.displayMetrics.density).toInt()
         val content = LinearLayout(activity).apply {
@@ -160,12 +183,7 @@ class AuthenticationChallengeDialog(
         lateinit var render: suspend (AuthenticationChallenge) -> Boolean
         render = { challenge ->
             if (challenge.errorCode.isNotBlank()) {
-                val message = when (challenge.errorCode) {
-                    AuthenticationErrorCodes.ACCOUNT_NOT_FOUND -> activity.getString(R.string.login_account_not_found)
-                    AuthenticationErrorCodes.LOGIN_MODE_DISABLED -> activity.getString(R.string.auth_login_mode_disabled)
-                    else -> activity.getString(R.string.auth_error)
-                }
-                finish(Result.failure(AuthenticationChallengeErrorException(challenge.errorCode, message)))
+                finish(Result.failure(AuthenticationChallengeErrorException(challenge.errorCode, errorMessage(challenge.errorCode))))
                 false
             } else {
                 status.text = when (challenge.state) {
