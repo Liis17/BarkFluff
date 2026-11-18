@@ -41,6 +41,7 @@ async function settle() {
 function createHarness(options) {
     var input = makeEl();
     var results = makeEl();
+    results.scrollTop = 0;
     // как настоящий innerHTML: присваивание очищает дочерние элементы
     var html = '';
     Object.defineProperty(results, 'innerHTML', {
@@ -50,6 +51,7 @@ function createHarness(options) {
         set: function (value) {
             html = value;
             results.children = [];
+            results.scrollTop = 0;
         }
     });
     var timers = [];
@@ -58,6 +60,7 @@ function createHarness(options) {
     var userSearches = [];
     var pendingSearches = [];
     var messageSearches = [];
+    var messageOptions = [];
     var pendingMessageSearches = [];
     var focused = [];
     var settings = options || {};
@@ -70,8 +73,9 @@ function createHarness(options) {
                     pendingSearches.push({ query: query, resolve: resolve });
                 });
             },
-            searchMessages: function (query) {
+            searchMessages: function (query, searchOptions) {
                 messageSearches.push(query);
+                messageOptions.push(searchOptions);
                 return new Promise(function (resolve, reject) {
                     pendingMessageSearches.push({ resolve: resolve, reject: reject });
                 });
@@ -154,8 +158,9 @@ function createHarness(options) {
         toastCalls: toastCalls,
         userSearches: userSearches,
         messageSearches: messageSearches,
-        answerMessages: function (index, hits) {
-            pendingMessageSearches[index].resolve({ hits: hits });
+        messageOptions: messageOptions,
+        answerMessages: function (index, hits, nextCursor) {
+            pendingMessageSearches[index].resolve({ hits: hits, nextCursor: nextCursor || null });
         },
         failMessages: function (index) {
             pendingMessageSearches[index].reject(new Error('unavailable'));
@@ -339,6 +344,84 @@ async function main() {
         await settle();
         assert.equal(h.results.children.length, 1, 'only the fresh user; no stale hit, no error');
         assert.match(h.results.children[0].innerHTML, /@rel/);
+    });
+
+    function moreButton(h) {
+        return h.results.children[h.results.children.length - 1];
+    }
+
+    await test('show more requests the next page by cursor and appends hits without moving the scroll position', async function () {
+        var h = createHarness();
+        h.type('release');
+        h.fireDebounce();
+        assert.equal(JSON.stringify(h.messageOptions[0]), '{"pageSize":20}');
+        h.answer(0, []);
+        var cursor = { opaque: 'page-2' };
+        h.answerMessages(0, [hit({ messageId: 1 }), hit({ messageId: 2 })], cursor);
+        await settle();
+        var more = moreButton(h);
+        assert.equal(more.className, 'search-more', 'not a .search-result-item: mobile tap must not switch to the chat');
+        assert.equal(more.textContent, 'search.loadMore');
+
+        h.results.scrollTop = 480;
+        more.listeners.click();
+        assert.equal(moreButton(h).disabled, true, 'no double requests while the page loads');
+        assert.equal(h.messageSearches[1], 'release');
+        assert.equal(h.messageOptions[1].cursor, cursor, 'the server cursor goes back as is');
+        h.answerMessages(1, [hit({ messageId: 2 }), hit({ messageId: 3 })]);
+        await settle();
+        var ids = h.results.children
+            .filter(function (el) {
+                return el.className === 'search-result-item search-hit';
+            })
+            .map(function (el) {
+                return el.innerHTML;
+            });
+        assert.equal(ids.length, 3, 'duplicate hit from the next page is dropped');
+        assert.equal(h.results.scrollTop, 480);
+        assert.notEqual(moreButton(h).className, 'search-more', 'no button after the last page');
+    });
+
+    await test('a failed page keeps the hits and offers retry; stale pages after a new query are ignored', async function () {
+        var h = createHarness();
+        h.type('release');
+        h.fireDebounce();
+        h.answer(0, []);
+        h.answerMessages(0, [hit({ messageId: 1 })], { opaque: 1 });
+        await settle();
+        moreButton(h).listeners.click();
+        h.failMessages(1);
+        await settle();
+        assert.equal(moreButton(h).textContent, 'search.retry');
+        assert.equal(moreButton(h).disabled, false);
+        assert.equal(h.results.children.length, 3, 'header, the hit and the retry button');
+
+        moreButton(h).listeners.click();
+        h.type('other');
+        h.answerMessages(2, [hit({ messageId: 5, text: 'stale' })]);
+        await settle();
+        assert.doesNotMatch(
+            h.results.children
+                .map(function (el) {
+                    return el.innerHTML || '';
+                })
+                .join(''),
+            /stale/
+        );
+    });
+
+    await test('closing the search drops a page still in flight', async function () {
+        var h = createHarness();
+        h.type('release');
+        h.fireDebounce();
+        h.answer(0, []);
+        h.answerMessages(0, [hit({ messageId: 1 })], { opaque: 1 });
+        await settle();
+        moreButton(h).listeners.click();
+        h.results.children[1].listeners.click();
+        h.answerMessages(1, [hit({ messageId: 2 })]);
+        await settle();
+        assert.equal(h.results.classList.contains('visible'), false);
     });
 }
 

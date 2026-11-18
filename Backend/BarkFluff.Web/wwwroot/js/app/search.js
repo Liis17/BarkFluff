@@ -17,8 +17,12 @@
     // Серверный поиск сообщений: короче — слишком широкий запрос, длиннее — отказ сервера.
     var MESSAGE_QUERY_MIN = 2;
     var MESSAGE_QUERY_MAX = 256;
+    var MESSAGE_PAGE_SIZE = 20;
 
     function clearSearch() {
+        // Запоздалые ответы (в том числе «Показать ещё») не должны снова открыть закрытый поиск.
+        clearTimeout(searchTimer);
+        searchToken++;
         searchInput.value = '';
         searchResults.classList.remove('visible');
         searchResults.innerHTML = '';
@@ -42,6 +46,10 @@
 
         var foundUsers = null;
         var foundHits = null;
+        // Курсор следующей страницы и состояние «Показать ещё» для текущего запроса.
+        var nextCursor = null;
+        var loadingMore = false;
+        var moreFailed = false;
 
         function renderHit(hit) {
             var el = document.createElement('div');
@@ -82,7 +90,14 @@
             return el;
         }
 
+        // Перерисовка пересоздаёт список: прокрутку сохраняем, чтобы ответы и новые страницы не сбрасывали позицию.
         function render() {
+            var scrollTop = searchResults.scrollTop;
+            renderContent();
+            searchResults.scrollTop = scrollTop;
+        }
+
+        function renderContent() {
             var users = foundUsers;
             var hits = foundHits || [];
             searchResults.classList.add('visible');
@@ -176,7 +191,47 @@
                 hits.forEach(function (hit) {
                     searchResults.appendChild(renderHit(hit));
                 });
+                if (nextCursor) {
+                    var more = document.createElement('button');
+                    more.type = 'button';
+                    more.className = 'search-more';
+                    more.disabled = loadingMore;
+                    more.textContent = BF.i18n.t(moreFailed ? 'search.retry' : 'search.loadMore');
+                    more.addEventListener('click', loadMore);
+                    searchResults.appendChild(more);
+                }
             }
+        }
+
+        // Следующая страница того же запроса: новые совпадения дописываются в конец, дубли отбрасываются.
+        function loadMore() {
+            if (!nextCursor || loadingMore || token !== searchToken) return;
+            loadingMore = true;
+            moreFailed = false;
+            render();
+            BF.api
+                .searchMessages(query, { pageSize: MESSAGE_PAGE_SIZE, cursor: nextCursor })
+                .then(function (data) {
+                    if (token !== searchToken) return;
+                    var known = {};
+                    foundHits.forEach(function (hit) {
+                        known[hit.messageId] = true;
+                    });
+                    foundHits = foundHits.concat(
+                        ((data && data.hits) || []).filter(function (hit) {
+                            return !known[hit.messageId];
+                        })
+                    );
+                    nextCursor = (data && data.nextCursor) || null;
+                    loadingMore = false;
+                    render();
+                })
+                .catch(function () {
+                    if (token !== searchToken) return;
+                    loadingMore = false;
+                    moreFailed = true;
+                    render();
+                });
         }
 
         render();
@@ -190,10 +245,11 @@
             });
             if (query.length < MESSAGE_QUERY_MIN || query.length > MESSAGE_QUERY_MAX) return;
             BF.api
-                .searchMessages(query, 20)
+                .searchMessages(query, { pageSize: MESSAGE_PAGE_SIZE })
                 .then(function (data) {
                     if (token !== searchToken) return;
                     foundHits = data && data.hits ? data.hits : [];
+                    nextCursor = (data && data.nextCursor) || null;
                     render();
                 })
                 .catch(function () {

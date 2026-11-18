@@ -624,6 +624,22 @@
             text-overflow: ellipsis;
         }
         .search-result-text .preview-icon { width: 15px; height: 15px; vertical-align: -3px; margin-right: 4px; }
+        .search-more {
+            display: block;
+            width: calc(100% - 32px);
+            margin: 4px 16px 12px;
+            min-height: 40px;
+            border: none;
+            border-radius: 10px;
+            background: transparent;
+            color: var(--primary);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .search-more:hover:not(:disabled) { background: rgba(0, 0, 0, 0.04); }
+        .search-more:disabled { color: var(--text-sub); cursor: default; }
 
         /* === CHAT AREA === */
 

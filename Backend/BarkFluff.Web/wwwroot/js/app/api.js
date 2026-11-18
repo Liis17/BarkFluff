@@ -447,13 +447,41 @@
         });
     }
 
-    // Серверный поиск по обычным чатам; только первая страница, без курсора.
-    function searchMessages(query, pageSize) {
+    function msToTs(ms) {
+        var ts = new window.proto.google.protobuf.Timestamp();
+        ts.fromDate(new Date(ms));
+        return ts;
+    }
+
+    // Серверный поиск по обычным чатам. options: pageSize, cursor (nextCursor прошлой страницы —
+    // передаётся как есть, без потери наносекунд), authorUserId | authorUserUuid,
+    // sentFrom/sentBefore (ms, [from, before)), attachmentPresence ('WITH'/'WITHOUT'),
+    // attachmentTypes (имена MessageAttachmentType).
+    function searchMessages(query, options) {
+        var o = options || {};
         var req = new (msgPb().SearchMessagesRequest)();
-        req.setQuery(query);
-        req.setPageSize(pageSize || 20);
+        req.setQuery(query || '');
+        req.setPageSize(o.pageSize || 20);
+        if (o.cursor) req.setCursor(o.cursor);
+        if (o.authorUserId) req.setAuthorUserId(o.authorUserId);
+        else if (o.authorUserUuid) req.setAuthorUserUuid(o.authorUserUuid);
+        if (o.sentFrom != null) req.setSentFrom(msToTs(o.sentFrom));
+        if (o.sentBefore != null) req.setSentBefore(msToTs(o.sentBefore));
+        if (o.attachmentPresence) {
+            req.setAttachmentPresence(
+                msgPb().MessageSearchAttachmentPresence['MESSAGE_SEARCH_ATTACHMENT_PRESENCE_' + o.attachmentPresence]
+            );
+        }
+        if (o.attachmentTypes && o.attachmentTypes.length) {
+            req.setAttachmentTypesList(
+                o.attachmentTypes.map(function (name) {
+                    return sharedPb().MessageAttachmentType[name];
+                })
+            );
+        }
         return readCall(messages().searchMessages.bind(messages()), req).then(function (resp) {
             return {
+                nextCursor: resp.getNextCursor() || null,
                 hits: resp.getHitsList().map(function (h) {
                     var author = h.getAuthor();
                     return {
@@ -463,6 +491,7 @@
                         isGroupChat: h.getIsGroupChat(),
                         otherUserId: h.getOtherUserId(),
                         authorUserId: author ? author.getUserId() : 0,
+                        authorUserUuid: author ? author.getUserUuid() : '',
                         authorName: author ? author.getDisplayName() : '',
                         sentAt: tsToMs(h.getSentAt()),
                         text: h.getText(),
