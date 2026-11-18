@@ -718,7 +718,9 @@
             cursor: pointer;
         }
         .search-filter-date span { min-width: 28px; color: var(--text-sub); }
-        .search-filter-date input { flex: 1; min-width: 0; color-scheme: light dark; }
+        .search-filter-date input { flex: 1; min-width: 0; color-scheme: light; }
+        [data-theme="dark"] .search-filter-date input,
+        [data-theme="midnight"] .search-filter-date input { color-scheme: dark; }
         .search-filter-check input:disabled + span { color: var(--text-sub); }
 
         /* === CHAT AREA === */

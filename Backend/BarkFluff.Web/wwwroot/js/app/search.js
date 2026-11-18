@@ -432,7 +432,9 @@
                 matchedChats.length === 0 &&
                 (!users || users.length === 0) &&
                 hits.length === 0 &&
-                !(messagesNote && messagesFailed)
+                !(messagesNote && messagesFailed) &&
+                // Пока идёт поиск сообщений, «ничего не найдено» преждевременно.
+                !(searchesMessages && foundHits === null && !messagesFailed)
             ) {
                 searchResults.innerHTML =
                     '<div style="padding:16px;text-align:center;color:var(--text-sub);font-size:14px;">' +

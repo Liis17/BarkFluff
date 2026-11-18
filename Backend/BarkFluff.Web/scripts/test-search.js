@@ -245,11 +245,14 @@ async function main() {
         assert.match(h.results.children[0].innerHTML, /@fresh/);
     });
 
-    await test('nothing found shows a message only when both chats and users are empty', async function () {
+    await test('nothing found shows a message only when chats, users and messages are all empty', async function () {
         var h = createHarness();
         h.type('zzz');
         h.fireDebounce();
         h.answer(0, []);
+        await settle();
+        assert.doesNotMatch(h.results.innerHTML, /common\.nothingFound/, 'the message search is still running');
+        h.answerMessages(0, []);
         await settle();
         assert.match(h.results.innerHTML, /common\.nothingFound/);
     });
