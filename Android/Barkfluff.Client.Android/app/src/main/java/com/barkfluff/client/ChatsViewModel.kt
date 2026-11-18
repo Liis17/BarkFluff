@@ -832,6 +832,13 @@ class ChatsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            chatCacheRepository.chatReadLocally.collect { read ->
+                recordAndApplyRealtimeEvent(ChatListRealtimeEvent.Read(read.chatId, read.throughMessageId))
+                applyFolderFilter()
+                persistChatList()
+            }
+        }
+        viewModelScope.launch {
             realtimeService.newMessages.collect { event ->
                 handleNewMessage(event)
             }
