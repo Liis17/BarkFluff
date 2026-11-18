@@ -729,6 +729,7 @@ class ChatViewModel @Inject constructor(
                     )
                     firstUnreadMessageId = chatInfo.firstUnreadMessageId
                     globalParam.setChatMutedLocal(chatId, chatInfo.muted)
+                    if (chatInfo.countUnread == 0L) notifyChatListRead(chatInfo.lastMessageId)
 
                     // Определяем otherUserId из участников чата (если не был передан через intent)
                     if (!chatInfo.isGroupChat && _uiState.value.otherUserId == 0L && chatInfo.memberIds.isNotEmpty()) {
@@ -923,7 +924,7 @@ class ChatViewModel @Inject constructor(
         if (unreadMessageIds.isNotEmpty()) {
             viewModelScope.launch {
                 try {
-                    messageGateway.markAsRead(unreadMessageIds)
+                    messageGateway.markAsRead(unreadMessageIds).onSuccess { notifyChatListRead(unreadMessageIds.max()) }
                     Log.d(TAG, "Marked all ${unreadMessageIds.size} loaded messages as read (reached bottom)")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error marking all messages as read on scroll to bottom", e)
@@ -940,6 +941,11 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /** Список чатов не получит ReadBy, если сервер уже считал сообщения прочитанными. */
+    private fun notifyChatListRead(throughMessageId: Long) {
+        chatCacheRepository.notifyChatRead(chatId, throughMessageId)
+    }
+
     private fun markVisibleMessagesAsRead(messages: List<Shared.Message>) {
         val unreadMessageIds = messages
             .filter { it.senderId != currentUserId && !it.readByList.contains(currentUserId) }
@@ -948,7 +954,7 @@ class ChatViewModel @Inject constructor(
         if (unreadMessageIds.isNotEmpty()) {
             viewModelScope.launch {
                 try {
-                    messageGateway.markAsRead(unreadMessageIds)
+                    messageGateway.markAsRead(unreadMessageIds).onSuccess { notifyChatListRead(unreadMessageIds.max()) }
                     Log.d(TAG, "Marked ${unreadMessageIds.size} messages as read")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error marking messages as read", e)
@@ -1872,7 +1878,7 @@ class ChatViewModel @Inject constructor(
         if (msg.senderId != currentUserId) {
             viewModelScope.launch {
                 try {
-                    messageGateway.markAsRead(listOf(msg.id))
+                    messageGateway.markAsRead(listOf(msg.id)).onSuccess { notifyChatListRead(msg.id) }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error marking new message as read", e)
                 }
