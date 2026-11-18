@@ -1,7 +1,7 @@
 # Política de privacidad de BarkFluff
 
 **En vigor desde:** 24 de enero de 2026  
-**Última actualización:** 29 de julio de 2026
+**Última actualización:** 13 de noviembre de 2026
 
 > Esta traducción se proporciona únicamente por comodidad. En caso de discrepancia, prevalece la versión en ruso.
 
@@ -28,7 +28,7 @@ Este documento describe el comportamiento del software en su configuración est�
 
 | Datos | Dónde se usan | Almacenamiento |
 | --- | --- | --- |
-| Correo electrónico | Registro, inicio de sesión, confirmaciones, recuperación de acceso, notificaciones | Users / Identity |
+| Correo electrónico | Registro, inicio de sesión, confirmaciones, recuperación de acceso y notificaciones, incluidos los avisos de bloqueo y eliminación de la cuenta | Users / Identity; el motivo y la fecha de la restricción se guardan con la cuenta |
 | Nombre de usuario | Inicio de sesión, búsqueda, página pública de perfil, visualización en los chats | Users |
 | Hash de la contraseña | Verificación de la contraseña; la contraseña en texto claro no se almacena | Identity |
 | Nombre, apellidos, biografía | Perfil del usuario y datos públicos del perfil | Users |
@@ -98,7 +98,7 @@ Lo importante que debe entender:
 - entrega de mensajes, archivos, confirmaciones de lectura, actualizaciones en tiempo real y notificaciones push;
 - intercambio de mensajes con usuarios de otros nodos cuando la federación está activada;
 - exportación de los datos del usuario mediante `Users.ExportData`;
-- soporte a los usuarios por los canales que haya configurado el administrador del nodo;
+- soporte a los usuarios por los canales que haya configurado el administrador del nodo; tramitación de solicitudes de restricción y eliminación de cuentas, envío de avisos relacionados al correo de la cuenta y almacenamiento del motivo y la fecha de la restricción junto con la cuenta. El motivo se elimina cuando la cuenta se elimina definitivamente;
 - registro de errores, métricas y eventos de seguridad.
 
 ## 6. Protección de datos
@@ -141,7 +141,7 @@ Dirija las solicitudes sobre sus datos al administrador de su nodo: solo él pue
 
 - **Acceso y exportación:** la exportación devuelve los archivos JSON `profile.json`, `messages.json` y `files.json`.
 - **Rectificación:** el perfil, la biografía, el avatar, el póster, la privacidad, los dispositivos y la contraseña pueden modificarse mediante las funciones del cliente donde estén disponibles.
-- **Supresión:** véase la «Política de eliminación de cuenta».
+- **Supresión:** una vez que el administrador del nodo haya tramitado la solicitud, la cuenta se eliminará definitivamente al cabo de 7 días; consulte la [Política de eliminación de cuenta](/legal/account-deletion) para más detalles.
 - **Revocación de sesión:** una sesión activa puede cerrarse mediante la gestión de dispositivos.
 - **Limitación de la federación:** los chats privados federados entrantes pueden rechazarse en los ajustes de privacidad.
 
@@ -151,7 +151,7 @@ Dirija las solicitudes sobre sus datos al administrador de su nodo: solo él pue
 - Los mensajes privados cifrados se marcan como eliminados y su texto cifrado se borra.
 - Los mensajes secretos se eliminan del búfer temporal tras la confirmación de entrega o al expirar el TTL.
 - La eliminación surte efecto dentro de su nodo. Las copias ya entregadas a otro nodo solo puede eliminarlas el administrador de ese nodo.
-- Para eliminar la cuenta y los datos no cubiertos por las funciones del cliente, contacte con el administrador del nodo.
+- Para eliminar la cuenta y los datos no cubiertos por las funciones del cliente, contacte con el administrador del nodo. Una vez tramitada la solicitud, la cuenta permanece en proceso de eliminación durante 7 días y después se elimina definitivamente; véase la [Política de eliminación de cuenta](/legal/account-deletion).
 
 ## 10. Cookies y almacenamiento local
 

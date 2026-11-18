@@ -1,5 +1,6 @@
 using BarkFluff.Bots.Features.CreateSystemBot;
 using BarkFluff.Bots.Features.DeleteBot;
+using BarkFluff.Bots.Features.DeleteBotsForOwner;
 using BarkFluff.Bots.Features.ListBots;
 using BarkFluff.Bots.Features.RegenerateToken;
 using BarkFluff.Bots.Features.UpdateBotProfile;
@@ -66,6 +67,13 @@ public class BotsServerApiService : BotsServerApi.BotsServerApiBase
     {
         _metrics.Increment("bots_delete_requests");
         return _mediator.Send(new DeleteBotCommand { BotId = request.BotId }, context.CancellationToken);
+    }
+
+    public override Task<DeleteBotsForOwnerResponse> DeleteBotsForOwner(
+        DeleteBotsForOwnerRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("bots_owner_deletion_requests");
+        return _mediator.Send(new DeleteBotsForOwnerCommand { OwnerUserId = request.OwnerUserId }, context.CancellationToken);
     }
 
     public override Task<RegenerateTokenResponse> RegenerateToken(RegenerateTokenRequest request, ServerCallContext context)

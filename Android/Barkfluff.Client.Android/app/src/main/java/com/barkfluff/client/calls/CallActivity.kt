@@ -33,6 +33,7 @@ import com.barkfluff.client.R
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.gateway.AuthGateway
 import com.barkfluff.client.domain.gateway.CallGateway
+import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.AvatarLoader
@@ -52,6 +53,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     @javax.inject.Inject lateinit var callGateway: CallGateway
     @javax.inject.Inject lateinit var callEventsService: CallEventsService
     @javax.inject.Inject lateinit var userProfileGateway: UserProfileGateway
+    @javax.inject.Inject lateinit var fileMediaGateway: FileMediaGateway
 
     private lateinit var callId: String
     private lateinit var livekitUrl: String
@@ -85,6 +87,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     private var pendingCameraToggleAfterPermission = false
     private var callEnded = false
     private var callStartedAtMs = 0L
+    private var roomConnected = false
     private var callTimerJob: Job? = null
     private var reconnectJob: Job? = null
     private var reconnectAttempt = 0
@@ -454,7 +457,8 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             remotes.size == 1 && local != null -> {
                 mode = "single"
                 heroTile = cameraTiles.first { it.participant.identity == remotes[0].identity }
-                selfTile = cameraTiles.first { it.participant.isLocal }
+                // Своя миниатюра нужна только с включённой камерой.
+                selfTile = cameraTiles.first { it.participant.isLocal }.takeIf { it.track != null }
             }
             else -> {
                 mode = "grid"; bigTiles = cameraTiles
@@ -476,7 +480,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
         updateTopBar(participants)
         updateControlStates(participants)
-        renderCallDuration()
+        updateCallTimer()
     }
 
     private fun rebuildLayout(
@@ -565,15 +569,10 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         infoCache[participant.identity]?.let { return it }
 
         val uid = participant.identity.toLongOrNull() ?: 0L
-        if (participant.isLocal) {
-            val info = TileInfo(getString(R.string.current_user), null, uid, AvatarLoader.colorForUser(uid))
-            infoCache[participant.identity] = info
-            return info
-        }
-
         val livekitName = participant.name.takeIf { it.isNotBlank() && it != participant.identity }
         val placeholder = TileInfo(
-            livekitName ?: getString(R.string.call_participant_default),
+            if (participant.isLocal) getString(R.string.current_user)
+            else livekitName ?: getString(R.string.call_participant_default),
             null,
             uid,
             AvatarLoader.colorForUser(uid)
@@ -583,9 +582,14 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             lifecycleScope.launch {
                 val user = userProfileGateway.user(uid).getOrNull()
                 if (user != null) {
-                    val name = "${user.firstName} ${user.lastName}".trim()
+                    val name = if (participant.isLocal) getString(R.string.current_user)
+                    else "${user.firstName} ${user.lastName}".trim()
                         .ifBlank { user.username }.ifBlank { getString(R.string.call_participant_default) }
-                    val url = user.profilePicturePreviewUrl.ifBlank { user.profilePictureUrl }.ifBlank { null }
+                    // Preview может отсутствовать в Files (пустой ответ) — тогда берём полный аватар.
+                    val url = listOf(user.profilePicturePreviewFileId, user.profilePictureFileId)
+                        .filter { it.isNotBlank() }.distinct()
+                        .firstNotNullOfOrNull { avatarDownloadUrl(it) }
+                        ?: user.profilePicturePreviewUrl.ifBlank { user.profilePictureUrl }.ifBlank { null }
                     infoCache[participant.identity] = TileInfo(name, url, uid, AvatarLoader.colorForUser(uid))
                     renderTiles(lastParticipants)
                 } else {
@@ -594,6 +598,19 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             }
         }
         return placeholder
+    }
+
+    /** fileId аватара → временный URL скачивания через общий кеш [AvatarLoader]. */
+    private suspend fun avatarDownloadUrl(fileId: String): String? {
+        AvatarLoader.urlCache[fileId]?.let { return it }
+        AvatarLoader.getUrlFromCache(fileId)?.let {
+            AvatarLoader.urlCache[fileId] = it
+            return it
+        }
+        val url = fileMediaGateway.downloadUrl(fileId).getOrNull() ?: return null
+        AvatarLoader.urlCache[fileId] = url
+        AvatarLoader.putUrlInCache(fileId, url)
+        return url
     }
 
     private fun updateTopBar(participants: List<CallParticipant>) {
@@ -814,6 +831,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     override fun onConnected(cameraEnabled: Boolean) {
         reconnectAttempt = 0
+        roomConnected = true
         CallTelecomRegistry.markActive(callId)
         statusDot.background.mutate().setTint(speakingColor)
         updateCallForegroundService(cameraEnabled, desiredScreenShareEnabled)
@@ -821,15 +839,17 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
             batteryOptimizationPromptedForSession = true
             CallBatteryOptimizationHelper.requestIgnoreBatteryOptimizationsIfNeeded(this)
         }
-        startCallTimer()
+        updateCallTimer()
     }
 
     override fun onReconnecting() {
+        roomConnected = false
         stopCallTimer()
         statusText.text = getString(R.string.call_status_reconnecting)
     }
 
     override fun onDisconnected() {
+        roomConnected = false
         if (!callEnded && !isFinishing) {
             stopCallTimer()
             statusDot.background.mutate().setTint(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
@@ -842,6 +862,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
     }
 
     override fun onError() {
+        roomConnected = false
         val message = getString(R.string.call_connection_failed)
         if (!callEnded && !isFinishing) {
             stopCallTimer()
@@ -851,6 +872,16 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         }
         stopCallTimer()
         statusText.text = message
+    }
+
+    /** Время разговора идёт с момента, когда в комнате появился собеседник, а не с подключения к LiveKit. */
+    private fun updateCallTimer() {
+        if (!roomConnected) return
+        if (callStartedAtMs == 0L && lastParticipants.none { !it.isLocal }) {
+            statusText.text = getString(R.string.call_status_waiting)
+            return
+        }
+        startCallTimer()
     }
 
     private fun startCallTimer() {

@@ -26,7 +26,9 @@ public class UpdateBadgeCommandHandler : IRequestHandler<UpdateBadgeCommand, Upd
             request.Name,
             request.Description,
             request.ImageUrl,
-            request.IsActive
+            request.IsActive,
+            request.MiniImageUrl,
+            cancellationToken
         );
 
         if (badge is null)

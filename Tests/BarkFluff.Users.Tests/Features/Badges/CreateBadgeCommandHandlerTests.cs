@@ -8,6 +8,8 @@ using BarkFluff.Users.Features.Badges.UpdateBadge;
 using BarkFluff.Users.Features.Badges.UpdateUserBadgesPriority;
 using FluentAssertions;
 
+using Microsoft.EntityFrameworkCore;
+
 namespace BarkFluff.Users.Tests.Features.Badges;
 
 public class CreateBadgeCommandHandlerTests : IAsyncDisposable
@@ -30,6 +32,8 @@ public class CreateBadgeCommandHandlerTests : IAsyncDisposable
         result.Badge.Name.Should().Be("Gold");
         result.Badge.Description.Should().Be("Gold badge");
         result.Badge.IsActive.Should().BeTrue();
+        result.Badge.MiniImageUrl.Should().BeEmpty();
+        (await _h.DbContext.Badges.SingleAsync()).MiniImageUrl.Should().BeNull();
     }
 
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();

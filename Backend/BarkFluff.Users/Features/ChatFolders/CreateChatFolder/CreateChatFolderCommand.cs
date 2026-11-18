@@ -4,7 +4,7 @@ using MediatR;
 
 namespace BarkFluff.Users.Features.ChatFolders.CreateChatFolder;
 
-public class CreateChatFolderCommand : IRequest<CreateChatFolderResponse>
+public class CreateChatFolderCommand : IRequest<CreateChatFolderResponse>, IChatFoldersMutation
 {
     public string? FolderName { get; set; }
 

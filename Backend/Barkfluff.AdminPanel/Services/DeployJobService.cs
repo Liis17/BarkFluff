@@ -30,7 +30,12 @@ public class DeployJobService : BackgroundService
         "fast-auth",
         "updates",
         "onliner",
-        "web"
+        "web",
+        "federation",
+        "cloud-messaging",
+        "developers",
+        "calls",
+        "bots"
     ];
 
     private static readonly TimeSpan HealthPollInterval = TimeSpan.FromSeconds(3);

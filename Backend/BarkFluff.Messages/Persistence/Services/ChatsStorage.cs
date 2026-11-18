@@ -172,6 +172,14 @@ public class ChatsStorage
             .AnyAsync(m => m.ChatId == chatId && m.UserId == userId, cancellationToken);
     }
 
+    public Task<Chat?> GetChatForUser(
+        Guid chatId,
+        long userId,
+        CancellationToken cancellationToken = default) =>
+        _context.Chats
+            .Include(chat => chat.Members)
+            .FirstOrDefaultAsync(chat => chat.Id == chatId && chat.Members!.Any(member => member.UserId == userId), cancellationToken);
+
     public async Task<List<Guid>> GetMemberChatIds(long userId, List<Guid> chatIds)
     {
         return await _context.ChatMembers

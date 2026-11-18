@@ -2,6 +2,7 @@ package com.barkfluff.client.chat
 
 import barkfluff.shared.Shared
 import com.barkfluff.client.cache.OutgoingMessageState
+import com.barkfluff.client.send.OutgoingAttachmentUi
 
 /** Immutable row contract shared by regular, pinned and E2E timelines. */
 enum class MessageType { MESSAGE, DATE_SEPARATOR, UNREAD_SEPARATOR, FOOTER, SYSTEM }
@@ -25,6 +26,7 @@ data class MessageRowUi(
     val outgoingState: OutgoingMessageState? = null,
     val uploadProgress: Int? = null,
     val localPreviewUris: List<android.net.Uri> = emptyList(),
+    val outgoingAttachments: List<OutgoingAttachmentUi> = emptyList(),
     val isSelected: Boolean = false,
     val selectionEnabled: Boolean = false,
 ) {

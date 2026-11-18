@@ -9,6 +9,7 @@ using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Calls;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 
 using Grpc.Core;
@@ -27,6 +28,8 @@ namespace BarkFluff.Calls.Tests;
 /// </summary>
 public static class TestHelper
 {
+    public const string LiveKitPublicUrl = "wss://livekit.test.example";
+
     public static CallsContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<CallsContext>()
@@ -62,14 +65,30 @@ public static class TestHelper
         CallEventSubscriptionsManager subscriptions,
         CallQualityStore quality,
         string? deviceId = null,
-        MessagesServerApi.MessagesServerApiClient? messagesClient = null)
+        MessagesServerApi.MessagesServerApiClient? messagesClient = null,
+        UsersServerApi.UsersServerApiClient? usersClient = null)
     {
         var settings = new LiveKitSettings
         {
             Url = "ws://test:7880",
+            PublicUrl = LiveKitPublicUrl,
             ApiKey = "devkey",
             ApiSecret = "0123456789abcdef0123456789abcdef", // ≥32 байта — требование подписи токена
         };
+
+        if (usersClient is null)
+        {
+            var usersMock = new Mock<UsersServerApi.UsersServerApiClient>();
+            usersMock.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
+                .Returns((GetByIdRequest request, Metadata? _, DateTime? _, CancellationToken _) =>
+                    new AsyncUnaryCall<GetByIdResponse>(
+                        Task.FromResult(new GetByIdResponse { User = new User { Id = request.UserId, AccountStatus = AccountStatus.Active } }),
+                        Task.FromResult(new Metadata()),
+                        () => Status.DefaultSuccess,
+                        () => new Metadata(),
+                        () => { }));
+            usersClient = usersMock.Object;
+        }
 
         return new CallLifecycleHandler(
             db,
@@ -77,6 +96,7 @@ public static class TestHelper
             new LocalCallEventDispatcher(subscriptions),
             quality,
             messagesClient ?? Mock.Of<MessagesServerApi.MessagesServerApiClient>(),
+            usersClient,
             Mock.Of<IPublishEndpoint>(),
             CreateUserContext(actingUserId, deviceId),
             new MetricsCollector(),

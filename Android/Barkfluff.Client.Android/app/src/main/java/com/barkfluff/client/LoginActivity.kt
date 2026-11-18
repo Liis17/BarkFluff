@@ -63,6 +63,7 @@ class LoginActivity : AppCompatActivity() {
         private val EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
         private const val MIN_PASSWORD_LENGTH = 6
         private const val MEDIUM_WINDOW_MIN_WIDTH_DP = 600
+        const val EXTRA_ACCOUNT_RESTRICTION_NOTICE = "account_restriction_notice"
         /** Отступы hero-блока; складываются с системными инсетами. */
         private const val LOGIN_TOP_PADDING_DP = 20
         private const val LOGIN_BOTTOM_PADDING_DP = 16
@@ -100,11 +101,17 @@ class LoginActivity : AppCompatActivity() {
         // обрезается по нижней границе статус-бара вместо того чтобы уходить за край.
         ViewCompat.setOnApplyWindowInsetsListener(binding.contentPanel) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             v.updatePadding(
                 top = systemBars.top + LOGIN_TOP_PADDING_DP.dpToPx(),
-                bottom = systemBars.bottom + LOGIN_BOTTOM_PADDING_DP.dpToPx()
+                bottom = maxOf(systemBars.bottom, ime.bottom) + LOGIN_BOTTOM_PADDING_DP.dpToPx()
             )
+            keepLoginButtonAboveKeyboard()
             insets
+        }
+        // Шаг пароля появляется уже при открытой клавиатуре: высота формы меняется без новых insets.
+        binding.contentPanel.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+            if (bottom - top != oldBottom - oldTop) keepLoginButtonAboveKeyboard()
         }
 
         // Загружаем внешний IP-адрес асинхронно
@@ -115,6 +122,7 @@ class LoginActivity : AppCompatActivity() {
         initIdentityClient()
         setupClickListeners()
         setupLoginFields()
+        intent.getStringExtra(EXTRA_ACCOUNT_RESTRICTION_NOTICE)?.let(::showError)
     }
 
     override fun onResume() {
@@ -401,6 +409,11 @@ class LoginActivity : AppCompatActivity() {
                 failure is AuthenticationChallengeErrorException &&
                     failure.errorCode == AuthenticationErrorCodes.LOGIN_MODE_DISABLED ->
                     handleLoginModeMismatch()
+                failure is AuthenticationChallengeErrorException &&
+                    failure.errorCode in setOf(
+                        AuthenticationErrorCodes.ACCOUNT_BLOCKED,
+                        AuthenticationErrorCodes.ACCOUNT_PENDING_DELETION,
+                    ) -> resetSignInFlow(clearError = true)
                 failure is java.util.concurrent.CancellationException -> Unit
                 else -> showError(failure.message ?: getString(R.string.auth_error))
             }
@@ -474,6 +487,24 @@ class LoginActivity : AppCompatActivity() {
     private fun focusPassword() {
         binding.passwordEditText.requestFocus()
         showKeyboard(binding.passwordEditText)
+    }
+
+    /** При открытой клавиатуре прокручивает форму так, чтобы кнопка входа была видна. */
+    private fun keepLoginButtonAboveKeyboard() {
+        val panel = binding.contentPanel
+        panel.post {
+            val insets = ViewCompat.getRootWindowInsets(panel) ?: return@post
+            if (!insets.isVisible(WindowInsetsCompat.Type.ime())) return@post
+            val scroll = panel.parent as? androidx.core.widget.NestedScrollView ?: return@post
+            val button = binding.loginButton
+            if (!button.isShown) return@post
+            val rect = android.graphics.Rect(0, 0, button.width, button.height)
+            scroll.offsetDescendantRectToMyCoords(button, rect)
+            // rect — в координатах содержимого ScrollView (с учётом текущей прокрутки).
+            val visibleBottom = scroll.height - panel.paddingBottom
+            val overflow = rect.bottom - visibleBottom
+            if (overflow > 0) scroll.smoothScrollBy(0, overflow)
+        }
     }
 
     private fun showKeyboard(target: View) {

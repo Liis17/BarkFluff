@@ -8,6 +8,8 @@ using BarkFluff.Proto.Identity;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using System.Globalization;
+
 namespace BarkFluff.Client.Core.ViewModels;
 
 public enum LoginStep
@@ -207,6 +209,14 @@ public sealed partial class LoginViewModel : ObservableObject
         Password = string.Empty;
         Code = string.Empty;
         RequiresTwoFactor = false;
+    }
+
+    public void ShowSessionRestrictionNotice(string errorResourceKey)
+    {
+        if (errorResourceKey is "Error_AccountBlocked" or "Error_AccountPendingDeletion")
+        {
+            ErrorMessage = _localization.GetString(errorResourceKey);
+        }
     }
 
     public async Task CleanupAsync()
@@ -720,6 +730,21 @@ public sealed partial class LoginViewModel : ObservableObject
             if (!result.IsSuccess)
             {
                 var errorKey = result.ErrorResourceKey ?? "Error_LoginFailed";
+                if (errorKey is "Error_AccountBlocked" or "Error_AccountPendingDeletion")
+                {
+                    ErrorMessage = FormatAccountRestrictionMessage(errorKey, result.AccountRestriction);
+                    IsChallengeTerminal = true;
+                    _challengePollingCancellation?.Cancel();
+                    StopChallengeClock();
+                    StopResendClock();
+                    SetRetryOperation(RetryOperation.None);
+                    OnPropertyChanged(nameof(CanSelectFactor));
+                    OnPropertyChanged(nameof(CanShowResend));
+                    OnPropertyChanged(nameof(CanResend));
+                    LoginCommand.NotifyCanExecuteChanged();
+                    return;
+                }
+
                 ErrorMessage = _localization.GetString(errorKey);
                 if (errorKey is "Error_LoginChallengeExpired" or "Error_LoginChallengeRejected" or "Error_LoginChallengeCancelled")
                 {
@@ -1217,6 +1242,39 @@ public sealed partial class LoginViewModel : ObservableObject
         OnPropertyChanged(nameof(CanShowResend));
         OnPropertyChanged(nameof(CanResend));
         LoginCommand.NotifyCanExecuteChanged();
+    }
+
+    private string FormatAccountRestrictionMessage(
+        string errorKey,
+        BarkFluff.Proto.Identity.IdentityAccountRestrictionInfo? restriction)
+    {
+        var blocked = errorKey == "Error_AccountBlocked";
+        var lines = new List<string>
+        {
+            _localization.GetString(blocked ? "Login_AccountBlockedTitle" : "Login_AccountPendingDeletionTitle")
+        };
+        if (!string.IsNullOrWhiteSpace(restriction?.Reason))
+        {
+            lines.Add(string.Format(CultureInfo.CurrentCulture,
+                _localization.GetString("Login_AccountRestrictionReason"), restriction.Reason));
+        }
+
+        if (blocked)
+        {
+            lines.Add(_localization.GetString("Login_AccountBlockedHelp"));
+        }
+        else
+        {
+            if (restriction?.DeletionScheduledAt is { } deletionAt)
+            {
+                lines.Add(string.Format(CultureInfo.CurrentCulture,
+                    _localization.GetString("Login_AccountDeletionDate"),
+                    deletionAt.ToDateTimeOffset().ToLocalTime().ToString("g", CultureInfo.CurrentCulture)));
+            }
+            lines.Add(_localization.GetString("Login_AccountPendingDeletionHelp"));
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     private void SetResendCooldown(DateTimeOffset availableAt)

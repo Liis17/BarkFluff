@@ -21,11 +21,12 @@ class VoiceWaveformView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     private val density = resources.displayMetrics.density
-    private val minBarHeight = 4f * density
+    private val minBarHeight = 2f * density
     private val preferredHeight = 48f * density
     private val preferredWidth = 190f * density
+    private val barWidth = 3f * density
     private val barGap = 2f * density
-    private val cornerRadius = 2f * density
+    private val cornerRadius = barWidth / 2f
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val rect = RectF()
 
@@ -33,6 +34,8 @@ class VoiceWaveformView @JvmOverloads constructor(
     private var progress = 0f
 
     var onSeekRequested: ((Float) -> Unit)? = null
+    /** Перетаскивание пальцем: true — началось, false — закончилось или отменено. */
+    var onScrubChanged: ((Boolean) -> Unit)? = null
 
     var playedColor: Int = resolveThemeColor(androidx.appcompat.R.attr.colorPrimary, 0xFFFF6B35.toInt())
         set(value) {
@@ -87,21 +90,25 @@ class VoiceWaveformView @JvmOverloads constructor(
         val contentHeight = height - paddingTop - paddingBottom
         if (contentWidth <= 0 || contentHeight <= 0) return
 
-        val count = amplitudes.size
-        val gap = minOf(barGap, contentWidth / (count * 3f).coerceAtLeast(1f))
-        val barWidth = max(1f, (contentWidth - gap * (count - 1)) / count)
-        val centerY = paddingTop + contentHeight / 2f
-        val maxBarHeight = contentHeight.toFloat()
+        // Как в Telegram: полоски фиксированной ширины растут от нижнего края,
+        // число полосок зависит от ширины, амплитуды прореживаются по максимуму в окне.
+        val count = ((contentWidth + barGap) / (barWidth + barGap)).toInt().coerceAtLeast(1)
+        val step = (contentWidth - barWidth * count) / max(1, count - 1).toFloat()
+        val bottom = (paddingTop + contentHeight).toFloat()
         val playedEdge = paddingLeft + contentWidth * progress
+        val source = amplitudes
 
         var x = paddingLeft.toFloat()
         for (index in 0 until count) {
-            val factor = amplitudes[index].coerceAtLeast(0.08f)
-            val barHeight = minBarHeight + (maxBarHeight - minBarHeight) * factor
+            val from = index * source.size / count
+            val to = max(from + 1, (index + 1) * source.size / count).coerceAtMost(source.size)
+            var factor = 0f
+            for (sample in from until to) factor = max(factor, source[sample])
+            val barHeight = minBarHeight + (contentHeight - minBarHeight) * factor.coerceIn(0f, 1f)
             paint.color = if (x + barWidth / 2f <= playedEdge) playedColor else remainingColor
-            rect.set(x, centerY - barHeight / 2f, x + barWidth, centerY + barHeight / 2f)
+            rect.set(x, bottom - barHeight, x + barWidth, bottom)
             canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
-            x += barWidth + gap
+            x += barWidth + step
         }
     }
 
@@ -111,6 +118,7 @@ class VoiceWaveformView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 parent?.requestDisallowInterceptTouchEvent(true)
                 isPressed = true
+                onScrubChanged?.invoke(true)
                 seekFromTouch(event.x)
                 true
             }
@@ -122,12 +130,14 @@ class VoiceWaveformView @JvmOverloads constructor(
                 seekFromTouch(event.x)
                 isPressed = false
                 parent?.requestDisallowInterceptTouchEvent(false)
+                onScrubChanged?.invoke(false)
                 performClick()
                 true
             }
             MotionEvent.ACTION_CANCEL -> {
                 isPressed = false
                 parent?.requestDisallowInterceptTouchEvent(false)
+                onScrubChanged?.invoke(false)
                 true
             }
             else -> super.onTouchEvent(event)

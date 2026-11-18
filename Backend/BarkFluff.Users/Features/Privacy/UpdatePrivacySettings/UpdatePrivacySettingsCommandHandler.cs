@@ -1,6 +1,7 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Users.Mapping;
 using BarkFluff.Users.Persistence.Services;
+using BarkFluff.Shared.Exceptions.Identity;
 
 using MediatR;
 
@@ -11,14 +12,17 @@ public class UpdatePrivacySettingsCommandHandler : IRequestHandler<UpdatePrivacy
     private readonly UserContext _userContext;
     private readonly PrivacyStorage _privacyStorage;
     private readonly ILogger<UpdatePrivacySettingsCommandHandler> _logger;
+    private readonly UsersStorage _usersStorage;
 
     public UpdatePrivacySettingsCommandHandler(
         UserContext userContext,
         PrivacyStorage privacyStorage,
+        UsersStorage usersStorage,
         ILogger<UpdatePrivacySettingsCommandHandler> logger)
     {
         _userContext = userContext;
         _privacyStorage = privacyStorage;
+        _usersStorage = usersStorage;
         _logger = logger;
     }
 
@@ -26,6 +30,10 @@ public class UpdatePrivacySettingsCommandHandler : IRequestHandler<UpdatePrivacy
     {
         var settings = request.Settings ?? new Proto.Users.PrivacySettings();
         var updated = settings.ToDomain();
+
+        var accountStatus = await _usersStorage.GetAccountStatus(_userContext.UserId, cancellationToken);
+        if (accountStatus is null or Domain.AccountStatus.Deleted)
+            throw new UserNotFoundException();
 
         await _privacyStorage.Update(_userContext.UserId, updated);
 

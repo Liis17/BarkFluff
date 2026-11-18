@@ -3,13 +3,13 @@ package com.barkfluff.client.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.PopupMenu
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemGroupMemberBinding
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.view.M3ContextMenu
 
 /**
  * Адаптер списка участников группового чата.
@@ -59,15 +59,17 @@ class GroupMemberAdapter(
 
             binding.memberMenuButton.visibility = if (item.canRemove) View.VISIBLE else View.GONE
             binding.memberMenuButton.setOnClickListener { anchor ->
-                val popup = PopupMenu(anchor.context, anchor)
-                val removeItem = popup.menu.add(anchor.context.getString(R.string.group_remove_member))
-                popup.setOnMenuItemClickListener { clicked ->
-                    if (clicked === removeItem) {
-                        onRemove(item)
-                        true
-                    } else false
-                }
-                popup.show()
+                M3ContextMenu.show(
+                    anchor = anchor,
+                    items = listOf(M3ContextMenu.Item(
+                        id = 1,
+                        title = anchor.context.getString(R.string.group_remove_member),
+                        icon = R.drawable.ic_action_delete,
+                        danger = true,
+                    )),
+                    alignEnd = true,
+                    onItemSelected = { onRemove(item) },
+                )
             }
         }
     }

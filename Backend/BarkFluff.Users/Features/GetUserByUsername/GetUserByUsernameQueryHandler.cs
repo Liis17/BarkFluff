@@ -35,7 +35,7 @@ public class GetUserByUsernameQueryHandler : IRequestHandler<GetUserByUsernameQu
     {
         var user = await _usersStorage.GetUserByUsername(request.Username?.Trim());
 
-        if (user is null || user.IsDraft)
+        if (user is null || user.IsDraft || user.AccountStatus != Domain.AccountStatus.Active)
         {
             _metrics.Increment("public_profile_not_found");
             return new GetUserByUsernameResponse { Found = false };

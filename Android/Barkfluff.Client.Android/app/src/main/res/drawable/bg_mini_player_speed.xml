@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Плашка скорости в мини-плеере: маленький контур внутри 48dp зоны нажатия. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="6dp"
+    android:insetTop="13dp"
+    android:insetRight="6dp"
+    android:insetBottom="13dp">
+    <shape android:shape="rectangle">
+        <corners android:radius="6dp" />
+        <stroke android:width="1.5dp" android:color="?attr/colorPrimary" />
+    </shape>
+</inset>

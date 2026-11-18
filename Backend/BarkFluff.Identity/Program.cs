@@ -9,6 +9,8 @@ using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Security;
 using BarkFluff.Identity.Services;
 using BarkFluff.Identity.Settings;
+using BarkFluff.Proto.Bots;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
@@ -58,6 +60,7 @@ public class Program
         builder.Services.AddSingleton<ITelegramAuthBot>(sp => new TelegramAuthBot(
             new HttpClient { Timeout = TimeSpan.FromSeconds(35) }, sp.GetRequiredService<TelegramAuthOptions>()));
         builder.Services.AddHostedService<TelegramAuthWorker>();
+        builder.Services.AddHostedService<AccountDeletionWorker>();
 
         var redisConnectionString = builder.Configuration["Redis"]
             ?? throw new InvalidOperationException("Redis configuration is required for Identity protection");
@@ -90,6 +93,18 @@ public class Program
             {
                 o.Address = new Uri(builder.Configuration["UsersService:Host"]);
             }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
+
+        builder.Services.AddGrpcClient<FilesServerApi.FilesServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["FilesService:Host"] ?? "http://files:7005");
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"] ?? string.Empty))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
+
+        builder.Services.AddGrpcClient<BotsServerApi.BotsServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["BotsService:Host"] ?? "http://bots:7027");
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["BotsService:Token"] ?? string.Empty))
             .AddInterceptor(() => new ExceptionClientInterceptor());
 
         builder.Services.AddTransient<RefreshTokensStorage>();

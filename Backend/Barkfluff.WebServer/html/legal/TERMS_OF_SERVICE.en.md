@@ -1,7 +1,7 @@
 # BarkFluff Terms of Service
 
 **Effective from:** January 24, 2026  
-**Last updated:** July 29, 2026
+**Last updated:** November 13, 2026
 
 > This translation is provided for convenience. In case of any discrepancy, the Russian version prevails.
 
@@ -60,8 +60,8 @@ A node administrator may extend this list with their own rules.
 
 ## 7. Moderation and blocking
 
-- In case of violations the node administrator may restrict access, remove the offending content, terminate sessions, block or delete the account, and contact the competent authorities where required by law.
-- Moderation applies within the node. Your node's administrator cannot remove content on another node and is not responsible for moderation elsewhere.
+- For a breach of these Terms of Service or legal requirements, the node administrator may restrict access, remove offending content, end sessions or block the account, and may contact the competent authorities where required by law. The administrator processes account deletion at the user's request under the Account Deletion Policy. While blocked, sign-in is unavailable, all sessions are ended and the account's bots stop operating, but account data is not deleted. The user receives an email stating the reason, and the app shows that reason when they try to sign in.
+- Moderation applies within the node. Your node's administrator cannot remove content on another node and is not responsible for moderation elsewhere. Other users see the profile as “Blocked user,” without an avatar or last-seen time, and the chat is read-only. Only the node administrator may unblock the account; the user may appeal by emailing the administrator using the contacts in the “Contacts” section. An email is sent when the account is unblocked.
 - The administrator may block an entire node. Conversations with its users then stop, while messages already received remain on your node.
 - Your node answers only for its own users and vouches for their identity to its peers. Content arriving from other nodes is the responsibility of those nodes and their users.
 

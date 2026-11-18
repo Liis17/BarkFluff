@@ -38,6 +38,7 @@
     var currentChatInfo = null;
     var currentChatType = 0; // ChatType: 0=REGULAR, 1=PRIVATE
     var currentChatPeerIsBot = false;
+    var currentChatPeerIsRestricted = false;
     var messages = [];
     // --- DOM refs ---
     var $ = function (sel) { return document.querySelector(sel); };
@@ -51,6 +52,12 @@
     var loadingMessages = $('#loadingMessages');
     var inputBar = $('#inputBar');
     var soonToastEl = $('#soonToast');
+    var chatReadOnlyBanner = $('#chatReadOnlyBanner');
+    var messageInput = $('#messageInput');
+    var sendButton = $('#sendBtn');
+    var attachButton = $('#attachBtn');
+    var stickerButton = $('#stickerBtn');
+    var fileInput = $('#fileInput');
 
     // Settings and confirm overlays are managed by BF.settings module
 
@@ -72,10 +79,35 @@
         getCurrentChatId: function () { return currentChatId; },
         getCurrentChatInfo: function () { return currentChatInfo; },
         getPeerIsBot: function () { return currentChatPeerIsBot; },
+        getPeerIsRestricted: function () { return currentChatPeerIsRestricted; },
+        showToast: showToast,
         getMyUserId: function () { return myUserId; }
     });
     var setChatCallButtonsVisible = BF.chatCalls.setChatButtonsVisible;
     var setProfileCallButtonsVisible = BF.chatCalls.setProfileButtonsVisible;
+
+    function setChatReadOnly(user) {
+        currentChatPeerIsRestricted = u.isRestrictedUser(user);
+        var label = currentChatPeerIsRestricted ? u.restrictedUserName(user) : '';
+        chatReadOnlyBanner.hidden = !currentChatPeerIsRestricted;
+        chatReadOnlyBanner.textContent = currentChatPeerIsRestricted
+            ? BF.i18n.t(Number(user.accountStatus) === 1 ? 'accountRestriction.readOnlyBlocked' : 'accountRestriction.readOnlyDeleted')
+            : '';
+        [messageInput, sendButton, attachButton, stickerButton, fileInput].forEach(function (control) {
+            if (control) control.disabled = currentChatPeerIsRestricted;
+        });
+        [$('#btnCallAudio'), $('#btnCallVideo')].forEach(function (button) {
+            if (button) button.disabled = currentChatPeerIsRestricted;
+        });
+        setChatCallButtonsVisible(currentChatType !== 1 && !currentChatPeerIsBot);
+        if (currentChatPeerIsRestricted) {
+            stopTypingSend(true);
+            chatHeaderName.textContent = label;
+            chatHeaderAvatar.replaceChildren();
+            chatHeaderAvatar.textContent = label[0] || '?';
+            chatHeaderStatus.hidden = true;
+        }
+    }
 
     // ========== TAB TITLE, FAVICON, NOTIFICATIONS ==========
 
@@ -146,6 +178,7 @@
         currentChatInfo = null;
         currentChatType = 0;
         currentChatPeerIsBot = false;
+        currentChatPeerIsRestricted = false;
         messages = [];
         updateOpenChatUrl(null);
         BF.feed.reset();
@@ -164,15 +197,22 @@
         chatHeaderStatus.textContent = '';
         chatHeaderStatus.classList.remove('online');
         setChatCallButtonsVisible(false);
+        BF.chatCalls.hideJoinBanner();
+        setChatReadOnly(null);
         resetChatTabContext();
         if (window.__mobileShowList) window.__mobileShowList();
     }
 
-    function openChat(chatId) {
-        if (chatId === currentChatId) return;
+    // focusMessageId — прыжок к сообщению после открытия (результат поиска сообщений).
+    function openChat(chatId, focusMessageId) {
+        if (chatId === currentChatId) {
+            if (focusMessageId) scrollToMessage(focusMessageId);
+            return;
+        }
         if (currentChatId && currentChatType === 0 && BF.drafts) BF.drafts.flush(currentChatId);
         stopTypingSend(true);
         BF.presence.resetTyping();
+        BF.chatCalls.hideJoinBanner();
 
         var chatMeta = chats.find(function (c) { return c.id === chatId; });
         if (chatMeta && chatMeta.chatType === 1) { openPrivateChat(chatMeta); return; }
@@ -186,6 +226,8 @@
         currentChatInfo = null;
         currentChatType = chatMeta ? chatMeta.chatType : 0;
         currentChatPeerIsBot = false;
+        currentChatPeerIsRestricted = false;
+        setChatReadOnly(null);
         messages = [];
         BF.feed.reset();
         clearPendingReply(false);
@@ -232,10 +274,12 @@
 
                         currentChatPeerIsBot = !!peer.isBot;
                         setChatCallButtonsVisible(!currentChatPeerIsBot);
+                        setChatReadOnly(peer);
                         if (currentChatPeerIsBot) {
                             chatHeaderStatus.hidden = true;
                             return;
                         }
+                        if (currentChatPeerIsRestricted) return;
 
                         BF.presence.subscribeFor([peerId]);
                         // Fetch current online status via unary RPC to show immediately
@@ -255,6 +299,7 @@
                 chatHeaderStatus.classList.remove('online');
                 chatHeaderStatus.hidden = false;
                 setChatCallButtonsVisible(true);
+                BF.chatCalls.refreshJoinBanner();
                 // Для группового чата — сбрасываем кастомный контекст вкладки
                 resetChatTabContext();
             }
@@ -268,7 +313,11 @@
                 messages = data.messages;
                 BF.sendQueue.mergePendingUploadsIntoMessages(chatId);
                 var unreadId = currentChatInfo && currentChatInfo.firstUnreadMessageId;
-                renderMessages().then(function () { settleScroll(unreadId); });
+                renderMessages().then(function () {
+                    // scrollToMessage сам догрузит окно вокруг цели, если её нет в первой странице.
+                    if (focusMessageId) scrollToMessage(focusMessageId);
+                    else settleScroll(unreadId);
+                });
                 BF.markRead.schedule();
                 restoreChatDraft(chatId);
             }
@@ -309,6 +358,7 @@
         getMyUserId: function () { return myUserId; },
         getChats: function () { return chats; },
         getMessages: function () { return messages; },
+        canSend: function () { return !currentChatPeerIsRestricted; },
         renderChatList: renderChatList,
         showToast: showToast
     });
@@ -354,6 +404,7 @@
         loadChats: loadChats,
         showNewMessageNotification: showNewMessageNotification,
         updateTitleBadge: updateTitleBadge,
+        isChatMuted: BF.attention.isChatMuted,
         appendMessageToView: appendMessageToView,
         scrollToBottom: scrollToBottom,
         renderMessages: renderMessages,
@@ -387,6 +438,9 @@
 
     BF.search.init({
         getChats: function () { return chats; },
+        getCachedUser: function (userId) { return userCache.get(userId); },
+        getMyUserId: function () { return myUserId; },
+        showToast: showToast,
         openChat: openChat
     });
 
@@ -468,6 +522,13 @@
     if (BF.imageEditor) BF.imageEditor.init();
     $('#navChats').addEventListener('click', function () { /* already on chats page */ });
     $('#navSettings').addEventListener('click', function () { BF.settings.open(); });
+    BF.callHistory.init({
+        getChats: function () { return chats; },
+        getUser: getUser,
+        openChat: openChat,
+        showToast: showToast
+    });
+    $('#navCalls').addEventListener('click', function () { BF.callHistory.open(); });
 
     // ========== STICKER PICKER ==========
 
@@ -544,6 +605,7 @@
         setCurrentChatType: function (chatType) { currentChatType = chatType; },
         setCurrentChatInfo: function (chatInfo) { currentChatInfo = chatInfo; },
         setCurrentChatPeerIsBot: function (isBot) { currentChatPeerIsBot = isBot; },
+        setChatReadOnly: setChatReadOnly,
         getMyUserId: function () { return myUserId; },
         getChats: function () { return chats; },
         getMessages: function () { return messages; },
@@ -623,6 +685,7 @@
         BF.newchat.init({
             openChat: openChat,
             getMyUserId: function () { return myUserId; },
+            showToast: showToast,
             upsertChat: function (chat) {
                 var idx = chats.findIndex(function (c) { return c.id === chat.id; });
                 if (idx >= 0) chats[idx] = chat; else chats.unshift(chat);

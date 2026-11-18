@@ -49,8 +49,8 @@ object FileMediaUrl {
                 source.query,
                 source.fragment
             ).toString()
-        } catch (e: Exception) {
-            Log.w(TAG, "Не удалось подменить хост в '$url' на '$mediaOrigin'", e)
+        } catch (_: Exception) {
+            Log.w(TAG, "Не удалось подменить хост файловой ссылки")
             url
         }
     }

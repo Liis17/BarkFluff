@@ -70,5 +70,33 @@ public class FindByLoginQueryHandlerTests : IAsyncDisposable
         await act.Should().ThrowAsync<UserNotFoundException>();
     }
 
+    [Fact]
+    public async Task Handle_BlockedUser_ReturnsRawProfileAndStatus()
+    {
+        var user = await _h.SeedUser(username: "blocked-login", firstName: "Real");
+        user.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Blocked;
+        user.RestrictionReason = "reason";
+        await _h.DbContext.SaveChangesAsync();
+        var handler = new FindByLoginQueryHandler(_h.UsersStorage, TestHelper.CreateLogger<FindByLoginQueryHandler>());
+
+        var result = await handler.Handle(new FindByLoginQuery { Username = user.Username }, CancellationToken.None);
+
+        result.User.FirstName.Should().Be("Real");
+        result.User.Username.Should().Be("blocked-login");
+        result.User.AccountStatus.Should().Be(BarkFluff.Proto.Users.AccountStatus.Blocked);
+    }
+
+    [Fact]
+    public async Task Handle_DeletedUser_IsNotFound()
+    {
+        var user = await _h.SeedUser(username: "deleted-login");
+        user.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Deleted;
+        await _h.DbContext.SaveChangesAsync();
+        var handler = new FindByLoginQueryHandler(_h.UsersStorage, TestHelper.CreateLogger<FindByLoginQueryHandler>());
+
+        await FluentActions.Invoking(() => handler.Handle(new FindByLoginQuery { Username = user.Username }, CancellationToken.None))
+            .Should().ThrowAsync<UserNotFoundException>();
+    }
+
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();
 }

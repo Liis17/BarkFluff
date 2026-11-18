@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Мини-плеер в стиле Telegram: [▶] [отправитель / позиция] [1×] [✕], снизу тонкая полоса прогресса.
+     В ChatActivity встраивается в audioMiniPlayerSlot под шапкой, в остальных экранах — строкой сверху. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="?attr/colorSurfaceContainer"
-    android:orientation="vertical"
-    android:paddingHorizontal="4dp">
+    android:orientation="vertical">
 
     <LinearLayout android:layout_width="match_parent" android:layout_height="48dp"
+        android:paddingHorizontal="4dp"
         android:orientation="horizontal" android:gravity="center_vertical">
         <ImageButton android:id="@+id/miniPlay"
             android:layout_width="48dp" android:layout_height="48dp"
-            android:padding="12dp" android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="13dp" android:scaleType="fitCenter"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_play_arrow" android:contentDescription="@string/cd_play"
             app:tint="?attr/colorPrimary" />
         <LinearLayout android:id="@+id/miniSource"
@@ -23,24 +26,31 @@
             <TextView android:id="@+id/miniSender"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:maxLines="1" android:ellipsize="end"
+                android:textStyle="bold"
                 android:textAppearance="?attr/textAppearanceLabelLarge" android:textColor="?attr/colorOnSurface" />
             <TextView android:id="@+id/miniPosition"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:maxLines="1" android:ellipsize="end"
                 android:textAppearance="?attr/textAppearanceLabelSmall" android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
-        <Button android:id="@+id/miniSpeed"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:minWidth="48dp" android:padding="0dp" />
+        <TextView android:id="@+id/miniSpeed"
+            android:layout_width="wrap_content" android:layout_height="48dp"
+            android:minWidth="48dp" android:paddingHorizontal="12dp"
+            android:gravity="center" android:clickable="true" android:focusable="true"
+            android:background="@drawable/bg_mini_player_speed"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:textStyle="bold" android:textSize="12sp"
+            android:textColor="?attr/colorPrimary" />
         <ImageButton android:id="@+id/miniClose"
             android:layout_width="48dp" android:layout_height="48dp"
-            android:padding="12dp" android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="14dp" android:scaleType="fitCenter"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_close" android:contentDescription="@string/cd_voice_player_close"
             app:tint="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
-    <ProgressBar android:id="@+id/miniProgress"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent" android:layout_height="2dp"
-        android:max="1000" android:importantForAccessibility="no" />
+    <com.google.android.material.progressindicator.LinearProgressIndicator android:id="@+id/miniProgress"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:max="1000" android:importantForAccessibility="no"
+        app:trackThickness="2dp"
+        app:indicatorColor="?attr/colorPrimary" app:trackColor="@android:color/transparent" />
 </LinearLayout>

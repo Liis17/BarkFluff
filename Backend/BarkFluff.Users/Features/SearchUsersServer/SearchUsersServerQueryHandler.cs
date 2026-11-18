@@ -32,7 +32,7 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
 
         if (string.IsNullOrWhiteSpace(request.Query))
         {
-            var allResult = await _usersStorage.GetAllUsersDescending(request.Offset, request.Size);
+            var allResult = await _usersStorage.GetAllUsersDescending(request.Offset, request.Size, ToDomainStatus(request.StatusFilter));
             users = allResult.Users;
             totalCount = allResult.TotalCount;
         }
@@ -40,7 +40,8 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
         {
             var user = await _usersStorage.GetById(userId);
 
-            if (user is null || user.IsDraft || user.IsBot)
+            if (user is null || user.IsDraft || user.IsBot
+                || (request.StatusFilter.HasValue && user.AccountStatus != ToDomainStatus(request.StatusFilter)))
                 return new SearchUsersServerResponse { TotalCount = 0 };
 
             users = new List<Domain.User> { user };
@@ -52,7 +53,8 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
             // здесь сознательно игнорируются.
             var usersResult = await _usersStorage.SearchUsersByTrigram(
                 request.Query, request.Offset, request.Size,
-                respectSearchVisibility: false, excludeBots: true);
+                respectSearchVisibility: false, excludeBots: true,
+                statusFilter: ToDomainStatus(request.StatusFilter));
             users = usersResult.Users;
             totalCount = Math.Max(usersResult.TotalCount, 0);
         }
@@ -65,7 +67,7 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
         {
             var protoUser = user.ToGrpc();
 
-            if (badgesByUser.TryGetValue(user.Id, out var badges))
+            if (user.AccountStatus == Domain.AccountStatus.Active && badgesByUser.TryGetValue(user.Id, out var badges))
             {
                 foreach (var ub in badges)
                 {
@@ -77,11 +79,13 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
                             Name = ub.Badge.Name,
                             Description = ub.Badge.Description ?? string.Empty,
                             ImageUrl = ub.Badge.ImageUrl ?? string.Empty,
+                            MiniImageUrl = ub.Badge.MiniImageUrl ?? string.Empty,
                             IsActive = ub.Badge.IsActive,
                             CreatedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.Badge.CreatedDate, DateTimeKind.Utc))
                         },
                         Priority = ub.Priority,
-                        AssignedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.AssignedDate, DateTimeKind.Utc))
+                        AssignedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.AssignedDate, DateTimeKind.Utc)),
+                        IsPrimary = ub.IsPrimary
                     });
                 }
             }
@@ -89,10 +93,20 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
             protoUsers.Add(protoUser);
         }
 
+        var results = users.Select((user, index) => new SearchUserServerResult
+        {
+            User = protoUsers[index],
+            Restriction = user.ToRestrictionInfo(),
+        });
+
         return new SearchUsersServerResponse
         {
             Users = { protoUsers },
-            TotalCount = totalCount
+            TotalCount = totalCount,
+            Results = { results },
         };
     }
+
+    private static Domain.AccountStatus? ToDomainStatus(BarkFluff.Proto.Users.AccountStatus? status) =>
+        status.HasValue ? (Domain.AccountStatus)(int)status.Value : null;
 }

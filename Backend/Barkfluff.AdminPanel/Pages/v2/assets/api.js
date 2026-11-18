@@ -15,6 +15,8 @@
     'users.sessions.revoke': ['Support', 'SecurityAdmin'],
     'users.password.set': ['Support', 'SecurityAdmin'],
     'users.2fa.disable': ['SecurityAdmin'],
+    'users.block': ['SecurityAdmin'],
+    'users.delete': ['SecurityAdmin'],
     'badges.manage': ['ContentAdmin'],
     'stickers.manage': ['ContentAdmin'],
     'bots.manage': ['ContentAdmin'],

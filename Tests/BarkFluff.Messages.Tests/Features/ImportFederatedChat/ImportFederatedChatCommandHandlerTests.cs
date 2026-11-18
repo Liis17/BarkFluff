@@ -28,7 +28,7 @@ public class ImportFederatedChatCommandHandlerTests
             TestHelper.CreateLogger<ImportFederatedChatCommandHandler>());
     }
 
-    private void SetupInvitee(bool found, bool isRemote, bool isDeactivated, long userId, bool denyFederatedDm = false)
+    private void SetupInvitee(bool found, bool isRemote, bool isDeactivated, long userId, bool denyFederatedDm = false, AccountStatus accountStatus = AccountStatus.Active)
     {
         var response = new GetUsersByUuidResponse
         {
@@ -40,6 +40,7 @@ public class ImportFederatedChatCommandHandlerTests
                     IsRemote = isRemote,
                     IsDeactivated = isDeactivated,
                     UserId = userId,
+                    AccountStatus = accountStatus,
                     Username = "bob",
                     DenyFederatedDm = denyFederatedDm,
                 },
@@ -49,6 +50,19 @@ public class ImportFederatedChatCommandHandlerTests
             .Setup(c => c.GetUsersByUuidAsync(It.IsAny<GetUsersByUuidRequest>(), null, null, It.IsAny<CancellationToken>()))
             .Returns(new AsyncUnaryCall<GetUsersByUuidResponse>(
                 Task.FromResult(response), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
+    }
+
+    [Fact]
+    public async Task Handle_RestrictedLocalInvitee_ThrowsUnknownInviteeException()
+    {
+        SetupInvitee(found: true, isRemote: false, isDeactivated: false, userId: 1, accountStatus: AccountStatus.Blocked);
+        var handler = CreateHandler();
+
+        var act = async () => await handler.Handle(new ImportFederatedChatCommand(
+            BuildRequest(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid())), CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnknownInviteeException>();
+        _h.DbContext.Chats.Should().BeEmpty();
     }
 
     private void SetupUpsertOk()

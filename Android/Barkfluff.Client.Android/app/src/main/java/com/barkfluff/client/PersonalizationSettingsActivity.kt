@@ -343,30 +343,34 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         previewBubbles.forEach { it.radius = px }
     }
 
+    /** Фоны превью чата и превью стикера: оба показывают выбранный фон чатов. */
+    private val previewBackgroundImages get() =
+        listOf(binding.previewBackgroundImage, binding.stickerPreviewBackgroundImage)
+
+    private val previewDimOverlays get() =
+        listOf(binding.previewDimOverlay, binding.stickerPreviewDimOverlay)
+
     /** Загружает фоновую картинку в превью, потом применяет блюр */
     private fun updatePreviewBackground(fileId: String) {
         if (fileId.isEmpty()) {
-            binding.previewBackgroundImage.visibility = View.GONE
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                binding.previewBackgroundImage.setRenderEffect(null)
+            previewBackgroundImages.forEach { image ->
+                image.visibility = View.GONE
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) image.setRenderEffect(null)
             }
             updatePreviewDim()
             return
         }
-        binding.previewBackgroundImage.visibility = View.VISIBLE
+        previewBackgroundImages.forEach { it.visibility = View.VISIBLE }
         lifecycleScope.launch {
             val cached = withContext(Dispatchers.IO) { FileCache.getFile(fileId) }
-            if (cached != null && cached.exists()) {
-                binding.previewBackgroundImage.load(
-                    cached, AvatarLoader.getImageLoader(this@PersonalizationSettingsActivity)
-                ) { crossfade(true) }
+            val source: Any? = if (cached != null && cached.exists()) {
+                cached
             } else {
-                val url = fileMediaGateway.downloadUrl(fileId).getOrNull()
-                if (url != null) {
-                    binding.previewBackgroundImage.load(
-                        url, AvatarLoader.getImageLoader(this@PersonalizationSettingsActivity)
-                    ) { crossfade(true) }
-                }
+                fileMediaGateway.downloadUrl(fileId).getOrNull()
+            }
+            if (source != null) {
+                val loader = AvatarLoader.getImageLoader(this@PersonalizationSettingsActivity)
+                previewBackgroundImages.forEach { it.load(source, loader) { crossfade(true) } }
             }
             updatePreviewBlur()
             updatePreviewDim()
@@ -376,14 +380,13 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     /** Применяет RenderEffect blur (API 31+) к фоновому изображению превью */
     private fun updatePreviewBlur() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val visible = binding.previewBackgroundImage.visibility == View.VISIBLE
-            if (globalParam.chatBackgroundBlur && visible) {
-                val r = globalParam.chatBackgroundBlurRadius.toFloat()
-                binding.previewBackgroundImage.setRenderEffect(
-                    RenderEffect.createBlurEffect(r, r, Shader.TileMode.CLAMP)
-                )
-            } else {
-                binding.previewBackgroundImage.setRenderEffect(null)
+            previewBackgroundImages.forEach { image ->
+                if (globalParam.chatBackgroundBlur && image.visibility == View.VISIBLE) {
+                    val r = globalParam.chatBackgroundBlurRadius.toFloat()
+                    image.setRenderEffect(RenderEffect.createBlurEffect(r, r, Shader.TileMode.CLAMP))
+                } else {
+                    image.setRenderEffect(null)
+                }
             }
         }
     }
@@ -392,7 +395,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private fun updatePreviewDim() {
         val pct = globalParam.chatBackgroundDim
         if (pct == 0) {
-            binding.previewDimOverlay.background = null
+            previewDimOverlays.forEach { it.background = null }
         } else {
             val alpha = (pct / 100f * 255).toInt().coerceIn(0, 255)
             // Используем цвет фона окна из темы (светлый/тёмный в зависимости от темы)
@@ -405,7 +408,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                 android.graphics.Color.green(bgColor),
                 android.graphics.Color.blue(bgColor)
             )
-            binding.previewDimOverlay.setBackgroundColor(dimColor)
+            previewDimOverlays.forEach { it.setBackgroundColor(dimColor) }
         }
     }
 

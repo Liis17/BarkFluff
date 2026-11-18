@@ -21,6 +21,8 @@ class AudioPlaybackController(private val playback: AudioPlayback) {
     fun resume() = playback.resume()
     fun stop() = playback.stop()
     fun seekTo(positionMs: Int) = playback.seekTo(positionMs.toLong())
+    fun beginScrub() = playback.beginScrub()
+    fun endScrub() = playback.endScrub()
     fun currentPosition(): Int = playback.state.value.positionMillis.toInt()
     fun duration(): Int = playback.state.value.durationMillis.toInt()
 }

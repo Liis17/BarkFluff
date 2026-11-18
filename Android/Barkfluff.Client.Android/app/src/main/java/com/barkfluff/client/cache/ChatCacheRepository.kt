@@ -23,9 +23,12 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.domain.model.ChatFolder
 import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.domain.model.LastMessageSummary
+import com.barkfluff.client.domain.model.AccountStatus
+import com.barkfluff.client.domain.model.UserBadgeInfo
 import com.barkfluff.client.notifications.isPushPreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -51,7 +54,8 @@ data class CacheScope(val id: String) {
 data class CachedChatDisplay(
     val title: String,
     val avatarFileId: String?,
-    val otherUserId: Long
+    val otherUserId: Long,
+    val accountStatus: AccountStatus = AccountStatus.ACTIVE,
 )
 
 internal fun mergeCachedChatDisplay(previous: ChatSummary?, incoming: ChatSummary): ChatSummary =
@@ -77,6 +81,8 @@ data class ChatCacheStats(
     val messageCount: Int,
     val sizeBytes: Long
 )
+
+data class ChatReadThrough(val chatId: String, val throughMessageId: Long)
 
 data class ClearCacheOptions(
     val historyMessages: Int,
@@ -180,7 +186,45 @@ data class CachedChatDisplayEntity(
     val chatId: String,
     val title: String,
     val avatarFileId: String?,
-    val otherUserId: Long
+    val otherUserId: Long,
+    @ColumnInfo(defaultValue = "0") val accountStatusNumber: Int,
+)
+
+@Entity(tableName = "cached_user_badges", primaryKeys = ["scopeId", "userId", "badgeId"])
+data class CachedUserBadgeEntity(
+    val scopeId: String,
+    val userId: Long,
+    val badgeId: Int,
+    val name: String,
+    val description: String,
+    val imageUrl: String,
+    val miniImageUrl: String,
+    val assignedAt: Long,
+    val isPrimary: Boolean,
+    val position: Int,
+)
+
+internal fun CachedUserBadgeEntity.toDomain() = UserBadgeInfo(
+    badgeId = badgeId,
+    name = name,
+    description = description,
+    imageUrl = imageUrl,
+    miniImageUrl = miniImageUrl,
+    assignedAtMillis = assignedAt,
+    isPrimary = isPrimary,
+)
+
+internal fun UserBadgeInfo.toCacheEntity(scopeId: String, userId: Long, position: Int) = CachedUserBadgeEntity(
+    scopeId = scopeId,
+    userId = userId,
+    badgeId = badgeId,
+    name = name,
+    description = description,
+    imageUrl = imageUrl,
+    miniImageUrl = miniImageUrl,
+    assignedAt = assignedAtMillis,
+    isPrimary = isPrimary,
+    position = position,
 )
 
 @Entity(
@@ -285,6 +329,24 @@ interface ChatCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertDisplays(displays: List<CachedChatDisplayEntity>)
 
+    @Query("SELECT * FROM cached_user_badges WHERE scopeId = :scopeId AND userId = :userId ORDER BY position")
+    fun observeUserBadges(scopeId: String, userId: Long): Flow<List<CachedUserBadgeEntity>>
+
+    @Query("SELECT * FROM cached_user_badges WHERE scopeId = :scopeId AND userId = :userId ORDER BY position")
+    suspend fun userBadges(scopeId: String, userId: Long): List<CachedUserBadgeEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertUserBadges(badges: List<CachedUserBadgeEntity>)
+
+    @Query("DELETE FROM cached_user_badges WHERE scopeId = :scopeId AND userId = :userId")
+    suspend fun deleteUserBadges(scopeId: String, userId: Long)
+
+    @Query("DELETE FROM cached_user_badges")
+    suspend fun deleteAllUserBadges()
+
+    @Query("UPDATE cached_user_badges SET isPrimary = CASE WHEN badgeId = :badgeId THEN 1 ELSE 0 END WHERE scopeId = :scopeId AND userId = :userId")
+    suspend fun updatePrimaryUserBadge(scopeId: String, userId: Long, badgeId: Int)
+
     @Query("SELECT * FROM cached_chat_drafts WHERE scopeId = :scopeId")
     suspend fun drafts(scopeId: String): List<CachedChatDraftEntity>
 
@@ -372,6 +434,7 @@ interface ChatCacheDao {
         CachedChatEntity::class,
         CachedChatFolderEntity::class,
         CachedChatDisplayEntity::class,
+        CachedUserBadgeEntity::class,
         CachedChatDraftEntity::class,
         ComposerAttachmentEntity::class,
         CachedMessageEntity::class,
@@ -382,7 +445,7 @@ interface ChatCacheDao {
         PendingMessageReadEntity::class,
         PendingChatReadRangeEntity::class
     ],
-    version = 6,
+    version = 8,
     exportSchema = true
 )
 abstract class ChatCacheDatabase : RoomDatabase() {
@@ -414,11 +477,27 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
     private val _clearedEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val clearedEvents = _clearedEvents.asSharedFlow()
 
+    /**
+     * Экран чата подтвердил прочтение. Сервер не рассылает ReadBy для уже прочитанных сообщений,
+     * поэтому без этого сигнала список не узнает о прочтении, если единственное эхо потерялось.
+     */
+    private val _chatReadLocally = MutableSharedFlow<ChatReadThrough>(extraBufferCapacity = 16)
+    val chatReadLocally = _chatReadLocally.asSharedFlow()
+
+    fun notifyChatRead(chatId: String, throughMessageId: Long) {
+        _chatReadLocally.tryEmit(ChatReadThrough(chatId, throughMessageId))
+    }
+
     suspend fun readChatList(scope: CacheScope): CachedChatList? = withContext(Dispatchers.IO) {
         val dao = database().cacheDao()
         val meta = dao.meta(scope.id) ?: return@withContext null
         val displays = dao.displays(scope.id).associate { display ->
-            display.chatId to CachedChatDisplay(display.title, display.avatarFileId, display.otherUserId)
+            display.chatId to CachedChatDisplay(
+                display.title,
+                display.avatarFileId,
+                display.otherUserId,
+                AccountStatus.fromStoredNumber(display.accountStatusNumber),
+            )
         }
         CachedChatList(
             chats = dao.chats(scope.id).map { it.toChatData() },
@@ -479,7 +558,14 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
     suspend fun saveDisplay(scope: CacheScope, chatId: String, display: CachedChatDisplay) =
         withContext(Dispatchers.IO) {
             database().cacheDao().upsertDisplay(
-                CachedChatDisplayEntity(scope.id, chatId, display.title, display.avatarFileId, display.otherUserId)
+                CachedChatDisplayEntity(
+                    scope.id,
+                    chatId,
+                    display.title,
+                    display.avatarFileId,
+                    display.otherUserId,
+                    display.accountStatus.ordinal,
+                )
             )
         }
 
@@ -487,8 +573,56 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         withContext(Dispatchers.IO) {
             if (displays.isNotEmpty()) {
                 database().cacheDao().upsertDisplays(displays.map { (chatId, display) ->
-                    CachedChatDisplayEntity(scope.id, chatId, display.title, display.avatarFileId, display.otherUserId)
+                    CachedChatDisplayEntity(
+                        scope.id,
+                        chatId,
+                        display.title,
+                        display.avatarFileId,
+                        display.otherUserId,
+                        display.accountStatus.ordinal,
+                    )
                 })
+            }
+        }
+
+    fun observeUserBadges(userId: Long): Flow<List<CachedUserBadgeEntity>> = flow {
+        val scope = CacheScope.from(GlobalParam(appContext)) ?: run {
+            emit(emptyList())
+            return@flow
+        }
+        emitAll(database().cacheDao().observeUserBadges(scope.id, userId))
+    }
+
+    suspend fun readUserBadges(userId: Long): List<CachedUserBadgeEntity> = withContext(Dispatchers.IO) {
+        val scope = CacheScope.from(GlobalParam(appContext)) ?: return@withContext emptyList()
+        database().cacheDao().userBadges(scope.id, userId)
+    }
+
+    suspend fun replaceUserBadges(userId: Long, badges: List<UserBadgeInfo>) = withContext(Dispatchers.IO) {
+        val scope = CacheScope.from(GlobalParam(appContext)) ?: return@withContext
+        val db = database()
+        db.withTransaction {
+            val dao = db.cacheDao()
+            dao.deleteUserBadges(scope.id, userId)
+            if (badges.isNotEmpty()) {
+                dao.upsertUserBadges(badges.mapIndexed { index, badge -> badge.toCacheEntity(scope.id, userId, index) })
+            }
+        }
+    }
+
+    suspend fun updatePrimaryUserBadge(userId: Long, badgeId: Int, primaryBadge: UserBadgeInfo?) =
+        withContext(Dispatchers.IO) {
+            val scope = CacheScope.from(GlobalParam(appContext)) ?: return@withContext
+            val db = database()
+            db.withTransaction {
+                val dao = db.cacheDao()
+                val cached = dao.userBadges(scope.id, userId)
+                dao.updatePrimaryUserBadge(scope.id, userId, badgeId)
+                if (badgeId > 0 && cached.none { it.badgeId == badgeId } && primaryBadge != null) {
+                    dao.upsertUserBadges(
+                        listOf(primaryBadge.copy(isPrimary = true).toCacheEntity(scope.id, userId, cached.size))
+                    )
+                }
             }
         }
 
@@ -900,6 +1034,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
                 dao.deleteAllChats()
                 dao.deleteAllFolders()
                 dao.deleteAllDisplays()
+                dao.deleteAllUserBadges()
                 dao.deleteAllMessages()
                 dao.deleteAllPrivateMessages()
             }
@@ -954,7 +1089,7 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
         val key = databaseKey()
         return Room.databaseBuilder(appContext, ChatCacheDatabase::class.java, DATABASE_NAME)
             .openHelperFactory(SupportOpenHelperFactory(key))
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .build()
     }
 
@@ -1325,6 +1460,24 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
                     "CREATE INDEX IF NOT EXISTS index_pending_chat_read_ranges_scopeId_nextAttemptAtMillis " +
                         "ON pending_chat_read_ranges(scopeId, nextAttemptAtMillis)"
                 )
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS cached_user_badges (" +
+                        "scopeId TEXT NOT NULL, userId INTEGER NOT NULL, badgeId INTEGER NOT NULL, " +
+                        "name TEXT NOT NULL, description TEXT NOT NULL, imageUrl TEXT NOT NULL, " +
+                        "miniImageUrl TEXT NOT NULL, assignedAt INTEGER NOT NULL, isPrimary INTEGER NOT NULL, " +
+                        "position INTEGER NOT NULL, PRIMARY KEY(scopeId, userId, badgeId))"
+                )
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE cached_chat_displays ADD COLUMN accountStatusNumber INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

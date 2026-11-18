@@ -59,8 +59,25 @@
 
             </LinearLayout>
 
+            <ImageButton
+                android:id="@+id/proxyButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/bft_proxy_title"
+                android:padding="12dp"
+                android:src="@drawable/ic_storage"
+                android:visibility="gone"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
             <!-- Аватар пользователя справа -->
             <FrameLayout
+                android:id="@+id/userAvatarButton"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="@string/profile_title"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginTop="4dp">
@@ -156,6 +173,19 @@
 
         </LinearLayout>
 
+        <!-- Мини-плеер аудио: под поиском, над началом списка. Заполняет AudioMiniPlayerHost. -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/chatsMiniPlayerSlot"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp" />
+
     </LinearLayout>
 
     <!-- Список чатов -->
@@ -225,11 +255,10 @@
     </LinearLayout>
 
     <!-- Индикатор загрузки -->
-    <com.google.android.material.progressindicator.CircularProgressIndicator
+    <com.google.android.material.loadingindicator.LoadingIndicator
         android:id="@+id/loadingIndicator"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:indeterminate="true"
         android:visibility="visible"
         app:indicatorColor="?attr/colorPrimary"
         app:indicatorSize="40dp"

@@ -6,6 +6,9 @@ import com.barkfluff.client.domain.model.AuthenticationChallenge
 import com.barkfluff.client.domain.model.AuthenticationChallengeReference
 import com.barkfluff.client.domain.model.AuthenticationChallengeState
 import com.barkfluff.client.domain.model.AuthenticationCompletion
+import com.barkfluff.client.domain.model.AccountRestriction
+import com.barkfluff.client.domain.model.AccountStatus
+import com.barkfluff.client.domain.model.AuthenticationErrorCodes
 import com.barkfluff.client.domain.model.AuthenticationFactor
 import com.barkfluff.client.domain.model.AuthenticationLoginMode
 import com.barkfluff.client.domain.model.OtpEnrollment
@@ -57,6 +60,49 @@ class AuthenticationChallengeControllerTest {
 
         assertEquals(listOf("code-1"), completion.recoveryCodes)
         assertTrue(controller.resend().isFailure)
+    }
+
+    @Test
+    fun `blocked account completion preserves restriction details and clears the challenge`() = runBlocking {
+        val gateway = FakeGateway().apply {
+            completion = completion.copy(
+                errorCode = AuthenticationErrorCodes.ACCOUNT_BLOCKED,
+                accountRestriction = AccountRestriction(AccountStatus.BLOCKED, "terms violation", null),
+            )
+        }
+        val controller = AuthenticationChallengeController(gateway)
+        controller.begin { beginPasswordRecovery("alice") }
+
+        val completion = controller.complete("123456").getOrThrow()
+
+        assertEquals(AuthenticationErrorCodes.ACCOUNT_BLOCKED, completion.errorCode)
+        assertEquals(AccountStatus.BLOCKED, completion.accountRestriction?.status)
+        assertEquals("terms violation", completion.accountRestriction?.reason)
+        assertFalse(controller.hasActiveChallenge)
+    }
+
+    @Test
+    fun `pending deletion completion preserves date and clears the challenge`() = runBlocking {
+        val gateway = FakeGateway().apply {
+            completion = completion.copy(
+                errorCode = AuthenticationErrorCodes.ACCOUNT_PENDING_DELETION,
+                accountRestriction = AccountRestriction(
+                    AccountStatus.PENDING_DELETION,
+                    "requested by user",
+                    1_800_000_000_000L,
+                ),
+            )
+        }
+        val controller = AuthenticationChallengeController(gateway)
+        controller.begin { beginPasswordRecovery("alice") }
+
+        val completion = controller.complete("123456").getOrThrow()
+
+        assertEquals(AuthenticationErrorCodes.ACCOUNT_PENDING_DELETION, completion.errorCode)
+        assertEquals(AccountStatus.PENDING_DELETION, completion.accountRestriction?.status)
+        assertEquals("requested by user", completion.accountRestriction?.reason)
+        assertEquals(1_800_000_000_000L, completion.accountRestriction?.deletionScheduledAtMillis)
+        assertFalse(controller.hasActiveChallenge)
     }
 
     @Test
@@ -144,6 +190,52 @@ class AuthenticationChallengeControllerTest {
 
         assertEquals(2, gateway.completeCalls)
         assertFalse(controller.hasActiveChallenge)
+    }
+
+    @Test
+    fun `password-only sign-in approved by Begin completes without user confirmation`() = runBlocking {
+        val gateway = FakeGateway().apply {
+            currentChallenge = challenge.copy(state = AuthenticationChallengeState.APPROVED, needsCode = false)
+            completion = completion.copy(state = AuthenticationChallengeState.COMPLETED)
+        }
+        val controller = AuthenticationChallengeController(gateway)
+
+        val started = controller.begin { beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD)) }
+        val completion = controller.completeIfApproved(started.getOrThrow())
+
+        assertEquals(AuthenticationChallengeState.COMPLETED, completion?.state)
+        assertEquals(1, gateway.completeCalls)
+        assertFalse(controller.hasActiveChallenge)
+    }
+
+    @Test
+    fun `waiting second factor challenge is left for the confirmation UI`() = runBlocking {
+        val gateway = FakeGateway()
+        val controller = AuthenticationChallengeController(gateway)
+
+        val started = controller.begin {
+            beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD_SECOND_FACTOR))
+        }
+
+        assertEquals(null, controller.completeIfApproved(started.getOrThrow()))
+        assertEquals(0, gateway.completeCalls)
+        assertTrue(controller.hasActiveChallenge)
+    }
+
+    @Test
+    fun `blocked account after approval is left for the dialog to explain`() = runBlocking {
+        val gateway = FakeGateway().apply {
+            currentChallenge = challenge.copy(state = AuthenticationChallengeState.APPROVED, needsCode = false)
+            completion = completion.copy(
+                state = AuthenticationChallengeState.COMPLETED,
+                errorCode = AuthenticationErrorCodes.ACCOUNT_BLOCKED,
+            )
+        }
+        val controller = AuthenticationChallengeController(gateway)
+
+        val started = controller.begin { beginSignIn(SignInRequest("alice", "password", AuthenticationLoginMode.PASSWORD)) }
+
+        assertEquals(null, controller.completeIfApproved(started.getOrThrow()))
     }
 
     @Test

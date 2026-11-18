@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@android:color/transparent" />
-    <foreground android:drawable="@drawable/ic_launcher_layer_master" />
-    <!-- Монохромный слой берёт только альфу, для него используем откалиброванный под safe zone вектор. -->
-    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+    <background android:drawable="@drawable/ic_launcher_background_master" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground_master" />
+    <monochrome android:drawable="@drawable/ic_launcher_glyph_master" />
 </adaptive-icon>

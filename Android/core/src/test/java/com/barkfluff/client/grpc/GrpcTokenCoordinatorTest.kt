@@ -2,6 +2,8 @@ package com.barkfluff.client.grpc
 
 import io.grpc.Status
 import io.grpc.StatusException
+import io.grpc.Metadata
+import io.grpc.StatusRuntimeException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -204,6 +206,18 @@ class GrpcTokenCoordinatorTest {
     }
 
     @Test
+    fun `blocked and pending deletion refresh errors are terminal and distinguishable`() = runBlocking {
+        assertEquals(
+            TokenValidity.ACCOUNT_BLOCKED,
+            failingCoordinator(restrictionError(AccountRestrictionErrorCodes.ACCOUNT_BLOCKED)).validity(),
+        )
+        assertEquals(
+            TokenValidity.ACCOUNT_PENDING_DELETION,
+            failingCoordinator(restrictionError(AccountRestrictionErrorCodes.ACCOUNT_PENDING_DELETION)).validity(),
+        )
+    }
+
+    @Test
     fun `identity client that cannot be created is unavailable and never refreshes`() = runBlocking {
         var refreshCalls = 0
         val coordinator = GrpcTokenCoordinator(
@@ -223,6 +237,12 @@ class GrpcTokenCoordinatorTest {
         refreshAccessToken = { _, _ -> Result.failure(error) },
         nowMillis = { 1_000_000L },
     )
+
+    private fun restrictionError(errorCode: String): StatusRuntimeException {
+        val trailers = Metadata()
+        trailers.put(Metadata.Key.of("x-error-code", Metadata.ASCII_STRING_MARSHALLER), errorCode)
+        return StatusRuntimeException(Status.UNAUTHENTICATED, trailers)
+    }
 
     private fun coordinator(
         store: FakeTokenStore,

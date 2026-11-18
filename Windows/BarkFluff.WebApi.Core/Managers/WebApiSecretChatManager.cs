@@ -37,6 +37,10 @@ namespace BarkFluff.WebApi.Core.Managers
                     return ((ErrorReturner, Proto.Messages.SendSecretChatInviteResponse?))(new ErrorReturner(true), response);
                 }, globalParam);
             }
+            catch (BarkFluff.Shared.Exceptions.Users.UserUnavailableException)
+            {
+                return (new ErrorReturner(false, errorResourceKey: "Messenger_UserUnavailable"), null);
+            }
             catch (Exception)
             {
                 return (new ErrorReturner(false, "Ошибка отправки приглашения в секретный чат"), null);
@@ -105,6 +109,10 @@ namespace BarkFluff.WebApi.Core.Managers
                     });
                     return ((ErrorReturner, Proto.Messages.SendSecretMessageResponse?))(new ErrorReturner(true), response);
                 }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserUnavailableException)
+            {
+                return (new ErrorReturner(false, errorResourceKey: "Messenger_UserUnavailable"), null);
             }
             catch (Exception)
             {

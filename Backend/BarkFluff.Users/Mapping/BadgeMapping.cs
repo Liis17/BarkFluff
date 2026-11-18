@@ -17,6 +17,7 @@ public static class BadgeMapping
             Name = badge.Name,
             Description = badge.Description ?? string.Empty,
             ImageUrl = badge.ImageUrl,
+            MiniImageUrl = badge.MiniImageUrl ?? string.Empty,
             CreatedDate = badge.CreatedDate.ToTimestamp(),
             IsActive = badge.IsActive
         };
@@ -28,7 +29,8 @@ public static class BadgeMapping
         {
             Badge = userBadge.Badge.ToGrpc(),
             Priority = userBadge.Priority,
-            AssignedDate = userBadge.AssignedDate.ToTimestamp()
+            AssignedDate = userBadge.AssignedDate.ToTimestamp(),
+            IsPrimary = userBadge.IsPrimary
         };
     }
 
@@ -40,6 +42,7 @@ public static class BadgeMapping
             Name = protoBadge.Name,
             Description = protoBadge.Description,
             ImageUrl = protoBadge.ImageUrl,
+            MiniImageUrl = string.IsNullOrWhiteSpace(protoBadge.MiniImageUrl) ? null : protoBadge.MiniImageUrl,
             CreatedDate = protoBadge.CreatedDate.ToDateTime(),
             IsActive = protoBadge.IsActive
         };

@@ -60,7 +60,10 @@
             background: var(--md-surface-container);
             padding: 24px;
         }
-        .badge-image-wrap img { width: 100%; height: 100%; object-fit: contain; }
+        .badge-image-pair { display:flex; align-items:center; gap:18px; }
+        .badge-image-full { width:128px; height:128px; object-fit:contain; }
+        .badge-mini-card { display:flex; flex-direction:column; align-items:center; gap:6px; color:var(--md-on-surface-variant); font-size:11px; }
+        .badge-mini-card img { width:32px; height:32px; object-fit:contain; }
         .badge-image-wrap .placeholder {
             width: 96px; height: 96px;
             border-radius: 50%;
@@ -76,20 +79,18 @@
         .badge-meta .desc { font-size: 12px; color: var(--md-on-surface-variant); margin-top: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: 2.4em; }
         .badge-meta .date { font-size: 11px; color: var(--md-outline); margin-top: 8px; }
 
-        /* Drop zone */
-        .image-zone {
-            display: flex; align-items: center; gap: 16px;
-        }
-        .image-preview-wrap {
-            width: 96px; height: 96px;
-            border-radius: var(--md-shape-md);
-            border: 2px dashed var(--md-outline);
-            background: var(--md-surface-container);
-            display: flex; align-items: center; justify-content: center;
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-        .image-preview-wrap img { width: 100%; height: 100%; object-fit: contain; }
+        .image-mode-options { display:flex; gap:10px; flex-wrap:wrap; }
+        .image-mode-option { display:flex; align-items:center; gap:8px; padding:9px 12px; border:1px solid var(--md-outline-variant); border-radius:var(--md-shape-sm); cursor:pointer; }
+        .image-zone { display:flex; align-items:center; gap:16px; }
+        .image-preview-wrap { width:96px; height:96px; border-radius:var(--md-shape-md); border:1px dashed var(--md-outline); background:var(--md-surface-container); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
+        .image-preview-wrap img { width:100%; height:100%; object-fit:contain; }
+        .badge-previews { display:flex; align-items:flex-end; gap:20px; padding:12px; border-radius:var(--md-shape-md); background:var(--md-surface-container); }
+        .badge-preview { display:flex; flex-direction:column; align-items:center; gap:6px; color:var(--md-on-surface-variant); font-size:12px; }
+        .badge-preview img { object-fit:contain; background:var(--md-surface-container-lowest); border-radius:var(--md-shape-sm); }
+        #fullPreview { width:112px; height:112px; }
+        #miniPreview { width:48px; height:48px; }
+        .badge-validation { margin:0; color:var(--md-error); font-size:12px; white-space:pre-wrap; }
+        [hidden] { display:none !important; }
     </style>
 </head>
 <body>
@@ -141,24 +142,41 @@
         <form id="badgeForm" onsubmit="saveBadge(event)">
             <div class="md-dialog-body">
                 <div>
-                    <label class="field-label" style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">
-                        Картинка (PNG)
-                    </label>
-                    <div class="image-zone">
-                        <div class="image-preview-wrap" id="imagePreviewWrapper">
-                            <img id="imagePreview" src="" alt="" style="display:none;">
-                            <span class="msr size-40" id="imageIcon" style="color:var(--md-outline);">image</span>
-                        </div>
-                        <div style="flex:1;">
+                    <label class="field-label" style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">Изображения бейджа</label>
+                    <div class="image-mode-options">
+                        <label class="image-mode-option"><input type="radio" name="imageMode" value="single" checked onchange="setImageMode('single')"> Одна исходная картинка</label>
+                        <label class="image-mode-option"><input type="radio" name="imageMode" value="separate" onchange="setImageMode('separate')"> Две отдельные картинки</label>
+                    </div>
+                    <div id="singleImageControls" class="image-zone" style="margin-top:12px;">
+                        <div>
                             <label class="md-btn md-btn-tonal md-btn-square-press" style="cursor:pointer;">
-                                <span class="msr size-18">upload</span>
-                                Выбрать файл
-                                <input type="file" id="imageInput" name="image" accept=".png,image/png"
-                                    onchange="previewImage(this)" style="display:none;">
+                                <span class="msr size-18">upload</span> Выбрать исходник
+                                <input type="file" id="singleImageInput" accept="image/*" onchange="prepareSingleImage(this.files[0])" style="display:none;">
                             </label>
-                            <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;">Только PNG (альфа-канал поддерживается).</p>
+                            <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;">Центр-кроп в квадрат; браузер создаст PNG 256×256 и 32×32.</p>
                         </div>
                     </div>
+                    <div id="separateImageControls" style="margin-top:12px;" hidden>
+                        <div class="image-zone" style="margin-bottom:10px;">
+                            <div class="image-preview-wrap"><img id="separateFullInputPreview" alt="" hidden><span class="msr size-32" id="separateFullIcon" style="color:var(--md-outline);">image</span></div>
+                            <div><label class="md-btn md-btn-tonal md-btn-square-press" style="cursor:pointer;">
+                                <span class="msr size-18">upload</span> Полная PNG (256×256)
+                                <input type="file" id="fullImageInput" accept=".png,image/png" onchange="selectSeparateImage('full', this.files[0])" style="display:none;">
+                            </label></div>
+                        </div>
+                        <div class="image-zone">
+                            <div class="image-preview-wrap"><img id="separateMiniInputPreview" alt="" hidden><span class="msr size-32" id="separateMiniIcon" style="color:var(--md-outline);">image</span></div>
+                            <div><label class="md-btn md-btn-tonal md-btn-square-press" style="cursor:pointer;">
+                                <span class="msr size-18">upload</span> Мини PNG (32×32)
+                                <input type="file" id="miniImageInput" accept=".png,image/png" onchange="selectSeparateImage('mini', this.files[0])" style="display:none;">
+                            </label></div>
+                        </div>
+                    </div>
+                    <div class="badge-previews" style="margin-top:12px;">
+                        <div class="badge-preview"><img id="fullPreview" alt="Превью полной картинки" hidden><span id="fullPreviewPlaceholder" class="msr size-40">workspace_premium</span><span>Полная 256×256</span></div>
+                        <div class="badge-preview"><img id="miniPreview" alt="Превью миниатюры" hidden><span id="miniPreviewPlaceholder" class="msr size-28">workspace_premium</span><span>Мини 32×32</span></div>
+                    </div>
+                    <p id="badgeValidation" class="badge-validation" role="alert" style="margin-top:8px;" hidden></p>
                 </div>
 
                 <div>
@@ -189,6 +207,7 @@
 
                 <input type="hidden" id="editBadgeId" value="">
                 <input type="hidden" id="editImageUrl" value="">
+                <input type="hidden" id="editMiniImageUrl" value="">
             </div>
             <div class="md-dialog-actions">
                 <button type="button" class="md-btn md-btn-text" onclick="closeModal()">Отмена</button>
@@ -207,10 +226,14 @@
 <script src="assets/command-palette.js?v=4"></script>
 <script>
     let badges = [];
+    let pendingImages = { full: null, mini: null };
+    let selectedImageMode = 'single';
+    let singleImagePreparing = false;
+    let imagePreparationGeneration = 0;
 
     function checkAuth() { return BF.requireAuth(); }
 
-    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML.replace(/\"/g, '&quot;').replace(/'/g, '&#39;'); }
     function formatDate(s) { if (!s) return ''; return new Date(s).toLocaleDateString('ru-RU'); }
 
     async function loadBadges() {
@@ -237,9 +260,17 @@
                 </div>
 
                 <div class="badge-image-wrap">
-                    ${b.imageUrl
-                        ? `<img src="${b.imageUrl}" alt="${escapeHtml(b.name)}">`
-                        : `<div class="placeholder"><span class="msr">workspace_premium</span></div>`}
+                    <div class="badge-image-pair">
+                        ${b.imageUrl
+                            ? `<img class="badge-image-full" src="${escapeHtml(b.imageUrl)}" alt="${escapeHtml(b.name)}">`
+                            : `<div class="placeholder"><span class="msr">workspace_premium</span></div>`}
+                        <div class="badge-mini-card">
+                            ${b.miniImageUrl
+                                ? `<img src="${escapeHtml(b.miniImageUrl)}" alt="Миниатюра ${escapeHtml(b.name)}">`
+                                : `<span class="msr size-28">workspace_premium</span>`}
+                            <span>32×32</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="badge-meta">
@@ -263,52 +294,232 @@
         document.querySelectorAll('.dropdown.open').forEach(el => el.classList.remove('open'));
     });
 
-    // ---- Modal ----
+    // ---- Окно редактора ----
     window.openCreateModal = function () {
-        document.getElementById('modalTitle').textContent = 'Добавить бейдж';
         document.getElementById('badgeForm').reset();
+        document.getElementById('modalTitle').textContent = 'Добавить бейдж';
         document.getElementById('editBadgeId').value = '';
         document.getElementById('editImageUrl').value = '';
-        resetImagePreview();
+        document.getElementById('editMiniImageUrl').value = '';
+        clearPendingImages();
+        setImageMode('single');
+        setPreview('fullPreview', 'fullPreviewPlaceholder', '');
+        setPreview('miniPreview', 'miniPreviewPlaceholder', '');
+        setPreview('separateFullInputPreview', 'separateFullIcon', '');
+        setPreview('separateMiniInputPreview', 'separateMiniIcon', '');
+        showValidation('');
         document.getElementById('badgeScrim').classList.add('open');
     };
+
     window.openEditModal = function (id) {
         const b = badges.find(x => x.id === id); if (!b) return;
+        document.getElementById('badgeForm').reset();
         document.getElementById('modalTitle').textContent = 'Редактировать бейдж';
         document.getElementById('editBadgeId').value = b.id;
         document.getElementById('editImageUrl').value = b.imageUrl || '';
+        document.getElementById('editMiniImageUrl').value = b.miniImageUrl || '';
         document.getElementById('badgeName').value = b.name;
         document.getElementById('badgeDescription').value = b.description || '';
         document.getElementById('badgeIsActive').checked = b.isActive;
-        if (b.imageUrl) {
-            const img = document.getElementById('imagePreview');
-            img.src = b.imageUrl; img.style.display = '';
-            document.getElementById('imageIcon').style.display = 'none';
-        } else resetImagePreview();
+        clearPendingImages();
+        setImageMode('single');
+        setPreview('fullPreview', 'fullPreviewPlaceholder', b.imageUrl || '');
+        setPreview('miniPreview', 'miniPreviewPlaceholder', b.miniImageUrl || '');
+        setPreview('separateFullInputPreview', 'separateFullIcon', b.imageUrl || '');
+        setPreview('separateMiniInputPreview', 'separateMiniIcon', b.miniImageUrl || '');
+        showValidation('');
         document.getElementById('badgeScrim').classList.add('open');
     };
+
     window.closeModal = function () { document.getElementById('badgeScrim').classList.remove('open'); };
 
-    window.previewImage = function (input) {
-        const f = input.files[0]; if (!f) return;
-        const reader = new FileReader();
-        reader.onload = e => {
-            const img = document.getElementById('imagePreview');
-            img.src = e.target.result; img.style.display = '';
-            document.getElementById('imageIcon').style.display = 'none';
-        };
-        reader.readAsDataURL(f);
-    };
-    function resetImagePreview() {
-        const img = document.getElementById('imagePreview');
-        img.src = ''; img.style.display = 'none';
-        document.getElementById('imageIcon').style.display = '';
+    function setPreview(imageId, placeholderId, src) {
+        const img = document.getElementById(imageId);
+        const placeholder = document.getElementById(placeholderId);
+        if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+        img.dataset.objectUrl = '';
+        if (!src) {
+            img.removeAttribute('src');
+            img.hidden = true;
+            placeholder.hidden = false;
+            return;
+        }
+        if (src.startsWith('blob:')) img.dataset.objectUrl = src;
+        img.src = src;
+        img.hidden = false;
+        placeholder.hidden = true;
     }
+
+    function clearPendingImages() {
+        imagePreparationGeneration++;
+        pendingImages = { full: null, mini: null };
+        singleImagePreparing = false;
+        document.getElementById('singleImageInput').value = '';
+        document.getElementById('fullImageInput').value = '';
+        document.getElementById('miniImageInput').value = '';
+    }
+
+    window.setImageMode = function (mode) {
+        selectedImageMode = mode;
+        document.getElementById('singleImageControls').hidden = mode !== 'single';
+        document.getElementById('separateImageControls').hidden = mode !== 'separate';
+        if (pendingImages.full || pendingImages.mini || singleImagePreparing) {
+            clearPendingImages();
+            const badge = badges.find(item => String(item.id) === document.getElementById('editBadgeId').value);
+            setPreview('fullPreview', 'fullPreviewPlaceholder', badge?.imageUrl || '');
+            setPreview('miniPreview', 'miniPreviewPlaceholder', badge?.miniImageUrl || '');
+            setPreview('separateFullInputPreview', 'separateFullIcon', badge?.imageUrl || '');
+            setPreview('separateMiniInputPreview', 'separateMiniIcon', badge?.miniImageUrl || '');
+        }
+        showValidation('');
+    };
+
+    function showValidation(message) {
+        const error = document.getElementById('badgeValidation');
+        error.textContent = message;
+        error.hidden = !message;
+    }
+
+    function loadImage(file) {
+        return new Promise((resolve, reject) => {
+            const objectUrl = URL.createObjectURL(file);
+            const image = new Image();
+            image.onload = () => { URL.revokeObjectURL(objectUrl); resolve(image); };
+            image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Не удалось открыть изображение')); };
+            image.src = objectUrl;
+        });
+    }
+
+    function drawScaled(source, targetSize) {
+        let current = source;
+        let size = source.width;
+        while (size > targetSize) {
+            const nextSize = Math.max(targetSize, Math.floor(size / 2));
+            const canvas = document.createElement('canvas');
+            canvas.width = nextSize;
+            canvas.height = nextSize;
+            const context = canvas.getContext('2d');
+            context.imageSmoothingEnabled = true;
+            context.imageSmoothingQuality = 'high';
+            context.drawImage(current, 0, 0, nextSize, nextSize);
+            current = canvas;
+            size = nextSize;
+        }
+        if (size !== targetSize) {
+            const canvas = document.createElement('canvas');
+            canvas.width = targetSize;
+            canvas.height = targetSize;
+            const context = canvas.getContext('2d');
+            context.imageSmoothingEnabled = true;
+            context.imageSmoothingQuality = 'high';
+            context.drawImage(current, 0, 0, targetSize, targetSize);
+            current = canvas;
+        }
+        return current;
+    }
+
+    function canvasPngFile(canvas, name) {
+        return new Promise((resolve, reject) => canvas.toBlob(blob => {
+            if (!blob) { reject(new Error('Не удалось создать PNG')); return; }
+            resolve(new File([blob], name, { type: 'image/png' }));
+        }, 'image/png'));
+    }
+
+    window.prepareSingleImage = async function (file) {
+        if (!file) return;
+        clearPendingImages();
+        const generation = imagePreparationGeneration;
+        singleImagePreparing = true;
+        showValidation('Подготовка картинок…');
+        try {
+            const image = await loadImage(file);
+            if (generation !== imagePreparationGeneration) return;
+            const cropSize = Math.min(image.naturalWidth, image.naturalHeight);
+            const crop = document.createElement('canvas');
+            crop.width = cropSize;
+            crop.height = cropSize;
+            const context = crop.getContext('2d');
+            context.drawImage(image,
+                (image.naturalWidth - cropSize) / 2,
+                (image.naturalHeight - cropSize) / 2,
+                cropSize, cropSize, 0, 0, cropSize, cropSize);
+
+            const fullCanvas = drawScaled(crop, 256);
+            const miniCanvas = drawScaled(fullCanvas, 32);
+            const fullFile = await canvasPngFile(fullCanvas, 'badge-full.png');
+            const miniFile = await canvasPngFile(miniCanvas, 'badge-mini.png');
+            if (generation !== imagePreparationGeneration) return;
+            pendingImages = { full: fullFile, mini: miniFile };
+            setPreview('fullPreview', 'fullPreviewPlaceholder', URL.createObjectURL(pendingImages.full));
+            setPreview('miniPreview', 'miniPreviewPlaceholder', URL.createObjectURL(pendingImages.mini));
+
+            const sizeErrors = [];
+            if (pendingImages.full.size > 256 * 1024) sizeErrors.push('Полная картинка больше 256 КБ. Выберите исходник с меньшей детализацией.');
+            if (pendingImages.mini.size > 256 * 1024) sizeErrors.push('Миниатюра больше 256 КБ.');
+            showValidation(sizeErrors.join('\n'));
+        } catch (error) {
+            if (generation !== imagePreparationGeneration) return;
+            pendingImages = { full: null, mini: null };
+            showValidation(error.message || 'Не удалось обработать изображение');
+        } finally {
+            if (generation === imagePreparationGeneration) singleImagePreparing = false;
+        }
+    };
+
+    async function validateSeparateImage(file, expectedSize, label) {
+        if (file.size > 256 * 1024) throw new Error(`${label}: размер не должен превышать 256 КБ.`);
+        const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+        const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+        if (!pngSignature.every((value, index) => signature[index] === value)) {
+            throw new Error(`${label}: файл должен быть PNG.`);
+        }
+        const image = await loadImage(file);
+        if (image.naturalWidth !== expectedSize || image.naturalHeight !== expectedSize) {
+            throw new Error(`${label}: требуется размер ${expectedSize}×${expectedSize}.`);
+        }
+    }
+
+    window.selectSeparateImage = async function (kind, file) {
+        if (!file) return;
+        const isFull = kind === 'full';
+        pendingImages[kind] = file;
+        const url = URL.createObjectURL(file);
+        setPreview(isFull ? 'fullPreview' : 'miniPreview', isFull ? 'fullPreviewPlaceholder' : 'miniPreviewPlaceholder', url);
+        setPreview(isFull ? 'separateFullInputPreview' : 'separateMiniInputPreview', isFull ? 'separateFullIcon' : 'separateMiniIcon', url);
+        showValidation('Проверка изображения…');
+        try {
+            await validateSeparateImage(file, isFull ? 256 : 32, isFull ? 'Полная картинка' : 'Миниатюра');
+            showValidation('');
+        } catch (error) {
+            showValidation(error.message);
+        }
+    };
 
     window.saveBadge = async function (event) {
         event.preventDefault();
         const id = document.getElementById('editBadgeId').value;
         const isEdit = !!id;
+        if (singleImagePreparing) {
+            showValidation('Дождитесь завершения подготовки картинок.');
+            return;
+        }
+        if (!isEdit && (!pendingImages.full || !pendingImages.mini)) {
+            showValidation(selectedImageMode === 'single'
+                ? 'Для создания бейджа выберите исходную картинку.'
+                : 'Для создания бейджа выберите обе картинки.');
+            return;
+        }
+        const validationErrors = [];
+        for (const [kind, expectedSize, label] of [['full', 256, 'Полная картинка'], ['mini', 32, 'Миниатюра']]) {
+            if (!pendingImages[kind]) continue;
+            try { await validateSeparateImage(pendingImages[kind], expectedSize, label); }
+            catch (error) { validationErrors.push(error.message); }
+        }
+        if (validationErrors.length) {
+            showValidation(validationErrors.join('\n'));
+            return;
+        }
+
         const btn = document.getElementById('saveBtn');
         const orig = btn.innerHTML;
         btn.disabled = true; btn.innerHTML = 'Сохранение...';
@@ -317,16 +528,21 @@
             fd.append('name', document.getElementById('badgeName').value);
             fd.append('description', document.getElementById('badgeDescription').value);
             fd.append('isActive', document.getElementById('badgeIsActive').checked.toString());
-            const f = document.getElementById('imageInput').files[0];
-            if (f) fd.append('image', f);
-            else if (isEdit) fd.append('imageUrl', document.getElementById('editImageUrl').value);
+            if (isEdit) {
+                fd.append('imageUrl', document.getElementById('editImageUrl').value);
+                fd.append('miniImageUrl', document.getElementById('editMiniImageUrl').value);
+            }
+            if (pendingImages.full) fd.append('image', pendingImages.full);
+            if (pendingImages.mini) fd.append('miniImage', pendingImages.mini);
             if (isEdit)
                 await BF.request(`/api/badges/${id}`, { method:'PUT', body: fd });
             else
                 await BF.request('/api/badges', { method:'POST', body: fd });
             closeModal();
             await loadBadges();
-        } catch {} finally {
+        } catch (error) {
+            showValidation(error.message || 'Не удалось сохранить бейдж.');
+        } finally {
             btn.disabled = false; btn.innerHTML = orig;
         }
     };

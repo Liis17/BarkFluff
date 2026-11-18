@@ -32,6 +32,10 @@ service UpdatesApi {
   // Подписаться на скрытие/удаление чатов (DeleteChat) на всех своих устройствах
   rpc SubscribeChatHidden(SubscribeChatHiddenRequest) returns (stream ChatHiddenEvent);
 
+  // Подписаться на изменения своих папок чатов (на любом устройстве). Событие — сигнал
+  // без данных: клиент перечитывает папки через UsersApi.GetChatFolders.
+  rpc SubscribeChatFoldersChanged(SubscribeChatFoldersChangedRequest) returns (stream ChatFoldersChangedEvent);
+
   // -- Приватные чаты (user-scoped: получают все устройства пользователя) -----
 
   // Новые сообщения в приватных чатах (шифротекст; расшифровка только клиентом со знанием passphrase)
@@ -95,6 +99,10 @@ message ChatHiddenEvent {
   // (delete_for_everyone) — клиент должен очистить локальный кеш сообщений.
   bool content_wiped = 2;
 }
+
+message SubscribeChatFoldersChangedRequest { }
+
+message ChatFoldersChangedEvent { }
 
 message NewMessageEvent {
   barkfluff.shared.Message message = 1; //Отправленное сообщение

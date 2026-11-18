@@ -13,7 +13,7 @@
 |---|---|---|---|
 | P1-01 | P1 | Ротация signing-ключа не атомарна и не защищена от конкуренции | **Исправлена** (Батч 2B: один SaveChanges + retry на PK-конфликт) |
 | P1-02 | P2 | Нет regression-тестов жизненного цикла ключей и well-known | Открыта |
-| P1-03 | P2 | `Obsidian/ClaudeVault/Shared/Proto.md` описывает устаревшее состояние Federation API | Открыта |
+| P1-03 | P2 | `Obsidian/BarkFluffVault/Shared/Proto.md` описывает устаревшее состояние Federation API | Открыта |
 | P1-04 | P1 | `Federation:Enabled=false` не выключает federation endpoints и фоновые процессы | **Исправлена** (Батч 2A: `FederationSwitch`) |
 | P1-05 | P1 | `GetServerKeys` возвращает ключи при пустом `Federation:ServerName` | **Исправлена** (Батч 2A: гейт в XFed-интерсепторе) |
 | P1-06 | P2 | Обязательные live-критерии Phase 1 не подтверждены | Открыта |
@@ -55,7 +55,7 @@
 
 ## P1-03 — Устаревшая документация Shared Proto
 
-`Obsidian/ClaudeVault/Shared/Proto.md` всё ещё утверждает, что Federation RPC являются только контрактом Фазы 0, proto не подключены к сервисному проекту, а Federation-сервиса нет. Фактически сервис существует, proto подключены, а часть RPC реализована.
+`Obsidian/BarkFluffVault/Shared/Proto.md` всё ещё утверждает, что Federation RPC являются только контрактом Фазы 0, proto не подключены к сервисному проекту, а Federation-сервиса нет. Фактически сервис существует, proto подключены, а часть RPC реализована.
 
 Что сделать: обновить описание `federation_api.proto`, `federation_internal_api.proto`, список реализованных RPC и подключение к `BarkFluff.Federation.csproj`.
 
@@ -93,7 +93,7 @@
 
 ## P1-07 — Не обновлена Shared-документация исключений
 
-Диапазон 1.3–1.7 добавляет виртуальный `BaseGrpcException.StatusCode` и новые Federation/Navigator exception-типы. `Obsidian/ClaudeVault/Shared/Exceptions.md` по-прежнему описывает только `ErrorCode`/`ErrorMessage`, не содержит домен Federation и сохраняет устаревший список Navigator-исключений. `Exceptions-ProjectMap.md` также не содержит новые файлы.
+Диапазон 1.3–1.7 добавляет виртуальный `BaseGrpcException.StatusCode` и новые Federation/Navigator exception-типы. `Obsidian/BarkFluffVault/Shared/Exceptions.md` по-прежнему описывает только `ErrorCode`/`ErrorMessage`, не содержит домен Federation и сохраняет устаревший список Navigator-исключений. `Exceptions-ProjectMap.md` также не содержит новые файлы.
 
 Что сделать: описать `StatusCode`, все новые exception-типы, их gRPC-коды и назначение; обновить project map.
 

@@ -45,4 +45,11 @@
         android:layout_height="48dp"
         android:layout_gravity="center"
         android:visibility="gone" />
+
+    <include
+        android:id="@+id/outgoingUploadIndicator"
+        layout="@layout/view_outgoing_media_upload"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center" />
 </FrameLayout>

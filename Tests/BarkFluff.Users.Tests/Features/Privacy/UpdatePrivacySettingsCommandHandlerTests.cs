@@ -15,7 +15,7 @@ public class UpdatePrivacySettingsCommandHandlerTests : IAsyncDisposable
         var user = await _h.SeedUser();
         await _h.SeedPrivacy(user.Id);
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new UpdatePrivacySettingsCommandHandler(ctx, _h.PrivacyStorage, TestHelper.CreateLogger<UpdatePrivacySettingsCommandHandler>());
+        var handler = new UpdatePrivacySettingsCommandHandler(ctx, _h.PrivacyStorage, _h.UsersStorage, TestHelper.CreateLogger<UpdatePrivacySettingsCommandHandler>());
 
         await handler.Handle(new UpdatePrivacySettingsCommand
         {
@@ -41,7 +41,7 @@ public class UpdatePrivacySettingsCommandHandlerTests : IAsyncDisposable
     {
         var user = await _h.SeedUser();
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new UpdatePrivacySettingsCommandHandler(ctx, _h.PrivacyStorage, TestHelper.CreateLogger<UpdatePrivacySettingsCommandHandler>());
+        var handler = new UpdatePrivacySettingsCommandHandler(ctx, _h.PrivacyStorage, _h.UsersStorage, TestHelper.CreateLogger<UpdatePrivacySettingsCommandHandler>());
 
         await handler.Handle(new UpdatePrivacySettingsCommand
         {
@@ -58,7 +58,7 @@ public class UpdatePrivacySettingsCommandHandlerTests : IAsyncDisposable
     {
         var user = await _h.SeedUser();
         var ctx = _h.CreateUserContext(user.Id);
-        var handler = new UpdatePrivacySettingsCommandHandler(ctx, _h.PrivacyStorage, TestHelper.CreateLogger<UpdatePrivacySettingsCommandHandler>());
+        var handler = new UpdatePrivacySettingsCommandHandler(ctx, _h.PrivacyStorage, _h.UsersStorage, TestHelper.CreateLogger<UpdatePrivacySettingsCommandHandler>());
 
         await handler.Handle(new UpdatePrivacySettingsCommand { Settings = null }, CancellationToken.None);
 

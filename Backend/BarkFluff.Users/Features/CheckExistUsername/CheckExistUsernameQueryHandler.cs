@@ -34,7 +34,7 @@ public class CheckExistUsernameQueryHandler : IRequestHandler<CheckExistUsername
 
         var userByUsername = await _usersStorage.GetUserByUsername(username);
 
-        if (userByUsername is null || userByUsername.IsDraft)
+        if (userByUsername is null || userByUsername.IsDraft || userByUsername.AccountStatus == Domain.AccountStatus.Deleted)
         {
             _logger.LogDebug("Username {Username} свободен (не найден или черновик)", username);
             return new CheckExistResponse { Exist = false };

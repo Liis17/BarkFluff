@@ -1,8 +1,10 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Infrastructure;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
 
 using MediatR;
@@ -17,17 +19,20 @@ public class AcceptSecretChatInviteCommandHandler : IRequestHandler<AcceptSecret
     private readonly SecretMessageQueueSender _queueSender;
     private readonly UserContext _userContext;
     private readonly MetricsCollector _metrics;
+    private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly ILogger<AcceptSecretChatInviteCommandHandler> _logger;
 
     public AcceptSecretChatInviteCommandHandler(
         SecretMessageBuffer buffer,
         SecretMessageQueueSender queueSender,
+        UsersServerApi.UsersServerApiClient usersClient,
         UserContext userContext,
         MetricsCollector metrics,
         ILogger<AcceptSecretChatInviteCommandHandler> logger)
     {
         _buffer = buffer;
         _queueSender = queueSender;
+        _usersClient = usersClient;
         _userContext = userContext;
         _metrics = metrics;
         _logger = logger;
@@ -60,6 +65,11 @@ public class AcceptSecretChatInviteCommandHandler : IRequestHandler<AcceptSecret
         {
             throw new NoAccessToChatException();
         }
+
+        var sender = await _usersClient.GetByIdAsync(
+            new GetByIdRequest { UserId = invite.SenderUserId },
+            cancellationToken: cancellationToken);
+        UserAccountStatusGuard.EnsureActive(sender.User.AccountStatus);
 
         await _queueSender.SendInviteResolution(
             request.InviteId,

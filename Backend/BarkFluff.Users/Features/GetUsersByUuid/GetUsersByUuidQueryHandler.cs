@@ -7,8 +7,8 @@ using MediatR;
 namespace BarkFluff.Users.Features.GetUsersByUuid;
 
 // Батч-чтение профилей по UUID для Messages (этап 2.1). Локальные и remote вперемешку.
-// Локальные отдаются как есть (межсервисный доверенный потребитель — Messages рендерит remote-авторов);
-// draft-пользователи → found=false. Remote deactivated → found=true с is_deactivated=true.
+// Локальные ограничения маскируются для рендера собеседников; draft-пользователи → found=false.
+// Remote deactivated → found=true с is_deactivated=true.
 public class GetUsersByUuidQueryHandler : IRequestHandler<GetUsersByUuidQuery, GetUsersByUuidResponse>
 {
     private readonly UsersStorage _usersStorage;
@@ -46,7 +46,7 @@ public class GetUsersByUuidQueryHandler : IRequestHandler<GetUsersByUuidQuery, G
         var localByUuid = localUsers.ToDictionary(u => u.Uuid);
 
         // Privacy для локальных (этап 2.5) — батч, без похода в БД на каждого пользователя.
-        var localUserIds = localUsers.Where(u => !u.IsDraft).Select(u => u.Id).ToList();
+        var localUserIds = localUsers.Where(u => !u.IsDraft && u.AccountStatus == Domain.AccountStatus.Active).Select(u => u.Id).ToList();
         var privacyByUserId = localUserIds.Count > 0
             ? (await _privacyStorage.GetByUserIds(localUserIds)).ToDictionary(p => p.UserId)
             : new Dictionary<long, Domain.Privacy>();
@@ -73,13 +73,16 @@ public class GetUsersByUuidQueryHandler : IRequestHandler<GetUsersByUuidQuery, G
                     Uuid = uuid.ToString(),
                     Found = true,
                     IsRemote = false,
-                    Username = local.Username,
-                    FirstName = local.FirstName,
-                    LastName = local.LastName,
-                    Bio = local.Bio ?? string.Empty,
-                    AvatarFileId = local.ProfilePicture ?? string.Empty,
+                    Username = local.AccountStatus == Domain.AccountStatus.Active ? local.Username : string.Empty,
+                    FirstName = local.AccountStatus == Domain.AccountStatus.Active
+                        ? local.FirstName
+                        : local.AccountStatus == Domain.AccountStatus.Blocked ? "Заблокированный пользователь" : "Удалённый пользователь",
+                    LastName = local.AccountStatus == Domain.AccountStatus.Active ? local.LastName : string.Empty,
+                    Bio = local.AccountStatus == Domain.AccountStatus.Active ? local.Bio ?? string.Empty : string.Empty,
+                    AvatarFileId = local.AccountStatus == Domain.AccountStatus.Active ? local.ProfilePicture ?? string.Empty : string.Empty,
                     UserId = local.Id,
                     DenyFederatedDm = privacyByUserId.TryGetValue(local.Id, out var privacy) && privacy.DenyFederatedDm,
+                    AccountStatus = (BarkFluff.Proto.Users.AccountStatus)(int)local.AccountStatus,
                 });
             }
             else if (remoteByUuid.TryGetValue(uuid, out var remote))

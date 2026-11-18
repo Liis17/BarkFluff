@@ -45,6 +45,12 @@ enum class TokenValidity {
     /** Credentials are missing, or Identity answered that the refresh token is no longer accepted. */
     REJECTED,
 
+    /** Identity accepted the credential proof but the account is blocked. */
+    ACCOUNT_BLOCKED,
+
+    /** Identity accepted the credential proof but deletion is scheduled. */
+    ACCOUNT_PENDING_DELETION,
+
     /** Identity could not be reached or failed; the same refresh token may work later. */
     UNAVAILABLE,
 }
@@ -165,10 +171,14 @@ class GrpcTokenCoordinator(
 
     /** Identity refuses a bad refresh token with an application status; any other failure is transport trouble. */
     private fun classifyRefreshFailure(error: Throwable): TokenValidity =
-        when (Status.fromThrowable(error).code) {
-            Status.Code.FAILED_PRECONDITION,
-            Status.Code.UNAUTHENTICATED,
-            Status.Code.PERMISSION_DENIED -> TokenValidity.REJECTED
-            else -> TokenValidity.UNAVAILABLE
+        when (error.grpcErrorCode()?.uppercase()) {
+            AccountRestrictionErrorCodes.ACCOUNT_BLOCKED -> TokenValidity.ACCOUNT_BLOCKED
+            AccountRestrictionErrorCodes.ACCOUNT_PENDING_DELETION -> TokenValidity.ACCOUNT_PENDING_DELETION
+            else -> when (Status.fromThrowable(error).code) {
+                Status.Code.FAILED_PRECONDITION,
+                Status.Code.UNAUTHENTICATED,
+                Status.Code.PERMISSION_DENIED -> TokenValidity.REJECTED
+                else -> TokenValidity.UNAVAILABLE
+            }
         }
 }

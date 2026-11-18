@@ -27,6 +27,7 @@ import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import com.barkfluff.client.utils.showImeAware
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -67,10 +68,10 @@ class SecuritySettingsActivity : AppCompatActivity() {
         binding.switchTwoFactorTelegram.setOnCheckedChangeListener { _, checked ->
             if (!isUpdatingSwitch) updateTelegramFactor(checked)
         }
-        binding.telegramBindingButton.setOnClickListener { changeTelegramBinding() }
-        binding.emailBindingButton.setOnClickListener { showBindEmailDialog() }
-        binding.loginPolicyButton.setOnClickListener { showLoginPolicyPicker() }
-        binding.recoveryCodesButton.setOnClickListener { regenerateRecoveryCodes() }
+        binding.itemTelegramBinding.setOnClickListener { changeTelegramBinding() }
+        binding.itemEmailBinding.setOnClickListener { showBindEmailDialog() }
+        binding.itemLoginPolicy.setOnClickListener { showLoginPolicyPicker() }
+        binding.itemRecoveryCodes.setOnClickListener { regenerateRecoveryCodes() }
     }
 
     private fun loadSecuritySettings() {
@@ -89,23 +90,24 @@ class SecuritySettingsActivity : AppCompatActivity() {
         binding.switchTwoFactorTelegram.isChecked = settings.telegramOtpEnabled
         isUpdatingSwitch = false
 
+        val twoFactorEnabled = settings.authenticatorEnabled || settings.emailEnabled || settings.telegramOtpEnabled
+        binding.textSecurityHeroTitle.setText(
+            if (twoFactorEnabled) R.string.security_hero_title else R.string.security_hero_title_unprotected,
+        )
+        binding.textSecurityHeroSubtitle.setText(
+            if (twoFactorEnabled) R.string.security_2fa_enabled else R.string.security_hero_subtitle,
+        )
+
         binding.itemTwoFactorTelegram.visibility = if (settings.telegramLinked) View.VISIBLE else View.GONE
-        binding.telegramBindingButton.setText(
+        binding.textTelegramBinding.setText(
             if (settings.telegramLinked) R.string.security_unlink_telegram else R.string.security_link_telegram,
         )
-        binding.emailBindingButton.text = if (settings.verifiedEmail.isBlank()) {
-            getString(R.string.security_bind_email)
-        } else {
-            getString(R.string.security_bound_email, settings.verifiedEmail)
-        }
-        binding.loginPolicyButton.text = getString(
-            R.string.security_login_policy_value,
-            getString(loginModeLabel(settings.loginMode)),
-        )
-        binding.recoveryCodesButton.text = getString(
-            R.string.security_recovery_codes_count,
-            settings.remainingRecoveryCodes,
-        )
+        val emailBound = settings.verifiedEmail.isNotBlank()
+        binding.textEmailBinding.setText(if (emailBound) R.string.security_email_title else R.string.security_bind_email)
+        binding.textEmailBindingValue.text = settings.verifiedEmail
+        binding.textEmailBindingValue.visibility = if (emailBound) View.VISIBLE else View.GONE
+        binding.textLoginPolicyValue.setText(loginModeLabel(settings.loginMode))
+        binding.textRecoveryCodesValue.text = settings.remainingRecoveryCodes.toString()
     }
 
     private fun changeOtpFactor(factor: AuthenticationFactor, enabled: Boolean) {
@@ -178,7 +180,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             .setNegativeButton(R.string.btn_cancel) { _, _ ->
                 restoreSwitch(AuthenticationFactor.AUTHENTICATOR, false)
             }
-            .show()
+            .showImeAware()
     }
 
     private fun showEmailEnrollment(proof: AuthenticationChallengeReference) {
@@ -193,7 +195,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             .setNegativeButton(R.string.btn_cancel) { _, _ ->
                 restoreSwitch(AuthenticationFactor.EMAIL, false)
             }
-            .show()
+            .showImeAware()
     }
 
     private fun confirmationCodeInput(): Pair<TextInputLayout, TextInputEditText> {
@@ -272,7 +274,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton(R.string.btn_cancel, null)
-            .show()
+            .showImeAware()
     }
 
     private fun showLoginPolicyPicker() {
@@ -363,7 +365,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton(R.string.btn_cancel, null)
-            .show()
+            .showImeAware()
     }
 
     private fun restoreSwitch(factor: AuthenticationFactor, value: Boolean) {

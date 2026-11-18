@@ -106,5 +106,39 @@ public class SearchUsersServerQueryHandlerTests : IAsyncDisposable
         found!.Badges.Should().ContainSingle(b => b.Badge.Id == badge.Id);
     }
 
+    [Fact]
+    public async Task Handle_StatusFilterMasksProfileAndReturnsRestrictionDetailsForAdmins()
+    {
+        var blocked = await _h.SeedUser(username: "blockeduser", firstName: "Private");
+        var badge = await _h.SeedBadge();
+        await _h.UsersStorage.AssignBadgeToUserAsync(blocked.Id, badge.Id, 0);
+        blocked.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Blocked;
+        blocked.RestrictionReason = "abuse";
+        blocked.RestrictedAt = DateTime.UtcNow;
+        await _h.DbContext.SaveChangesAsync();
+        await _h.SeedUser(username: "activeuser");
+        var handler = new SearchUsersServerQueryHandler(_h.UsersStorage, TestHelper.CreateLogger<SearchUsersServerQueryHandler>());
+
+        var result = await handler.Handle(new SearchUsersServerQuery
+        {
+            Query = string.Empty,
+            Offset = 0,
+            Size = 10,
+            StatusFilter = BarkFluff.Proto.Users.AccountStatus.Blocked,
+        }, CancellationToken.None);
+
+        result.TotalCount.Should().Be(1);
+        result.Users.Should().ContainSingle(user => user.Id == blocked.Id);
+        var maskedUser = result.Users.Single();
+        maskedUser.FirstName.Should().Be("Заблокированный пользователь");
+        maskedUser.LastName.Should().BeEmpty();
+        maskedUser.Username.Should().BeEmpty();
+        maskedUser.Bio.Should().BeEmpty();
+        maskedUser.ProfilePicture.Should().BeEmpty();
+        result.Results.Should().ContainSingle().Which.Restriction.Reason.Should().Be("abuse");
+        result.Results.Single().User.AccountStatus.Should().Be(BarkFluff.Proto.Users.AccountStatus.Blocked);
+        result.Results.Single().User.Badges.Should().BeEmpty();
+    }
+
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();
 }

@@ -11,6 +11,9 @@ import com.barkfluff.client.databinding.ActivityCreateEncryptedChatBinding
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.repository.PrivateChatRepository
 import com.barkfluff.client.repository.SecretChatRepository
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -36,6 +39,7 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityCreateEncryptedChatBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applyImeInsetsToBottomPadding()
 
         binding.toolbar.setNavigationOnClickListener { finish() }
         type = when (intent.getStringExtra(EXTRA_INITIAL_TYPE)) {
@@ -139,10 +143,11 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
                     title = chat.title.ifBlank { getString(R.string.private_chat_title) }
                 ))
                 finish()
-            }.onFailure {
+            }.onFailure { error ->
+                if (exitToLoginIfAccountRestricted(error)) return@onFailure
                 Toast.makeText(
                     this@CreateEncryptedChatActivity,
-                    getString(R.string.private_chat_create_failed, it.message.orEmpty()),
+                    accountRestrictionRpcMessage(error) ?: getString(R.string.private_chat_create_failed, error.message.orEmpty()),
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -173,10 +178,11 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
                     secretChatId = chat.id,
                 ))
                 finish()
-            }.onFailure {
+            }.onFailure { error ->
+                if (exitToLoginIfAccountRestricted(error)) return@onFailure
                 Toast.makeText(
                     this@CreateEncryptedChatActivity,
-                    getString(R.string.secret_chat_create_failed, it.message.orEmpty()),
+                    accountRestrictionRpcMessage(error) ?: getString(R.string.secret_chat_create_failed, error.message.orEmpty()),
                     Toast.LENGTH_LONG
                 ).show()
             }

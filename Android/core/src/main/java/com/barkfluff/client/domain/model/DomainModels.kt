@@ -40,6 +40,7 @@ data class UserProfile(
     val profilePicturePreviewFileId: String = "",
     val profilePosterFileId: String = "",
     val registrationDate: Long,
+    val accountStatus: AccountStatus = AccountStatus.ACTIVE,
 )
 
 data class ChatSummary(
@@ -141,6 +142,7 @@ internal fun GrpcApiTransport.UserData.toDomain() = UserProfile(
     profilePicturePreviewFileId = profilePicturePreviewFileId,
     profilePosterFileId = profilePosterFileId,
     registrationDate = registrationDate,
+    accountStatus = accountStatus.toDomain(),
 )
 
 internal fun GrpcApiTransport.ChatData.toDomain() = ChatSummary(

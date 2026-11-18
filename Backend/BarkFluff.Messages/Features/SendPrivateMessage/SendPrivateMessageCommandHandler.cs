@@ -4,7 +4,9 @@ using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Mapping;
 using BarkFluff.Messages.Persistence.Services;
+using BarkFluff.Messages.Features.Shared;
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
 
 using MediatR;
@@ -23,12 +25,16 @@ public class SendPrivateMessageCommandHandler : IRequestHandler<SendPrivateMessa
     private readonly EncryptedMessageQueueSender _queueSender;
     private readonly UserContext _userContext;
     private readonly MetricsCollector _metrics;
+    private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly UserAccountStatusCache _userAccountStatusCache;
     private readonly ILogger<SendPrivateMessageCommandHandler> _logger;
 
     public SendPrivateMessageCommandHandler(
         ChatsStorage chatsStorage,
         EncryptedMessagesStorage storage,
         EncryptedMessageQueueSender queueSender,
+        UsersServerApi.UsersServerApiClient usersClient,
+        UserAccountStatusCache userAccountStatusCache,
         UserContext userContext,
         MetricsCollector metrics,
         ILogger<SendPrivateMessageCommandHandler> logger)
@@ -36,6 +42,8 @@ public class SendPrivateMessageCommandHandler : IRequestHandler<SendPrivateMessa
         _chatsStorage = chatsStorage;
         _storage = storage;
         _queueSender = queueSender;
+        _usersClient = usersClient;
+        _userAccountStatusCache = userAccountStatusCache;
         _userContext = userContext;
         _metrics = metrics;
         _logger = logger;
@@ -82,6 +90,13 @@ public class SendPrivateMessageCommandHandler : IRequestHandler<SendPrivateMessa
         if (chat.Members?.All(m => m.UserId != _userContext.UserId) ?? true)
         {
             throw new NoAccessToChatException();
+        }
+
+        var peerId = chat.Members?.FirstOrDefault(member => member.UserId != _userContext.UserId)?.UserId;
+        if (peerId.HasValue)
+        {
+            UserAccountStatusGuard.EnsureActive(await _userAccountStatusCache.GetStatusAsync(
+                peerId.Value, _usersClient, cancellationToken));
         }
 
         var saved = await _storage.AddAsync(

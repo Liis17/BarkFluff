@@ -8,8 +8,8 @@
 
 ## Контекст
 
-- Контракт и правила отображения — `Obsidian/ClaudeVault/Клиенты/Federation-ClientGuide.md` (этап 5.1). **Прочитать целиком до начала**: этот план не повторяет правила, он говорит, где в Android их применить.
-- Карта клиента — `Obsidian/ClaudeVault/Clients/Android.md`, `Android-ProjectMap.md`, `Android-FileIndex.md`.
+- Контракт и правила отображения — `Obsidian/BarkFluffVault/Клиенты/Federation-ClientGuide.md` (этап 5.1). **Прочитать целиком до начала**: этот план не повторяет правила, он говорит, где в Android их применить.
+- Карта клиента — `Obsidian/BarkFluffVault/Clients/Android.md`, `Android-ProjectMap.md`, `Android-FileIndex.md`.
 
 Точки интеграции (проверено при планировании; номера строк ориентировочные — читай актуальный код):
 
@@ -75,7 +75,7 @@
 ## Изменение 8 — строки и документация
 
 - Все новые строки — в пяти `strings.xml` (ru/en/de/es/zh-rCN). Никаких строк в коде.
-- `Obsidian/ClaudeVault/Clients/Android.md` — раздел «Федерация» (что умеет клиент, где точки входа), ссылка на `[[Клиенты/Federation-ClientGuide]]`; `Android-FileIndex.md`/`Android-ProjectMap.md` — если добавлены новые файлы.
+- `Obsidian/BarkFluffVault/Clients/Android.md` — раздел «Федерация» (что умеет клиент, где точки входа), ссылка на `[[Клиенты/Federation-ClientGuide]]`; `Android-FileIndex.md`/`Android-ProjectMap.md` — если добавлены новые файлы.
 
 ## Чего НЕ делать
 

@@ -2,6 +2,7 @@ using BarkFluff.Client.Core.Infrastructure.Storage;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
+using BarkFluff.Proto.Users;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using Google.Protobuf.WellKnownTypes;
@@ -46,6 +47,38 @@ public sealed class MessengerPresentationTests
 
         Assert.False(item.HasPreview);
         Assert.Equal(string.Empty, item.Preview);
+    }
+
+    [Fact]
+    public void ChatItemViewModel_RestrictedPeerIsReadOnlyAndHasNoPresence()
+    {
+        var chat = MessengerTestDoubles.CreateChat("restricted", peerUserId: 2);
+        var item = new ChatItemViewModel(
+            chat,
+            "Messenger_UserBlocked",
+            "Messenger_UserBlocked",
+            string.Empty,
+            string.Empty,
+            2,
+            new StubLocalizationService(),
+            accountStatus: AccountStatus.Blocked);
+        var searchResult = new UserSearchResultViewModel(new UserData
+        {
+            Id = 2,
+            AccountStatus = AccountStatus.Blocked,
+            Username = "private-user",
+            FirstName = "Private",
+            ProfilePictureUrl = "https://example.test/avatar.png"
+        }, new StubLocalizationService());
+
+        Assert.True(item.IsRestricted);
+        Assert.False(item.CanSend);
+        Assert.False(item.HasPresence);
+        Assert.Equal("Messenger_ReadOnlyBlocked", item.RestrictionMessage);
+        Assert.Equal("Messenger_UserBlocked", searchResult.DisplayName);
+        Assert.True(searchResult.IsRestricted);
+        Assert.Equal(string.Empty, searchResult.UsernameLabel);
+        Assert.Equal(string.Empty, searchResult.AvatarUrl);
     }
 
     [Fact]

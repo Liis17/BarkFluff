@@ -25,15 +25,16 @@
         if (!ts) return '';
         var d = new Date(ts);
         var today = new Date();
-        if (d.toDateString() === today.toDateString()) {
-            return timeOf(d);
-        }
-        var yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (d.toDateString() === yesterday.toDateString()) {
-            return BF.i18n.t('date.yesterdayAt', { time: timeOf(d) });
-        }
-        return d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
+        // Разница в календарных днях; round сглаживает переходы на летнее время.
+        var days = Math.round(
+            (new Date(today.getFullYear(), today.getMonth(), today.getDate()) -
+                new Date(d.getFullYear(), d.getMonth(), d.getDate())) /
+                86400000
+        );
+        if (days === 0) return timeOf(d);
+        if (days === 1) return BF.i18n.t('date.yesterday');
+        if (days > 1 && days < 7) return d.toLocaleDateString(locale(), { weekday: 'short' });
+        return d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: '2-digit' });
     }
 
     function formatDate(ts) {
@@ -47,6 +48,15 @@
         return d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
+    function isRestrictedUser(user) {
+        return !!user && Number(user.accountStatus) > 0;
+    }
+
+    function restrictedUserName(user) {
+        if (!isRestrictedUser(user)) return '';
+        return BF.i18n.t(Number(user.accountStatus) === 1 ? 'accountRestriction.userBlocked' : 'accountRestriction.userDeleted');
+    }
+
     function formatFileSize(bytes) {
         if (bytes < 1024) return BF.i18n.t('unit.bytes', { value: bytes });
         if (bytes < 1024 * 1024) return BF.i18n.t('unit.kb', { value: (bytes / 1024).toFixed(1) });
@@ -58,11 +68,11 @@
         return text.length > len ? text.slice(0, len) + '...' : text;
     }
 
+    // Результат безопасен и в тексте, и в значении атрибута в кавычках (src="...").
     function escapeHtml(str) {
         if (!str) return '';
-        var d = document.createElement('div');
-        d.textContent = str;
-        return d.innerHTML;
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     // --- Markdown rendering (safe) ---
@@ -81,7 +91,7 @@
     }
 
     // URL уже прошёл escapeHtml, поэтому &amp; должен остаться без повторного экранирования.
-    // Кавычки escapeHtml для текстового узла не гарантирует, а в href они закрывают атрибут.
+    // Кавычки в href закрывают атрибут; escapeHtml их уже экранирует, здесь — защита в глубину.
     function escapeHtmlAttribute(value) {
         return value.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
@@ -527,6 +537,9 @@
 
     function formatLastSeen(lastSeenTs) {
         if (!lastSeenTs) return BF.i18n.t('lastSeen.offline');
+        if (BF.personalization && BF.personalization.getLastSeenFormat() === 'exact') {
+            return formatLastSeenExact(lastSeenTs);
+        }
         var now = Date.now();
         var diff = now - lastSeenTs;
         if (diff < 0) diff = 0;
@@ -546,6 +559,19 @@
         return BF.i18n.t('lastSeen.date', {
             date: d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
         });
+    }
+
+    function formatLastSeenExact(lastSeenTs) {
+        var d = new Date(lastSeenTs);
+        var time = timeOf(d);
+        var today = new Date();
+        if (d.toDateString() === today.toDateString()) return BF.i18n.t('lastSeen.exactToday', { time: time });
+        var yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (d.toDateString() === yesterday.toDateString()) return BF.i18n.t('lastSeen.exactYesterday', { time: time });
+        var opts = { day: 'numeric', month: 'short' };
+        if (d.getFullYear() !== today.getFullYear()) opts.year = 'numeric';
+        return BF.i18n.t('lastSeen.exactDate', { date: d.toLocaleDateString(locale(), opts), time: time });
     }
 
     // ===== Overlay focus management (a11y) =====
@@ -688,6 +714,8 @@
         formatTime: formatTime,
         formatChatListTime: formatChatListTime,
         formatDate: formatDate,
+        isRestrictedUser: isRestrictedUser,
+        restrictedUserName: restrictedUserName,
         formatFileSize: formatFileSize,
         truncate: truncate,
         escapeHtml: escapeHtml,

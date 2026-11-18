@@ -17,6 +17,7 @@ import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.domain.model.UserProfile
+import com.barkfluff.client.utils.applyImeInsetsToBottomPadding
 import com.google.android.material.color.DynamicColors
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -58,6 +59,7 @@ class AddGroupMemberActivity : AppCompatActivity() {
 
         binding = ActivitySearchBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applyImeInsetsToBottomPadding()
 
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run { finish(); return }
 

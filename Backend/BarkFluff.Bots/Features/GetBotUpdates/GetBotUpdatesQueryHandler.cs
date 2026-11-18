@@ -14,19 +14,25 @@ public class GetBotUpdatesQueryHandler : IRequestHandler<GetBotUpdatesQuery, Lis
     private readonly BotUpdatesStorage _updatesStorage;
     private readonly BotUpdateNotifier _notifier;
     private readonly IBotPollingGuard _pollingGuard;
+    private readonly BotRegistryCache _registryCache;
 
     public GetBotUpdatesQueryHandler(
         BotUpdatesStorage updatesStorage,
         BotUpdateNotifier notifier,
-        IBotPollingGuard pollingGuard)
+        IBotPollingGuard pollingGuard,
+        BotRegistryCache registryCache)
     {
         _updatesStorage = updatesStorage;
         _notifier = notifier;
         _pollingGuard = pollingGuard;
+        _registryCache = registryCache;
     }
 
     public async Task<List<Domain.BotUpdate>> Handle(GetBotUpdatesQuery request, CancellationToken cancellationToken)
     {
+        if (_registryCache.Get(request.BotId)?.OwnerRestricted == true)
+            return [];
+
         var limit = Math.Clamp(request.Limit, 1, MaxUpdatesLimit);
         var timeout = Math.Clamp(request.TimeoutSeconds, 0, MaxLongPollTimeoutSeconds);
 
@@ -43,9 +49,13 @@ public class GetBotUpdatesQueryHandler : IRequestHandler<GetBotUpdatesQuery, Lis
             if (batch.Count == 0 && timeout > 0)
             {
                 await _notifier.WaitForUpdateAsync(request.BotId, TimeSpan.FromSeconds(timeout), cancellationToken);
+                if (_registryCache.Get(request.BotId)?.OwnerRestricted == true)
+                    return [];
                 batch = await _updatesStorage.GetBacklog(request.BotId, request.Offset, limit);
             }
 
+            if (_registryCache.Get(request.BotId)?.OwnerRestricted == true)
+                return [];
             return batch;
         }
         finally

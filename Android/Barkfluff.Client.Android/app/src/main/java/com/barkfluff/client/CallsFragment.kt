@@ -22,6 +22,8 @@ import com.barkfluff.client.domain.gateway.ChatDirectoryGateway
 import com.barkfluff.client.domain.gateway.UserDirectoryGateway
 import com.barkfluff.client.domain.gateway.UserProfileGateway
 import com.barkfluff.client.grpc.GrpcClientRegistry
+import com.barkfluff.client.utils.accountRestrictionRpcMessage
+import com.barkfluff.client.utils.exitToLoginIfAccountRestricted
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -235,8 +237,13 @@ class CallsFragment : Fragment() {
                 })
             }.onFailure { error ->
                 Log.e(TAG, "Не удалось начать звонок", error)
+                if (activity?.exitToLoginIfAccountRestricted(error) == true) return@onFailure
                 if (_binding != null) {
-                    Toast.makeText(requireContext(), R.string.call_start_failed, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        requireContext(),
+                        requireContext().accountRestrictionRpcMessage(error) ?: getString(R.string.call_start_failed),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }

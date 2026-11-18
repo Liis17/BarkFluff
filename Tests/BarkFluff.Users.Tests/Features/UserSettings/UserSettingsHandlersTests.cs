@@ -15,7 +15,7 @@ public class UserSettingsHandlersTests : IAsyncDisposable
     public async Task Get_CreatesEmptySettings()
     {
         var user = await _h.SeedUser();
-        var handler = new GetUserSettingsQueryHandler(_h.CreateUserContext(user.Id), _h.UserSettingsStorage);
+        var handler = new GetUserSettingsQueryHandler(_h.CreateUserContext(user.Id), _h.UserSettingsStorage, _h.UsersStorage);
 
         var result = await handler.Handle(new GetUserSettingsQuery(), CancellationToken.None);
 
@@ -33,12 +33,12 @@ public class UserSettingsHandlersTests : IAsyncDisposable
 
         await _h.PersonalizationStorage.Update(user.Id, null, ["global", "chat"]);
 
-        await new SetGlobalChatBackgroundCommandHandler(context, _h.UserSettingsStorage, _h.PersonalizationStorage)
+        await new SetGlobalChatBackgroundCommandHandler(context, _h.UserSettingsStorage, _h.PersonalizationStorage, _h.UsersStorage)
             .Handle(new SetGlobalChatBackgroundCommand { FileId = "global" }, CancellationToken.None);
-        await new SetChatBackgroundCommandHandler(context, _h.UserSettingsStorage, _h.PersonalizationStorage)
+        await new SetChatBackgroundCommandHandler(context, _h.UserSettingsStorage, _h.PersonalizationStorage, _h.UsersStorage)
             .Handle(new SetChatBackgroundCommand { ChatId = chatId, FileId = "chat" }, CancellationToken.None);
 
-        var result = await new GetUserSettingsQueryHandler(context, _h.UserSettingsStorage)
+        var result = await new GetUserSettingsQueryHandler(context, _h.UserSettingsStorage, _h.UsersStorage)
             .Handle(new GetUserSettingsQuery(), CancellationToken.None);
 
         result.Settings.GlobalChatBackgroundFileId.Should().Be("global");
@@ -53,7 +53,7 @@ public class UserSettingsHandlersTests : IAsyncDisposable
         var context = _h.CreateUserContext(user.Id);
         var chatId = Guid.NewGuid();
         await _h.PersonalizationStorage.Update(user.Id, null, ["chat"]);
-        var handler = new SetChatBackgroundCommandHandler(context, _h.UserSettingsStorage, _h.PersonalizationStorage);
+        var handler = new SetChatBackgroundCommandHandler(context, _h.UserSettingsStorage, _h.PersonalizationStorage, _h.UsersStorage);
 
         await handler.Handle(new SetChatBackgroundCommand { ChatId = chatId, FileId = "chat" }, CancellationToken.None);
         await handler.Handle(new SetChatBackgroundCommand { ChatId = chatId, FileId = null }, CancellationToken.None);
@@ -69,7 +69,8 @@ public class UserSettingsHandlersTests : IAsyncDisposable
         var handler = new SetGlobalChatBackgroundCommandHandler(
             context,
             _h.UserSettingsStorage,
-            _h.PersonalizationStorage);
+            _h.PersonalizationStorage,
+            _h.UsersStorage);
 
         var action = () => handler.Handle(
             new SetGlobalChatBackgroundCommand { FileId = "not-in-gallery" },
@@ -101,6 +102,20 @@ public class UserSettingsHandlersTests : IAsyncDisposable
         (await _h.UserSettingsStorage.Get(user.Id))!.GlobalChatBackgroundFileId.Should().BeNull();
         var chatSettings = await _h.UserSettingsStorage.GetChatSettings(user.Id);
         chatSettings.Should().ContainSingle(x => x.ChatBackgroundFileId == "kept");
+    }
+
+    [Fact]
+    public async Task Get_DeletedUserDoesNotCreateSettings()
+    {
+        var user = await _h.SeedUser();
+        user.AccountStatus = Domain.AccountStatus.Deleted;
+        await _h.DbContext.SaveChangesAsync();
+        var handler = new GetUserSettingsQueryHandler(_h.CreateUserContext(user.Id), _h.UserSettingsStorage, _h.UsersStorage);
+
+        await FluentActions.Invoking(() => handler.Handle(new GetUserSettingsQuery(), CancellationToken.None))
+            .Should().ThrowAsync<BarkFluff.Shared.Exceptions.Identity.UserNotFoundException>();
+
+        (await _h.UserSettingsStorage.Get(user.Id)).Should().BeNull();
     }
 
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();

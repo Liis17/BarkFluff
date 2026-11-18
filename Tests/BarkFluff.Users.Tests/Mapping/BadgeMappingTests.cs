@@ -16,6 +16,7 @@ public class BadgeMappingTests
             Name = "Gold",
             Description = "Gold badge",
             ImageUrl = "https://img.com/gold.png",
+            MiniImageUrl = "https://img.com/gold-mini.png",
             IsActive = true,
             CreatedDate = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc),
         };
@@ -26,6 +27,7 @@ public class BadgeMappingTests
         grpc.Name.Should().Be("Gold");
         grpc.Description.Should().Be("Gold badge");
         grpc.ImageUrl.Should().Be("https://img.com/gold.png");
+        grpc.MiniImageUrl.Should().Be("https://img.com/gold-mini.png");
         grpc.IsActive.Should().BeTrue();
         grpc.CreatedDate.Should().Be(Timestamp.FromDateTime(badge.CreatedDate));
     }
@@ -57,6 +59,7 @@ public class BadgeMappingTests
             UserId = 1,
             BadgeId = 5,
             Priority = 10,
+            IsPrimary = true,
             AssignedDate = new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc),
             Badge = new Domain.Badge
             {
@@ -75,6 +78,7 @@ public class BadgeMappingTests
         grpc.AssignedDate.Should().Be(Timestamp.FromDateTime(userBadge.AssignedDate));
         grpc.Badge.Id.Should().Be(5);
         grpc.Badge.Name.Should().Be("Gold");
+        grpc.IsPrimary.Should().BeTrue();
     }
 
     [Fact]
@@ -86,6 +90,7 @@ public class BadgeMappingTests
             Name = "Silver",
             Description = "Silver badge",
             ImageUrl = "url",
+            MiniImageUrl = "mini-url",
             IsActive = true,
             CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         };
@@ -97,6 +102,20 @@ public class BadgeMappingTests
         entity.Name.Should().Be(badge.Name);
         entity.Description.Should().Be(badge.Description);
         entity.ImageUrl.Should().Be(badge.ImageUrl);
+        entity.MiniImageUrl.Should().Be(badge.MiniImageUrl);
         entity.IsActive.Should().Be(badge.IsActive);
+    }
+
+    [Fact]
+    public void ToEntity_LegacyGrpcBadgeWithEmptyMiniUrl_MapsToNull()
+    {
+        var entity = new BarkFluff.Proto.Users.Badge
+        {
+            Name = "Legacy",
+            ImageUrl = "url",
+            CreatedDate = Timestamp.FromDateTime(DateTime.UtcNow)
+        }.ToEntity();
+
+        entity.MiniImageUrl.Should().BeNull();
     }
 }

@@ -92,6 +92,12 @@
                     </span>
                     <span data-i18n="nav.chats">Чаты</span>
                 </button>
+                <button class="nav-btn" id="navCalls">
+                    <span class="nav-icon">
+                        <span class="bf-icon" data-bf-icon="calls" aria-hidden="true"></span>
+                    </span>
+                    <span data-i18n="nav.calls">Звонки</span>
+                </button>
                 <button class="nav-btn" id="navSettings">
                     <span class="nav-icon">
                         <span class="bf-icon" data-bf-icon="general" aria-hidden="true"></span>
@@ -127,6 +133,12 @@
                     <button class="btn-call" id="btnCallAudio" data-i18n-title="call.audio" title="Аудиозвонок"><span class="bf-icon" data-bf-icon="calls" aria-hidden="true"></span></button>
                     <button class="btn-call" id="btnCallVideo" data-i18n-title="call.video" title="Видеозвонок"><span class="bf-icon" data-bf-icon="video" aria-hidden="true"></span></button>
                 </div>
+            </div>
+            <div class="chat-readonly-banner" id="chatReadOnlyBanner" role="status" aria-live="polite" hidden></div>
+            <div class="chat-call-banner" id="chatCallBanner" role="status" aria-live="polite" hidden>
+                <span class="bf-icon" data-bf-icon="calls" aria-hidden="true"></span>
+                <span class="chat-call-banner-text" id="chatCallBannerText"></span>
+                <button type="button" class="chat-call-banner-join" id="chatCallBannerJoin" data-i18n="call.join">Присоединиться</button>
             </div>
 
             <div class="pinned-bar hidden" id="pinnedBar">
@@ -297,7 +309,7 @@
     <div class="image-overlay" id="imageOverlay">
         <button class="overlay-nav prev" id="overlayPrev" data-i18n-aria-label="common.previous" aria-label="Предыдущее" hidden>&#8249;</button>
         <img id="overlayImage" src="" alt="">
-        <video id="overlayVideo" controls style="display:none;max-width:90vw;max-height:90vh;border-radius:8px;"></video>
+        <video id="overlayVideo" controls tabindex="0" style="display:none;max-width:90vw;max-height:90vh;border-radius:8px;"></video>
         <button class="overlay-nav next" id="overlayNext" data-i18n-aria-label="common.next" aria-label="Следующее" hidden>&#8250;</button>
     </div>
 
@@ -621,6 +633,22 @@
                 <button class="folder-edit-close" id="pinnedListClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
             </div>
             <div class="pinned-list-inner" id="pinnedListInner"></div>
+        </div>
+    </div>
+
+    <!-- Call history modal -->
+    <div class="overlay call-history-overlay" id="callHistoryOverlay">
+        <div class="dialog call-history-dialog">
+            <div class="call-history-header">
+                <div class="call-history-title" data-i18n="nav.calls">Звонки</div>
+                <div class="call-history-filter">
+                    <button type="button" data-filter="all" aria-pressed="true" class="active" data-i18n="callHistory.all">Все</button>
+                    <button type="button" data-filter="missed" aria-pressed="false" data-i18n="callHistory.missed">Пропущенные</button>
+                </div>
+                <button class="folder-edit-close" id="callHistoryClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
+            </div>
+            <div class="call-history-list" id="callHistoryList"></div>
+            <button type="button" class="call-history-more" id="callHistoryMore" hidden data-i18n="callHistory.more">Показать ещё</button>
         </div>
     </div>
 

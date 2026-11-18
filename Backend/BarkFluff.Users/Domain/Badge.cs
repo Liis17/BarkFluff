@@ -17,6 +17,9 @@ public class Badge
     [StringLength(255)]
     public string ImageUrl { get; set; }
 
+    [StringLength(255)]
+    public string? MiniImageUrl { get; set; }
+
     public DateTime CreatedDate { get; set; }
 
     public bool IsActive { get; set; }

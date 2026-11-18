@@ -32,6 +32,14 @@ public class CreateTokenCommandHandlerTests
         _metrics = new MetricsCollector();
         _usersClient = new Mock<UsersServerApi.UsersServerApiClient>();
         _logger = new Mock<ILogger<CreateTokenCommandHandler>>();
+        _usersClient
+            .Setup(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new Grpc.Core.AsyncUnaryCall<GetAccountRestrictionResponse>(
+                Task.FromResult(new GetAccountRestrictionResponse
+                {
+                    Restriction = new AccountRestrictionInfo { Status = AccountStatus.Active }
+                }), Task.FromResult(new Grpc.Core.Metadata()), () => Grpc.Core.Status.DefaultSuccess,
+                () => new Grpc.Core.Metadata(), () => { }));
     }
 
     private CreateTokenCommandHandler CreateHandler()
@@ -126,5 +134,29 @@ public class CreateTokenCommandHandlerTests
         _usersClient.Verify(
             c => c.UpdateDeviceAppInfoAsync(It.IsAny<UpdateDeviceAppInfoRequest>(), null, null, CancellationToken.None),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_BlockedAccountDeletesRefreshTokenAndRejectsRefresh()
+    {
+        _context.RefreshTokens.Add(new Domain.RefreshToken
+        {
+            Value = "blocked", UserId = 42, DeviceId = "device",
+            ExpiresAt = DateTime.UtcNow.AddDays(1)
+        });
+        await _context.SaveChangesAsync();
+        _usersClient
+            .Setup(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new Grpc.Core.AsyncUnaryCall<GetAccountRestrictionResponse>(
+                Task.FromResult(new GetAccountRestrictionResponse
+                {
+                    Restriction = new AccountRestrictionInfo { Status = AccountStatus.Blocked }
+                }), Task.FromResult(new Grpc.Core.Metadata()), () => Grpc.Core.Status.DefaultSuccess,
+                () => new Grpc.Core.Metadata(), () => { }));
+
+        await Assert.ThrowsAsync<AccountBlockedException>(() => CreateHandler().Handle(
+            new CreateTokenCommand { RefreshToken = "blocked" }, CancellationToken.None));
+
+        Assert.Empty(_context.RefreshTokens);
     }
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
+import com.barkfluff.client.bft.BftServiceEndpoint
 import com.barkfluff.client.utils.NetworkUtils
 import com.barkfluff.client.domain.media.AutoDownloadMode
 import com.barkfluff.client.domain.media.AutoDownloadSettings
@@ -84,6 +85,21 @@ class GlobalParam(private val context: Context) {
     var socketCalls: String
         get() = sharedPreferences.getString(KEY_SOCKET_CALLS, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_SOCKET_CALLS, value).apply()
+
+    /** Logical BFT service mapping; proxy mode never rewrites these saved endpoint values. */
+    val bftServiceEndpoints: List<BftServiceEndpoint>
+        get() = listOf(
+            BftServiceEndpoint(1, socketBeacon),
+            BftServiceEndpoint(2, socketIdentity),
+            BftServiceEndpoint(3, socketUsers),
+            BftServiceEndpoint(4, socketMessages),
+            BftServiceEndpoint(5, socketFiles),
+            BftServiceEndpoint(6, socketFilesMedia),
+            BftServiceEndpoint(7, socketUpdates),
+            BftServiceEndpoint(8, socketOnliner),
+            BftServiceEndpoint(9, socketFastAuth),
+            BftServiceEndpoint(10, socketCalls)
+        ).filter { it.address.isNotBlank() }
 
     var livekitUrl: String
         get() = sharedPreferences.getString(KEY_LIVEKIT_URL, "") ?: ""

@@ -7,12 +7,12 @@
 ## Контекст
 
 - Клиентские требования разбросаны по родительским докам: [../08-service-migration.md](../08-service-migration.md) (раздел «Клиенты»), [../01-addressing-identity.md](../01-addressing-identity.md) (FID, punycode), [../05-chat-replication.md](../05-chat-replication.md) (ограничения MVP), [../06-files.md](../06-files.md) («Контракт недоступности для клиентов», дописан этапом 3.5), [../07-presence-typing.md](../07-presence-typing.md) (typing от FID), [../11-plan-review.md](../11-plan-review.md) И-4/И-7 (homograph, экранирование `filename`).
-- Образцы формата в vault: `Obsidian/ClaudeVault/Backend/Messages-PinnedMessages-ClientGuide.md`, `Backend/Users-ChatFolders-ClientGuide.md` — тот же жанр «гайд для клиентских агентов»: RPC → когда звать → что делать с ответом → таблица ошибок.
+- Образцы формата в vault: `Obsidian/BarkFluffVault/Backend/Messages-PinnedMessages-ClientGuide.md`, `Backend/Users-ChatFolders-ClientGuide.md` — тот же жанр «гайд для клиентских агентов»: RPC → когда звать → что делать с ответом → таблица ошибок.
 - Все контракты уже существуют в `Shared/BarkFluff.Proto/` (0.4 + добавления Фаз 2–4) — гайд их **описывает**, а не вводит.
 
 **Перед написанием гайда обязательно свериться с фактическим состоянием proto** (`Shared/BarkFluff.Proto/users_api.proto`, `messages_api.proto`, `onliner_api.proto`, `beacon_api.proto`, `shared.proto`, `files_api.proto`): номера полей, точные имена RPC и `error_code`-строки. Гайд, расходящийся с proto, хуже отсутствующего.
 
-## Изменение 1 — новый документ `Obsidian/ClaudeVault/Клиенты/Federation-ClientGuide.md`
+## Изменение 1 — новый документ `Obsidian/BarkFluffVault/Клиенты/Federation-ClientGuide.md`
 
 Структура (разделы обязательны, содержание — по фактическому коду/proto):
 
@@ -84,7 +84,7 @@
 - Старый клиент против fed-ноды: proto только расширялся, ничего не ломается; федеративные чаты у него выглядят как чат с пустым/техническим именем участника — это ожидаемо (детали — этап 5.6).
 - Новый клиент против ноды без федерации: `federation_enabled = false` ⇒ ветки федерации не активируются, поиск ведёт себя как раньше.
 
-## Изменение 2 — ссылка в `Obsidian/ClaudeVault/Index.md`
+## Изменение 2 — ссылка в `Obsidian/BarkFluffVault/Index.md`
 
 Добавить `Federation-ClientGuide` в раздел клиентов (по образцу существующих `*-ClientGuide` записей).
 
@@ -101,7 +101,7 @@
 
 ## Критерии готовности
 
-1. `Obsidian/ClaudeVault/Клиенты/Federation-ClientGuide.md` существует и содержит все восемь разделов; каждое утверждение о proto сверено с файлами в `Shared/BarkFluff.Proto/` (имена RPC, названия и номера полей, строки `error_code`).
+1. `Obsidian/BarkFluffVault/Клиенты/Federation-ClientGuide.md` существует и содержит все восемь разделов; каждое утверждение о proto сверено с файлами в `Shared/BarkFluff.Proto/` (имена RPC, названия и номера полей, строки `error_code`).
 2. Таблица ошибок сверена с реальными классами исключений (`Shared/BarkFluff.Shared.Exceptions`) — кодов, которых нет в коде, в таблице быть не должно.
 3. Ссылка на гайд добавлена в `Index.md`; из `Clients/Android.md`, `Clients/Web.md`, `Clients/macOS.md`, `Clients/iOS.md` проставлены `[[Клиенты/Federation-ClientGuide]]` (одна строка «федерация — см. гайд», без дублирования содержимого).
 4. [../10-roadmap.md](../10-roadmap.md) сверен с составом фазы (Изменение 3).

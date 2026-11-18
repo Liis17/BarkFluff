@@ -156,7 +156,7 @@
     var renderedFactor = null;
     var renderedFactorOperation = -1;
 
-    function t(key) { return BF.i18n.t(key); }
+    function t(key, params) { return BF.i18n.t(key, params); }
 
     function renderNodeBar() {
         if (BF.node.pinned()) { nodeBar.classList.add('hidden'); return; }
@@ -188,16 +188,30 @@
 
     function resumeOrShowLogin() {
         if (!runtimeReady || upgradeRequired) return;
-        if (!BF.tokens.get()) { startFastAuth(); return; }
+        if (!BF.tokens.get()) { showAuthNotice(); startFastAuth(); return; }
         document.body.style.visibility = 'hidden';
         BF.auth.getValidAccessToken().then(function (token) {
             if (token) {
                 window.location.href = '/messenger';
             } else {
                 document.body.style.visibility = '';
+                showAuthNotice();
                 startFastAuth();
             }
         });
+    }
+
+    function showAuthNotice() {
+        var code = '';
+        try {
+            code = window.sessionStorage.getItem('barkfluff_auth_notice') || '';
+            window.sessionStorage.removeItem('barkfluff_auth_notice');
+        } catch (e) {}
+        if (code === 'F34D8C22-C075-4E9C-92AD-C893F192D8FA') {
+            showError(loginError, loginInput, t('accountRestriction.rpcBlocked'));
+        } else if (code === '8E6F0F30-98AF-4F96-A63B-20D52AEEFB6A') {
+            showError(loginError, loginInput, t('accountRestriction.rpcPendingDeletion'));
+        }
     }
 
     function clearResendTimer() {
@@ -535,6 +549,33 @@
         return response && response.getErrorCode ? response.getErrorCode() : '';
     }
 
+    function showAccountRestriction(response, errorCode) {
+        var restriction = response && response.getAccountRestriction ? response.getAccountRestriction() : null;
+        var blocked = errorCode === 'account_blocked';
+        var lines = [t(blocked ? 'accountRestriction.blockedTitle' : 'accountRestriction.pendingTitle')];
+        var reason = restriction && restriction.getReason ? restriction.getReason() : '';
+        if (reason) lines.push(t('accountRestriction.reasonLabel') + ' ' + reason);
+        if (!blocked) {
+            var deletionAt = restriction && restriction.getDeletionScheduledAt ? restriction.getDeletionScheduledAt() : null;
+            if (deletionAt && deletionAt.toDate) {
+                lines.push(t('accountRestriction.deletionDateLabel') + ' ' + deletionAt.toDate().toLocaleString());
+            }
+            lines.push(t('accountRestriction.pendingHelp'));
+        } else {
+            lines.push(t('accountRestriction.blockedHelp'));
+        }
+
+        flow.busy = false;
+        flow.terminal = true;
+        flow.needsCode = false;
+        flow.retryKind = '';
+        clearResendTimer();
+        if (flow.attempt) flow.attempt.cancel();
+        flow.attempt = null;
+        setChallengeMessage(lines.join('\n'), true);
+        syncUi();
+    }
+
     function startAttempt(generation, origin) {
         if (!current(generation, origin) || !legalAccepted() || flow.busy) return;
         if (!flow.attempt) flow.attempt = BF.confirmations.create();
@@ -744,6 +785,10 @@
             if (errorCode === 'login_mode_disabled') { mismatch(); return; }
             if (errorCode) {
                 flow.busy = false;
+                if (errorCode === 'account_blocked' || errorCode === 'account_pending_deletion') {
+                    showAccountRestriction(result, errorCode);
+                    return;
+                }
                 if (errorCode === 'invalid_code') {
                     showError(codeError, codeInput, t('auth.error.badCode'));
                     if (Number(result.getState()) === 3) {

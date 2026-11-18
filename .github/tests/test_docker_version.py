@@ -95,11 +95,15 @@ if '-D' in args:
     def assert_version(self, branch, source_repository, target_repository, version):
         result, outputs = self.run_version(branch)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(outputs, {
+        expected = {
             "version": version,
             "tags": f"docker.barkfluff.com/{target_repository}:{version},docker.barkfluff.com/{target_repository}:latest",
             "tag_version": f"docker.barkfluff.com/{target_repository}:{version}",
-        })
+        }
+        if branch != "nightly":
+            latest = self.responses[f"https://docker.barkfluff.com/v2/{source_repository}/manifests/latest"]
+            expected["source_image"] = f"docker.barkfluff.com/{source_repository}@{latest['digest']}"
+        self.assertEqual(outputs, expected)
         requests = self.requests.read_text().splitlines()
         prefix = f"https://docker.barkfluff.com/v2/{source_repository}/"
         self.assertEqual(requests[0], prefix + "tags/list")

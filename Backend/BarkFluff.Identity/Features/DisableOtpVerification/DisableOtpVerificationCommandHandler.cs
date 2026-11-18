@@ -138,6 +138,13 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
 
         // Отправка уведомления об изменении метода 2FA (отключении)
         var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = _userContext.UserId });
+        var username = userInfo.User.Username;
+        if (userInfo.User.AccountStatus != AccountStatus.Active)
+        {
+            var restriction = await _usersClient.GetAccountRestrictionAsync(
+                new GetAccountRestrictionRequest { UserId = _userContext.UserId }, cancellationToken: cancellationToken);
+            username = restriction.Username;
+        }
         var userContacts = await _usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = _userContext.UserId });
 
         var locationInfo = await _locationClient.GetLocationString(_requestContext.IpAddress);
@@ -149,7 +156,7 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
             CreatedAt = DateTime.UtcNow,
             Payload = new Dictionary<string, string>
             {
-                {"username", userInfo.User.Username},
+                {"username", username},
                 {"old_method", oldMethod},
                 {"new_method", "Отключена"},
                 {"ip", _requestContext.IpAddress ?? string.Empty},

@@ -6,6 +6,7 @@ using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Security;
+using BarkFluff.Identity.Settings;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Queue.Notifications;
@@ -50,6 +51,13 @@ public class ConfirmAccountCommandHandlerTests
         _locationClient = TestHelper.CreateLocationClient();
         _metrics = new MetricsCollector();
         _logger = new Mock<ILogger<ConfirmAccountCommandHandler>>();
+        _usersClient
+            .Setup(c => c.GetAccountRestrictionAsync(It.IsAny<GetAccountRestrictionRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(new AsyncUnaryCall<GetAccountRestrictionResponse>(
+                Task.FromResult(new GetAccountRestrictionResponse
+                {
+                    Restriction = new AccountRestrictionInfo { Status = AccountStatus.Active }
+                }), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => new Metadata(), () => { }));
     }
 
     private static RequestContext BuildRequestContext(
@@ -67,7 +75,7 @@ public class ConfirmAccountCommandHandlerTests
         return new ConfirmAccountCommandHandler(
             _codesStorage, _usersClient.Object, _refreshTokensStorage,
             ctx ?? _requestContext, _notificationSender, _locationClient, _metrics, _logger.Object,
-            abuseGuard ?? TestHelper.CreateAbuseGuard());
+            abuseGuard ?? TestHelper.CreateAbuseGuard(), _publishEndpoint.Object, new JwtSettings());
     }
 
     [Fact]

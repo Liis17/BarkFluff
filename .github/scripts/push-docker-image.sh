@@ -1,26 +1,25 @@
 #!/usr/bin/env bash
-# Собирает образ и отправляет его в реестр: сначала пауза (чтобы одновременно
-# запущенные сборки не грузили реестр и Cloudflare разом), затем вход и
-# `docker buildx build --push` с 3 дополнительными попытками при сбоях соединения.
-# Пуш выполняет buildkit: push через dockerd реестр отклоняет с 401.
+# Собирает образ и отправляет его в реестр через `docker buildx build --push`
+# (push через dockerd реестр отклоняет с 401). При сбое соединения ждёт 15 с
+# и повторяет, всего до 6 попыток; потом шаг падает.
 #
-# Вход (env): PUSH_DELAY — пауза в секундах, DOCKERFILE, TAGS — теги через запятую,
-#             VERSION, REGISTRY_USERNAME, REGISTRY_PASSWORD.
+# Вход (env): DOCKERFILE, TAGS — теги через запятую, VERSION, REVISION — коммит
+#             исходников, REGISTRY_USERNAME, REGISTRY_PASSWORD.
 set -euo pipefail
 
 REGISTRY="docker.barkfluff.com"
-RETRIES=3
-RETRY_DELAY=10
+ATTEMPTS="${PUSH_ATTEMPTS:-6}"
+RETRY_DELAY="${PUSH_RETRY_DELAY:-15}"
 
 retry() {
-  local attempt=0
+  local attempt=1
   until "$@"; do
-    if [ "$attempt" -ge "$RETRIES" ]; then
-      echo "Не удалось выполнить после $((RETRIES + 1)) попыток: $1 $2" >&2
+    if [ "$attempt" -ge "$ATTEMPTS" ]; then
+      echo "Не удалось выполнить после $ATTEMPTS попыток: $1 $2" >&2
       return 1
     fi
+    echo "Попытка $attempt/$ATTEMPTS не удалась, повтор через ${RETRY_DELAY} с..." >&2
     attempt=$((attempt + 1))
-    echo "Повтор $attempt/$RETRIES через ${RETRY_DELAY} с..." >&2
     sleep "$RETRY_DELAY"
   done
 }
@@ -28,9 +27,6 @@ retry() {
 registry_login() {
   printf '%s' "$REGISTRY_PASSWORD" | docker login "$REGISTRY" -u "$REGISTRY_USERNAME" --password-stdin
 }
-
-echo "Пауза ${PUSH_DELAY} с перед отправкой в реестр"
-sleep "$PUSH_DELAY"
 
 retry registry_login
 
@@ -41,4 +37,5 @@ for tag in "${TAG_LIST[@]}"; do
 done
 
 retry docker buildx build --push -f "$DOCKERFILE" "${TAG_ARGS[@]}" \
-  --label "org.opencontainers.image.version=$VERSION" .
+  --label "org.opencontainers.image.version=$VERSION" \
+  --label "org.opencontainers.image.revision=$REVISION" .

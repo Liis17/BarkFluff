@@ -100,6 +100,18 @@ test('the tab title shows the total unread counter, capped at 99+', function () 
     assert.equal(h.document.title, '(99+) BarkFluff');
 });
 
+test('muted chats are left out of the tab title counter until their mute expires', function () {
+    var h = createHarness();
+    h.setChats([
+        { countUnread: 2 },
+        { countUnread: 5, muted: true },
+        { countUnread: 7, muted: true, mutedUntil: Date.now() + 60000 },
+        { countUnread: 3, muted: true, mutedUntil: Date.now() - 60000 }
+    ]);
+    h.BF.attention.updateTitleBadge();
+    assert.equal(h.document.title, '(5) BarkFluff');
+});
+
 test('a chat context replaces the base title and reset brings back the app title and favicon', function () {
     var h = createHarness();
     h.setChats([{ countUnread: 1 }]);

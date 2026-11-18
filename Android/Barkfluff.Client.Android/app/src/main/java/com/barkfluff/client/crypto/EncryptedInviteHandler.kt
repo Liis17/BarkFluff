@@ -11,6 +11,7 @@ import barkfluff.updates.UpdatesApiOuterClass
 import com.barkfluff.client.BarkFluffApplication
 import com.barkfluff.client.ChatActivity
 import com.barkfluff.client.R
+import com.barkfluff.client.utils.showImeAware
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.RealtimeService.ScopedSecretChatInvite
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -99,7 +100,7 @@ object EncryptedInviteHandler {
             .setNegativeButton(R.string.private_chat_invite_decline) { _, _ ->
                 rejectPrivate(activity, invite.chatId)
             }
-            .show()
+            .showImeAware()
     }
 
     private fun acceptPrivate(

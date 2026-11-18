@@ -31,6 +31,9 @@ import com.barkfluff.client.domain.model.MessageSearchPage
 import com.barkfluff.client.domain.model.MessageSearchQuery
 import com.barkfluff.client.domain.model.MessageSearchUnavailableException
 import com.barkfluff.client.domain.model.SearchAttachmentPresence
+import com.barkfluff.client.domain.model.BadgeFeatureUnavailableException
+import com.barkfluff.client.domain.model.UserBadgeInfo
+import com.barkfluff.client.domain.model.toDomain
 import com.google.protobuf.Timestamp
 import kotlinx.coroutines.CancellationException
 import com.barkfluff.client.security.TlsTransportFactory
@@ -394,7 +397,8 @@ open class GrpcApiTransport(context: Context) {
                     profilePictureFileId = profilePictureFileId,
                     profilePicturePreviewFileId = profilePicturePreviewFileId,
                     profilePosterFileId = user.profilePosterFileId,
-                    registrationDate = user.registrationDate.seconds * 1000
+                    registrationDate = user.registrationDate.seconds * 1000,
+                    accountStatus = user.accountStatus,
                 )
             )
         } catch (e: Exception) {
@@ -1045,12 +1049,63 @@ open class GrpcApiTransport(context: Context) {
                     profilePictureFileId = extractGuidFromUrl(user.profilePicture),
                     profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview),
                     profilePosterFileId = user.profilePosterFileId,
-                    registrationDate = user.registrationDate.seconds * 1000
+                    registrationDate = user.registrationDate.seconds * 1000,
+                    accountStatus = user.accountStatus,
                 )
             )
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения данных пользователя $userId", e)
             Result.failure(Exception("Ошибка получения данных пользователя: ${e.message}"))
+        }
+    }
+
+    suspend fun getUserBadges(userId: Long): Result<List<UserBadgeInfo>> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val response = client.getUserBadges(
+                UsersApiOuterClass.GetUserBadgesRequest.newBuilder()
+                    .setUserId(userId)
+                    .build()
+            )
+            Result.success(response.badgesList.map { badge ->
+                badge.toDomain().copy(
+                    imageUrl = toMediaUrl(badge.badge.imageUrl),
+                    miniImageUrl = toMediaUrl(badge.badge.miniImageUrl),
+                )
+            })
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.e(TAG, "Ошибка получения бейджей пользователя $userId", error)
+            Result.failure(error)
+        }
+    }
+
+    suspend fun setPrimaryBadge(badgeId: Int): Result<UserBadgeInfo?> = withContext(Dispatchers.IO) {
+        try {
+            val client = usersClient ?: return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            val response = client.setPrimaryBadge(
+                UsersApiOuterClass.SetPrimaryBadgeRequest.newBuilder()
+                    .setBadgeId(badgeId)
+                    .build()
+            )
+            val primary = if (response.hasPrimaryBadge()) {
+                response.primaryBadge.toDomain().copy(
+                    imageUrl = toMediaUrl(response.primaryBadge.badge.imageUrl),
+                    miniImageUrl = toMediaUrl(response.primaryBadge.badge.miniImageUrl),
+                )
+            } else {
+                null
+            }
+            Result.success(primary)
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.e(TAG, "Ошибка выбора основного бейджа", error)
+            val mappedError = if (Status.fromThrowable(error).code == Status.Code.UNIMPLEMENTED) {
+                BadgeFeatureUnavailableException(error)
+            } else {
+                error
+            }
+            Result.failure(mappedError)
         }
     }
 
@@ -1128,7 +1183,8 @@ open class GrpcApiTransport(context: Context) {
                     profilePicturePreviewUrl = toMediaUrl(user.profilePicturePreview),
                     profilePictureFileId = extractGuidFromUrl(user.profilePicture),
                     profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview),
-                    registrationDate = user.registrationDate.seconds * 1000
+                    registrationDate = user.registrationDate.seconds * 1000,
+                    accountStatus = user.accountStatus,
                 )
             }
 
@@ -1157,7 +1213,7 @@ open class GrpcApiTransport(context: Context) {
             Result.success(response.chatId)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения ID чата с пользователем $userId", e)
-            Result.failure(Exception("Ошибка получения ID чата: ${e.message}"))
+            Result.failure(Exception("Ошибка получения ID чата: ${e.message}", e))
         }
     }
 
@@ -1316,8 +1372,7 @@ open class GrpcApiTransport(context: Context) {
             Log.d(TAG, "Avatar upload URL получен, fileId: $fileId")
 
             val boundary = "----BarkFluff${System.currentTimeMillis()}"
-            val url = URL(uploadData.url)
-            val connection = url.openConnection() as HttpURLConnection
+            val connection = mediaTransport.openConnection(uploadData.url)
 
             configureHttpConnection(connection)
 
@@ -1696,7 +1751,8 @@ open class GrpcApiTransport(context: Context) {
         val profilePictureFileId: String = "",
         val profilePicturePreviewFileId: String = "",
         val profilePosterFileId: String = "",
-        val registrationDate: Long
+        val registrationDate: Long,
+        val accountStatus: UsersApiOuterClass.AccountStatus = UsersApiOuterClass.AccountStatus.ACTIVE,
     )
 
     data class ServerInfo(
@@ -2012,8 +2068,7 @@ open class GrpcApiTransport(context: Context) {
             Log.d(TAG, "Profile poster upload URL получен, fileId: $fileId")
 
             val boundary = "----BarkFluff${System.currentTimeMillis()}"
-            val url = java.net.URL(uploadData.url)
-            val connection = url.openConnection() as java.net.HttpURLConnection
+            val connection = mediaTransport.openConnection(uploadData.url)
             configureHttpConnection(connection)
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")

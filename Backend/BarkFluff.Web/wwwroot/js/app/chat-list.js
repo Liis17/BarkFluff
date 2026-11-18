@@ -264,9 +264,6 @@
 
     function rowHtml(chat) {
         var myUserId = deps.getMyUserId();
-        var avatarInitial = (chat.title || '?')[0].toUpperCase();
-        var avatarHtml = chat.picture ? '<img src="' + u.escapeHtml(chat.picture) + '" alt="">' : avatarInitial;
-
         var isPrivate = chat.chatType === 1;
         var lm = chat.lastMessage;
         var hasDraft = chat.chatType === 0 && (chat.hasDraft === true || (BF.drafts && BF.drafts.has(chat.id)));
@@ -317,8 +314,13 @@
         }
         var peerUser = peerUserId ? deps.getCachedUser(peerUserId) : null;
         var isBot = !!(peerUser && peerUser.isBot);
+        var restricted = u.isRestrictedUser(peerUser);
+        var title = restricted ? u.restrictedUserName(peerUser) : chat.title || BF.i18n.t('common.chat');
+        var picture = restricted ? '' : chat.picture;
+        var avatarInitial = (title || '?')[0].toUpperCase();
+        var avatarHtml = picture ? '<img src="' + u.escapeHtml(picture) + '" alt="">' : avatarInitial;
         var onlineDot =
-            peerUser && !isBot
+            peerUser && !isBot && !restricted
                 ? '<div class="online-dot' +
                   (peerUserId && deps.isUserOnline(peerUserId) ? ' visible' : '') +
                   '" data-online-user="' +
@@ -340,7 +342,7 @@
                   BF.icons.html('security') +
                   '</span>'
                 : '') +
-            u.escapeHtml(chat.title || BF.i18n.t('common.chat')) +
+            u.escapeHtml(title) +
             (isBot ? deps.botBadgeMarkup() : '') +
             '</span>' +
             '<span class="chat-time">' +
@@ -351,6 +353,7 @@
             '</span>' +
             '<span class="chat-unread' +
             (unread > 0 ? ' visible' : '') +
+            (BF.attention && BF.attention.isChatMuted(chat) ? ' muted' : '') +
             '">' +
             unreadText +
             '</span></div></div>'
@@ -762,6 +765,9 @@
             return c.id === chatId;
         });
         if (chat) {
+            var muted = BF.attention && BF.attention.isChatMuted(chat);
+            chatContextMenu.appendChild(menuItem('toggle-mute', null, BF.i18n.t(muted ? 'chat.unmute' : 'chat.mute')));
+
             var sep2 = document.createElement('div');
             sep2.className = 'cm-separator';
             sep2.setAttribute('role', 'separator');
@@ -775,6 +781,27 @@
             dangerBtn.classList.add('cm-danger');
             chatContextMenu.appendChild(dangerBtn);
         }
+    }
+
+    // Mute без срока (muted_until пуст) или снятие. Другие устройства узнают о смене только
+    // при перезагрузке списка: события изменения mute в Updates нет.
+    function toggleMute(chatId) {
+        var chat = deps.getChats().find(function (c) {
+            return c.id === chatId;
+        });
+        if (!chat) return;
+        var mute = !BF.attention.isChatMuted(chat);
+        BF.api
+            .setChatMuted(chatId, mute)
+            .then(function () {
+                chat.muted = mute;
+                chat.mutedUntil = null;
+                deps.updateTitleBadge();
+                render();
+            })
+            .catch(function () {
+                deps.showToast(BF.i18n.t('common.error'), true);
+            });
     }
 
     // Личный/приватный (не группа, не fed-DM) — показываем чекбокс "удалить также для {имя}".
@@ -976,6 +1003,10 @@
                 closeChatContextMenu();
                 if (act === 'delete-chat' || act === 'leave-chat') {
                     if (chatId) openDeleteChatDialog(chatId);
+                    return;
+                }
+                if (act === 'toggle-mute') {
+                    if (chatId) toggleMute(chatId);
                     return;
                 }
                 if (!BF.folders) return;
