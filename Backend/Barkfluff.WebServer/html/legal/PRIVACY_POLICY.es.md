@@ -1,7 +1,7 @@
 # Política de privacidad de BarkFluff
 
 **En vigor desde:** 24 de enero de 2026  
-**Última actualización:** 13 de noviembre de 2026
+**Última actualización:** 19 de noviembre de 2026
 
 > Esta traducción se proporciona únicamente por comodidad. En caso de discrepancia, prevalece la versión en ruso.
 
@@ -9,7 +9,7 @@
 
 BarkFluff es una red federada de servidores independientes («nodos»). Cada nodo lo despliega y mantiene su administrador; los nodos se comunican entre sí para conectar a usuarios de nodos distintos.
 
-El responsable del tratamiento de sus datos personales es **el administrador del nodo en el que se creó su cuenta**. Él aloja los servicios, posee la base de datos, el almacenamiento de archivos, las copias de seguridad y los registros, determina los plazos de conservación, responde a sus solicitudes y responde del cumplimiento de la legislación que le resulte aplicable.
+En el nodo público barkfluff.com, el responsable del tratamiento es una persona física: el desarrollador principal de BarkFluff, que opera desde Armenia. El servidor principal del nodo está en Alemania. BarkFluff es un proyecto de código abierto y no está registrado como persona jurídica. Los contactos del operador figuran al final de este documento.
 
 Los desarrolladores de BarkFluff publican el software y la especificación del protocolo. **No** alojan nodos ajenos, **no** tienen acceso a sus datos, claves, tráfico ni copias de seguridad, **no** pueden entregar, modificar ni eliminar datos en un nodo ajeno y **no** son responsables del tratamiento de sus datos.
 
@@ -64,9 +64,17 @@ Onliner almacena y sirve el estado de conexión y la hora de la última activida
 
 ### 3.5 Sitio web y soporte
 
-WebServer sirve la página principal, las páginas públicas de perfil, las páginas legales, los scripts de instalación, las versiones de los clientes y la API REST pública del perfil. Los mensajes del formulario de soporte del sitio se guardan en la memoria del proceso de WebServer y se reenvían al administrador del nodo a través de la API de bots de Telegram, si él ha configurado dicho reenvío.
+WebServer ofrece el sitio público, las páginas de perfil, los documentos legales y la API REST de perfiles públicos. En barkfluff.com, los mensajes del formulario de soporte se mantienen en la memoria del proceso WebServer y se reenvían al chat de soporte de Telegram. Según el operador, el chat de soporte de Telegram se limpia automáticamente una vez por semana; se trata de una limpieza periódica del chat, no de un plazo individual para cada mensaje. El historial local del chat de soporte web también se mantiene en la memoria del proceso WebServer y no se ha confirmado un calendario de limpieza.
+
+Las solicitudes enviadas a las direcciones de servicio del operador pueden conservarse sin un plazo máximo establecido. El operador indica que los correos generados automáticamente por el servicio, incluidos los códigos, no se guardan en su propio buzón; esto no describe el tratamiento en Identity ni el almacenamiento en el buzón del destinatario.
 
 Al pulsar «Escribir en el navegador» en una página pública de perfil, WebServer crea una cookie de corta duración `bf_open_chat` para que el cliente web abra el chat con el usuario seleccionado.
+
+### 3.6 Llamadas, bots y notificaciones push
+
+Calls guarda en la base de datos del nodo datos técnicos de la sesión de llamada, incluidos los participantes, el tipo y el estado de la llamada, y las horas de inicio, respuesta y finalización. Los medios de la llamada se retransmiten mediante LiveKit. El operador del nodo público indica que el servidor no graba los medios de las llamadas. Esta declaración no abarca los metadatos, los datos en los dispositivos de los participantes ni otros nodos; no se han confirmado el alojamiento de LiveKit ni sus plazos de conservación.
+
+Si envía un mensaje o archivo a un bot, se entrega a ese bot mediante la API. El operador del bot puede tratar o guardar lo que recibe según sus propias reglas. El token push del dispositivo se guarda en Users; el código backend envía notificaciones mediante Firebase Cloud Messaging cuando está habilitado. No se ha confirmado si se usa APNs ni la configuración de entrega push de otras plataformas.
 
 ## 4. Intercambio federado de datos
 
@@ -75,7 +83,7 @@ La federación está desactivada por defecto (`Federation:Enabled = false`); la 
 | Qué sale hacia otro nodo | Cuándo | Cómo |
 | --- | --- | --- |
 | Identificador, nombre de usuario, nombre y avatar del perfil | Cuando un usuario de otro nodo le encuentra o abre su ficha | Consulta de perfil entre nodos, respetando sus ajustes de privacidad |
-| Texto de los mensajes, ediciones, eliminaciones, confirmaciones de lectura | Conversación 1 a 1 con un usuario de otro nodo | Eventos firmados con entrega garantizada y reintentos |
+| Texto de los mensajes, ediciones, eliminaciones, confirmaciones de lectura | Conversación 1 a 1 con un usuario de otro nodo | Eventos firmados; una cola reintenta la entrega |
 | Archivos y adjuntos | Cuando su interlocutor abre un archivo | Entrega en streaming a petición de su nodo; no se crea una copia por adelantado |
 | Estado de conexión y hora de última actividad | Mientras el chat federado esté activo | Flujo en vivo entre nodos; se aplican sus ajustes de privacidad |
 | «Escribiendo…» | Mientras escribe un mensaje | Notificación puntual que no se almacena |
@@ -85,7 +93,7 @@ Lo importante que debe entender:
 - Los chats federados son solo individuales, 1 a 1. Los chats de grupo entre nodos no están soportados.
 - **Los mensajes federados no tienen cifrado de extremo a extremo.** Su contenido es accesible tanto para su nodo como para el nodo de su interlocutor. Los chats privados y secretos funcionan solo dentro de un mismo nodo.
 - El nodo que recibe los datos se convierte en **responsable independiente** de su copia. Ni su nodo ni los desarrolladores controlan durante cuánto tiempo ni de qué modo conserva esos datos. El modelo es el mismo que el del correo electrónico.
-- Eliminar un mensaje o una cuenta en su nodo **no elimina** las copias ya entregadas a otros nodos. Actualmente no existe propagación automática del borrado a través de la federación.
+- La eliminación de un mensaje federado se envía como evento a los nodos participantes y se aplica tras su recepción y validación; la entrega y aplicación no son sincrónicas. No elimina archivos ya descargados ni capturas de pantalla. La eliminación de una cuenta en barkfluff.com no se propaga a otros nodos ni borra datos ya entregados.
 - Puede rechazar los chats privados federados entrantes en los ajustes de privacidad: entonces se rechazará cualquier intento de iniciar un chat con usted desde otro nodo.
 - El administrador de su nodo puede bloquear un nodo entero, con lo que cesará el intercambio de datos con él.
 
@@ -125,15 +133,17 @@ Lo importante que debe entender:
 
 ## 7. Cesión a terceros
 
-Los datos personales no se venden. Los datos se ceden a proveedores externos únicamente para el funcionamiento de las funciones que haya activado el administrador del nodo:
+Los datos personales no se venden. Según la función y la configuración del nodo público, los datos pueden comunicarse a:
 
-- **Otros nodos de la federación:** véase la sección 4.
-- **SMTP:** notificaciones por correo, códigos de confirmación, recuperación de acceso.
-- **Firebase Cloud Messaging:** notificaciones push a dispositivos con token de Firebase.
-- **API de bots de Telegram:** tratamiento de los mensajes del chat de soporte del sitio.
-- **Alojamiento e infraestructura:** hospedaje de servicios, bases de datos, almacenamiento de archivos, RabbitMQ, Redis y Seq.
+- otros nodos de la federación; consulte la sección 4. Cada nodo receptor responde de su propia copia;
+- el servicio SMTP configurado para los correos de la cuenta; no se ha confirmado el proveedor de entrega;
+- Firebase Cloud Messaging para notificaciones push, si está habilitado;
+- la API de bots de Telegram para reenviar mensajes de soporte del sitio;
+- el servidor LiveKit configurado para llamadas; no se han confirmado su alojamiento, operador ni tratamiento de metadatos;
+- Las respuestas de la página principal y la política comprobadas incluían los encabezados server: cloudflare y Network Error Logging (NEL); el navegador carga Google Fonts desde fonts.googleapis.com y fonts.gstatic.com.
 
-El conjunto concreto de proveedores lo elige el administrador del nodo: puede desactivar las push, usar otro servicio SMTP o prescindir de Telegram.
+Los proveedores externos pueden recibir datos técnicos de red necesarios para entregar solicitudes o informes. No se han confirmado su configuración, ubicaciones de tratamiento ni plazos de conservación, salvo los datos sobre el operador indicados aquí. No deben inferirse las prácticas de los proveedores a partir del almacenamiento del nodo.
+
 
 ## 8. Derechos del usuario
 
@@ -141,7 +151,7 @@ Dirija las solicitudes sobre sus datos al administrador de su nodo: solo él pue
 
 - **Acceso y exportación:** la exportación devuelve los archivos JSON `profile.json`, `messages.json` y `files.json`.
 - **Rectificación:** el perfil, la biografía, el avatar, el póster, la privacidad, los dispositivos y la contraseña pueden modificarse mediante las funciones del cliente donde estén disponibles.
-- **Supresión:** una vez que el administrador del nodo haya tramitado la solicitud, la cuenta se eliminará definitivamente al cabo de 7 días; consulte la [Política de eliminación de cuenta](/legal/account-deletion) para más detalles.
+- **Supresión:** una vez tramitada la solicitud, la cuenta queda en estado de eliminación pendiente durante 7 días; después comienza la limpieza en segundo plano y puede tardar más si debe repetirse tras un error. Consulte la [Política de eliminación de cuenta](/legal/account-deletion).
 - **Revocación de sesión:** una sesión activa puede cerrarse mediante la gestión de dispositivos.
 - **Limitación de la federación:** los chats privados federados entrantes pueden rechazarse en los ajustes de privacidad.
 
@@ -150,21 +160,26 @@ Dirija las solicitudes sobre sus datos al administrador de su nodo: solo él pue
 - Los mensajes normales admiten eliminación mediante la API de Messages.
 - Los mensajes privados cifrados se marcan como eliminados y su texto cifrado se borra.
 - Los mensajes secretos se eliminan del búfer temporal tras la confirmación de entrega o al expirar el TTL.
-- La eliminación surte efecto dentro de su nodo. Las copias ya entregadas a otro nodo solo puede eliminarlas el administrador de ese nodo.
-- Para eliminar la cuenta y los datos no cubiertos por las funciones del cliente, contacte con el administrador del nodo. Una vez tramitada la solicitud, la cuenta permanece en proceso de eliminación durante 7 días y después se elimina definitivamente; véase la [Política de eliminación de cuenta](/legal/account-deletion).
+- La eliminación de un mensaje federado se envía a los nodos participantes y se aplica tras su recepción y validación; la entrega y aplicación no son sincrónicas. No elimina archivos ya descargados ni capturas de pantalla. La eliminación de una cuenta en barkfluff.com no se propaga a otros nodos ni borra los datos ya entregados.
+- Para eliminar la cuenta y los datos no cubiertos por las funciones del cliente, contacte con el operador del nodo. Una vez tramitada la solicitud, la cuenta permanece en estado de eliminación pendiente durante 7 días; después comienza la limpieza en segundo plano y puede retrasarse si debe repetirse tras un error. Consulte la [Política de eliminación de cuenta](/legal/account-deletion).
+
+### Conservación en el nodo público
+
+Según el operador, no se ha establecido un plazo máximo de conservación para los registros y las copias de seguridad del nodo público. Los datos que pudieran haberse incluido anteriormente pueden permanecer después de eliminar la cuenta. Esto no significa que una copia contenga necesariamente datos concretos ni que las copias existan o se conserven siempre; esta declaración no describe la conservación por proveedores externos. No se han facilitado plazos operativos confirmados para otras categorías de datos.
 
 ## 10. Cookies y almacenamiento local
 
-- Los clientes nativos usan el almacenamiento local para tokens, ajustes y cachés.
-- El cliente de Windows guarda `GlobalParam.json` y puede protegerlo con un PIN.
-- El cliente de macOS usa el Keychain para los tokens.
-- El sitio usa las cookies `barkfluff_chat_id` (sesión del chat de soporte, 1 año), `bf_open_chat` (paso efímero de una página pública de perfil al cliente web) y `bf_cookie_notice` (registro de que se mostró el aviso sobre cookies, 1 año).
-- El cliente web usa las cookies `bf_theme` (esquema de color elegido, 1 año) y `bf_legal_accepted` (revisión aceptada de las Condiciones de uso y la Política de privacidad, 1 año); los tokens de acceso se guardan en el localStorage o sessionStorage del navegador.
-- No se usan cookies de analítica, publicidad ni seguimiento.
+- El sitio usa barkfluff_chat_id (identificador del chat de soporte, hasta 1 año), bf_open_chat (paso de una página pública de perfil al cliente web, hasta 5 minutos) y bf_cookie_notice (confirmación del aviso, hasta 1 año).
+- El sitio usa localStorage bf_lang para el idioma y bf_domain_notice_v1 para recordar que se cerró el aviso sobre la historia del dominio; no se ha fijado una caducidad separada.
+- El cliente web usa bf_theme (tema), bf_lang (idioma) y bf_legal_accepted (revisión aceptada de los términos y la política), hasta 1 año. Los tokens de acceso se guardan en localStorage o sessionStorage.
+- Los clientes nativos usan almacenamiento local para tokens, ajustes y cachés; Windows puede proteger GlobalParam.json con PIN y macOS usa Keychain.
+- El sitio público carga fuentes desde fonts.googleapis.com y fonts.gstatic.com. Se confirmaron encabezados de Cloudflare y Network Error Logging (NEL) en la página principal y la política; el navegador puede enviar informes de errores de red al endpoint configurado.
+- BarkFluff no instala deliberadamente cookies de analítica o publicidad. Las solicitudes externas pueden enviar datos técnicos a proveedores; véase la sección 7.
+
 
 ## 11. Menores
 
-BarkFluff no está destinado a usuarios menores de 13 años. El administrador de un nodo puede fijar un límite de edad superior. Si cree que un menor de 13 años ha creado una cuenta, informe al administrador del nodo correspondiente.
+El nodo público barkfluff.com es solo para usuarios de 16 años o más. Otros nodos establecen sus propias reglas de edad. Si cree que un usuario menor de 16 años se ha registrado en barkfluff.com, escriba a privacy@barkfluff.com.
 
 ## 12. Cambios en la política
 

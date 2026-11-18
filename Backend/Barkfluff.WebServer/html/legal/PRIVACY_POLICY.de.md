@@ -1,7 +1,7 @@
 # BarkFluff Datenschutzerklärung
 
 **Gültig ab:** 24. Januar 2026  
-**Letzte Aktualisierung:** 13. November 2026
+**Letzte Aktualisierung:** 19. November 2026
 
 > Diese Übersetzung dient nur der Bequemlichkeit. Im Falle von Abweichungen ist die russische Fassung maßgebend.
 
@@ -9,7 +9,7 @@
 
 BarkFluff ist ein föderiertes Netzwerk unabhängiger Server („Knoten“). Jeder Knoten wird von seinem Administrator bereitgestellt und betrieben; die Knoten kommunizieren untereinander, um Nutzer verschiedener Knoten zu verbinden.
 
-Verantwortlicher für Ihre personenbezogenen Daten ist **der Administrator des Knotens, auf dem Ihr Konto angelegt wurde**. Er betreibt die Dienste, besitzt die Datenbank, den Dateispeicher, die Sicherungskopien und die Protokolle, legt die Speicherfristen fest, beantwortet Ihre Anfragen und ist für die Einhaltung des für ihn geltenden Rechts verantwortlich.
+Für den öffentlichen Knoten barkfluff.com ist eine natürliche Person verantwortlich: der Hauptentwickler von BarkFluff mit Sitz in Armenien. Der Hauptserver des Knotens befindet sich in Deutschland. BarkFluff ist ein Open-Source-Projekt und nicht als juristische Person registriert. Die Kontaktadressen des Betreibers stehen am Ende dieses Dokuments.
 
 Die Entwickler von BarkFluff veröffentlichen die Software und die Protokollspezifikation. Sie betreiben **keine** fremden Knoten, haben **keinen** Zugriff auf deren Daten, Schlüssel, Datenverkehr oder Sicherungskopien, **können** Daten auf einem fremden Knoten weder herausgeben noch ändern oder löschen und sind **nicht** Verantwortliche für Ihre Daten.
 
@@ -64,9 +64,17 @@ Onliner speichert und liefert den Online-Status und den Zeitpunkt der letzten Ak
 
 ### 3.5 Website und Support
 
-WebServer liefert die Startseite, öffentliche Profilseiten, Rechtsseiten, Installationsskripte, Client-Versionen und die öffentliche Profil-REST-API. Nachrichten aus dem Support-Formular der Website werden im Arbeitsspeicher des WebServer-Prozesses gehalten und über die Telegram Bot API an den Knotenadministrator weitergeleitet, sofern er eine solche Weiterleitung eingerichtet hat.
+WebServer stellt die öffentliche Website, Profilseiten, Rechtsdokumente und die öffentliche Profil-REST-API bereit. Auf barkfluff.com werden Nachrichten aus dem Support-Formular im Arbeitsspeicher des WebServer-Prozesses gehalten und an den Telegram-Support-Chat weitergeleitet. Laut Betreiber wird der Telegram-Support-Chat automatisch einmal pro Woche geleert; dies ist eine regelmäßige Chat-Bereinigung und keine individuelle Aufbewahrungsfrist je Nachricht. Der lokale Verlauf des Web-Support-Chats wird ebenfalls im Arbeitsspeicher des WebServer-Prozesses gehalten; ein Bereinigungszeitplan dafür ist nicht bestätigt.
+
+Anfragen an die dienstlichen E-Mail-Adressen des Betreibers können ohne festgelegte Höchstfrist gespeichert werden. Laut Betreiber werden automatisch vom Dienst versandte E-Mails, einschließlich Codes, nicht im eigenen Postfach aufbewahrt; dies sagt nichts über die Verarbeitung in Identity oder das Postfach des Empfängers aus.
 
 Beim Klick auf „Im Browser schreiben“ auf einer öffentlichen Profilseite erstellt WebServer ein kurzlebiges Cookie `bf_open_chat`, damit der Web-Client den Chat mit dem gewählten Nutzer öffnet.
+
+### 3.6 Anrufe, Bots und Push-Benachrichtigungen
+
+Calls speichert technische Angaben zur Anrufsitzung in der Knotendatenbank, darunter Teilnehmer, Anruftyp, Status sowie Start-, Annahme- und Endzeit. Anrufmedien werden über LiveKit weitergeleitet. Laut Betreiber des öffentlichen Knotens zeichnet der Server Anrufmedien nicht auf. Diese Aussage bezieht sich nicht auf Anrufmetadaten, Daten auf den Geräten der Teilnehmer oder andere Knoten; Hosting und Aufbewahrungsfristen von LiveKit sind nicht bestätigt.
+
+Wenn Sie einem Bot eine Nachricht oder Datei senden, wird sie über die API an diesen Bot übermittelt. Der Bot-Betreiber kann die empfangenen Daten nach eigenen Regeln verarbeiten oder speichern. Ein Push-Token des Geräts wird in Users gespeichert; der Backend-Code sendet Benachrichtigungen bei aktivierter Funktion über Firebase Cloud Messaging. Die Nutzung von APNs oder Push-Diensten anderer Plattformen ist nicht bestätigt.
 
 ## 4. Föderierter Datenaustausch
 
@@ -75,7 +83,7 @@ Die Föderation ist standardmäßig deaktiviert (`Federation:Enabled = false`) �
 | Was an einen anderen Knoten geht | Wann | Wie |
 | --- | --- | --- |
 | Kennung, Benutzername, Name und Profilavatar | Wenn ein Nutzer eines anderen Knotens Sie findet oder Ihre Profilkarte öffnet | Profilabfrage zwischen Knoten unter Beachtung Ihrer Datenschutzeinstellungen |
-| Nachrichtentext, Bearbeitungen, Löschungen, Lesebestätigungen | 1-zu-1-Konversation mit einem Nutzer eines anderen Knotens | Signierte Ereignisse mit garantierter Zustellung und Wiederholungen |
+| Nachrichtentext, Bearbeitungen, Löschungen, Lesebestätigungen | 1-zu-1-Konversation mit einem Nutzer eines anderen Knotens | Signierte Ereignisse; eine Warteschlange versucht die Zustellung erneut |
 | Dateien und Anhänge | Wenn Ihr Gesprächspartner eine Datei öffnet | Streaming auf Anfrage seines Knotens; es wird keine Kopie im Voraus angelegt |
 | Online-Status und Zeitpunkt der letzten Aktivität | Solange ein föderierter Chat aktiv ist | Laufender Stream zwischen Knoten; Ihre Datenschutzeinstellungen gelten |
 | „Schreibt …“ | Während Sie eine Nachricht tippen | Einmalige Benachrichtigung ohne Speicherung |
@@ -85,7 +93,7 @@ Wichtig zu verstehen:
 - Föderierte Chats sind ausschließlich 1-zu-1. Gruppenchats zwischen Knoten werden nicht unterstützt.
 - **Föderierte Nachrichten sind nicht Ende-zu-Ende-verschlüsselt.** Ihr Inhalt ist sowohl Ihrem Knoten als auch dem Knoten des Gesprächspartners zugänglich. Private und geheime Chats funktionieren nur innerhalb eines Knotens.
 - Der empfangende Knoten wird zum **eigenständigen Verantwortlichen** für seine Kopie. Weder Ihr Knoten noch die Entwickler kontrollieren, wie lange und auf welche Weise er diese Daten aufbewahrt. Das Modell entspricht dem der E-Mail.
-- Das Löschen einer Nachricht oder eines Kontos auf Ihrem Knoten **löscht keine** Kopien, die bereits an andere Knoten zugestellt wurden. Eine automatische Weitergabe von Löschungen über die Föderation gibt es derzeit nicht.
+- Die Löschung einer föderierten Nachricht wird als Ereignis an beteiligte Knoten gesendet und nach Empfang und Prüfung angewendet; Zustellung und Anwendung erfolgen nicht synchron. Bereits heruntergeladene Dateien oder Bildschirmaufnahmen werden nicht gelöscht. Die Kontolöschung auf barkfluff.com wird nicht an andere Knoten weitergegeben und löscht dort bereits übermittelte Daten nicht.
 - Sie können eingehende föderierte Einzelchats in den Datenschutzeinstellungen ablehnen — ein Versuch, von einem anderen Knoten aus einen Chat mit Ihnen zu beginnen, wird dann abgewiesen.
 - Der Administrator Ihres Knotens kann einen ganzen Knoten sperren — der Datenaustausch mit ihm endet.
 
@@ -125,15 +133,17 @@ Wichtig zu verstehen:
 
 ## 7. Weitergabe an Dritte
 
-Personenbezogene Daten werden nicht verkauft. Daten werden an externe Anbieter nur weitergegeben, um die vom Knotenadministrator aktivierten Funktionen zu betreiben:
+Personenbezogene Daten werden nicht verkauft. Abhängig von Funktion und Konfiguration des öffentlichen Knotens können Daten übermittelt werden an:
 
-- **Andere Knoten der Föderation:** siehe Abschnitt 4.
-- **SMTP:** E-Mail-Benachrichtigungen, Bestätigungscodes, Zugangswiederherstellung.
-- **Firebase Cloud Messaging:** Push-Benachrichtigungen an Geräte mit Firebase-Token.
-- **Telegram Bot API:** Bearbeitung von Nachrichten aus dem Support-Chat der Website.
-- **Hosting und Infrastruktur:** Betrieb von Diensten, Datenbanken, Dateispeicher, RabbitMQ, Redis und Seq.
+- andere Föderationsknoten — siehe Abschnitt 4; jeder empfangende Knoten ist für seine eigene Kopie verantwortlich;
+- den konfigurierten SMTP-Dienst für Konto-E-Mails; der konkrete E-Mail-Zustelldienst ist nicht bestätigt;
+- Firebase Cloud Messaging für Push-Benachrichtigungen, sofern aktiviert;
+- die Telegram Bot API zur Weiterleitung von Nachrichten aus dem Website-Support;
+- den konfigurierten LiveKit-Server für Anrufe; Hosting, Betreiber und Verarbeitung von Metadaten sind nicht bestätigt;
+- Die geprüften Antworten der Startseite und der Datenschutzerklärung enthielten die Header server: cloudflare und Network Error Logging (NEL); der Browser lädt Google Fonts von fonts.googleapis.com und fonts.gstatic.com.
 
-Welche Anbieter konkret eingesetzt werden, entscheidet der Knotenadministrator: Er kann Push deaktivieren, einen anderen SMTP-Dienst nutzen oder auf Telegram verzichten.
+Externe Anbieter können technische Netzwerkdaten erhalten, die für die Übermittlung einer Anfrage oder eines Berichts erforderlich sind. Konfiguration, Verarbeitungsorte und Aufbewahrungsfristen sind, abgesehen von den hier genannten Betreiberangaben, nicht bestätigt. Aus der Speicherung des Knotens lassen sich keine Anbieterpraktiken ableiten.
+
 
 ## 8. Rechte der Nutzer
 
@@ -141,7 +151,7 @@ Richten Sie Anfragen zu Ihren Daten an den Administrator Ihres Knotens — nur e
 
 - **Auskunft und Export:** Der Export liefert die JSON-Dateien `profile.json`, `messages.json` und `files.json`.
 - **Berichtigung:** Profil, Bio, Avatar, Poster, Datenschutz, Geräte und Passwort lassen sich über die Client-Funktionen ändern, soweit verfügbar.
-- **Löschung:** Nach Bearbeitung des Antrags durch den Knotenadministrator wird das Konto nach 7 Tagen endgültig gelöscht; Einzelheiten enthält die [Richtlinie zur Kontolöschung](/legal/account-deletion).
+- **Löschung:** Nach Bearbeitung des Antrags bleibt das Konto 7 Tage im Status „Löschung ausstehend“. Danach beginnt die Bereinigung im Hintergrund; sie kann sich verzögern, wenn sie nach einem Fehler wiederholt werden muss. Einzelheiten stehen in der [Richtlinie zur Kontolöschung](/legal/account-deletion).
 - **Sitzungsentzug:** Eine aktive Sitzung kann über die Geräteverwaltung beendet werden.
 - **Einschränkung der Föderation:** Eingehende föderierte Einzelchats können in den Datenschutzeinstellungen abgelehnt werden.
 
@@ -150,21 +160,26 @@ Richten Sie Anfragen zu Ihren Daten an den Administrator Ihres Knotens — nur e
 - Gewöhnliche Nachrichten können über die Messages-API gelöscht werden.
 - Private verschlüsselte Nachrichten werden beim Löschen als gelöscht markiert, der Geheimtext wird entfernt.
 - Geheime Nachrichten werden nach Zustellbestätigung oder Ablauf der TTL aus dem temporären Puffer entfernt.
-- Die Löschung wirkt innerhalb Ihres Knotens. Kopien, die bereits an einen anderen Knoten zugestellt wurden, kann nur dessen Administrator löschen.
-- Für die Löschung eines Kontos und von Daten, die nicht über Client-Funktionen abgedeckt sind, wenden Sie sich an den Knotenadministrator. Nach Bearbeitung des Antrags bleibt das Konto 7 Tage im Status „wird gelöscht“ und wird anschließend endgültig gelöscht; siehe die [Richtlinie zur Kontolöschung](/legal/account-deletion).
+- Die Löschung einer föderierten Nachricht wird an beteiligte Knoten gesendet und nach Empfang und Prüfung angewendet; Zustellung und Anwendung erfolgen nicht synchron. Bereits heruntergeladene Dateien oder Bildschirmaufnahmen werden nicht gelöscht. Die Kontolöschung auf barkfluff.com wird nicht an andere Knoten weitergegeben und löscht dort bereits übermittelte Daten nicht.
+- Für die Löschung eines Kontos und von Daten, die nicht über Client-Funktionen abgedeckt sind, wenden Sie sich an den Betreiber. Nach Bearbeitung des Antrags bleibt das Konto 7 Tage im Status „Löschung ausstehend“; danach beginnt die Bereinigung im Hintergrund und kann sich verzögern, wenn sie nach einem Fehler wiederholt werden muss. Siehe die [Richtlinie zur Kontolöschung](/legal/account-deletion).
+
+### Aufbewahrung auf dem öffentlichen Knoten
+
+Laut Betreiber gibt es für Protokolle und Sicherungskopien des öffentlichen Knotens keine festgelegte Höchstaufbewahrungsfrist. Daten, die zuvor darin enthalten sein könnten, können nach der Kontolöschung weiterbestehen. Das bedeutet nicht, dass bestimmte Daten zwingend in einer Kopie enthalten sind oder Kopien immer vorhanden sind oder aufbewahrt werden; die Aufbewahrung durch Drittanbieter wird hiermit nicht beschrieben. Für andere Datenkategorien wurden keine bestätigten betrieblichen Aufbewahrungsfristen mitgeteilt.
 
 ## 10. Cookies und lokale Speicherung
 
-- Native Clients nutzen den lokalen Speicher für Token, Einstellungen und Caches.
-- Der Windows-Client speichert `GlobalParam.json` und kann sie mit einer PIN schützen.
-- Der macOS-Client nutzt den Keychain für Token.
-- Die Website nutzt die Cookies `barkfluff_chat_id` (Sitzung des Support-Chats, 1 Jahr), `bf_open_chat` (kurzlebiger Wechsel von einer öffentlichen Profilseite zum Web-Client) und `bf_cookie_notice` (Vermerk, dass der Cookie-Hinweis angezeigt wurde, 1 Jahr).
-- Der Web-Client nutzt die Cookies `bf_theme` (gewähltes Farbschema, 1 Jahr) und `bf_legal_accepted` (Fassung der akzeptierten Nutzungsbedingungen und Datenschutzerklärung, 1 Jahr); Zugriffstoken werden im localStorage oder sessionStorage des Browsers gespeichert.
-- Cookies für Analyse, Werbung oder Tracking werden nicht verwendet.
+- Die Website verwendet barkfluff_chat_id (Kennung des Support-Chats, bis zu 1 Jahr), bf_open_chat (Wechsel von einer öffentlichen Profilseite zum Web-Client, bis zu 5 Minuten) und bf_cookie_notice (Bestätigung des Hinweises, bis zu 1 Jahr).
+- Die Website verwendet localStorage bf_lang für die Sprache und bf_domain_notice_v1, um das Schließen des Domain-Hinweises zu speichern; ein eigenes Ablaufdatum ist nicht gesetzt.
+- Der Web-Client verwendet bf_theme (Design), bf_lang (Sprache) und bf_legal_accepted (angenommene Fassung der Bedingungen und Datenschutzerklärung), jeweils bis zu 1 Jahr. Zugriffstoken liegen im localStorage oder sessionStorage.
+- Native Clients speichern Token, Einstellungen und Caches lokal; Windows kann GlobalParam.json per PIN schützen, macOS verwendet den Schlüsselbund.
+- Die öffentliche Website lädt Schriftarten von fonts.googleapis.com und fonts.gstatic.com. Cloudflare-Header und Network Error Logging (NEL) wurden auf Startseite und Datenschutzerklärung bestätigt; der Browser kann Netzwerkfehlerberichte an den konfigurierten Endpunkt senden.
+- BarkFluff setzt nicht absichtlich Cookies für Analyse oder Werbung. Externe Anfragen können technische Daten an Anbieter senden; siehe Abschnitt 7.
+
 
 ## 11. Kinder
 
-BarkFluff ist nicht für Nutzer unter 13 Jahren bestimmt. Ein Knotenadministrator darf eine höhere Altersgrenze festlegen. Wenn Sie glauben, dass ein Kind unter 13 Jahren ein Konto erstellt hat, informieren Sie den Administrator des betreffenden Knotens.
+Der öffentliche Knoten barkfluff.com ist nur für Nutzer ab 16 Jahren bestimmt. Andere Knoten legen eigene Altersregeln fest. Wenn Sie glauben, dass sich eine Person unter 16 Jahren auf barkfluff.com registriert hat, schreiben Sie an privacy@barkfluff.com.
 
 ## 12. Änderungen der Erklärung
 

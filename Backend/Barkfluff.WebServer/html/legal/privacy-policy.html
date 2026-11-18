@@ -86,7 +86,7 @@
 
     <section class="hero">
       <h1><span lang="ru">Политика конфиденциальности</span><span lang="en">Privacy Policy</span></h1>
-      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 13 ноября 2026 г.</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> November 13, 2026.</span></p>
+      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 19 ноября 2026 г.</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> November 19, 2026.</span></p>
     </section>
 
   <section class="sec">
@@ -94,16 +94,16 @@
     <div>
       <div lang="ru"><p>Barkfluff — федеративная сеть независимых серверов («нод»). Каждую ноду разворачивает и обслуживает её администратор; ноды общаются между собой, чтобы соединять пользователей разных нод.</p>
       <div class="callout">
-        <p>Оператором ваших персональных данных является <strong>администратор ноды, на которой создан ваш аккаунт</strong>. Он размещает сервисы, владеет базой данных, файловым хранилищем, резервными копиями и логами, определяет сроки хранения, отвечает на ваши запросы и отвечает за соблюдение применимого к нему законодательства.</p>
+        <p>Для публичной ноды <strong>barkfluff.com</strong> оператором персональных данных является физическое лицо — главный разработчик Barkfluff, действующий из Армении. Основной сервер ноды находится в Германии. Barkfluff — проект с открытым исходным кодом, не зарегистрированный как юридическое лицо. Оператор управляет публичной нодой и отвечает на запросы по её данным.</p>
       </div>
-      <p>Разработчики Barkfluff публикуют программное обеспечение и спецификацию протокола. Они <strong>не</strong> размещают чужие ноды, <strong>не</strong> имеют доступа к их данным, ключам, трафику и резервным копиям, <strong>не</strong> могут выдать, изменить или удалить данные на чужой ноде и <strong>не</strong> являются оператором ваших данных.</p>
+      <p>Разработчики Barkfluff публикуют программное обеспечение и спецификацию протокола. Они не управляют чужими нодами, не имеют доступа к данным на них и не могут исполнять запросы по таким данным. Для публичной ноды barkfluff.com оператор указан выше.</p>
       <p>Этот документ описывает поведение программного обеспечения в стандартной конфигурации и относится к ноде <strong>barkfluff.com</strong>. Администратор любой другой ноды публикует собственную редакцию и вправе изменить конфигурацию или исходный код — тогда действуют его условия. Если ваш аккаунт создан не на barkfluff.com, обращайтесь к администратору своей ноды.</p>
       </div>
       <div lang="en"><p>Barkfluff is a federated network of independent servers (“nodes”). Each node is deployed and operated by its administrator; nodes talk to each other to connect users of different nodes.</p>
       <div class="callout">
-        <p>The controller of your personal data is <strong>the administrator of the node where your account was created</strong>. They host the services, own the database, file storage, backups and logs, decide the retention periods, answer your requests and are responsible for compliance with the law applicable to them.</p>
+        <p>For the public <strong>barkfluff.com</strong> node, the controller is an individual operator — Barkfluff's lead developer, acting from Armenia. The node's main server is in Germany. Barkfluff is an open-source project and is not registered as a legal entity. The operator runs the public node and handles requests about its data.</p>
       </div>
-      <p>The Barkfluff developers publish the software and the protocol specification. They do <strong>not</strong> host other people's nodes, do <strong>not</strong> have access to their data, keys, traffic or backups, <strong>cannot</strong> disclose, modify or delete data on someone else's node, and are <strong>not</strong> the controller of your data.</p>
+      <p>The Barkfluff developers publish the software and protocol specification. They do not operate other people's nodes, have access to data on them, or handle requests about that data. The operator of the public barkfluff.com node is identified above.</p>
       <p>This document describes the behaviour of the software in its default configuration and applies to the <strong>barkfluff.com</strong> node. The administrator of any other node publishes their own version and may change the configuration or the source code — in that case their terms apply. If your account was not created on barkfluff.com, contact your own node's administrator.</p>
       </div>
     </div>
@@ -173,8 +173,12 @@
       <p>Onliner хранит и отдает онлайн-статус и время последней активности. Updates передает realtime-события клиентам через gRPC streaming.</p>
 
       <h3>3.5 Сайт и поддержка</h3>
-      <p>WebServer отдает главную страницу, публичные страницы профилей, legal-страницы, установочные скрипты, версии клиентов и REST API публичного профиля. Сообщения из формы поддержки на сайте сохраняются в памяти процесса WebServer и пересылаются администратору ноды через Telegram Bot API, если он настроил такую пересылку.</p>
+      <p>WebServer отдает публичный сайт и его REST API. Сообщения формы поддержки на barkfluff.com находятся в памяти процесса WebServer и пересылаются в Telegram-чат поддержки. По сведениям оператора, Telegram-чат поддержки автоматически очищается раз в неделю; это периодическая очистка чата, а не срок хранения каждого сообщения. Локальная история веб-чата поддержки также находится в памяти процесса WebServer; подтвержденного графика ее очистки нет.</p>
+      <p>Обращения на служебные адреса оператора могут храниться без установленного максимального срока. Оператор сообщает, что автоматически отправленные сервисом письма, включая коды, не сохраняются в его собственной почте; это не описывает обработку в Identity или хранение письма в почте получателя.</p>
       <p>При клике «Написать в браузере» на публичной странице профиля WebServer создает краткоживущую cookie <code>bf_open_chat</code>, чтобы web-клиент открыл чат с выбранным пользователем.</p>
+      <h3>3.6 Звонки, боты и push-уведомления</h3>
+      <p>Calls хранит в базе данных ноды технические сведения о сеансах звонков, включая участников, тип звонка, статус и время начала, ответа и завершения. Медиа звонков передается через настроенный LiveKit-сервер. Оператор публичной ноды сообщает, что сервер только ретранслирует медиа и не записывает его. Это не относится к метаданным, устройствам участников или другим нодам; размещение LiveKit и сроки хранения его данных не подтверждены.</p>
+      <p>Сообщения и файлы, отправленные боту, передаются ему через API; оператор бота может обрабатывать или хранить полученные данные по своим правилам. Токен push-уведомлений хранится в Users; backend может отправлять уведомления через Firebase Cloud Messaging, если функция включена. Использование APNs и настройки доставки для других платформ не подтверждены.</p>
       </div>
       <div lang="en"><h3>3.1 Account and profile</h3>
       <div class="scroll-x" tabindex="0"><table>
@@ -219,8 +223,12 @@
       <p>Onliner stores and serves the online status and last activity time. Updates delivers realtime events to clients via gRPC streaming.</p>
 
       <h3>3.5 Website and support</h3>
-      <p>WebServer serves the main page, public profile pages, legal pages, install scripts, client versions and the public profile REST API. Messages from the website support form are stored in the WebServer process memory and forwarded to the node administrator via the Telegram Bot API, if they configured such forwarding.</p>
+      <p>WebServer serves the public site and its REST API. On barkfluff.com, website support messages are held in WebServer process memory and forwarded to the support Telegram chat. The operator reports that the Telegram support chat is automatically cleared once a week; this is periodic chat cleanup, not a per-message retention period. The local web support chat history is also held in WebServer process memory, and no cleanup schedule for it has been confirmed.</p>
+      <p>Requests sent to the operator's service email addresses may be kept without an established maximum retention period. The operator reports that service-generated emails, including codes, are not retained in the operator's own mailbox; this does not describe processing by Identity or storage in the recipient's mailbox.</p>
       <p>On clicking “Message in browser” on a public profile page, WebServer creates a short-lived cookie <code>bf_open_chat</code> so the web client opens a chat with the selected user.</p>
+      <h3>3.6 Calls, bots and push notifications</h3>
+      <p>Calls stores technical call-session details in the node database, including participants, call type, status, and start, answer and end times. Call media is relayed through the configured LiveKit server. The public-node operator reports that the server only relays call media and does not record it. This does not cover call metadata, participants' devices or other nodes; LiveKit hosting and data-retention details have not been confirmed.</p>
+      <p>Messages and files sent to a bot are delivered to it through the API; the bot operator may process or store what it receives under its own rules. A push token is stored in Users; the backend can send notifications through Firebase Cloud Messaging when enabled. Whether APNs or other platform delivery services are used has not been confirmed.</p>
       </div>
     </div>
   </section>
@@ -232,7 +240,7 @@
         <thead><tr><th>Что уходит на другую ноду</th><th>Когда</th><th>Как</th></tr></thead>
         <tbody>
           <tr><td>Идентификатор, username, имя и аватар профиля</td><td>Когда пользователь другой ноды находит вас или открывает вашу карточку</td><td>Запрос профиля между нодами с учетом ваших настроек приватности</td></tr>
-          <tr><td>Текст сообщений, правки, удаления, отметки о прочтении</td><td>Переписка 1-к-1 с пользователем другой ноды</td><td>Подписанные события с гарантированной доставкой и повторами</td></tr>
+          <tr><td>Текст сообщений, правки, удаления, отметки о прочтении</td><td>Переписка 1-к-1 с пользователем другой ноды</td><td>Подписанные события через очередь с повторами; доставка зависит от доступности другой ноды</td></tr>
           <tr><td>Файлы и вложения</td><td>Когда собеседник открывает файл</td><td>Потоковая выдача по запросу его ноды; копия заранее не создается</td></tr>
           <tr><td>Онлайн-статус и время последней активности</td><td>Пока активен федеративный чат</td><td>Живой поток между нодами; применяются ваши настройки приватности</td></tr>
           <tr><td>«Печатает…»</td><td>Во время набора сообщения</td><td>Разовое уведомление без сохранения</td></tr>
@@ -243,7 +251,7 @@
         <li>Федеративные чаты — только личные 1-к-1. Групповые чаты между нодами не поддерживаются.</li>
         <li><strong>Федеративные сообщения не защищены сквозным шифрованием.</strong> Их содержимое доступно и вашей ноде, и ноде собеседника. Private- и secret-чаты работают только внутри одной ноды.</li>
         <li>Получившая данные нода становится <strong>самостоятельным оператором</strong> своей копии. Ни ваша нода, ни разработчики не контролируют, как долго и каким образом она эти данные хранит. Модель та же, что у электронной почты.</li>
-        <li>Удаление сообщения или аккаунта на вашей ноде <strong>не удаляет</strong> копии, уже доставленные на другие ноды. Автоматического распространения удаления по федерации сейчас нет.</li>
+        <li>При удалении федеративного сообщения нода отправляет участвующим нодам событие удаления; другая нода применяет его после получения и проверки. Доставка и применение не синхронны; это не удаляет скачанные файлы и скриншоты. Удаление аккаунта не рассылается по федерации и не удаляет уже доставленные данные.</li>
         <li>Вы можете запретить входящие федеративные личные чаты настройкой приватности — тогда попытка создать с вами чат с другой ноды будет отклонена.</li>
         <li>Администратор вашей ноды может заблокировать любую ноду целиком — обмен данными с ней прекратится.</li>
       </ul>
@@ -256,7 +264,7 @@
         <thead><tr><th>What leaves for another node</th><th>When</th><th>How</th></tr></thead>
         <tbody>
           <tr><td>Identifier, username, name and profile avatar</td><td>When a user of another node finds you or opens your profile card</td><td>Inter-node profile request, subject to your privacy settings</td></tr>
-          <tr><td>Message text, edits, deletions, read receipts</td><td>1-to-1 conversation with a user of another node</td><td>Signed events with guaranteed delivery and retries</td></tr>
+          <tr><td>Message text, edits, deletions, read receipts</td><td>1-to-1 conversation with a user of another node</td><td>Signed events through a retrying queue; delivery depends on the other node being available</td></tr>
           <tr><td>Files and attachments</td><td>When your correspondent opens a file</td><td>Streamed on request from their node; no copy is made in advance</td></tr>
           <tr><td>Online status and last activity time</td><td>While a federated chat is active</td><td>Live inter-node stream; your privacy settings apply</td></tr>
           <tr><td>“Typing…”</td><td>While you are typing a message</td><td>A one-off notification that is not stored</td></tr>
@@ -267,7 +275,7 @@
         <li>Federated chats are 1-to-1 only. Group chats between nodes are not supported.</li>
         <li><strong>Federated messages are not end-to-end encrypted.</strong> Their content is available both to your node and to your correspondent's node. Private and secret chats work within a single node only.</li>
         <li>The receiving node becomes an <strong>independent controller</strong> of its copy. Neither your node nor the developers control how long or in what way it keeps that data. The model is the same as with email.</li>
-        <li>Deleting a message or an account on your node <strong>does not delete</strong> copies already delivered to other nodes. There is currently no automatic propagation of deletion across the federation.</li>
+        <li>When a federated message is deleted, the node sends a deletion event to participating nodes; another node applies it after receipt and validation. Delivery and application are not synchronous, and this does not remove downloaded files or screenshots. Account deletion is not sent across the federation and does not erase data already delivered.</li>
         <li>You can refuse incoming federated private chats in your privacy settings — an attempt to start a chat with you from another node will then be rejected.</li>
         <li>Your node's administrator can block an entire node — data exchange with it will stop.</li>
       </ul>
@@ -361,22 +369,28 @@
       <div lang="ru"><p>Персональные данные не продаются. Данные передаются внешним поставщикам только для работы функций, которые включил администратор ноды:</p>
       <ul>
         <li><strong>Другие ноды федерации:</strong> см. раздел 4.</li>
-        <li><strong>SMTP:</strong> email-уведомления, коды подтверждения, восстановление доступа.</li>
-        <li><strong>Firebase Cloud Messaging:</strong> push-уведомления на устройства с Firebase token.</li>
-        <li><strong>Telegram Bot API:</strong> обработка сообщений из чата поддержки на сайте.</li>
-        <li><strong>Хостинг и инфраструктура:</strong> размещение сервисов, баз данных, файлового хранилища, RabbitMQ, Redis и Seq.</li>
+        <li><strong>Почтовая служба:</strong> отправка уведомлений, кодов подтверждения и писем для восстановления доступа; поставщик SMTP barkfluff.com не подтвержден.</li>
+        <li><strong>Firebase Cloud Messaging:</strong> отправка push-уведомлений, если функция включена.</li>
+        <li><strong>Telegram Bot API:</strong> пересылка сообщений формы поддержки в Telegram-чат поддержки.</li>
+        <li><strong>LiveKit:</strong> передача медиа звонков; размещение службы и сроки хранения данных не подтверждены.</li>
+        <li><strong>Cloudflare:</strong> в проверенных ответах главной страницы и политики конфиденциальности присутствуют заголовки <code>server: cloudflare</code> и Network Error Logging (NEL); браузер может отправлять отчеты о сетевых ошибках на настроенный endpoint.</li>
+        <li><strong>Google Fonts:</strong> браузер загружает шрифты с <code>fonts.googleapis.com</code> и <code>fonts.gstatic.com</code>.</li>
+        <li><strong>Хостинг и инфраструктура:</strong> основной сервер публичной ноды расположен в Германии; состав и обработка у сторонних инфраструктурных поставщиков не подтверждены.</li>
       </ul>
-      <p>Конкретный набор поставщиков выбирает администратор ноды: он может отключить push, использовать другой SMTP-сервис или обойтись без Telegram.</p>
+      <p>Для публичной ноды подтверждены перечисленные выше потоки; настройки, местонахождение и сроки хранения у внешних поставщиков не установлены оператором в рамках этой политики и не выводятся из практики хранения самой ноды.</p>
       </div>
       <div lang="en"><p>Personal data is not sold. Data is shared with external providers only to operate the features the node administrator has enabled:</p>
       <ul>
         <li><strong>Other federation nodes:</strong> see section 4.</li>
-        <li><strong>SMTP:</strong> email notifications, confirmation codes, access recovery.</li>
-        <li><strong>Firebase Cloud Messaging:</strong> push notifications to devices with a Firebase token.</li>
-        <li><strong>Telegram Bot API:</strong> handling messages from the website support chat.</li>
-        <li><strong>Hosting and infrastructure:</strong> hosting of services, databases, file storage, RabbitMQ, Redis and Seq.</li>
+        <li><strong>Email service:</strong> sending notices, confirmation codes and access-recovery emails; the SMTP provider used by barkfluff.com has not been confirmed.</li>
+        <li><strong>Firebase Cloud Messaging:</strong> sending push notifications when enabled.</li>
+        <li><strong>Telegram Bot API:</strong> forwarding website support messages to the support Telegram chat.</li>
+        <li><strong>LiveKit:</strong> relaying call media; hosting and data-retention details have not been confirmed.</li>
+        <li><strong>Cloudflare:</strong> checked responses from the main page and privacy policy contain <code>server: cloudflare</code> and Network Error Logging (NEL) headers; the browser may send network-error reports to the configured endpoint.</li>
+        <li><strong>Google Fonts:</strong> the browser loads fonts from <code>fonts.googleapis.com</code> and <code>fonts.gstatic.com</code>.</li>
+        <li><strong>Hosting and infrastructure:</strong> the public node's main server is in Germany; the full set of third-party infrastructure providers and their processing details have not been confirmed.</li>
       </ul>
-      <p>The specific set of providers is chosen by the node administrator: they may disable push, use a different SMTP service, or do without Telegram.</p>
+      <p>The flows listed above are confirmed for the public node. The operator has not established provider locations or retention periods in this policy; the node's own storage practices should not be attributed to providers.</p>
       </div>
     </div>
   </section>
@@ -387,7 +401,7 @@
       <ul>
         <li><strong>Доступ и экспорт:</strong> экспорт возвращает JSON-файлы <code>profile.json</code>, <code>messages.json</code> и <code>files.json</code>.</li>
         <li><strong>Исправление:</strong> профиль, био, аватар, постер, приватность, устройства и пароль можно менять через клиентские функции, где они доступны.</li>
-        <li><strong>Удаление:</strong> после обработки запроса администратором ноды аккаунт окончательно удаляется через 7 дней; подробности см. на странице <a href="/legal/account-deletion">«Удаление аккаунта»</a>.</li>
+        <li><strong>Удаление:</strong> после обработки запроса аккаунт находится в состоянии «в удалении» 7 дней; затем фоновая очистка может завершиться позже при повторе после ошибки. Подробности см. на странице <a href="/legal/account-deletion">«Удаление аккаунта»</a>.</li>
         <li><strong>Отзыв сессии:</strong> активную сессию можно завершить через функции управления устройствами.</li>
         <li><strong>Ограничение федерации:</strong> входящие федеративные личные чаты можно запретить в настройках приватности.</li>
       </ul>
@@ -396,7 +410,7 @@
       <ul>
         <li><strong>Access and export:</strong> export returns the JSON files <code>profile.json</code>, <code>messages.json</code> and <code>files.json</code>.</li>
         <li><strong>Correction:</strong> profile, bio, avatar, poster, privacy, devices and password can be changed through client features where available.</li>
-        <li><strong>Deletion:</strong> after the node administrator processes the request, the account is permanently deleted after 7 days; see the <a href="/legal/account-deletion">“Account Deletion”</a> page for details.</li>
+        <li><strong>Deletion:</strong> after the request is processed, the account remains pending deletion for 7 days; background cleanup then runs and may finish later if it must be retried after an error. See the <a href="/legal/account-deletion">“Account Deletion”</a> page.</li>
         <li><strong>Session revocation:</strong> an active session can be terminated via device management features.</li>
         <li><strong>Limiting federation:</strong> incoming federated private chats can be refused in the privacy settings.</li>
       </ul>
@@ -410,17 +424,19 @@
         <li>Обычные сообщения поддерживают удаление через Messages API.</li>
         <li>Приватные encrypted-сообщения при удалении помечаются как удаленные, а шифротекст очищается.</li>
         <li>Секретные сообщения удаляются из временного буфера после подтверждения доставки или истечения TTL.</li>
-        <li>Удаление действует в пределах вашей ноды. Копии, уже доставленные на другую ноду, удаляет только ее администратор.</li>
-        <li>Для удаления аккаунта и данных, не покрытых клиентскими функциями, обратитесь к администратору ноды. После обработки запроса начинается 7-дневный период до окончательного удаления.</li>
+        <li>При удалении федеративного сообщения нода отправляет участвующим нодам событие; другая нода применяет его после получения и проверки. Это не происходит синхронно и не удаляет скачанные файлы, скриншоты или другие пользовательские копии. Удаление аккаунта не передается другим нодам.</li>
+        <li>Для удаления аккаунта и данных, не покрытых клиентскими функциями, обратитесь к оператору ноды. После обработки запроса начинается 7-дневный период ожидания; затем фоновая очистка может завершиться позже, если ее потребуется повторить после ошибки.</li>
       </ul>
+      <p>По сведениям оператора, журналы и резервные копии публичной ноды могут храниться без установленного максимального срока. Данные, попавшие туда ранее, могут сохраниться после удаления аккаунта. Это не означает, что конкретные данные обязательно есть в копиях или что копии существуют либо сохраняются всегда; это не относится к сторонним поставщикам. Сроки и критерии хранения необходимо определить по целям обработки.</p>
       </div>
       <div lang="en"><ul>
         <li>Regular messages support deletion via the Messages API.</li>
         <li>Private encrypted messages are marked as deleted on deletion, and the ciphertext is cleared.</li>
         <li>Secret messages are removed from the temporary buffer after delivery confirmation or TTL expiry.</li>
-        <li>Deletion applies within your node. Copies already delivered to another node can only be deleted by that node's administrator.</li>
-        <li>For deletion of an account and data not covered by client features, contact the node administrator. After the request is processed, a 7-day period begins before final deletion.</li>
+        <li>When a federated message is deleted, the node sends an event to participating nodes, which apply it after receipt and validation. This is not synchronous and does not remove downloaded files, screenshots or other user-held copies. Account deletion is not sent to other nodes.</li>
+        <li>For deletion of an account and data not covered by client features, contact the node operator. After the request is processed, a 7-day pending period begins; background cleanup follows and may finish later if it must be retried after an error.</li>
       </ul>
+      <p>According to the operator, logs and backups of the public node may be kept without an established maximum period. Data that entered them earlier may remain after account deletion. This does not mean that any particular data is necessarily in a copy or that copies always exist or are retained; this statement does not cover third-party providers. Retention periods and criteria should be set for each processing purpose.</p>
       </div>
     </div>
   </section>
@@ -429,20 +445,20 @@
     <div>
       <div lang="ru"><ul>
         <li>Нативные клиенты используют локальное хранилище для токенов, настроек и кешей.</li>
-        <li>Windows-клиент хранит <code>GlobalParam.json</code> и может защищать его PIN-кодом.</li>
-        <li>macOS-клиент использует Keychain для токенов.</li>
-        <li>Сайт использует cookie <code>barkfluff_chat_id</code> (сессия чата поддержки, 1 год), <code>bf_open_chat</code> (краткоживущий переход с публичной страницы профиля в web-клиент) и <code>bf_cookie_notice</code> (отметка о показанном уведомлении об использовании cookie, 1 год).</li>
-        <li>Web-клиент использует cookie <code>bf_theme</code> (выбранная цветовая схема, 1 год) и <code>bf_legal_accepted</code> (редакция принятых Пользовательского соглашения и Политики конфиденциальности, 1 год); токены доступа хранятся в localStorage или sessionStorage браузера.</li>
-        <li>Cookie для аналитики, рекламы и отслеживания не используются.</li>
+        <li>Windows-клиент хранит <code>GlobalParam.json</code> и может защищать его PIN-кодом; macOS использует Keychain для токенов.</li>
+        <li>На сайте cookie <code>barkfluff_chat_id</code> используется для чата поддержки (до 1 года), <code>bf_open_chat</code> — для перехода с публичной страницы профиля в web-клиент (до 5 минут), <code>bf_cookie_notice</code> — для отметки версии уведомления (до 1 года).</li>
+        <li>Сайт хранит выбранный язык в localStorage <code>bf_lang</code>, а закрытие уведомления об истории домена — в <code>bf_domain_notice_v1</code>; отдельный срок истечения для этих записей не задан.</li>
+        <li>Web-клиент использует cookie <code>bf_theme</code> (тема), <code>bf_lang</code> (язык) и <code>bf_legal_accepted</code> (редакция принятых условий и политики), до 1 года. Токены доступа хранятся в localStorage или sessionStorage браузера.</li>
+        <li>BarkFluff не устанавливает намеренно собственные cookie для аналитики или рекламы. Внешние запросы сайта могут передавать технические данные поставщикам; см. раздел 7.</li>
       </ul>
       </div>
       <div lang="en"><ul>
         <li>Native clients use local storage for tokens, settings and caches.</li>
-        <li>The Windows client stores <code>GlobalParam.json</code> and can protect it with a PIN.</li>
-        <li>The macOS client uses the Keychain for tokens.</li>
-        <li>The site uses the cookies <code>barkfluff_chat_id</code> (support chat session, 1 year), <code>bf_open_chat</code> (short-lived transition from a public profile page to the web client) and <code>bf_cookie_notice</code> (a record that the cookie notice has been shown, 1 year).</li>
-        <li>The web client uses the cookies <code>bf_theme</code> (selected colour scheme, 1 year) and <code>bf_legal_accepted</code> (the revision of the accepted Terms of Service and Privacy Policy, 1 year); access tokens are kept in the browser's localStorage or sessionStorage.</li>
-        <li>No cookies are used for analytics, advertising or tracking.</li>
+        <li>The Windows client stores <code>GlobalParam.json</code> and can protect it with a PIN; macOS uses Keychain for tokens.</li>
+        <li>The site uses <code>barkfluff_chat_id</code> for support chat (up to 1 year), <code>bf_open_chat</code> to open a chat from a public profile page (up to 5 minutes), and <code>bf_cookie_notice</code> to remember the notice version (up to 1 year).</li>
+        <li>The site stores the selected language in localStorage <code>bf_lang</code> and dismissal of the domain-history notice in <code>bf_domain_notice_v1</code>; no separate expiry is set for these entries.</li>
+        <li>The web client uses the <code>bf_theme</code> (theme), <code>bf_lang</code> (language), and <code>bf_legal_accepted</code> (accepted Terms and Policy revision) cookies for up to 1 year. Access tokens are kept in browser localStorage or sessionStorage.</li>
+        <li>BarkFluff does not deliberately set its own cookies for analytics or advertising. External site requests may send technical data to providers; see section 7.</li>
       </ul>
       </div>
     </div>
@@ -450,9 +466,9 @@
   <section class="sec">
     <div><span class="idx">11</span><h2><span lang="ru">Дети</span><span lang="en">Children</span></h2></div>
     <div>
-      <div lang="ru"><p>Barkfluff не предназначен для пользователей младше 13 лет. Администратор ноды вправе установить более высокий возрастной порог. Если вы считаете, что ребенок младше 13 лет создал аккаунт, сообщите администратору соответствующей ноды.</p>
+      <div lang="ru"><p>Публичная нода barkfluff.com предназначена только для пользователей 16 лет и старше. Другие ноды устанавливают собственные возрастные правила. Если вы считаете, что на barkfluff.com зарегистрирован пользователь младше 16 лет, напишите на <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>.</p>
       </div>
-      <div lang="en"><p>Barkfluff is not intended for users under 13. A node administrator may set a higher age limit. If you believe a child under 13 has created an account, notify the administrator of the node in question.</p>
+      <div lang="en"><p>The public barkfluff.com node is for users aged 16 and older. Other nodes set their own age rules. If you believe a user under 16 has registered on barkfluff.com, contact <a href="mailto:privacy@barkfluff.com">privacy@barkfluff.com</a>.</p>
       </div>
     </div>
   </section>
@@ -474,6 +490,7 @@
         <li>Поддержка: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
         <li>Юридические вопросы и жалобы на контент: <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a></li>
       </ul>
+      <p>Обращения на служебные адреса оператора могут храниться без установленного максимального срока. Обоснованные сроки и критерии хранения следует определить отдельно для каждой цели обработки.</p>
       <p><strong>Разработчик программного обеспечения Barkfluff</strong> — по уязвимостям в коде и вопросам протокола:</p>
       <ul>
         <li>Безопасность и протокол: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>
@@ -486,6 +503,7 @@
         <li>Support: <a href="mailto:support@barkfluff.com">support@barkfluff.com</a></li>
         <li>Legal matters and content complaints: <a href="mailto:legal@barkfluff.com">legal@barkfluff.com</a></li>
       </ul>
+      <p>Requests sent to the operator's service email addresses may be kept without an established maximum period. Justified retention periods and criteria should be determined for each processing purpose.</p>
       <p><strong>Developer of the Barkfluff software</strong> — for code vulnerabilities and protocol questions:</p>
       <ul>
         <li>Security and protocol: <a href="mailto:security@barkfluff.com">security@barkfluff.com</a></li>

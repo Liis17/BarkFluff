@@ -208,7 +208,7 @@
   "connection.reconnecting": "Reconnecting…",
   "connection.retry": "Retry",
   "connection.synced": "Synced",
-  "cookie.notice": "We use cookies only to run the client: the selected theme and the record of accepted documents. No analytics or ads.",
+  "cookie.notice": "The web client uses cookies for theme, language, the current legal-document revision and the notice version. Access tokens are stored in browser storage. BarkFluff does not set advertising or analytics cookies.",
   "cookie.ok": "Got it",
   "date.today": "Today",
   "date.yesterday": "Yesterday",
