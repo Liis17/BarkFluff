@@ -21,7 +21,18 @@ class BftProxyServerSelectionPolicyTest {
             "https://beacon.example:443",
             BftProxySessionPolicy.beaconAddressForSelection(false, "https://beacon.example:443")
         )
-        assertTrue(BftProxySessionPolicy.needsServerSelectionForDirectBeacon(""))
-        assertFalse(BftProxySessionPolicy.needsServerSelectionForDirectBeacon("https://beacon.example:443"))
+        assertTrue(BftProxySessionPolicy.needsServerSelectionAfterProxyDisabled("", "", hasSession = false))
+        assertFalse(BftProxySessionPolicy.needsServerSelectionAfterProxyDisabled("https://beacon.example:443", "", hasSession = false))
+    }
+
+    @Test
+    fun `disabling proxy keeps a proxy-only session on the node's direct service endpoints`() {
+        assertFalse(
+            BftProxySessionPolicy.needsServerSelectionAfterProxyDisabled("", "https://identity.example:443", hasSession = true)
+        )
+        assertTrue(
+            BftProxySessionPolicy.needsServerSelectionAfterProxyDisabled("", "https://identity.example:443", hasSession = false)
+        )
+        assertTrue(BftProxySessionPolicy.needsServerSelectionAfterProxyDisabled("", "", hasSession = true))
     }
 }

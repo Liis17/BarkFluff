@@ -80,8 +80,14 @@ internal object BftProxyLinkImporter {
         return true
     }
 
+    /** Без принятого согласия выбор ноды открывается только через WelcomeActivity. */
     fun restartAtNodeSelection(activity: Activity) {
-        val intent = Intent(activity, SelectServerActivity::class.java).apply {
+        val target = if (WelcomeActivity.legalConsentRequired(activity)) {
+            WelcomeActivity::class.java
+        } else {
+            SelectServerActivity::class.java
+        }
+        val intent = Intent(activity, target).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         }
         activity.startActivity(intent)

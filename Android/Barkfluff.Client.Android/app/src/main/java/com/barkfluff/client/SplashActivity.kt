@@ -135,7 +135,8 @@ class SplashActivity : AppCompatActivity() {
      * Проверяет, есть ли настройки сервера (адрес beacon)
      */
     private fun hasServerConfiguration(): Boolean {
-        return globalParam.socketBeacon.isNotBlank()
+        // После входа через BFT-прокси Beacon не сохраняется, но адреса сервисов ноды уже известны.
+        return globalParam.socketBeacon.isNotBlank() || globalParam.socketIdentity.isNotBlank()
     }
 
     /**
