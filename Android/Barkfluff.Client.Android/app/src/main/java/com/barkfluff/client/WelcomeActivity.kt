@@ -244,15 +244,6 @@ class WelcomeActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Согласие требуется, если оно ещё не давалось или соглашение обновилось с прошлого раза.
-     * Редакцию берём из самого документа, а не из версии приложения.
-     */
-    private fun legalConsentRequired(): Boolean {
-        val current = runCatching { LegalDocsRepository.revision(this) }.getOrDefault("")
-        return current.isNotEmpty() && current != GlobalParam(this).acceptedLegalRevision
-    }
-
     private fun requestLegalConsent() {
         supportFragmentManager.setFragmentResultListener(
             LegalConsentBottomSheet.RESULT_KEY,
@@ -270,7 +261,7 @@ class WelcomeActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.startButton.setOnClickListener {
-            if (legalConsentRequired()) requestLegalConsent() else navigateToSelectServer()
+            if (legalConsentRequired(this)) requestLegalConsent() else navigateToSelectServer()
         }
 
         binding.proxySettingsButton.setOnClickListener {
@@ -387,5 +378,17 @@ class WelcomeActivity : AppCompatActivity() {
         /** Отступ hero-блока от статус-бара; складывается с системным инсетом. */
         private const val WELCOME_TOP_PADDING_DP = 24
         private const val WELCOME_BOTTOM_PADDING_DP = 24
+
+        /**
+         * Согласие требуется, если оно ещё не давалось или соглашение обновилось с прошлого раза.
+         * Редакцию берём из самого документа, а не из версии приложения.
+         */
+        fun legalConsentRequired(context: Context): Boolean = legalConsentRequired(
+            currentRevision = runCatching { LegalDocsRepository.revision(context) }.getOrDefault(""),
+            acceptedRevision = GlobalParam(context).acceptedLegalRevision
+        )
+
+        internal fun legalConsentRequired(currentRevision: String, acceptedRevision: String): Boolean =
+            currentRevision.isNotEmpty() && currentRevision != acceptedRevision
     }
 }
