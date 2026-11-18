@@ -54,7 +54,7 @@ class BftNodeIdentityTest {
         assertTrue(BftProxySessionPolicy.mayApplyServerInfo(proxyEnabled = true, hasSession = false))
         assertEquals("", BftProxySessionPolicy.beaconAddressForSelection(true, "https://bft.internal:443"))
         assertEquals("https://beacon.example:443", BftProxySessionPolicy.beaconAddressForSelection(false, "https://beacon.example:443"))
-        assertTrue(BftProxySessionPolicy.needsServerSelectionForDirectBeacon(""))
-        assertFalse(BftProxySessionPolicy.needsServerSelectionForDirectBeacon("https://beacon.example:443"))
+        assertTrue(BftProxySessionPolicy.needsServerSelectionAfterProxyDisabled("", "", hasSession = false))
+        assertFalse(BftProxySessionPolicy.needsServerSelectionAfterProxyDisabled("https://beacon.example:443", "", hasSession = false))
     }
 }

@@ -20,7 +20,7 @@ Parent: [[Clients/Android]]
 
 AndroidManifest.xml → SplashActivity → WelcomeActivity при первом запуске или SelectServerActivity → LoginActivity. При наличии сессии переход идёт в MainActivity. SelectServerActivity использует ServerDiscoveryGateway: Navigator возвращает каталог и Files media origin; Beacon возвращает service endpoints. ServerInfoPrefs.applyServerInfo сохраняет актуальную конфигурацию в GlobalParam. При включённом BFT прокси выбор из Navigator отключён: Beacon вызывается по service ID 1 через `bft.internal`, а ServerInfo по-прежнему сохраняется обычным способом.
 
-`bft://` открывает `DeepLinkActivity` и требует подтверждения в `BftProxyLinkImporter` до записи. После согласия `BftProxyManager` сохраняет ссылку и включает прокси, затем запускается выбор ноды через Beacon. ProxySettingsActivity открывается с Welcome, SelectServer и профиля; настройки переживают logout.
+`bft://` открывает `DeepLinkActivity` и требует подтверждения в `BftProxyLinkImporter` до записи. После согласия `BftProxyManager` сохраняет ссылку и включает прокси, затем запускается выбор ноды через Beacon; если текущая редакция соглашений не принята, `restartAtNodeSelection` сначала возвращает на WelcomeActivity с обязательным согласием. ProxySettingsActivity открывается с Welcome, SelectServer и профиля; настройки переживают logout.
 
 LoginActivity делегирует challenge-поток AuthenticationChallengeController; серверная блокировка или ожидающее удаление показываются отдельным состоянием с причиной и, для удаления, локальной датой. Ограничение refresh/FastAuth по gRPC-коду завершает сессию и возвращает на вход с понятным сообщением.
 

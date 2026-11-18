@@ -73,7 +73,13 @@ class ProxySettingsActivity : AppCompatActivity() {
                         render(proxy.settings)
                     }
                     .onSuccess {
-                        if (BftProxySessionPolicy.needsServerSelectionForDirectBeacon(GlobalParam(applicationContext).socketBeacon)) {
+                        val globalParam = GlobalParam(applicationContext)
+                        if (BftProxySessionPolicy.needsServerSelectionAfterProxyDisabled(
+                                globalParam.socketBeacon,
+                                globalParam.socketIdentity,
+                                BftProxySessionPolicy.hasSession(globalParam.accessToken, globalParam.refreshToken, globalParam.userId)
+                            )
+                        ) {
                             Toast.makeText(this, R.string.bft_proxy_no_direct_beacon, Toast.LENGTH_LONG).show()
                             BftProxyLinkImporter.restartAtNodeSelection(this)
                         }
