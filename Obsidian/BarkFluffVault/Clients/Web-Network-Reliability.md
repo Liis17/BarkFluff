@@ -1,6 +1,6 @@
 # Web — сетевые операции и восстановление
 
-Заметка фиксирует текущее поведение браузерного клиента. Основные реализации: `Backend/BarkFluff.Web/wwwroot/js/app/network.js`, `clients.js`, `realtime.js`, `connection.js`, `files.js`, `drafts.js`, `pending-sends.js` и `send-queue.js`.
+Заметка фиксирует текущее поведение браузерного клиента. Основные реализации: `Backend/BarkFluff.Web/wwwroot/js/app/network.js`, `clients.js`, `realtime.js`, `connection.js`, `files.js`, `drafts.js`, `pending-sends.js`, `pending-files.js` и `send-queue.js`.
 
 ## Unary gRPC-Web и авторизация
 
@@ -37,10 +37,10 @@
 
 Обычная отправка проходит через `BF.sendQueue`. До сети клиент создаёт локальное сообщение и сохраняет в `BF.pendingSends` operation ID, текст/подпись, reply, file IDs и метаданные загрузок. Если запись в `localStorage` не удалась, send не начинается. `SendMessage` получает тот же `clientOperationId`; ответ, realtime или история заменяют pending bubble и удаляют запись. Автоматического повтора send нет; ручной retry сохраняет operation ID, чтобы сервер мог дедуплицировать запрос. Отменить можно активную загрузку до dispatch `SendMessage`; уже отправляемый RPC так не отменяется.
 
-`File` и `Blob` не сохраняются. После reload клиент восстанавливает metadata отправки и уже полученные file IDs; незавершённую загрузку можно продолжить после повторного выбора файла с совпадающими именем, размером и типом. Бинарного IndexedDB outbox нет.
+Небольшие вложения (до 20 МБ на файл и 50 МБ на отправку) `BF.pendingFiles` хранит в IndexedDB по operation ID отправки до её подтверждения или отмены. Запись идёт после metadata в `localStorage` и отправку не блокирует. После reload `restorePendingSends` удаляет файлы отправок, которых больше нет, и возвращает сохранённые файлы в pending-запись. Если файлы есть для всех незавершённых загрузок, запись получает состояние `unknown` и продолжается ручным retry без выбора файла. Retry проверяет зарезервированный slot через `retryUpload` и повторяет загрузку и `SendMessage` с прежними operation ID, поэтому сервер не создаёт дубликат. Крупные файлы, отказ IndexedDB или исчерпанная квота оставляют прежний путь: после reload файл выбирают заново, сверяя имя, размер и тип; picker запрашивает только файлы, которых нет в хранилище. При logout сохранённые файлы не удаляются, как и metadata `BF.pendingSends`.
 
 `BF.drafts` node-scoped для каждого пользователя. Текст и reply локально помечаются `dirty`, синхронизация запускается после двух секунд бездействия, при старте и событии `online`; на чат допускается один in-flight RPC. ACK очищает только отправленную generation. При ошибке запись остаётся dirty, а фоновый backoff растёт с 2 до 30 секунд. Черновики не подключены к private/secret чатам. Локальная запись может не пережить reload, если браузер отклонит запись в `localStorage`.
 
 ## Проверочные сценарии в репозитории
 
-Скрипты `Backend/BarkFluff.Web/scripts/test-network.js`, `test-refresh-session.js`, `test-auth-challenge.js`, `test-files-upload.js`, `test-drafts.js`, `test-pending-sends.js`, `test-send-queue.js` и `test-connection.js` проверяют соответствующие транспортные, auth, upload, queue и resync-сценарии.
+Скрипты `Backend/BarkFluff.Web/scripts/test-network.js`, `test-refresh-session.js`, `test-auth-challenge.js`, `test-files-upload.js`, `test-drafts.js`, `test-pending-sends.js`, `test-pending-files.js`, `test-send-queue.js` и `test-connection.js` проверяют соответствующие транспортные, auth, upload, queue и resync-сценарии.
