@@ -80,7 +80,9 @@ function createHarness(options) {
         matches: options.matches === undefined ? true : options.matches,
         uploadType: options.uploadType === undefined ? 2 : options.uploadType,
         buildElementResult: options.buildElementResult,
-        groupEls: groupEls
+        groupEls: groupEls,
+        snapshots: {},
+        storedFiles: options.storedFiles || {}
     };
     var BF = {
         i18n: {
@@ -225,6 +227,7 @@ function createHarness(options) {
         BF.pendingSends = {
             put: function (snapshot) {
                 calls.push(['pendingSends.put', snapshot.chatId, snapshot.state]);
+                state.snapshots[snapshot.operationId] = plain(snapshot);
                 return state.putResult;
             },
             remove: function (operationId) {
@@ -232,6 +235,26 @@ function createHarness(options) {
             },
             all: function () {
                 return state.storedEntries;
+            }
+        };
+    }
+    if (options.pendingFiles) {
+        BF.pendingFiles = {
+            put: function (operationId, files) {
+                calls.push(['pendingFiles.put', operationId, files.length]);
+                return Promise.resolve(true);
+            },
+            get: function (operationId) {
+                calls.push(['pendingFiles.get', operationId]);
+                return Promise.resolve(state.storedFiles[operationId] || null);
+            },
+            remove: function (operationId) {
+                calls.push(['pendingFiles.remove', operationId]);
+                return Promise.resolve(true);
+            },
+            prune: function (keep) {
+                calls.push(['pendingFiles.prune', plain(keep)]);
+                return Promise.resolve(true);
             }
         };
     }
@@ -1798,6 +1821,188 @@ async function main() {
         await settle();
         assert.equal(h.state.messages.length, 1);
         assert.equal(h.state.messages[0].id, 700);
+    });
+
+    // --- BF.pendingFiles: resuming small attachments after a reload ---
+
+    await test('a file send keeps its files in BF.pendingFiles until the server echo settles it', async function () {
+        var h = createHarness({ pendingFiles: true });
+        h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        var put = h.calls().filter((c) => c[0] === 'pendingFiles.put');
+        assert.equal(put.length, 1);
+        assert.equal(put[0][2], 1);
+        var operationId = put[0][1];
+        await settle();
+        assert.deepEqual(
+            h.calls().filter((c) => c[0] === 'pendingFiles.remove'),
+            [['pendingFiles.remove', operationId]]
+        );
+    });
+
+    await test('a plain text send never writes to BF.pendingFiles', async function () {
+        var h = createHarness({ pendingFiles: true, text: 'hi' });
+        h.BF.sendQueue.sendMessage();
+        await settle();
+        assert.equal(h.has('pendingFiles.put'), false);
+    });
+
+    await test('cancelling an upload drops its stored files', async function () {
+        var h = createHarness({
+            pendingFiles: true,
+            uploadResult: function () {
+                return new Promise(function () {});
+            }
+        });
+        h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        var operationId = h.calls().find((c) => c[0] === 'pendingFiles.put')[1];
+        h.BF.sendQueue.cancelPendingSend('pending-send-' + operationId);
+        assert.deepEqual(
+            h.calls().filter((c) => c[0] === 'pendingFiles.remove'),
+            [['pendingFiles.remove', operationId]]
+        );
+    });
+
+    await test('closing the tab mid-upload: after reload the stored file resumes the same upload and send once', async function () {
+        // Tab 1: the slot is reserved, then the tab closes while the bytes are still in flight.
+        var before = createHarness({
+            pendingFiles: true,
+            uploadResult: function (f, uploadType, options) {
+                options.onReserved('rf1');
+                return new Promise(function () {});
+            }
+        });
+        before.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, 'cap');
+        await settle();
+        var operationId = before.calls().find((c) => c[0] === 'pendingFiles.put')[1];
+        var stored = before.state.snapshots[operationId];
+        assert.equal(stored.uploads[0].reservedFileId, 'rf1');
+
+        // Tab 2: restore from the persisted metadata and the stored bytes; the user clicks retry right away.
+        var uploadOperationIds = [];
+        var sendPayloads = [];
+        var after = createHarness({
+            pendingFiles: true,
+            storedEntries: [stored],
+            storedFiles: { [operationId]: [file('a.png')] },
+            uploadResult: function (f, uploadType, options) {
+                uploadOperationIds.push(options.operationId);
+                return Promise.resolve('server-rf1');
+            },
+            sendResult: function (payload) {
+                sendPayloads.push(payload.clientOperationId);
+                return Promise.resolve({
+                    message: { id: 900, senderId: 1, content: {}, clientOperationId: payload.clientOperationId }
+                });
+            }
+        });
+        after.BF.sendQueue.restorePendingSends();
+        after.BF.sendQueue.retryPendingSend('pending-send-' + operationId);
+        await settle();
+
+        assert.deepEqual(
+            after.calls().filter((c) => c[0] === 'pendingFiles.prune'),
+            [['pendingFiles.prune', [operationId]]]
+        );
+        assert.equal(after.els['#fileInput'].calls, undefined, 'no file picker is needed');
+        assert.equal(after.has('uploadFile'), false, 'a reserved upload resumes through retryUpload');
+        assert.deepEqual(
+            after.calls().filter((c) => c[0] === 'retryUpload'),
+            [['retryUpload', 'a.png']]
+        );
+        assert.deepEqual(uploadOperationIds, [stored.uploads[0].operationId]);
+        assert.deepEqual(sendPayloads, [operationId], 'SendMessage runs once with the original operation id');
+        assert.deepEqual(
+            after.calls().filter((c) => c[0] === 'pendingFiles.remove'),
+            [['pendingFiles.remove', operationId]]
+        );
+    });
+
+    await test('restored stored files turn waiting-file into a retryable state with a preview', async function () {
+        var stored = {
+            operationId: 'op-1',
+            chatId: 'chat-a',
+            fileIds: [],
+            uploads: [
+                { operationId: 'u1', name: 'a.png', size: 10, type: 'image/png', uploadType: 2, state: 'pending' }
+            ]
+        };
+        var h = createHarness({
+            pendingFiles: true,
+            storedEntries: [stored],
+            storedFiles: { 'op-1': [file('a.png')] }
+        });
+        h.BF.sendQueue.restorePendingSends();
+        await settle();
+        assert.deepEqual(
+            h.calls().filter((c) => c[0] === 'pendingSends.put'),
+            [['pendingSends.put', 'chat-a', 'unknown']]
+        );
+        assert.equal(h.has('createObjectURL'), true);
+    });
+
+    await test('a large file that was not stored is the only one the picker asks for, and lands in its slot', async function () {
+        var stored = {
+            operationId: 'op-1',
+            chatId: 'chat-a',
+            fileIds: [],
+            uploads: [
+                { operationId: 'u1', name: 'a.png', size: 10, type: 'image/png', uploadType: 2, state: 'pending' },
+                {
+                    operationId: 'u2',
+                    name: 'big.mov',
+                    size: 10,
+                    type: 'video/quicktime',
+                    uploadType: 3,
+                    state: 'pending'
+                }
+            ]
+        };
+        var h = createHarness({
+            pendingFiles: true,
+            storedEntries: [stored],
+            storedFiles: { 'op-1': [file('a.png'), null] }
+        });
+        h.BF.sendQueue.restorePendingSends();
+        await settle();
+        assert.equal(h.has('pendingSends.put'), false, 'still waiting for a file, the state stays waiting-file');
+        h.BF.sendQueue.retryPendingSend('pending-send-op-1');
+        await settle();
+        assert.equal(h.has('getUploadStatus'), false);
+        assert.equal(h.els['#fileInput'].calls[0], 'click');
+
+        h.clear();
+        h.els['#fileInput'].files = [file('big.mov', 10, 'video/quicktime')];
+        h.els['#fileInput'].listeners.change();
+        await settle();
+        assert.deepEqual(
+            h.calls().filter((c) => c[0] === 'matchesPendingUpload'),
+            [['matchesPendingUpload', 'big.mov']]
+        );
+        assert.deepEqual(
+            h.calls().filter((c) => c[0] === 'retryUpload'),
+            [
+                ['retryUpload', 'a.png'],
+                ['retryUpload', 'big.mov']
+            ]
+        );
+        assert.equal(h.has('api.sendMessage'), true);
+    });
+
+    await test('without stored files (quota or IndexedDB failure) retry falls back to the file picker', async function () {
+        var stored = {
+            operationId: 'op-1',
+            chatId: 'chat-a',
+            fileIds: [],
+            uploads: [
+                { operationId: 'u1', name: 'a.png', size: 10, type: 'image/png', uploadType: 2, state: 'pending' }
+            ]
+        };
+        var h = createHarness({ pendingFiles: true, storedEntries: [stored] });
+        h.BF.sendQueue.restorePendingSends();
+        h.BF.sendQueue.retryPendingSend('pending-send-op-1');
+        await settle();
+        assert.equal(h.els['#fileInput'].calls[0], 'click');
+        assert.equal(h.has('retryUpload'), false);
     });
 }
 

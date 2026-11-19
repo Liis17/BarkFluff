@@ -2,7 +2,7 @@
  * Send queue: optimistic pending messages (text and file uploads), their durable metadata restore on
  * reload, reconciliation with the server echo, retry/cancel, and the attach button / file input wiring.
  * Requires: BF.api, BF.composer, BF.drafts, BF.feed, BF.files, BF.i18n, BF.messageEvents, BF.messages,
- *           BF.pendingSends, BF.privateChatUI, BF.sound, BF.utils
+ *           BF.pendingFiles (optional), BF.pendingSends, BF.privateChatUI, BF.sound, BF.utils
  * Exposes: BF.sendQueue
  */
 (function () {
@@ -38,11 +38,56 @@
         entry.previewUrls = [];
     }
 
+    function forgetStoredSend(entry) {
+        if (!entry.operationId) return;
+        if (BF.pendingSends) BF.pendingSends.remove(entry.operationId);
+        if (BF.pendingFiles) BF.pendingFiles.remove(entry.operationId);
+    }
+
+    function attachRuntimePreview(entry, upload, file) {
+        var attachment = entry.localMessage.content.attachments[upload.index];
+        if (attachment && (upload.uploadType === IMAGE_UPLOAD_TYPE || upload.uploadType === GIF_UPLOAD_TYPE)) {
+            var previewUrl = URL.createObjectURL(file);
+            entry.previewUrls.push(previewUrl);
+            attachment.localPreviewUrl = previewUrl;
+        }
+    }
+
+    function hasUploadWithoutFile(entry) {
+        return entry.uploads.some(function (upload) {
+            return upload.state !== 'completed' && !(entry.runtimeFiles && entry.runtimeFiles[upload.index]);
+        });
+    }
+
+    // After a reload, picks up the bytes BF.pendingFiles kept for the send. Entries whose every unfinished
+    // upload has its file back become retryable without a file picker; the retry itself re-checks the
+    // reserved slot and reuses the operation IDs, so the server deduplicates an already accepted upload/send.
+    function loadStoredFiles(entry) {
+        entry.storedFilesLoad = BF.pendingFiles
+            .get(entry.operationId)
+            .then(function (files) {
+                if (!files || entry.settled || entry.runtimeFiles) return;
+                entry.runtimeFiles = new Array(entry.uploads.length);
+                entry.uploads.forEach(function (upload) {
+                    var file = files[upload.index];
+                    if (upload.state === 'completed' || !file || !BF.files.matchesPendingUpload(upload, file)) return;
+                    entry.runtimeFiles[upload.index] = file;
+                    attachRuntimePreview(entry, upload, file);
+                });
+                if (hasUploadWithoutFile(entry)) refreshPendingElement(entry);
+                else setPendingState(entry, 'unknown');
+            })
+            .catch(function () {})
+            .then(function () {
+                entry.storedFilesLoad = null;
+            });
+    }
+
     function removePendingUpload(entry) {
         if (!entry || entry.settled) return;
         entry.settled = true;
         pendingUploads.delete(entry.localId);
-        if (BF.pendingSends && entry.operationId) BF.pendingSends.remove(entry.operationId);
+        forgetStoredSend(entry);
         releasePendingPreviews(entry);
 
         var messages = deps.getMessages();
@@ -101,7 +146,7 @@
             if (serverMessage) {
                 entry.settled = true;
                 pendingUploads.delete(entry.localId);
-                if (BF.pendingSends && entry.operationId) BF.pendingSends.remove(entry.operationId);
+                forgetStoredSend(entry);
                 if (BF.drafts && entry.draftSnapshot) BF.drafts.clearSent(entry.chatId, entry.draftSnapshot);
                 releasePendingPreviews(entry);
             } else {
@@ -148,7 +193,7 @@
 
         entry.settled = true;
         pendingUploads.delete(entry.localId);
-        if (BF.pendingSends && entry.operationId) BF.pendingSends.remove(entry.operationId);
+        forgetStoredSend(entry);
         if (BF.drafts && entry.draftSnapshot) BF.drafts.clearSent(entry.chatId, entry.draftSnapshot);
 
         if (String(chatId) !== String(deps.getCurrentChatId())) {
@@ -287,8 +332,18 @@
                 previewUrls: [],
                 abortController: null,
                 retrying: false,
+                storedFilesLoad: null,
                 settled: false
             });
+        });
+        if (!BF.pendingFiles) return;
+        BF.pendingFiles.prune(
+            BF.pendingSends.all().map(function (stored) {
+                return stored.operationId;
+            })
+        );
+        pendingUploads.forEach(function (entry) {
+            if (hasUploadWithoutFile(entry)) loadStoredFiles(entry);
         });
     }
 
@@ -483,16 +538,22 @@
     function retryPendingSend(localId) {
         var entry = pendingUploads.get(localId);
         if (!entry || entry.settled || entry.retrying) return;
-        var hasIncompleteUpload = entry.uploads.some(function (upload) {
-            return upload.state !== 'completed';
-        });
-        if (hasIncompleteUpload && (!entry.runtimeFiles || entry.runtimeFiles.length === 0)) {
+        if (entry.storedFilesLoad) {
+            entry.retrying = true;
+            entry.storedFilesLoad.then(function () {
+                entry.retrying = false;
+                retryPendingSend(localId);
+            });
+            return;
+        }
+        if (hasUploadWithoutFile(entry)) {
             entry.retrying = true;
             var needsFile = false;
             var stillProcessing = false;
             var checks = entry.uploads.reduce(function (chain, upload, index) {
                 return chain.then(function () {
                     if (upload.state === 'completed' && upload.resultFileId) return;
+                    if (entry.runtimeFiles && entry.runtimeFiles[index]) return;
                     if (!upload.reservedFileId) {
                         needsFile = true;
                         return;
@@ -611,6 +672,7 @@
             deps.showToast(BF.i18n.t('error.pendingStorage'), false);
             return;
         }
+        if (BF.pendingFiles) BF.pendingFiles.put(entry.operationId, files);
         BF.composer.clearForSend();
         showPendingSend(entry);
         runPendingSend(entry, false);
@@ -639,7 +701,10 @@
 
             if (retryEntry && !retryEntry.settled) {
                 var incomplete = retryEntry.uploads.filter(function (upload) {
-                    return upload.state !== 'completed';
+                    return (
+                        upload.state !== 'completed' &&
+                        !(retryEntry.runtimeFiles && retryEntry.runtimeFiles[upload.index])
+                    );
                 });
                 var matches =
                     files.length === incomplete.length &&
@@ -652,19 +717,10 @@
                     return;
                 }
 
-                retryEntry.runtimeFiles = new Array(retryEntry.uploads.length);
+                retryEntry.runtimeFiles = retryEntry.runtimeFiles || new Array(retryEntry.uploads.length);
                 incomplete.forEach(function (upload, index) {
-                    var file = files[index];
-                    retryEntry.runtimeFiles[upload.index] = file;
-                    var attachment = retryEntry.localMessage.content.attachments[upload.index];
-                    if (
-                        attachment &&
-                        (upload.uploadType === IMAGE_UPLOAD_TYPE || upload.uploadType === GIF_UPLOAD_TYPE)
-                    ) {
-                        var previewUrl = URL.createObjectURL(file);
-                        retryEntry.previewUrls.push(previewUrl);
-                        attachment.localPreviewUrl = previewUrl;
-                    }
+                    retryEntry.runtimeFiles[upload.index] = files[index];
+                    attachRuntimePreview(retryEntry, upload, files[index]);
                 });
                 refreshPendingElement(retryEntry);
                 retryEntry.retrying = true;
