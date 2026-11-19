@@ -3,25 +3,24 @@
  * Подключается строкой <script src="/assets/cookie-notice.js" defer> на каждой странице сайта:
  * общего layout у html/ нет, поэтому баннер живёт отдельным самодостаточным файлом.
  *
- * Отказаться нельзя: сайт ставит только cookie, без которых не работают чат поддержки
- * (barkfluff_chat_id) и переход в веб-клиент (bf_open_chat). Аналитики и рекламы нет,
- * поэтому категорий и тумблеров тоже нет — см. раздел 10 Политики конфиденциальности.
+ * Уведомление не управляет категориями cookie; их назначение описано в разделе 10
+ * Политики конфиденциальности.
  */
 (function () {
     'use strict';
 
-    /* Версия уведомления. Меняется, если изменился состав cookie — тогда баннер показывается заново. */
-    var VERSION = '1';
+    /* Версия текста уведомления; новая версия показывается повторно. */
+    var VERSION = '2';
     var COOKIE = 'bf_cookie_notice';
 
     var S = {
         ru: {
-            text: 'Мы используем cookie только для работы сайта: чат поддержки и переход в веб-версию. Аналитики и рекламы нет.',
+            text: 'Сайт использует cookie для чата поддержки, перехода из публичного профиля к чату и запоминания версии уведомления. BarkFluff не устанавливает cookie аналитики или рекламы.',
             more: 'Подробнее',
             ok: 'Понятно'
         },
         en: {
-            text: 'We use cookies only to run the site: the support chat and switching to the web app. No analytics, no ads.',
+            text: 'The site uses cookies for the support chat, opening a chat from a public profile, and remembering the notice version. BarkFluff does not set analytics or advertising cookies.',
             more: 'Learn more',
             ok: 'Got it'
         }

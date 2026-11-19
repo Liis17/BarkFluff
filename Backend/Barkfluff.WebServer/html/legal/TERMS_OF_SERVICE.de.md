@@ -1,7 +1,7 @@
 # BarkFluff Nutzungsbedingungen
 
 **Gültig ab:** 24. Januar 2026  
-**Letzte Aktualisierung:** 13. November 2026
+**Letzte Aktualisierung:** 19. November 2026 (Fassung 2)
 
 > Diese Übersetzung dient nur der Bequemlichkeit. Im Falle von Abweichungen ist die russische Fassung maßgebend.
 
@@ -9,15 +9,17 @@
 
 BarkFluff ist ein föderiertes Netzwerk unabhängiger Server („Knoten“). Jeder Knoten wird von seinem Administrator bereitgestellt und betrieben; die Knoten kommunizieren untereinander, um Nutzer verschiedener Knoten zu verbinden.
 
-Der Dienst wird Ihnen von **dem Administrator des Knotens erbracht, auf dem Ihr Konto angelegt wurde**. Diese Vereinbarung wird zwischen Ihnen und ihm geschlossen. Die Entwickler von BarkFluff sind nicht Partei dieser Vereinbarung: Sie veröffentlichen die Software, erbringen Ihnen aber keinen Kommunikationsdienst und betreiben keine fremden Knoten.
+Der Dienst wird vom Administrator des Knotens erbracht, auf dem Ihr Konto angelegt wurde; die Vereinbarung besteht mit diesem Administrator. Beim öffentlichen Knoten barkfluff.com ist der Hauptentwickler als natürliche Person aus Armenien Betreiber und Vertragspartner; weitere Angaben stehen unten. Die Rolle der Entwickler als Softwareautoren für andere unabhängig betriebene Knoten macht sie nicht zu Parteien der Vereinbarungen zwischen Nutzern und den Administratoren dieser Knoten.
 
 Dieser Text gilt für den Knoten **barkfluff.com**. Der Administrator jedes anderen Knotens veröffentlicht seine eigene Fassung der Bedingungen und darf eigene Regeln aufstellen. Wurde Ihr Konto nicht auf barkfluff.com angelegt, gelten die Bedingungen Ihres Knotens.
+
+Für den öffentlichen Knoten barkfluff.com ist der Hauptentwickler von BarkFluff als natürliche Person aus Armenien der Betreiber. Der Hauptserver des Knotens befindet sich in Deutschland. BarkFluff ist ein Open-Source-Projekt und nicht als juristische Person registriert.
 
 Mit der Nutzung von BarkFluff stimmen Sie diesen Bedingungen und den zugehörigen Dokumenten zu: der Datenschutzerklärung, der Kontolöschung und der Verschlüsselung.
 
 ## 2. Rollen und Verantwortungsbereiche
 
-- **Der BarkFluff-Entwickler** schreibt den Code, veröffentlicht Client-Releases und die Protokollspezifikation und nimmt Schwachstellenmeldungen entgegen. Er betreibt keine fremden Knoten, hat keinen Zugriff auf deren Daten und ist nicht verantwortlich für deren Betrieb, Verfügbarkeit, Moderation oder das Handeln ihrer Administratoren.
+- **Die BarkFluff-Entwickler als Softwareautoren für andere unabhängig betriebene Knoten** schreiben den Code, veröffentlichen Client-Releases und die Protokollspezifikation und nehmen Schwachstellenmeldungen entgegen. In dieser Rolle betreiben sie diese Knoten nicht, greifen nicht auf deren Daten zu und übernehmen keine Verantwortung für deren Betrieb, Verfügbarkeit, Moderation oder das Handeln ihrer Administratoren. Der Hauptentwickler betreibt den öffentlichen Knoten barkfluff.com gesondert, wie in Abschnitt 1 beschrieben.
 - **Der Knotenadministrator** stellt den Knoten bereit, aktualisiert und konfiguriert ihn, ist verantwortlich für die Sicherheit und Rechtmäßigkeit der Verarbeitung der Daten seiner Nutzer, für Sicherungskopien, für die Moderation und für die Beantwortung von Anfragen. Er entscheidet auch, ob die Föderation aktiviert wird und mit welchen Knoten kommuniziert wird.
 - **Sie** sind verantwortlich für Ihre Geräte, Ihr Passwort und Ihre 2FA-Codes sowie für die Inhalte, die Sie senden und veröffentlichen.
 
@@ -31,7 +33,7 @@ Ein BarkFluff-Knoten besteht aus Backend-Microservices, mit denen sich die Clien
 
 ## 4. Nutzungsvoraussetzungen
 
-- Sie müssen mindestens 13 Jahre alt sein. Ein Knotenadministrator darf eine höhere Altersgrenze festlegen.
+- Für die Nutzung des öffentlichen Knotens barkfluff.com müssen Sie mindestens 16 Jahre alt sein. Andere Knoten legen eigene Altersregeln fest.
 - Bei der Registrierung müssen Sie eine gültige E-Mail-Adresse und einen gültigen Benutzernamen angeben.
 - Sie sind für die Sicherheit Ihres Passworts, Ihrer 2FA-Codes und der Geräte mit aktiver Sitzung verantwortlich.
 - Bei Verlust eines Geräts können Sie die aktive Sitzung über die Geräteverwaltung beenden.
@@ -70,7 +72,7 @@ Ein Knotenadministrator darf diese Liste um eigene Regeln ergänzen.
 - Die Föderation ist standardmäßig deaktiviert; der Knotenadministrator schaltet sie ein.
 - Föderierte Chats sind ausschließlich 1-zu-1. Gruppenchats zwischen Knoten werden nicht unterstützt.
 - **Föderierte Nachrichten sind nicht Ende-zu-Ende-verschlüsselt.** Ihr Inhalt ist sowohl Ihrem Knoten als auch dem Knoten des Gesprächspartners zugänglich. Private und geheime Chats funktionieren nur innerhalb eines Knotens.
-- Wenn Sie mit einem Nutzer eines anderen Knotens schreiben, geben Sie Ihre Nachrichten und Dateien faktisch in die Kontrolle des Administrators jenes Knotens. Ein Löschen auf Ihrer Seite löscht dessen Kopie nicht.
+- Wenn Sie mit einem Nutzer eines anderen Knotens kommunizieren, unterstehen Ihre Nachrichten und Dateien der Kontrolle des dortigen Administrators. Die Löschung einer föderierten Nachricht wird als Ereignis an andere Knoten gesendet und nach Empfang und Prüfung angewendet, jedoch nicht synchron; heruntergeladene Dateien und Bildschirmaufnahmen werden nicht entfernt. Die Kontolöschung wird nicht an andere Knoten weitergegeben und löscht dort bereits übermittelte Daten nicht.
 - Eingehende föderierte Einzelchats können in den Datenschutzeinstellungen abgelehnt werden.
 - Einzelheiten finden Sie in der Datenschutzerklärung, Abschnitt „Föderierter Datenaustausch“.
 
@@ -93,7 +95,7 @@ Ein Knoten wird „wie besehen“ bereitgestellt. Störungen, Wartungsarbeiten s
 
 ## 12. Haftungsbeschränkung
 
-- **Der Entwickler** haftet nicht für Betrieb und Verfügbarkeit irgendeines Knotens, für Handeln oder Unterlassen seiner Administratoren, für die Sicherheit und Verarbeitung der dortigen Daten, für Nutzerinhalte oder für Schäden, die aus der Nutzung der Software entstehen.
+- **Die BarkFluff-Entwickler in ihrer Rolle als Softwareautoren für andere unabhängig betriebene Knoten** haften nicht für Betrieb und Verfügbarkeit dieser Knoten, das Handeln oder Unterlassen ihrer Administratoren, die Sicherheit und Verarbeitung der dortigen Daten, Nutzerinhalte auf diesen Knoten oder Verluste aus der Softwarenutzung im Zusammenhang mit diesen Knoten. Diese Aussage beschreibt nicht die gesonderte Rolle des Hauptentwicklers als Betreiber des öffentlichen Knotens barkfluff.com (Abschnitt 1).
 - **Der Knotenadministrator** haftet nicht für mittelbare Schäden, Datenverlust durch Handlungen des Nutzers, Kompromittierung von Gerät oder Passwort, Handlungen Dritter, von anderen Knoten empfangene Inhalte sowie die Nichtverfügbarkeit externer Anbieter, einschließlich E-Mail, Firebase, Telegram, Hosting und Netzinfrastruktur.
 
 ## 13. Änderung der Vereinbarung
@@ -102,7 +104,7 @@ Bei Änderungen der Vereinbarung wird das Datum „Letzte Aktualisierung“ ange
 
 ## 14. Anwendbares Recht und Streitigkeiten
 
-Das anwendbare Recht und das Verfahren zur Streitbeilegung richten sich nach der Jurisdiktion des Administrators Ihres Knotens. Für Angelegenheiten des Knotens barkfluff.com richten Sie Ihre Anfrage an legal@barkfluff.com; die Bearbeitungsfrist beträgt bis zu 30 Tage.
+Der öffentliche Knoten barkfluff.com wird aus Armenien betrieben. Anwendbares Recht und Streitbeilegung richten sich nach den für das jeweilige Rechtsverhältnis geltenden Regeln; diese Bedingungen schließen zwingende Rechte, die Ihnen zustehen können, nicht aus und bestimmen keinen ausschließlichen Gerichtsstand. Rechtliche Anliegen richten Sie an legal@barkfluff.com. Eine standardisierte Antwortfrist ist nicht festgelegt; anwendbare gesetzliche Fristen bleiben unberührt.
 
 ## 15. Kontakte
 
@@ -120,4 +122,4 @@ Wurde Ihr Konto auf einem anderen Knoten angelegt, finden Sie die Kontakte seine
 
 ## 16. Zustimmung
 
-Mit der Nutzung von BarkFluff bestätigen Sie, dass Sie die Vereinbarung gelesen haben, verstehen, dass der Dienst von einem Knotenadministrator erbracht wird, den Regeln zu folgen zustimmen und mindestens 13 Jahre alt sind.
+Mit der Nutzung von BarkFluff bestätigen Sie, dass Sie die Vereinbarung gelesen haben, verstehen, dass der Dienst von einem Knotenadministrator erbracht wird, den Regeln zu folgen zustimmen und mindestens 16 Jahre alt sind, um den öffentlichen Knoten barkfluff.com zu nutzen.

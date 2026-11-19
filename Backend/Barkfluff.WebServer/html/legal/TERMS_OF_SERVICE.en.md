@@ -1,7 +1,7 @@
 # BarkFluff Terms of Service
 
 **Effective from:** January 24, 2026  
-**Last updated:** November 13, 2026
+**Last updated:** November 19, 2026 (revision 2)
 
 > This translation is provided for convenience. In case of any discrepancy, the Russian version prevails.
 
@@ -9,15 +9,17 @@
 
 BarkFluff is a federated network of independent servers ("nodes"). Each node is deployed and operated by its administrator; nodes talk to each other to connect users of different nodes.
 
-The service is provided to you by **the administrator of the node where your account was created**. This agreement is made between you and them. The BarkFluff developers are not a party to it: they publish the software, but they do not provide you with a communication service and do not operate other people's nodes.
+The service is provided by the administrator of the node where your account was created, and the agreement is with that administrator. For the public barkfluff.com node, the lead developer is the operator and contracting party, acting as an individual from Armenia; further details are below. The BarkFluff developers' role as software authors for other independently operated nodes does not make them party to agreements between users and those node administrators.
 
 This text applies to the **barkfluff.com** node. The administrator of any other node publishes their own version of the terms and may set their own rules. If your account was not created on barkfluff.com, your node's terms apply.
+
+For the public barkfluff.com node, the operator is BarkFluff's lead developer, acting as an individual from Armenia. The node's main server is located in Germany. BarkFluff is an open-source project and is not registered as a legal entity.
 
 By using BarkFluff, you agree to these Terms and the related documents: the Privacy Policy, Account Deletion and Encryption.
 
 ## 2. Roles and areas of responsibility
 
-- **The BarkFluff developer** writes the code, publishes client releases and the protocol specification, and receives vulnerability reports. They do not host other people's nodes, have no access to their data, and are not responsible for their operation, availability, moderation or the actions of their administrators.
+- **The BarkFluff developers as software authors for other independently operated nodes** write code, publish client releases and the protocol specification, and receive vulnerability reports. In that role, they do not operate those nodes, access their data, or take responsibility for their operation, availability, moderation or their administrators' actions. The lead developer separately operates the public barkfluff.com node as described in section 1.
 - **The node administrator** deploys, updates and configures the node, is responsible for the safety and lawfulness of the processing of their users' data, for backups, for moderation and for answering requests. They also decide whether to enable federation and which nodes to talk to.
 - **You** are responsible for your devices, password and 2FA codes, and for the content you send and publish.
 
@@ -31,7 +33,7 @@ A BarkFluff node consists of backend microservices that the Windows, Android, ma
 
 ## 4. Usage requirements
 
-- You must be at least 13 years old. A node administrator may set a higher age limit.
+- You must be at least 16 years old to use the public barkfluff.com node. Other nodes set their own age rules.
 - At registration you must provide a valid email and username.
 - You are responsible for safeguarding your password, 2FA codes and the devices with an active session.
 - If a device is lost, you can terminate the active session via device management features.
@@ -70,7 +72,7 @@ A node administrator may extend this list with their own rules.
 - Federation is disabled by default; the node administrator turns it on.
 - Federated chats are 1-to-1 only. Group chats between nodes are not supported.
 - **Federated messages are not end-to-end encrypted.** Their content is available both to your node and to your correspondent's node. Private and secret chats work within a single node only.
-- By chatting with a user of another node you effectively hand your messages and files over to that node's administrator. Deleting them on your side does not delete their copy.
+- When you chat with a user of another node, your messages and files come under that node administrator's control. A federated message deletion is sent to other nodes as an event and applied after receipt and validation, but not synchronously; downloaded files and screenshots are not removed. Account deletion does not propagate to other nodes or erase data already delivered to them.
 - Incoming federated private chats can be refused in the privacy settings.
 - For details see the Privacy Policy, section "Federated data exchange".
 
@@ -93,7 +95,7 @@ A node is provided "as is". Outages, maintenance, and client or backend service 
 
 ## 12. Limitation of liability
 
-- **The developer** is not liable for the operation or availability of any node, for the acts or omissions of its administrators, for the safety and processing of data on it, for user content, or for damages arising from the use of the software.
+- **The BarkFluff developers in their role as software authors for other independently operated nodes** are not liable for those nodes' operation or availability, their administrators' acts or omissions, the safety and processing of data on those nodes, user content there, or losses from software use in the context of those nodes. This statement does not describe the lead developer's separate role as operator of the public barkfluff.com node (section 1).
 - **The node administrator** is not liable for indirect damages, data loss caused by user actions, device or password compromise, third-party actions, content received from other nodes, and the unavailability of external providers, including email, Firebase, Telegram, hosting and network infrastructure.
 
 ## 13. Changes to the agreement
@@ -102,7 +104,7 @@ When the agreement changes, the "Updated" date is updated. By continuing to use 
 
 ## 14. Governing law and disputes
 
-The governing law and the dispute resolution procedure are determined by the jurisdiction of your node's administrator. For matters concerning the barkfluff.com node, send your request to legal@barkfluff.com; the response time is up to 30 days.
+The public barkfluff.com node is operated from Armenia. Applicable law and dispute resolution depend on the rules governing the particular relationship; these Terms do not exclude mandatory rights that may apply to you or specify an exclusive court. For legal matters, contact legal@barkfluff.com. No standard response time is set; statutory deadlines, where applicable, remain in force.
 
 ## 15. Contacts
 
@@ -120,4 +122,4 @@ If your account was created on another node, look for its administrator's contac
 
 ## 16. Consent
 
-By using BarkFluff, you confirm that you have read the agreement, understand that the service is provided by a node administrator, agree to follow the rules and are at least 13 years old.
+By using BarkFluff, you confirm that you have read the agreement, understand that the service is provided by a node administrator, agree to follow the rules and are at least 16 years old to use the public barkfluff.com node.

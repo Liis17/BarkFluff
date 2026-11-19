@@ -169,7 +169,7 @@
     /* Имя и значение совпадают с баннером сайта (files/cookie-notice.js): он ставит cookie
        на .barkfluff.com, поэтому принявшему на barkfluff.com здесь ничего не покажется. */
     var NOTICE_COOKIE = 'bf_cookie_notice';
-    var NOTICE_VERSION = '1';
+    var NOTICE_VERSION = '2';
 
     function initCookieNotice() {
         if (document.cookie.indexOf(NOTICE_COOKIE + '=' + NOTICE_VERSION) !== -1) return;

@@ -1,7 +1,7 @@
 # Términos de servicio de BarkFluff
 
 **En vigor desde:** 24 de enero de 2026  
-**Última actualización:** 13 de noviembre de 2026
+**Última actualización:** 19 de noviembre de 2026 (revisión 2)
 
 > Esta traducción se proporciona únicamente por comodidad. En caso de discrepancia, prevalece la versión en ruso.
 
@@ -9,15 +9,17 @@
 
 BarkFluff es una red federada de servidores independientes («nodos»). Cada nodo lo despliega y mantiene su administrador; los nodos se comunican entre sí para conectar a usuarios de nodos distintos.
 
-El servicio se lo presta **el administrador del nodo en el que se creó su cuenta**. Este acuerdo se celebra entre usted y él. Los desarrolladores de BarkFluff no son parte de este acuerdo: publican el software, pero no le prestan un servicio de comunicación ni gestionan nodos ajenos.
+El servicio lo presta el administrador del nodo en el que se creó su cuenta, y el acuerdo se celebra con ese administrador. En el nodo público barkfluff.com, el desarrollador principal es el operador y parte contratante, y actúa como persona física desde Armenia; los detalles figuran más abajo. La función de los desarrolladores de BarkFluff como autores del software para otros nodos gestionados de forma independiente no los convierte en parte de los acuerdos entre usuarios y los administradores de esos nodos.
 
 Este texto se refiere al nodo **barkfluff.com**. El administrador de cualquier otro nodo publica su propia versión de los términos y puede establecer sus propias normas. Si su cuenta no se creó en barkfluff.com, rigen los términos de su nodo.
+
+En el nodo público barkfluff.com, el operador es el desarrollador principal de BarkFluff, que actúa como persona física desde Armenia. El servidor principal del nodo está en Alemania. BarkFluff es un proyecto de código abierto y no está registrado como persona jurídica.
 
 Al usar BarkFluff, usted acepta estos Términos y los documentos relacionados: la Política de privacidad, la Eliminación de cuenta y el Cifrado.
 
 ## 2. Funciones y ámbitos de responsabilidad
 
-- **El desarrollador de BarkFluff** escribe el código, publica las versiones de los clientes y la especificación del protocolo, y recibe los informes de vulnerabilidades. No aloja nodos ajenos, no tiene acceso a sus datos y no responde de su funcionamiento, disponibilidad, moderación ni de los actos de sus administradores.
+- **Los desarrolladores de BarkFluff, como autores del software para otros nodos gestionados de forma independiente,** escriben el código, publican las versiones de los clientes y la especificación del protocolo, y reciben los informes de vulnerabilidades. En esa función no gestionan esos nodos, no acceden a sus datos ni responden de su funcionamiento, disponibilidad, moderación o de los actos de sus administradores. El desarrollador principal opera por separado el nodo público barkfluff.com, como se indica en la sección 1.
 - **El administrador del nodo** despliega, actualiza y configura el nodo, responde de la seguridad y la licitud del tratamiento de los datos de sus usuarios, de las copias de seguridad, de la moderación y de la atención a las solicitudes. También decide si activa la federación y con qué nodos se comunica.
 - **Usted** responde de sus dispositivos, su contraseña y sus códigos 2FA, así como del contenido que envía y publica.
 
@@ -31,7 +33,7 @@ Un nodo de BarkFluff se compone de microservicios de backend a los que se conect
 
 ## 4. Requisitos de uso
 
-- Debe tener al menos 13 años. El administrador de un nodo puede fijar un límite de edad superior.
+- Debe tener al menos 16 años para usar el nodo público barkfluff.com. Otros nodos establecen sus propias reglas de edad.
 - Al registrarse debe indicar un correo electrónico y un nombre de usuario válidos.
 - Usted responde de la custodia de su contraseña, de sus códigos 2FA y de los dispositivos con sesión activa.
 - Si pierde un dispositivo, puede cerrar la sesión activa mediante las funciones de gestión de dispositivos.
@@ -70,7 +72,7 @@ El administrador de un nodo puede ampliar esta lista con sus propias normas.
 - La federación está desactivada por defecto; la activa el administrador del nodo.
 - Los chats federados son solo individuales, 1 a 1. No se admiten los chats de grupo entre nodos.
 - **Los mensajes federados no tienen cifrado de extremo a extremo.** Su contenido es accesible tanto para su nodo como para el nodo de su interlocutor. Los chats privados y secretos funcionan solo dentro de un mismo nodo.
-- Al conversar con un usuario de otro nodo, usted entrega de hecho sus mensajes y archivos al control del administrador de ese nodo. Eliminarlos por su parte no elimina la copia de él.
+- Al conversar con un usuario de otro nodo, sus mensajes y archivos quedan bajo el control del administrador de ese nodo. La eliminación de un mensaje federado se envía a otros nodos como evento y se aplica tras su recepción y validación, pero no de forma sincrónica; los archivos descargados y las capturas de pantalla no se eliminan. La eliminación de la cuenta no se propaga a otros nodos ni borra los datos ya entregados.
 - Los chats privados federados entrantes pueden rechazarse en los ajustes de privacidad.
 - Los detalles figuran en la Política de privacidad, sección «Intercambio federado de datos».
 
@@ -93,7 +95,7 @@ El nodo se ofrece «tal cual». Son posibles fallos, tareas de mantenimiento y e
 
 ## 12. Limitación de responsabilidad
 
-- **El desarrollador** no responde del funcionamiento ni de la disponibilidad de ningún nodo, de los actos u omisiones de sus administradores, de la conservación y el tratamiento de los datos en ellos, del contenido de los usuarios, ni de los daños derivados del uso del software.
+- **Los desarrolladores de BarkFluff en su función de autores del software para otros nodos gestionados de forma independiente** no responden del funcionamiento ni de la disponibilidad de esos nodos, de los actos u omisiones de sus administradores, de la conservación y el tratamiento de los datos en ellos, del contenido de sus usuarios ni de las pérdidas derivadas del uso del software en esos nodos. Esta cláusula no describe el papel separado del desarrollador principal como operador del nodo público barkfluff.com (sección 1).
 - **El administrador del nodo** no responde de daños indirectos, de la pérdida de datos por actos del usuario, del compromiso del dispositivo o de la contraseña, de los actos de terceros, del contenido recibido de otros nodos ni de la indisponibilidad de proveedores externos, incluidos correo electrónico, Firebase, Telegram, alojamiento e infraestructura de red.
 
 ## 13. Modificación del acuerdo
@@ -102,7 +104,7 @@ Cuando el acuerdo cambia, se actualiza la fecha de «Última actualización». S
 
 ## 14. Ley aplicable y controversias
 
-La ley aplicable y el procedimiento de resolución de controversias se determinan por la jurisdicción del administrador de su nodo. Para cuestiones relativas al nodo barkfluff.com, dirija su solicitud a legal@barkfluff.com; el plazo de respuesta es de hasta 30 días.
+El nodo público barkfluff.com es operado desde Armenia. La ley aplicable y la resolución de controversias dependen de las normas que rijan la relación concreta; estas Condiciones no excluyen los derechos imperativos que puedan corresponderle ni establecen un tribunal exclusivo. Para cuestiones jurídicas, escriba a legal@barkfluff.com. No se ha establecido un plazo estándar de respuesta; se mantienen los plazos legales aplicables.
 
 ## 15. Contactos
 
@@ -120,4 +122,4 @@ Si su cuenta se creó en otro nodo, busque los datos de contacto de su administr
 
 ## 16. Consentimiento
 
-Al usar BarkFluff, usted confirma que ha leído el acuerdo, que entiende que el servicio lo presta el administrador de un nodo, que acepta cumplir las normas y que ha cumplido 13 años.
+Al usar BarkFluff, usted confirma que ha leído el acuerdo, que entiende que el servicio lo presta el administrador de un nodo, que acepta cumplir las normas y que tiene al menos 16 años para usar el nodo público barkfluff.com.

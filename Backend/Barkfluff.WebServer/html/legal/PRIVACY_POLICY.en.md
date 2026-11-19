@@ -1,7 +1,7 @@
 # BarkFluff Privacy Policy
 
 **Effective from:** January 24, 2026  
-**Last updated:** November 13, 2026
+**Last updated:** November 19, 2026 (revision 2)
 
 > This translation is provided for convenience. In case of any discrepancy, the Russian version prevails.
 
@@ -9,9 +9,9 @@
 
 BarkFluff is a federated network of independent servers ("nodes"). Each node is deployed and operated by its administrator; nodes talk to each other to connect users of different nodes.
 
-The controller of your personal data is **the administrator of the node where your account was created**. They host the services, own the database, file storage, backups and logs, decide the retention periods, answer your requests and are responsible for compliance with the law applicable to them.
+For the public barkfluff.com node, the controller is an individual operator: BarkFluff's lead developer, based in Armenia. The node's main server is in Germany. BarkFluff is an open-source project and is not registered as a legal entity. The operator's contact addresses are listed at the end of this document.
 
-The BarkFluff developers publish the software and the protocol specification. They do **not** host other people's nodes, do **not** have access to their data, keys, traffic or backups, **cannot** disclose, modify or delete data on someone else's node, and are **not** the controller of your data.
+The BarkFluff developers publish the software and protocol specification for nodes operated by other administrators. In their role as software authors, they do not operate those nodes, access their data, keys, traffic or backups, or handle requests about that data. The lead developer separately operates the public barkfluff.com node as an individual, as stated above.
 
 This document describes the behaviour of the software in its default configuration and applies to the **barkfluff.com** node. The administrator of any other node publishes their own version and may change the configuration or the source code — in that case their terms apply. If your account was not created on barkfluff.com, contact your own node's administrator.
 
@@ -46,7 +46,7 @@ This document describes the behaviour of the software in its default configurati
 | Firebase token | Push notifications via Firebase Cloud Messaging | Users.UserDevices |
 | Refresh token | Session renewal and sign-out from device | Identity.RefreshTokens |
 
-The IP address is passed in gRPC service metadata headers and is used to process current requests. This data does not leave your node and is not sent to other nodes.
+Some clients send an IP value in the gRPC metadata header x-ip-address. The node uses this client-supplied value in the request context; it is not a trusted IP source and is not one of the XFed headers used for inter-node requests. This does not mean the network IP is hidden from external services: a remote endpoint can see the source IP of its connection; see section 7.
 
 ### 3.3 Messages, chats and files
 
@@ -64,9 +64,17 @@ Onliner stores and serves the online status and last activity time. Updates deli
 
 ### 3.5 Website and support
 
-WebServer serves the main page, public profile pages, legal pages, install scripts, client versions and the public profile REST API. Messages from the website support form are stored in the WebServer process memory and forwarded to the node administrator via the Telegram Bot API, if they configured such forwarding.
+WebServer serves the public site, profile pages, legal documents and the public profile REST API. On barkfluff.com, website support messages enter WebServer's in-process history and are forwarded to the support Telegram chat. The local history is lost when the process restarts. The operator reports that the Telegram support chat is automatically cleared once a week; this is periodic chat cleanup, not a per-message retention period. No cleanup schedule for the local history has been confirmed.
+
+Requests sent to the operator's service email addresses may be kept without an established maximum retention period. The operator reports that codes sent by the service are not kept in the operator's own mailbox; this says nothing about processing by Identity or storage in the recipient's mailbox.
 
 On clicking "Message in browser" on a public profile page, WebServer creates a short-lived cookie `bf_open_chat` so the web client opens a chat with the selected user.
+
+### 3.6 Calls, bots and push notifications
+
+Calls stores technical call-session details in the node database, including participants, call type, status, and start, answer and end times. Call media is relayed through LiveKit. The public-node operator reports that the server does not record call media. This statement does not cover call metadata, data on participants' devices or other nodes; LiveKit hosting and data-retention details have not been confirmed.
+
+If you send a message or file to a bot, it is delivered to that bot through the API. The bot operator may process or store what it receives under its own rules. A device push token is stored in Users; backend code sends notifications through Firebase Cloud Messaging when enabled. An ordinary mobile FCM data payload may include chat_id, sender_id, sender_name, avatar_url, chat_title, chat_avatar_url, is_group_chat, content_type, image_url, message_id, message_text (a preview truncated to 100 characters), and attachment_count. A private-message payload contains private_chat_id, event_id and sender_user_id; a secret-message payload contains event_id, sender_user_id and sender_device_id. Neither payload contains message text. Whether APNs or other platform delivery services are used has not been confirmed.
 
 ## 4. Federated data exchange
 
@@ -75,7 +83,7 @@ Federation is disabled by default (`Federation:Enabled = false`) — the node ad
 | What leaves for another node | When | How |
 | --- | --- | --- |
 | Identifier, username, name and profile avatar | When a user of another node finds you or opens your profile card | Inter-node profile request, subject to your privacy settings |
-| Message text, edits, deletions, read receipts | 1-to-1 conversation with a user of another node | Signed events with guaranteed delivery and retries |
+| Message text, edits, deletions, read receipts | 1-to-1 conversation with a user of another node | Signed events; delivery is handled by a queue with retries |
 | Files and attachments | When your correspondent opens a file | Streamed on request from their node; no copy is made in advance |
 | Online status and last activity time | While a federated chat is active | Live inter-node stream; your privacy settings apply |
 | "Typing…" | While you are typing a message | A one-off notification that is not stored |
@@ -85,7 +93,7 @@ What matters here:
 - Federated chats are 1-to-1 only. Group chats between nodes are not supported.
 - **Federated messages are not end-to-end encrypted.** Their content is available both to your node and to your correspondent's node. Private and secret chats work within a single node only.
 - The receiving node becomes an **independent controller** of its copy. Neither your node nor the developers control how long or in what way it keeps that data. The model is the same as with email.
-- Deleting a message or an account on your node **does not delete** copies already delivered to other nodes. There is currently no automatic propagation of deletion across the federation.
+- For a federated message, BarkFluff sends a deletion event to participating remote nodes, which validate and apply it after receipt. Processing is not synchronous and depends on event delivery. This does not remove files already downloaded by correspondents or screenshots. Deleting an account on barkfluff.com does not send an account-deletion event or erase data already delivered to other nodes.
 - You can refuse incoming federated private chats in your privacy settings — an attempt to start a chat with you from another node will then be rejected.
 - Your node's administrator can block an entire node — data exchange with it will stop.
 
@@ -106,7 +114,7 @@ What matters here:
 ### 6.1 Data transfer
 
 - Clients and microservices use gRPC/HTTP/2 and HTTPS/TLS on the external perimeter.
-- gRPC request authorization uses XAuth metadata: `x-auth-token`, `x-device-id`, `x-device-name`, `x-ip`, `x-os`, `x-app-name`, `x-app-version`.
+- gRPC request authorization uses XAuth metadata: `x-auth-token`, `x-device-id`, `x-device-name`, `x-ip-address`, `x-os`, `x-app-name`, `x-app-version`.
 - Internal asynchronous events go through RabbitMQ / MassTransit.
 - Inter-node traffic uses a separate secured channel — see "Encryption".
 
@@ -125,15 +133,17 @@ What matters here:
 
 ## 7. Sharing with third parties
 
-Personal data is not sold. Data is shared with external providers only to operate the features the node administrator has enabled:
+Personal data is not sold. Depending on the feature and public-node configuration, data may be sent to:
 
-- **Other federation nodes:** see section 4.
-- **SMTP:** email notifications, confirmation codes, access recovery.
-- **Firebase Cloud Messaging:** push notifications to devices with a Firebase token.
-- **Telegram Bot API:** handling messages from the website support chat.
-- **Hosting and infrastructure:** hosting of services, databases, file storage, RabbitMQ, Redis and Seq.
+- other federation nodes — see section 4; each receiving node is responsible for its own copy;
+- the configured SMTP service for account emails; the email delivery provider has not been confirmed;
+- Firebase Cloud Messaging for push notifications when enabled;
+- the Telegram Bot API to forward website support messages;
+- the configured LiveKit server for calls; its hosting, operator and handling of metadata have not been confirmed;
+- The checked main page and privacy policy responses contained the server: cloudflare and Network Error Logging (NEL) headers; the browser loads Google Fonts from fonts.googleapis.com and fonts.gstatic.com.
 
-The specific set of providers is chosen by the node administrator: they may disable push, use a different SMTP service, or do without Telegram.
+An external service can see the source IP address of its network connection: for a direct browser request, the browser's IP; for a server request, the node server's egress IP. This does not mean the provider stores the address; its processing and retention periods have not been confirmed. Provider practices should not be inferred from the node's storage practices.
+
 
 ## 8. User rights
 
@@ -141,7 +151,7 @@ Send requests about your data to your node's administrator — only they can act
 
 - **Access and export:** export returns the JSON files `profile.json`, `messages.json` and `files.json`.
 - **Correction:** profile, bio, avatar, poster, privacy, devices and password can be changed through client features where available.
-- **Deletion:** after the node administrator processes the request, the account is permanently deleted after 7 days; details are in the [Account Deletion Policy](/legal/account-deletion).
+- **Deletion:** after the request is processed, the account enters pending deletion for 7 days; background cleanup starts after that and may take longer if it must be retried after an error. See the [Account Deletion Policy](/legal/account-deletion).
 - **Session revocation:** an active session can be terminated via device management features.
 - **Limiting federation:** incoming federated private chats can be refused in the privacy settings.
 
@@ -150,21 +160,26 @@ Send requests about your data to your node's administrator — only they can act
 - Regular messages support deletion via the Messages API.
 - Private encrypted messages are marked as deleted on deletion, and the ciphertext is cleared.
 - Secret messages are removed from the temporary buffer after delivery confirmation or TTL expiry.
-- Deletion applies within your node. Copies already delivered to another node can only be deleted by that node's administrator.
-- For deletion of an account and data not covered by client features, contact the node administrator. After the request is processed, the account remains pending deletion for 7 days and is then permanently deleted; see the [Account Deletion Policy](/legal/account-deletion).
+- A federated message deletion is sent to participating nodes and applied after receipt and validation; delivery and application are not synchronous. It does not remove files already downloaded by correspondents or screenshots. Account deletion on barkfluff.com does not propagate to other nodes or erase data already delivered to them.
+- For deletion of an account and data not covered by client features, contact the node operator. After the request is processed, the account remains pending deletion for 7 days; background cleanup then runs and may be delayed if it must be retried after an error. See the [Account Deletion Policy](/legal/account-deletion).
+
+### Retention on the public node
+
+According to the operator, no maximum retention period has been set for the public node's logs and backups. Data that may have entered them earlier may remain after account deletion. This does not mean that any particular data is necessarily included in a copy or that copies always exist or are retained; this statement does not describe third-party providers' retention. No confirmed operational retention periods for other categories of data have been provided.
 
 ## 10. Cookies and local storage
 
-- Native clients use local storage for tokens, settings and caches.
-- The Windows client stores `GlobalParam.json` and can protect it with a PIN.
-- The macOS client uses the Keychain for tokens.
-- The site uses the cookies `barkfluff_chat_id` (support chat session, 1 year), `bf_open_chat` (short-lived transition from a public profile page to the web client) and `bf_cookie_notice` (a record that the cookie notice has been shown, 1 year).
-- The web client uses the cookies `bf_theme` (selected colour scheme, 1 year) and `bf_legal_accepted` (the revision of the accepted Terms of Service and Privacy Policy, 1 year); access tokens are kept in the browser's localStorage or sessionStorage.
-- No cookies are used for analytics, advertising or tracking.
+- The site uses the barkfluff_chat_id cookie (support chat identifier, up to 1 year), bf_open_chat (transition from a public profile page to the web client, up to 5 minutes) and bf_cookie_notice (notice acknowledgement, up to 1 year).
+- The site uses localStorage bf_lang for the selected language and bf_domain_notice_v1 to remember dismissal of the domain-history notice; no separate expiry is set for these entries.
+- The web client uses the bf_theme (theme), bf_lang (language) and bf_legal_accepted (accepted terms and policy revision) cookies, set for up to 1 year. Access tokens are stored in browser localStorage or sessionStorage.
+- Native clients use local storage for tokens, settings and caches; the Windows client may protect GlobalParam.json with a PIN, and macOS uses Keychain.
+- The public site loads fonts from fonts.googleapis.com and fonts.gstatic.com. The operator confirmed Cloudflare response headers and Network Error Logging (NEL) on the main page and privacy policy; the browser may send network-error reports to the endpoint configured for the site.
+- BarkFluff does not deliberately set cookies for analytics or advertising. External site requests may send technical data to providers; see section 7.
+
 
 ## 11. Children
 
-BarkFluff is not intended for users under 13. A node administrator may set a higher age limit. If you believe a child under 13 has created an account, notify the administrator of the node in question.
+The public barkfluff.com node is for users aged 16 and older. Other nodes set their own age rules. If you believe a user under 16 has registered on barkfluff.com, contact privacy@barkfluff.com.
 
 ## 12. Policy changes
 

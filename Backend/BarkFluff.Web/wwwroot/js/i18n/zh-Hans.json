@@ -206,7 +206,7 @@
   "connection.reconnecting": "正在重新连接…",
   "connection.retry": "重试",
   "connection.synced": "已同步",
-  "cookie.notice": "我们仅将 Cookie 用于客户端运行：所选主题和已接受文件的记录。没有分析和广告。",
+  "cookie.notice": "Web 客户端使用 Cookie 保存主题、语言、当前法律文件版本和提示版本。访问令牌存储在浏览器存储中。BarkFluff 不设置广告或分析 Cookie。",
   "cookie.ok": "知道了",
   "date.today": "今天",
   "date.yesterday": "昨天",

@@ -206,7 +206,7 @@
   "connection.reconnecting": "Reconectando…",
   "connection.retry": "Reintentar",
   "connection.synced": "Sincronizado",
-  "cookie.notice": "Usamos cookies solo para el funcionamiento del cliente: el tema elegido y el registro de los documentos aceptados. Sin analíticas ni publicidad.",
+  "cookie.notice": "El cliente web usa cookies para el tema, el idioma, la versión vigente de los documentos legales y la versión del aviso. Los tokens de acceso se guardan en el almacenamiento del navegador. BarkFluff no instala cookies publicitarias ni analíticas.",
   "cookie.ok": "Entendido",
   "date.today": "Hoy",
   "date.yesterday": "Ayer",

@@ -83,7 +83,7 @@
 
     <section class="hero">
       <h1><span lang="ru">Техническое описание шифрования</span><span lang="en">Encryption: technical overview</span></h1>
-      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 29 июля 2026 г.</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> July 29, 2026.</span></p>
+      <p class="meta"><span lang="ru"><strong>Действует с:</strong> 24 января 2026 г. <strong>Обновлено:</strong> 19 ноября 2026 г. (редакция 2)</span><span lang="en"><strong>Effective from:</strong> January 24, 2026. <strong>Updated:</strong> November 19, 2026 (revision 2).</span></p>
     </section>
 
   <section class="sec">
@@ -295,11 +295,13 @@
     </div>
   </section>
   <section class="sec">
-    <div><span class="idx">11</span><h2><span lang="ru">Push-уведомления</span><span lang="en">Push notifications</span></h2></div>
+    <div><span class="idx">11</span><h2><span lang="ru">Звонки и push-уведомления</span><span lang="en">Calls and push notifications</span></h2></div>
     <div>
-      <div lang="ru"><p>CloudMessaging получает события из RabbitMQ и отправляет push-уведомления через Firebase Cloud Messaging, если администратор ноды включил эту функцию. Для secret-сообщений push не содержит текст сообщения.</p>
+      <div lang="ru"><p>Calls хранит в базе данных ноды технические сведения о сеансах звонков, включая участников, тип звонка, статус и время начала, ответа и завершения. Медиа передается через настроенный LiveKit-сервер. По сведениям оператора публичной ноды, сервер только ретранслирует медиа звонков и не записывает его. Это не относится к метаданным, устройствам участников или другим нодам; размещение LiveKit и сроки хранения данных не подтверждены.</p>
+      <p>CloudMessaging получает события из RabbitMQ и отправляет push-уведомления через Firebase Cloud Messaging, если функция включена. Обычный мобильный FCM data-payload может включать chat_id, sender_id, sender_name, avatar_url, chat_title, chat_avatar_url, is_group_chat, content_type, image_url, message_id, message_text (превью до 100 символов) и attachment_count. Push для private-сообщений содержит private_chat_id, event_id и sender_user_id; для secret-сообщений — event_id, sender_user_id и sender_device_id. Эти два payload содержат идентификаторы, но не текст сообщения. Использование APNs и настройки доставки для других платформ не подтверждены.</p>
       </div>
-      <div lang="en"><p>CloudMessaging receives events from RabbitMQ and sends push notifications via Firebase Cloud Messaging, if the node administrator has enabled this feature. For secret messages the push does not contain the message text.</p>
+      <div lang="en"><p>Calls stores technical call-session details in the node database, including participants, call type, status, and start, answer and end times. Media is relayed through the configured LiveKit server. According to the public-node operator, the server only relays call media and does not record it. This does not cover metadata, participants' devices or other nodes; LiveKit hosting and data-retention details have not been confirmed.</p>
+      <p>CloudMessaging receives events from RabbitMQ and sends push notifications via Firebase Cloud Messaging when enabled. An ordinary mobile FCM data payload may include chat_id, sender_id, sender_name, avatar_url, chat_title, chat_avatar_url, is_group_chat, content_type, image_url, message_id, message_text (a preview truncated to 100 characters), and attachment_count. A private-message push contains private_chat_id, event_id and sender_user_id; a secret-message push contains event_id, sender_user_id and sender_device_id. These two payloads contain identifiers but no message text. Whether APNs or other platform delivery services are used has not been confirmed.</p>
       </div>
     </div>
   </section>
