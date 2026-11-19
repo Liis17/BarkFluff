@@ -13,6 +13,7 @@ import '../wwwroot/js/app/auth-challenge.js';
 import '../wwwroot/js/app/auth-confirmation.js';
 import '../wwwroot/js/app/drafts.js';
 import '../wwwroot/js/app/pending-sends.js';
+import '../wwwroot/js/app/pending-files.js';
 import '../wwwroot/js/app/privatechat.js';
 import '../wwwroot/js/app/newchat.js';
 import '../wwwroot/js/app/files.js';

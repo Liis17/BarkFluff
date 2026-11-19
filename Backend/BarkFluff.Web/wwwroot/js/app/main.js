@@ -516,6 +516,7 @@
     BF.sidebarResize.init();
     if (BF.pendingSends) {
         BF.pendingSends.init(myUserId);
+        if (BF.pendingFiles) BF.pendingFiles.init(myUserId);
         BF.sendQueue.restorePendingSends();
     }
     if (BF.drafts) BF.drafts.init(myUserId);

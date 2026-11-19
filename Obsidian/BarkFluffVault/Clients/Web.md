@@ -6,7 +6,7 @@
 
 `index.html` содержит вход и регистрацию, `messenger.html` — приложение. Порядок IIFE-модулей задан в `Backend/BarkFluff.Web/scripts/app-bundle-entry.js`; esbuild собирает их в fingerprinted-файл. `app-loader.js` загружает путь из `app-manifest.json` без кэширования указателя. `BuildMessengerApp` запускает сборку при обычном .NET build/publish. Версии `grpc-web`, `google-protobuf`, `esbuild` и `livekit-client` зафиксированы в `scripts/package.json`.
 
-Модули публикуют клиентские интерфейсы в `window.BF`: `BF.node` выбирает сервер; `BF.clients` содержит callback-style gRPC-Web клиенты; `BF.api` преобразует protobuf в объекты JavaScript; `BF.realtime.on/off` раздаёт события, включая `connection_status` и `resync`, а `BF.connection` выполняет catch-up; `BF.files`, `BF.sendQueue`, `BF.pendingSends` и `BF.drafts` управляют файлами, отправкой и черновиками; `BF.privateChat` отвечает за E2E личных чатов; `BF.calls` — за звонки; `BF.i18n` и `BF.push` — за локализацию и уведомления.
+Модули публикуют клиентские интерфейсы в `window.BF`: `BF.node` выбирает сервер; `BF.clients` содержит callback-style gRPC-Web клиенты; `BF.api` преобразует protobuf в объекты JavaScript; `BF.realtime.on/off` раздаёт события, включая `connection_status` и `resync`, а `BF.connection` выполняет catch-up; `BF.files`, `BF.sendQueue`, `BF.pendingSends`, `BF.pendingFiles` и `BF.drafts` управляют файлами, отправкой и черновиками; `BF.privateChat` отвечает за E2E личных чатов; `BF.calls` — за звонки; `BF.i18n` и `BF.push` — за локализацию и уведомления.
 
 ## Нода, авторизация и состояние
 
