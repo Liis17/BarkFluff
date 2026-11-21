@@ -1,5 +1,6 @@
 package com.barkfluff.client.utils
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.view.MotionEvent
 import android.view.View
@@ -27,9 +28,15 @@ fun View.applySpringPress() {
     // Возвращаем false — View сам обработает click через свой onTouchEvent (включая
     // performClick для accessibility). Мы только наблюдаем за состоянием.
     setOnTouchListener { _, ev ->
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            scaleX.cancel()
+            scaleY.cancel()
+            this.scaleX = 1f
+            this.scaleY = 1f
+            return@setOnTouchListener false
+        }
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                scaleX.cancel(); scaleY.cancel()
                 scaleX.animateToFinalPosition(PRESS_SCALE)
                 scaleY.animateToFinalPosition(PRESS_SCALE)
             }

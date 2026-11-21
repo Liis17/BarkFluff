@@ -94,19 +94,17 @@
                     android:layout_marginEnd="10dp"
                     android:layout_weight="1"
                     android:ellipsize="end"
-                    android:lineHeight="24sp"
                     android:maxLines="1"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
                     android:textColor="?attr/colorOnSurface"
-                    android:textSize="16sp"
                     tools:text="Имя Фамилия" />
 
                 <TextView
                     android:id="@+id/messageTime"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textFontWeight="500"
-                    android:textSize="12sp"
                     tools:text="14:30" />
 
             </LinearLayout>
@@ -136,10 +134,9 @@
                     android:layout_marginEnd="10dp"
                     android:layout_weight="1"
                     android:ellipsize="end"
-                    android:lineHeight="20sp"
                     android:maxLines="1"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="14sp"
                     tools:text="Привет! Как дела?" />
 
                 <View

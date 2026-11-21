@@ -333,6 +333,7 @@
     <string name="cd_play">Воспроизвести</string>
     <string name="cd_download">Скачать</string>
     <string name="cd_download_file">Скачать файл</string>
+    <string name="profile_expand_avatar">Развернуть фото профиля</string>
     <string name="cd_open_file">Открыть файл</string>
     <string name="cd_attachment">Вложение</string>
     <string name="cd_remove_background">Удалить фон</string>

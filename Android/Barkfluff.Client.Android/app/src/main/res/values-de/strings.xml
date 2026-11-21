@@ -279,6 +279,7 @@
     <string name="cd_play">Abspielen</string>
     <string name="cd_download">Herunterladen</string>
     <string name="cd_download_file">Datei herunterladen</string>
+    <string name="profile_expand_avatar">Profilfoto vergrößern</string>
     <string name="cd_open_file">Datei öffnen</string>
     <string name="cd_attachment">Anhang</string>
     <string name="cd_remove_background">Hintergrund entfernen</string>

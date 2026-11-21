@@ -87,7 +87,6 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_ROUTE_DATA = "notification_route_data"
         private const val KEY_ROUTE_NOTIFICATION = "notification_route_is_notification"
         private const val KEY_ROUTE_PRIVATE_INVITE = "notification_route_private_invite"
-        private const val BOTTOM_NAV_WIDE_ITEM_WIDTH_DP = 72
         private const val FLOATING_FAB_CORNER_RADIUS_DP = 22
         private const val FLOATING_FAB_PRESSED_CORNER_RADIUS_DP = 32
 
@@ -187,7 +186,6 @@ class MainActivity : AppCompatActivity() {
         if (::binding.isInitialized) {
             applyBottomNavigationVisibility()
             if (!isPhoneFloatingNavigation()) {
-                compactifyBottomNav()
                 binding.bottomNavigation.selectedItemId = tabIndexToMenuId(currentTabIndex)
             }
             updateCreateChatFabVisibility()
@@ -464,9 +462,6 @@ class MainActivity : AppCompatActivity() {
 
         applyBottomNavigationVisibility()
 
-        // Убираем внутренние минимальные ширины item'ов, чтобы панель была компактной
-        compactifyBottomNav()
-
         binding.bottomNavigation.selectedItemId = tabIndexToMenuId(currentTabIndex)
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             val newTabIndex = menuIdToTabIndex(item.itemId)
@@ -574,19 +569,6 @@ class MainActivity : AppCompatActivity() {
         if (globalParam.mainTabCallsVisible) tabs.add(TAB_CALLS)
         tabs.add(TAB_PROFILE)
         return tabs
-    }
-
-    private fun compactifyBottomNav() {
-        val menuView = binding.bottomNavigation.getChildAt(0) as? android.view.ViewGroup ?: return
-        val density = resources.displayMetrics.density
-        val itemWidthDp = BOTTOM_NAV_WIDE_ITEM_WIDTH_DP
-        val itemWidthPx = (itemWidthDp * density).toInt()
-        for (i in 0 until menuView.childCount) {
-            val item = menuView.getChildAt(i)
-            val params = item.layoutParams
-            params.width = itemWidthPx
-            item.layoutParams = params
-        }
     }
 
     private fun switchTab(newTabIndex: Int) {

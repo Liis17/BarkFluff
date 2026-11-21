@@ -12,6 +12,7 @@ import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.window.embedding.RuleController
 import barkfluff.calls.CallsApiOuterClass
 import com.barkfluff.client.calls.CallEventsService
 import com.barkfluff.client.bft.BftProxyManager
@@ -168,6 +169,7 @@ class BarkFluffApplication : Application() {
         Trace.beginSection(PerfTrace.APPLICATION_ON_CREATE)
         try {
             super.onCreate()
+            RuleController.getInstance(this).setRules(RuleController.parseRules(this, R.xml.chat_split_rules))
             onApplicationCreate()
         } finally {
             Trace.endSection()
