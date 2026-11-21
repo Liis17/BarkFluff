@@ -101,6 +101,7 @@
   "call.camera.select": "Select camera",
   "call.collapse": "Collapse",
   "call.connecting": "Connecting…",
+  "call.expand": "Expand",
   "call.group": "Group call",
   "call.hangup": "Finish",
   "call.inProgress": "In call",
