@@ -1,3 +1,5 @@
+import com.android.ide.common.vectordrawable.Svg2Vector
+import java.io.ByteArrayOutputStream
 import java.util.Properties
 
 plugins {
@@ -91,6 +93,62 @@ val copyLegalDocs = tasks.register<CopyLegalDocsTask>("copyLegalDocs") {
         include("TERMS_OF_SERVICE.*.md", "PRIVACY_POLICY.*.md")
     })
     sourceDescription.set(legalSourceDir.asFile.path)
+    // outputDirectory назначает сам AGP через addGeneratedSourceDirectory ниже.
+}
+
+/**
+ * Конвертирует общие SVG из корневой папки Icons/ (тот же источник, что у веба) в vector drawable
+ * `icon_<имя>` — так новые и изменённые иконки попадают в APK при каждой сборке.
+ * currentColor заменяется белым, а цвет задаёт android:tint (по умолчанию colorControlNormal,
+ * переопределяется app:tint/ImageView.setImageTintList). Ошибка конвертации останавливает сборку.
+ */
+abstract class GenerateSharedIconsTask : DefaultTask() {
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sourceFiles: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun run() {
+        val svgs = sourceFiles.files.filter { it.isFile }.sortedBy { it.name }
+        if (svgs.isEmpty()) throw GradleException("Не найдены SVG в Icons/")
+
+        val target = outputDirectory.get().asFile.resolve("drawable")
+        target.deleteRecursively()
+        target.mkdirs()
+        val tmp = temporaryDir.resolve("icon.svg")
+
+        val names = mutableMapOf<String, String>()
+        svgs.forEach { svg ->
+            val name = "icon_" + svg.nameWithoutExtension.lowercase().replace(Regex("[^a-z0-9_]"), "_")
+            names.put(name, svg.name)?.let {
+                throw GradleException("Иконки ${svg.name} и $it дают одинаковое имя ресурса $name")
+            }
+
+            tmp.writeText(svg.readText().replace("currentColor", "#FFFFFF"))
+            val out = ByteArrayOutputStream()
+            val errors = Svg2Vector.parseSvgToXml(tmp.toPath(), out)
+            if (errors.isNotBlank() || out.size() == 0) {
+                throw GradleException("Не удалось сконвертировать Icons/${svg.name}: $errors")
+            }
+            val xml = out.toString(Charsets.UTF_8).replaceFirst(
+                "<vector ",
+                "<vector android:tint=\"?attr/colorControlNormal\" "
+            )
+            target.resolve("$name.xml").writeText(xml)
+        }
+        logger.lifecycle("icons: сгенерировано ${svgs.size} vector drawable из Icons/")
+    }
+}
+
+val generateSharedIcons = tasks.register<GenerateSharedIconsTask>("generateSharedIcons") {
+    description = "Конвертирует SVG из корневой папки Icons/ в vector drawable icon_*"
+    sourceFiles.from(rootProject.layout.projectDirectory.dir("../Icons").asFileTree.matching {
+        include("*.svg")
+    })
     // outputDirectory назначает сам AGP через addGeneratedSourceDirectory ниже.
 }
 
@@ -214,6 +272,10 @@ androidComponents {
         variant.sources.assets?.addGeneratedSourceDirectory(
             copyLegalDocs,
             CopyLegalDocsTask::outputDirectory
+        )
+        variant.sources.res?.addGeneratedSourceDirectory(
+            generateSharedIcons,
+            GenerateSharedIconsTask::outputDirectory
         )
     }
 }

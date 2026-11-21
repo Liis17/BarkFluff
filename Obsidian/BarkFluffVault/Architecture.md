@@ -99,7 +99,7 @@ AdminPanel (`users.block`/`users.delete`, SecurityAdmin + Owner, причина 
 
 Android разделяет typed domain gateways, RPC registry, token refresh и media TLS. Regular chat имеет единый state/effect/intent контракт; SQLCipher Room v5 и private staging обеспечивают durable drafts/outbox. Secret-chat handshake заблокирован отсутствующими Kyber-полями сервера; наличие scaffold не означает работающий клиентский E2E. Подробности — [[Clients/Android]].
 
-Apple-клиенты разделяют BFCore и SwiftUI UI; iOS adaptive navigation определяется доступным пространством, локализация — текущей environment locale. WPF использует ResourceDictionary/DynamicResource. Точные locale, secure-storage и platform ограничения описываются в клиентских заметках, а не дублируются здесь. Общие SVG находятся в `Icons/`; способы включения в приложения зависят от платформы.
+Apple-клиенты разделяют BFCore и SwiftUI UI; iOS adaptive navigation определяется доступным пространством, локализация — текущей environment locale. WPF использует ResourceDictionary/DynamicResource. Точные locale, secure-storage и platform ограничения описываются в клиентских заметках, а не дублируются здесь. Общие SVG находятся в `Icons/`; способы включения в приложения зависят от платформы: Web и AdminPanel подключают файлы через csproj, Android при сборке генерирует из них vector drawable `icon_*`.
 
 ## BFT Proxy маршрут
 
