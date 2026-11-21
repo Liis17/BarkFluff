@@ -1,0 +1,14 @@
+# Standalone-сервис статуса: без Lognara-агента и без общей инфраструктуры ноды (как BFT Proxy).
+FROM alpine:3.22 AS data
+RUN mkdir -p /data
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled
+WORKDIR /app
+COPY --chown=1654:1654 publish/ .
+# Каталог SQLite принадлежит пользователю приложения; chiseled-образ не даёт выполнить mkdir/chown.
+COPY --from=data --chown=1654:1654 /data /var/lib/barkfluff-status
+ENV ASPNETCORE_URLS=http://+:8080 \
+    Status__DatabasePath=/var/lib/barkfluff-status/status.db
+EXPOSE 8080/tcp
+USER $APP_UID
+ENTRYPOINT ["dotnet", "BarkFluff.Status.dll"]

@@ -45,6 +45,16 @@ class PrTestSelectionTests(unittest.TestCase):
     def test_mixed_changes_combine_platforms(self):
         self.assert_suites(['Android/core/Example.kt', 'Mac/Barkfluff/Example.swift'], ['android', 'macos'])
 
+    def test_status_service_selects_status_suite_and_its_backend_tests(self):
+        self.assert_suites(['Backend/BarkFluff.Status/Program.cs'], ['backend', 'status'])
+        self.assert_suites(['Tests/BarkFluff.Status.Tests/ReadinessClassifierTests.cs'], ['backend', 'status'])
+        self.assert_suites(['Docker/nightly/status/nginx/templates/default.conf.template'], ['status'])
+
+    def test_status_compose_change_does_not_run_all_backend_tests(self):
+        suites, projects = select(['Docker/nightly/status/smoke/verify.py'])
+        self.assertEqual({name for name, enabled in suites.items() if enabled}, {'status'})
+        self.assertIsNone(projects)
+
     def test_selector_changes_run_every_suite(self):
         for path in ['.github/workflows/ci.yml', '.github/scripts/ci_plan.py', '.github/scripts/pr_tests.py']:
             with self.subTest(path=path):
@@ -97,7 +107,7 @@ class PrTestSelectionTests(unittest.TestCase):
                 self.assert_suites([path], ['backend', 'android'])
 
     def test_dotnet_sdk_change_runs_backend_and_windows(self):
-        self.assert_suites(['global.json'], ['backend', 'windows', 'builder'])
+        self.assert_suites(['global.json'], ['backend', 'windows', 'builder', 'status'])
 
     def test_ci_helper_change_checks_scripts(self):
         self.assert_suites(['.github/scripts/client-version.sh'], ['scripts'])
@@ -161,7 +171,7 @@ class PrTestSelectionTests(unittest.TestCase):
             values = dict(line.split('=', 1) for line in output.read_text().splitlines())
             self.assertEqual(json.loads(values['platforms']), ['android'])
             self.assertEqual(json.loads(values['selected']), {'backend': False, 'clients': True, 'scripts': False,
-                                                         'frontend': False, 'builder': False})
+                                                         'frontend': False, 'builder': False, 'status': False})
 
 
 if __name__ == '__main__':

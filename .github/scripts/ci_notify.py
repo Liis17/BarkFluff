@@ -9,7 +9,7 @@ ICONS = {'success': '✅', 'failure': '❌', 'cancelled': '⛔', 'skipped': '⏭
 BUILD_JOBS = {'backend': '🐳 Backend-образы', 'promote': '🔁 Перенос backend-образов', 'android': '📱 Android',
               'macos': '🍎 macOS', 'winui': '🪟 WinUI', 'builder': '🧰 Builder'}
 SUITES = (('guard', 'Ветка-источник'), ('backend', 'Backend тесты'), ('clients', 'Клиенты'),
-          ('scripts', 'Скрипты CI'), ('frontend', 'Frontend'), ('builder', 'Builder'))
+          ('scripts', 'Скрипты CI'), ('frontend', 'Frontend'), ('builder', 'Builder'), ('status', 'Статус ноды'))
 
 
 def code(value):

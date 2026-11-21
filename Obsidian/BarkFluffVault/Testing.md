@@ -8,6 +8,8 @@ Backend unit/integration проекты находятся в `Tests/BarkFluff.*
 
 `Tests/BarkFluff.Builder.Tests/` — тестовый проект `net10.0` для модели, генераторов, валидации, записи/повторного открытия конфигурации и guard-проверок против дрейфа Docker/nginx и Lognara agent. `Tools/` и этот проект выбирают backend-набор в `.github/scripts/pr_tests.py`, а пути Builder — ещё и набор `builder`: тесты на Windows и проверку сгенерированных примеров на Ubuntu в `ci.yml`; детали — [[Tools/Builder|BarkFluff Builder]].
 
+`Tests/BarkFluff.Status.Tests/` проверяет классификацию readiness, SPKI-пин и HTTPS/HTTP/2 через Kestrel на localhost (самоподписанный сертификат — только экспортируемый PFX, эфемерный ключ на Windows не работает для SChannel), SQLite-батчи и идемпотентность, смену суток, пропуски слотов, конфигурацию и отсутствие адресов в публичном отчёте. Smoke `Docker/nightly/status/smoke/` выполняется в CI-job `status-docker` и не запускается локально без Docker.
+
 `Tests/BarkFluff.Bft.Tests/` проверяет общие протокольные примитивы и `Docs/bft/bftv1-vectors.json`; `.csproj` копирует fixture из репозитория в test output. `Docs/bft/generate_vectors.py` генерирует этот файл.
 
 `Tests/BarkFluff.BftProxy.Tests/` проверяет Exit/Relay через loopback TCP, TLS, HTTP и gRPC: handshake/pending limits, активные туннельные лимиты, ротацию ключей, мультиплексированные запросы, forwarding заголовков и освобождение Relay соединений по `ManualTimeProvider`. Четыре теста намеренно ждут по 9 с реального времени для проверки длительных HTTP/gRPC потоков; общая коллекция запрещает их параллельный запуск, то есть добавляет не менее 36 с к этому набору CI, кроме обычной сборки и тестов. Оба BFT test project входят в backend-набор PR в `nightly`.

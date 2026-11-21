@@ -6,13 +6,16 @@ from pathlib import Path
 import subprocess
 import sys
 
-from ci_plan import CLIENTS, matches, project_inputs
+from ci_plan import CLIENTS, SERVICES, matches, project_inputs
 
-SUITES = ('backend', 'windows', 'android', 'macos', 'scripts', 'frontend', 'builder')
-JOBS = ('backend', 'clients', 'scripts', 'frontend', 'builder')
+SUITES = ('backend', 'windows', 'android', 'macos', 'scripts', 'frontend', 'builder', 'status')
+JOBS = ('backend', 'clients', 'scripts', 'frontend', 'builder', 'status')
 FRONTEND = ('Backend/BarkFluff.Web/', 'Frontend/Developers/', 'Backend/BarkFluff.Navigator/Admin/',
             'Shared/BarkFluff.Proto/')
 BUILDER = (*CLIENTS['builder'], 'Tests/BarkFluff.Builder.Tests/**')
+# Статус ноды: образ и его входы (проект, общий NodeSubdomains, Docker-конфиги отдельного развёртывания).
+STATUS = (*next(s['sources'] for s in SERVICES if s['name'] == 'status'), 'Tests/BarkFluff.Status.Tests/**',
+          'Docker/nightly/status/**')
 ROOT = Path(__file__).resolve().parents[2]
 SELECTOR_FILES = ('.github/workflows/ci.yml', '.github/scripts/pr_tests.py', '.github/scripts/ci_plan.py')
 # Change how all .NET code is built or tested: every backend test project runs.
@@ -60,6 +63,11 @@ def select(paths, projects=None):
             continue
         if path in SELECTOR_FILES:
             return dict.fromkeys(SUITES, True), None
+        if any(matches(path, pattern) for pattern in STATUS):
+            selected['status'] = True
+        if path.startswith('Docker/nightly/status/'):
+            # Отдельное развёртывание не входит в backend-граф: не запускать все backend-тесты из-за Docker-файла.
+            continue
         users = {name for name, (_, inputs) in projects.items() if depends(path, inputs)}
         windows_users = {name for name in users if projects[name][0]}
         backend_users = users - windows_users
@@ -107,6 +115,7 @@ def selected_jobs(suites):
         'scripts': suites['scripts'],
         'frontend': suites['frontend'],
         'builder': suites['builder'],
+        'status': suites['status'],
     }
 
 
