@@ -302,7 +302,7 @@
         profileBlock.appendChild(avatarEl);
         profileBlock.appendChild(userInfo);
         profileBlock.appendChild(arrowEl);
-        profileBlock.addEventListener('click', function () { navigate('profile'); });
+        makeActivatable(profileBlock, function () { navigate('profile'); });
         body.appendChild(profileBlock);
 
         loadCurrentUser().then(function (user) {
@@ -477,7 +477,7 @@
                 '<span class="sd-item-label">' +
                 BF.utils.escapeHtml((nodeMeta && nodeMeta.name) || BF.node.origin() || '') +
                 '</span><span class="sd-item-arrow">›</span>';
-            nodeRow.addEventListener('click', switchNode);
+            makeActivatable(nodeRow, switchNode);
             secNode.appendChild(nodeRow);
             body.appendChild(secNode);
         }
@@ -511,6 +511,18 @@
         window.location.href = '/';
     }
 
+    // Строки-контейнеры (div с вложенной разметкой) делаем доступными с клавиатуры как кнопки.
+    function makeActivatable(el, onActivate) {
+        el.setAttribute('role', 'button');
+        el.tabIndex = 0;
+        el.addEventListener('click', onActivate);
+        el.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            onActivate(e);
+        });
+    }
+
     function makeSection(title, items) {
         var sec = document.createElement('div');
         sec.className = 'sd-section';
@@ -525,7 +537,7 @@
                 '<span class="sd-item-icon">' + item.icon + '</span>' +
                 '<span class="sd-item-label">' + item.label + '</span>' +
                 '<span class="sd-item-arrow">›</span>';
-            row.addEventListener('click', function () { navigate(item.view); });
+            makeActivatable(row, function () { navigate(item.view); });
             sec.appendChild(row);
         });
         return sec;
@@ -1831,7 +1843,8 @@
 
             row.appendChild(label);
             row.appendChild(check);
-            row.addEventListener('click', function () { BF.i18n.setLang(lang.code); });
+            if (lang.code === current) row.setAttribute('aria-current', 'true');
+            makeActivatable(row, function () { BF.i18n.setLang(lang.code); });
             sec.appendChild(row);
         });
         body.appendChild(sec);
