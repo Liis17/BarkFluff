@@ -34,9 +34,10 @@ class CiPlanTests(unittest.TestCase):
 
     def test_shared_inputs_rebuild_only_images_that_build_from_them(self):
         everything = sorted(s['name'] for s in SERVICES)
-        without_bft = [name for name in everything if name != 'bftproxy']
-        self.assertEqual(built('nightly', ['Backend/BarkFluff.GrpcServer/Interceptor.cs']), without_bft)
-        self.assertEqual(built('nightly', ['Docker/Lognara/agent/SHA256SUMS']), without_bft)
+        # Standalone-образы (BFT Proxy, статус) не собираются с общим GrpcServer и Lognara-слоем.
+        without_standalone = [name for name in everything if name not in ('bftproxy', 'status')]
+        self.assertEqual(built('nightly', ['Backend/BarkFluff.GrpcServer/Interceptor.cs']), without_standalone)
+        self.assertEqual(built('nightly', ['Docker/Lognara/agent/SHA256SUMS']), without_standalone)
         self.assertEqual(built('nightly', ['Shared/BarkFluff.Bft/Frame.cs']), ['bftproxy'])
         self.assertEqual(built('nightly', ['Shared/BarkFluff.Proto/calls_api.proto']),
                          ['calls', 'developers', 'files', 'web'])
@@ -44,6 +45,12 @@ class CiPlanTests(unittest.TestCase):
         self.assertIn('messages', queue)
         self.assertNotIn('beacon', queue)
         self.assertEqual(built('nightly', None), everything)
+
+    def test_status_image_follows_its_own_sources_and_node_catalog(self):
+        self.assertEqual(built('nightly', ['Backend/BarkFluff.Status/Program.cs']), ['status'])
+        self.assertIn('status', built('nightly', ['Backend/BarkFluff.Settings/Catalog/NodeSubdomains.cs']))
+        self.assertNotIn('status', built('nightly', ['Backend/BarkFluff.GrpcServer/Interceptor.cs']))
+        self.assertEqual(built('nightly', ['Docker/nightly/status/docker-compose.yml']), [])
 
     def test_tests_and_docs_do_not_publish_images(self):
         for path in ['Tests/BarkFluff.Messages.Tests/Test.cs', 'Tests/BarkFluff.GrpcServer.Tests/Test.cs',
