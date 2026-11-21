@@ -170,7 +170,7 @@ public sealed partial class AuthenticationService(
             AuthenticationPurpose.PasswordRecovery => "Восстановление пароля", _ => "Вход в аккаунт" }}\n" +
         $"💻 Устройство: {c.DeviceName} · {c.OperationSystem}\n📱 Приложение: {c.AppName}\n🌐 IP: {c.IpAddress}\n🕒 Время: {Now:u}";
 
-    private string OperationText(AuthenticationChallenge c) => $"🔐 BarkFluff · {telegram.NodeName}\n" +
+    private string OperationText(AuthenticationChallenge c) => $"🔐 Запрос подтверждения · {telegram.NodeName}\n" +
         OperationDetailsText(c) + "\n\n⚠️ Подтверждайте только действие, которое вы начали сами.";
 
     private async Task<string> Deliver(AuthenticationChallenge c, CancellationToken ct)

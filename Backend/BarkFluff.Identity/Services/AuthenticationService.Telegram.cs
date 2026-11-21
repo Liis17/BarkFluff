@@ -78,8 +78,10 @@ public sealed partial class AuthenticationService
             !message.TryGetProperty("text", out var originalText) || originalText.GetString() is not { } text)
             return;
 
-        var status = approved ? "✅ Запрос подтверждён." : "❌ Запрос отклонён.";
-        try { await bot.EditMessage(targetChat, id, $"{text}\n\n{status}", ct); }
+        // The status replaces the original header line so the chat preview shows the decision first.
+        var status = approved ? "✅ Запрос подтверждён" : "❌ Запрос отклонён";
+        var body = text.IndexOf('\n') is var newline and >= 0 ? text[newline..] : "";
+        try { await bot.EditMessage(targetChat, id, $"{status} · {telegram.NodeName}{body}", ct); }
         catch (RpcException) { /* The decision is durable; Telegram edit failure must not replay the callback. */ }
     }
 
