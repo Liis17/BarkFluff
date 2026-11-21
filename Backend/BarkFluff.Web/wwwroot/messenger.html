@@ -341,30 +341,21 @@
 
     <!-- Активный звонок -->
     <div class="call-screen" id="callScreen">
+        <div class="call-bg" id="callBg" aria-hidden="true"></div>
         <div class="call-screen-top">
             <div class="call-screen-title" id="callScreenTitle" data-i18n="call.title">Звонок</div>
             <div class="call-screen-timer" id="callScreenTimer"></div>
         </div>
-        <div class="call-main">
-            <div class="call-spotlight" id="callSpotlight">
-                <div class="call-spotlight-box">
-                    <div class="call-spotlight-video-host" id="callSpotlightVideoHost"></div>
-                    <canvas class="call-spotlight-canvas" id="callSpotlightCanvas"></canvas>
-                    <div class="call-spotlight-ring" id="callSpotlightRing"></div>
-                    <div class="call-spotlight-pill"><span id="callSpotlightName"></span></div>
-                    <button type="button" class="call-spotlight-exit" id="callSpotlightExit" data-i18n="call.collapse">Свернуть</button>
-                </div>
+        <div class="call-main" id="callMain">
+            <div class="call-hero" id="callHero"></div>
+            <div class="call-vstage" id="callVStage"></div>
+            <div class="call-waiting" id="callWaiting">
+                <div class="call-waiting-avatar" id="callWaitingAvatar"></div>
+                <div class="call-waiting-name" id="callWaitingName"></div>
+                <div class="call-waiting-sub" id="callWaitingSub"></div>
             </div>
-            <div class="call-stage" id="callStage">
-                <div class="call-waiting" id="callWaiting">
-                    <div class="call-waiting-avatar" id="callWaitingAvatar"></div>
-                    <div class="call-waiting-name" id="callWaitingName"></div>
-                    <div class="call-waiting-sub" id="callWaitingSub"></div>
-                </div>
-                <div class="call-grid" id="callGrid"></div>
-            </div>
-            <div class="call-voices" id="callVoices"></div>
         </div>
+        <div class="call-strip" id="callStrip"></div>
         <div class="call-quality-panel" id="callQualityPanel">
             <div class="call-quality-group" id="callAudioQualityGroup">
                 <div class="call-quality-title" data-i18n="call.quality.audio">Голос · для всех</div>
@@ -386,19 +377,22 @@
             </div>
         </div>
         <div class="call-controls">
-            <div class="call-ctl-wrap">
-                <button class="call-ctl" id="callToggleMic" data-i18n-title="call.mic" title="Микрофон"></button>
-                <button class="call-ctl-caret" id="callMicCaret" data-i18n-title="call.mic.select" data-i18n-aria-label="call.mic.select" title="Выбрать микрофон" aria-label="Выбрать микрофон"></button>
-                <div class="call-ctl-menu" id="callMicMenu"></div>
+            <div class="call-bar">
+                <div class="call-ctl-wrap">
+                    <button class="call-ctl" id="callToggleMic" data-i18n-title="call.mic" title="Микрофон"></button>
+                    <button class="call-ctl-caret" id="callMicCaret" data-i18n-title="call.mic.select" data-i18n-aria-label="call.mic.select" title="Выбрать микрофон" aria-label="Выбрать микрофон"></button>
+                    <div class="call-ctl-menu" id="callMicMenu"></div>
+                </div>
+                <div class="call-ctl-wrap">
+                    <button class="call-ctl" id="callToggleCam" data-i18n-title="call.camera" title="Камера"></button>
+                    <button class="call-ctl-caret" id="callCamCaret" data-i18n-title="call.camera.select" data-i18n-aria-label="call.camera.select" title="Выбрать камеру" aria-label="Выбрать камеру"></button>
+                    <div class="call-ctl-menu" id="callCamMenu"></div>
+                </div>
+                <button class="call-ctl" id="callToggleScreen" data-i18n-title="call.screenShare" title="Демонстрация экрана"></button>
+                <button class="call-ctl" id="callToggleQuality" data-i18n-title="call.quality" title="Качество"></button>
+                <span class="call-bar-sep" aria-hidden="true"></span>
+                <button class="call-ctl call-ctl-end" id="callHangup" data-i18n-title="call.hangup" title="Завершить"></button>
             </div>
-            <div class="call-ctl-wrap">
-                <button class="call-ctl" id="callToggleCam" data-i18n-title="call.camera" title="Камера"></button>
-                <button class="call-ctl-caret" id="callCamCaret" data-i18n-title="call.camera.select" data-i18n-aria-label="call.camera.select" title="Выбрать камеру" aria-label="Выбрать камеру"></button>
-                <div class="call-ctl-menu" id="callCamMenu"></div>
-            </div>
-            <button class="call-ctl" id="callToggleScreen" data-i18n-title="call.screenShare" title="Демонстрация экрана"></button>
-            <button class="call-ctl" id="callToggleQuality" data-i18n-title="call.quality" title="Качество"></button>
-            <button class="call-ctl call-ctl-end" id="callHangup" data-i18n-title="call.hangup" title="Завершить"></button>
         </div>
     </div>
 
