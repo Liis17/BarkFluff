@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
   <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"></circle>
-  <circle cx="12" cy="7.3" r="1.4" fill="currentColor"></circle>
+  <circle cx="12" cy="7.4" r="1.5" fill="currentColor"></circle>
   <g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M7 10.5h10"></path>
-    <path d="M12 10.5v3.5"></path>
-    <path d="m12 14 3 3.5"></path>
-    <path d="m12 14-3 3.5"></path>
+    <path d="M7.5 10.3 12 11.3l4.5-1"></path>
+    <path d="M12 11.3v2.9"></path>
+    <path d="m12 14.2 2.6 3.3"></path>
+    <path d="m12 14.2-2.6 3.3"></path>
   </g>
 </svg>
