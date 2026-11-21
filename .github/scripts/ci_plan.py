@@ -93,6 +93,8 @@ SERVICES = [
     service('onliner', 'Backend/BarkFluff.Onliner'),
     service('settings', 'Backend/BarkFluff.Settings'),
     service('setup', 'Backend/BarkFluff.Setup'),
+    # Standalone-сервис: без Lognara-агента и без BACKEND_COMMON, как BFT Proxy; зависит только от NodeSubdomains.
+    service('status', 'Backend/BarkFluff.Status', common=('global.json', '.dockerignore')),
     service('updates', 'Backend/BarkFluff.Updates'),
     service('users', 'Backend/BarkFluff.Users'),
     # The Docker build bundles every .proto for the browser client.

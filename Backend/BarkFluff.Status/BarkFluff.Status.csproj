@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Публичный список хостов ноды: тот же каталог, что использует Builder при генерации nginx. -->
+        <Compile Include="..\BarkFluff.Settings\Catalog\NodeSubdomains.cs" Link="Catalog\NodeSubdomains.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    </ItemGroup>
+
+</Project>
