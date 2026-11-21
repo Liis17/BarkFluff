@@ -279,6 +279,7 @@
     <string name="cd_play">播放</string>
     <string name="cd_download">下载</string>
     <string name="cd_download_file">下载文件</string>
+    <string name="profile_expand_avatar">展开个人资料照片</string>
     <string name="cd_open_file">打开文件</string>
     <string name="cd_attachment">附件</string>
     <string name="cd_remove_background">移除背景</string>

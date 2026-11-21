@@ -229,6 +229,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.window)
     implementation(libs.material)
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.cardview:cardview:1.0.0")
