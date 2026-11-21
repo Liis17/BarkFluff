@@ -18,8 +18,9 @@
             --msg-in-bg: #e2dcd5;
             --msg-out-bg: #c49a80;
             --msg-out-text: #1c1917;
-            --msg-meta-color: rgba(0, 0, 0, 0.4);
-            --msg-out-meta-color: rgba(0, 0, 0, 0.5);
+            /* Непрозрачные тона: ≥4.5:1 на --msg-in-bg / --msg-out-bg */
+            --msg-meta-color: #5f5650;
+            --msg-out-meta-color: #3f2b25;
             --online-color: #10b981;
             --unread-badge-bg: #8c351c;
             --dialog-bg: #faf8f5;
@@ -376,6 +377,7 @@
 
         .search-input {
             width: 100%;
+            min-height: 48px;
             padding: 10px 14px 10px 36px;
             background: var(--input-bg);
             border: 1px solid var(--input-border);
@@ -1710,6 +1712,11 @@
         }
         .audio-time { font-size: 11px; color: var(--text-sub); }
         .audio-name { font-size: 11px; color: var(--text-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* Внутри пузыря — те же тона, что у времени сообщения (контраст ≥4.5:1 на фоне пузыря) */
+        .msg-bubble.incoming .audio-time,
+        .msg-bubble.incoming .audio-name { color: var(--msg-meta-color); }
+        .msg-bubble.outgoing .audio-time,
+        .msg-bubble.outgoing .audio-name { color: var(--msg-out-meta-color); }
 
         /* Documents */
         .msg-attachments .attach-doc {
@@ -3047,6 +3054,9 @@
         }
 
         .sd-item:hover { background: rgba(0, 0, 0, 0.04); }
+        /* Строка во всю ширину прокручиваемого листа: внешний контур обрезался бы */
+        .sd-item:focus-visible,
+        .sd-profile-block:focus-visible { outline-offset: -2px; }
         .sd-item-icon {
             width: 24px;
             height: 24px;
@@ -5138,6 +5148,7 @@
         }
 
         .folder-tab {
+            position: relative;
             flex-shrink: 0;
             display: inline-flex;
             align-items: center;
@@ -5166,6 +5177,12 @@
             padding: 2px 6px;
             border-radius: 10px;
             text-align: center;
+        }
+        /* Область нажатия 48px по высоте без изменения вида чипа (в пределах padding ряда) */
+        .folder-tab::after {
+            content: '';
+            position: absolute;
+            inset: -8px -3px;
         }
         .folder-tab .folder-tab-icon {
             width: 16px;

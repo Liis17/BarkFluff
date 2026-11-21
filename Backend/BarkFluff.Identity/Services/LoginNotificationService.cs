@@ -95,9 +95,9 @@ public sealed class LoginNotificationService(
     private string FormatTelegramMessage(NotificationType type, IReadOnlyDictionary<string, string> payload)
     {
         var failed = type == NotificationType.FailedLogin;
-        return $"🔐 BarkFluff · {telegram.NodeName}\n\n" +
+        var headline = failed ? "⚠️ Неудачная попытка входа" : "🔐 Вход в аккаунт";
+        return $"{headline} · {telegram.NodeName}\n\n" +
                $"👤 Аккаунт: {payload["username"]}\n" +
-               $"🧭 Событие: {(failed ? "Неудачная попытка входа" : "Вход в аккаунт")}\n" +
                $"💻 Устройство: {payload["devicename"]} · {payload["os"]}\n" +
                $"📱 Приложение: {payload["appname"]}\n" +
                $"🌐 IP: {payload["ip"]}\n" +
