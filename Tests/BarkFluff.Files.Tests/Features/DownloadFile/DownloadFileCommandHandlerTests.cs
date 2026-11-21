@@ -1,6 +1,7 @@
 using BarkFluff.Files.Exceptions;
 using BarkFluff.Files.Features.DownloadFile;
 using BarkFluff.Files.Infrastructure;
+using FileNotFoundException = BarkFluff.Shared.Exceptions.Files.FileNotFoundException;
 
 using BarkFluff.Files.Domain;
 
@@ -80,13 +81,13 @@ public class DownloadFileCommandHandlerTests
     [InlineData(UploadFileType.MessageAttachmentGif)]
     [InlineData(UploadFileType.MessageAttachmentSticker)]
     [InlineData(UploadFileType.Unknown)]
-    public async Task Handle_DownloadDisallowedType_ThrowsException(UploadFileType type)
+    public async Task Handle_DownloadDisallowedType_ThrowsFileNotFound(UploadFileType type)
     {
         var file = await _helper.SeedFile(type: type, etag: "etag");
 
         var act = () => _handler.Handle(Command(file.Id), CancellationToken.None);
 
-        await act.Should().ThrowAsync<Exception>().WithMessage("Файл не найден");
+        await act.Should().ThrowAsync<FileNotFoundException>();
     }
 
     [Fact]
@@ -108,11 +109,11 @@ public class DownloadFileCommandHandlerTests
     public async Task Handle_TempLinkPointsToNonExistentOriginal_Throws()
     {
         var fakeOriginalId = Guid.NewGuid();
-        await _helper.SeedTempFile(fakeOriginalId);
+        var tempFile = await _helper.SeedTempFile(fakeOriginalId);
 
-        var act = () => _handler.Handle(Command(fakeOriginalId), CancellationToken.None);
+        var act = () => _handler.Handle(Command(tempFile.Id), CancellationToken.None);
 
-        await act.Should().ThrowAsync<Exception>().WithMessage("Файл не найден");
+        await act.Should().ThrowAsync<FileNotFoundException>();
     }
 
     [Fact]
@@ -159,7 +160,7 @@ public class DownloadFileCommandHandlerTests
     {
         var act = () => _handler.Handle(Command(Guid.NewGuid()), CancellationToken.None);
 
-        await act.Should().ThrowAsync<Exception>().WithMessage("Файл не найден");
+        await act.Should().ThrowAsync<FileNotFoundException>();
     }
 
     [Fact]

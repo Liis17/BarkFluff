@@ -3,6 +3,7 @@ using BarkFluff.Files.Features.DownloadFile;
 using BarkFluff.Files.Persistence;
 using BarkFluff.Proto.Users;
 using BarkFluff.GrpcServer.Metrics;
+using FileNotFoundException = BarkFluff.Shared.Exceptions.Files.FileNotFoundException;
 
 using MediatR;
 
@@ -129,6 +130,10 @@ public class FilesController : Controller
             });
 
             return File(meteredStream, result.ContentType, result.FileName);
+        }
+        catch (FileNotFoundException)
+        {
+            return NotFound("Файл недоступен");
         }
         catch (FileNotUploadedException ex)
         {
