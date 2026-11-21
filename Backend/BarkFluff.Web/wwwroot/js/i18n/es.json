@@ -46,6 +46,8 @@
   "attach.fileCount.other": "{count} archivos",
   "attach.title": "Enviar archivos adjuntos",
   "attachment.audio": "Audio",
+  "attachment.audio.pause": "Pausa",
+  "attachment.audio.play": "Reproducir",
   "attachment.audio.unavailable": "Audio no disponible",
   "attachment.document": "Documento",
   "attachment.file": "Archivo",
