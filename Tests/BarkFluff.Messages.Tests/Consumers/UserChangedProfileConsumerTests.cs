@@ -15,11 +15,15 @@ public sealed class UserChangedProfileConsumerTests : IAsyncDisposable
 {
     private readonly TestHelper _h = new();
 
-    [Fact]
-    public async Task UserChangedNameConsumer_UsesCurrentMaskedProfileInsteadOfEventPayload()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UserChangedNameConsumer_UsesCurrentMaskedProfileInsteadOfEventPayload(bool hasSingleParticipantChat)
     {
         const long restrictedUserId = 101;
         const long peerUserId = 202;
+        if (hasSingleParticipantChat)
+            await _h.SeedChat(memberUserIds: [restrictedUserId]);
         var chat = await _h.SeedChat(memberUserIds: [restrictedUserId, peerUserId]);
         using var services = new ServiceCollection().AddDistributedMemoryCache().BuildServiceProvider();
         var cache = new ChatCache(services.GetRequiredService<IDistributedCache>(), TestHelper.CreateLogger<ChatCache>());
@@ -42,14 +46,19 @@ public sealed class UserChangedProfileConsumerTests : IAsyncDisposable
         (await cache.GetChatName(chat.Id, peerUserId)).Should().Be("Заблокированный пользователь");
     }
 
-    [Fact]
-    public async Task UserChangedAvatarConsumer_UsesCurrentMaskedProfileInsteadOfEventPayload()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UserChangedAvatarConsumer_UsesCurrentMaskedProfileInsteadOfEventPayload(bool hasSingleParticipantChat)
     {
         const long restrictedUserId = 303;
         const long peerUserId = 404;
+        if (hasSingleParticipantChat)
+            await _h.SeedChat(memberUserIds: [restrictedUserId]);
         var chat = await _h.SeedChat(memberUserIds: [restrictedUserId, peerUserId]);
         using var services = new ServiceCollection().AddDistributedMemoryCache().BuildServiceProvider();
         var cache = new ChatCache(services.GetRequiredService<IDistributedCache>(), TestHelper.CreateLogger<ChatCache>());
+        await cache.SetChatImage(chat.Id, peerUserId, "old-private-avatar");
         var usersClient = new Mock<UsersServerApi.UsersServerApiClient>();
         usersClient.Setup(c => c.GetByIdAsync(It.IsAny<GetByIdRequest>(), null, null, It.IsAny<CancellationToken>()))
             .Returns(TestHelper.CreateAsyncCall(new GetByIdResponse
