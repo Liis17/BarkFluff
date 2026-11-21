@@ -3,6 +3,7 @@ using BarkFluff.Files.Exceptions;
 using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Infrastructure;
 using BarkFluff.Files.Persistence;
+using FileNotFoundException = BarkFluff.Shared.Exceptions.Files.FileNotFoundException;
 
 using MediatR;
 
@@ -44,7 +45,7 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
                 request.FileId,
                 file.Type
             );
-            throw new Exception("Файл не найден");
+            throw new FileNotFoundException();
         }
 
         // Это временная ссылка
@@ -113,7 +114,7 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
         if (file is null)
         {
             _logger.LogWarning("Файл {FileId} не найден", request.FileId);
-            throw new Exception("Файл не найден");
+            throw new FileNotFoundException();
         }
 
         if (string.IsNullOrEmpty(file.Etag))
