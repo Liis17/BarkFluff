@@ -66,6 +66,7 @@ class CiPlanTests(unittest.TestCase):
         cases = {
             'Android/core/src/Example.kt': {'android'},
             'Backend/Barkfluff.WebServer/html/legal/terms.md': {'android'},
+            'Icons/add.svg': {'android'},
             'Mac/Barkfluff/App.swift': {'macos'},
             'Windows/BarkFluff.Client.Core/Client.cs': {'winui'},
             'Shared/BarkFluff.Proto/users_api.proto': {'winui'},
