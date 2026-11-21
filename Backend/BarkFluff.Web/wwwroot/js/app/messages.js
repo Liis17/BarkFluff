@@ -39,21 +39,30 @@
     }
 
     // --- Audio Player Singleton ---
+    function setPlayButtonState(btn, playing) {
+        btn.textContent = playing ? '\u23F8' : '\u25B6';
+        btn.setAttribute('aria-label', BF.i18n.t(playing ? 'attachment.audio.pause' : 'attachment.audio.play'));
+    }
+
     var AudioPlayer = {
         current: null,
         play: function (item) {
             if (this.current && this.current !== item) {
                 this.current.audio.pause();
-                this.current.playBtn.textContent = '\u25B6';
+                setPlayButtonState(this.current.playBtn, false);
+            }
+            if (item.resolvingDuration) {
+                item.resolvingDuration = false;
+                item.audio.currentTime = 0;
             }
             item.audio.play();
-            item.playBtn.textContent = '\u23F8';
+            setPlayButtonState(item.playBtn, true);
             this.current = item;
         },
         pause: function () {
             if (!this.current) return;
             this.current.audio.pause();
-            this.current.playBtn.textContent = '\u25B6';
+            setPlayButtonState(this.current.playBtn, false);
         },
         toggle: function (item) {
             if (this.current === item && !item.audio.paused) this.pause();
@@ -293,8 +302,9 @@
             wrap.className = 'attach-audio';
 
             var playBtn = document.createElement('button');
+            playBtn.type = 'button';
             playBtn.className = 'audio-play-btn';
-            playBtn.textContent = '\u25B6';
+            setPlayButtonState(playBtn, false);
 
             var info = document.createElement('div');
             info.className = 'audio-info';
@@ -341,15 +351,30 @@
             });
             var item = { audio: audio, playBtn: playBtn, progressFill: progressFill, timeEl: timeEl };
 
-            audio.addEventListener('loadedmetadata', function () { timeEl.textContent = u().formatDuration(audio.duration); });
-            audio.addEventListener('timeupdate', function () {
-                if (audio.duration) {
-                    progressFill.style.width = (audio.currentTime / audio.duration * 100) + '%';
-                    timeEl.textContent = u().formatDuration(audio.currentTime);
+            // webm \u0438\u0437 MediaRecorder \u043D\u0435 \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 Duration: \u0431\u0440\u0430\u0443\u0437\u0435\u0440 \u043E\u0442\u0434\u0430\u0451\u0442 Infinity, \u043F\u043E\u043A\u0430 \u043D\u0435 \u0434\u043E\u0447\u0438\u0442\u0430\u0435\u0442 \u0444\u0430\u0439\u043B.
+            // \u041F\u0435\u0440\u0435\u043C\u043E\u0442\u043A\u0430 \u0432 \u043A\u043E\u043D\u0435\u0446 \u0437\u0430\u0441\u0442\u0430\u0432\u043B\u044F\u0435\u0442 \u0435\u0433\u043E \u0432\u044B\u0447\u0438\u0441\u043B\u0438\u0442\u044C \u0434\u043B\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u044C, \u0437\u0430\u0442\u0435\u043C \u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u043C\u0441\u044F \u0432 \u043D\u0430\u0447\u0430\u043B\u043E.
+            audio.addEventListener('loadedmetadata', function () {
+                if (audio.duration !== Infinity) return;
+                item.resolvingDuration = true;
+                audio.currentTime = 1e101;
+            });
+            audio.addEventListener('durationchange', function () {
+                if (!isFinite(audio.duration)) return;
+                if (item.resolvingDuration) {
+                    item.resolvingDuration = false;
+                    audio.currentTime = 0;
                 }
+                if (audio.paused) timeEl.textContent = u().formatDuration(audio.duration);
+            });
+            audio.addEventListener('timeupdate', function () {
+                if (item.resolvingDuration || (audio.paused && !audio.currentTime)) return;
+                if (isFinite(audio.duration) && audio.duration > 0) {
+                    progressFill.style.width = (audio.currentTime / audio.duration * 100) + '%';
+                }
+                timeEl.textContent = u().formatDuration(audio.currentTime);
             });
             audio.addEventListener('ended', function () {
-                playBtn.textContent = '\u25B6';
+                setPlayButtonState(playBtn, false);
                 progressFill.style.width = '0%';
                 timeEl.textContent = u().formatDuration(audio.duration);
                 AudioPlayer.current = null;
@@ -357,7 +382,7 @@
             progress.addEventListener('click', function (e) {
                 var rect = progress.getBoundingClientRect();
                 var ratio = (e.clientX - rect.left) / rect.width;
-                if (audio.duration) audio.currentTime = ratio * audio.duration;
+                if (isFinite(audio.duration) && audio.duration > 0) audio.currentTime = ratio * audio.duration;
             });
             playBtn.addEventListener('click', function () { AudioPlayer.toggle(item); });
             container.appendChild(wrap);

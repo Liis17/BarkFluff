@@ -46,6 +46,8 @@
   "attach.fileCount.other": "{count} 个文件",
   "attach.title": "发送附件",
   "attachment.audio": "音频",
+  "attachment.audio.pause": "暂停",
+  "attachment.audio.play": "播放",
   "attachment.audio.unavailable": "音频不可用",
   "attachment.document": "文档",
   "attachment.file": "文件",
