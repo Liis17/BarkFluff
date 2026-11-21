@@ -73,6 +73,7 @@ function makeEl(tag) {
 
 function createHarness(api) {
     var elements = {};
+    var langChanges = [];
     ['#settingsOverlay', '#sdBack', '#sdTitle', '#sdBody', '#confirmOverlay', '#sdClose', '#confirmCancel', '#confirmOk'].forEach(
         function (id) {
             elements[id] = makeEl();
@@ -90,7 +91,19 @@ function createHarness(api) {
             t: function (key, vars) {
                 return vars ? key + ' ' + JSON.stringify(vars) : key;
             },
-            onChange: function () {}
+            onChange: function () {},
+            current: function () {
+                return 'en';
+            },
+            langs: function () {
+                return [
+                    { code: 'en', name: 'English' },
+                    { code: 'ru', name: 'Русский' }
+                ];
+            },
+            setLang: function (code) {
+                langChanges.push(code);
+            }
         },
         utils: {
             openOverlay: function () {},
@@ -117,7 +130,7 @@ function createHarness(api) {
     context.window = context;
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../wwwroot/js/app/settings.js'), 'utf8'), context);
     BF.settings.init({ myUserId: 42 });
-    return { BF: BF, body: elements['#sdBody'], title: elements['#sdTitle'] };
+    return { BF: BF, body: elements['#sdBody'], title: elements['#sdTitle'], langChanges: langChanges };
 }
 
 function findAll(el, predicate, out) {
@@ -228,6 +241,31 @@ async function main() {
             return el.textContent;
         });
         assert.deepEqual(labels, ['attachment.video', 'attachment.photo']);
+    });
+
+    await test('settings rows are keyboard-operable buttons and mark the current choice', async function () {
+        var h = createHarness({});
+        h.BF.settings.open('language');
+        var rows = findAll(h.body, function (el) {
+            return el.className === 'sd-item';
+        });
+        assert.equal(rows.length, 2);
+        rows.forEach(function (row) {
+            assert.equal(row.attributes.role, 'button');
+            assert.equal(row.tabIndex, 0);
+        });
+        assert.equal(rows[0].attributes['aria-current'], 'true', 'current language is exposed');
+        assert.equal(rows[1].attributes['aria-current'], undefined);
+
+        var prevented = 0;
+        var key = function (k) {
+            return { key: k, preventDefault: function () { prevented++; } };
+        };
+        rows[1].listeners.keydown(key('Tab'));
+        rows[1].listeners.keydown(key('Enter'));
+        rows[1].listeners.keydown(key(' '));
+        assert.deepEqual(h.langChanges, ['ru', 'ru'], 'Enter and Space activate, other keys do not');
+        assert.equal(prevented, 2, 'Space must not scroll the sheet');
     });
 }
 
