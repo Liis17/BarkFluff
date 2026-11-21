@@ -52,9 +52,9 @@ public static class TestHelper
         return new UserContext(httpContextAccessor.Object);
     }
 
-    public static LocationClient CreateLocationClient()
+    public static LocationClient CreateLocationClient(bool locationAvailable = true)
     {
-        var handler = new FakeHttpMessageHandler();
+        var handler = new FakeHttpMessageHandler(locationAvailable);
         var httpClient = new HttpClient(handler);
         return new LocationClient(httpClient, new MetricsCollector(), Mock.Of<Microsoft.Extensions.Logging.ILogger<LocationClient>>());
     }
@@ -71,11 +71,13 @@ public static class TestHelper
         return new JwtService(settings);
     }
 
-    private class FakeHttpMessageHandler : HttpMessageHandler
+    private class FakeHttpMessageHandler(bool locationAvailable) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var json = "{\"country\":\"Russia\",\"regionName\":\"Moscow\",\"city\":\"Moscow\"}";
+            var json = locationAvailable
+                ? "{\"country\":\"Russia\",\"regionName\":\"Moscow\",\"city\":\"Moscow\"}"
+                : "{\"status\":\"fail\"}";
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
