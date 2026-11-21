@@ -144,7 +144,7 @@ public class AuthenticationFlowTests
         var edit = Assert.Single(h.Bot.Edits);
         Assert.Equal(123, edit.Chat);
         Assert.Equal(456, edit.MessageId);
-        Assert.EndsWith("\n\n✅ Запрос подтверждён.", edit.Text);
+        Assert.StartsWith("✅ Запрос подтверждён · ", edit.Text);
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public class AuthenticationFlowTests
         await h.Reject();
 
         var edit = Assert.Single(h.Bot.Edits);
-        Assert.EndsWith("\n\n❌ Запрос отклонён.", edit.Text);
+        Assert.StartsWith("❌ Запрос отклонён · ", edit.Text);
         Assert.Equal(AuthChallengeState.Rejected, (await h.Service.Status(pending.Challenge, default)).State);
     }
 
@@ -195,11 +195,11 @@ public class AuthenticationFlowTests
         var pending = await h.Service.BeginSignIn(h.SignIn(), default);
 
         await h.Complete(pending, h.Bot.LastCode);
-        var alertCount = h.Bot.Messages.Count(x => x.Text.Contains("Событие: Вход в аккаунт"));
+        var alertCount = h.Bot.Messages.Count(x => x.Text.StartsWith("🔐 Вход в аккаунт · "));
         await h.Complete(pending, h.Bot.LastCode);
 
         Assert.Equal(1, alertCount);
-        Assert.Equal(alertCount, h.Bot.Messages.Count(x => x.Text.Contains("Событие: Вход в аккаунт")));
+        Assert.Equal(alertCount, h.Bot.Messages.Count(x => x.Text.StartsWith("🔐 Вход в аккаунт · ")));
     }
 
     [Fact]
