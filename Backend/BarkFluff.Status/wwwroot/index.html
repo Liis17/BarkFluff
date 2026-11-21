@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Статус сервисов BarkFluff</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="status.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Перейти к статусам</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <span class="brand">BarkFluff</span>
+      <span class="header-title">Статус сервисов</span>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <section class="overall" id="overall" aria-live="polite" data-state="loading">
+      <div class="overall-icon" aria-hidden="true">…</div>
+      <div class="overall-text">
+        <h1 class="overall-title" id="overall-title">Загрузка статуса</h1>
+        <p class="overall-meta" id="overall-meta">Получаем данные о сервисах.</p>
+      </div>
+    </section>
+
+    <p class="notice" id="notice" role="status" hidden></p>
+
+    <section aria-labelledby="services-heading">
+      <div class="section-head">
+        <h2 id="services-heading">Сервисы</h2>
+        <p class="section-note">Последние 90 суток по UTC, одна полоса — один день</p>
+      </div>
+
+      <ul class="services" id="services" aria-busy="true"></ul>
+    </section>
+
+    <section class="legend" aria-labelledby="legend-heading">
+      <h2 id="legend-heading">Обозначения</h2>
+      <ul class="legend-list">
+        <li><span class="swatch" data-state="operational" aria-hidden="true">✓</span>Работает</li>
+        <li><span class="swatch" data-state="degraded" aria-hidden="true">!</span>Работает с ограничениями</li>
+        <li><span class="swatch" data-state="down" aria-hidden="true">✕</span>Недоступен</li>
+        <li><span class="swatch" data-state="starting" aria-hidden="true">↻</span>Прогрев после запуска</li>
+        <li><span class="swatch" data-state="unknown" aria-hidden="true">?</span>Состояние неизвестно</li>
+        <li><span class="swatch" data-state="stale" aria-hidden="true">⌛</span>Данные устарели</li>
+        <li><span class="swatch" data-state="nodata" aria-hidden="true">–</span>Нет данных</li>
+      </ul>
+      <p class="legend-note">
+        Доступность считается по проверкам каждые 30 секунд: «Работает» и «с ограничениями» — доступно,
+        «Недоступен» — нет. Состояния «прогрев», «неизвестно» и «устарело» в расчёт не входят.
+        Покрытие показывает долю ожидаемых проверок, которые были выполнены.
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span id="footer-updated">—</span>
+    </div>
+  </footer>
+
+  <script src="status.js" defer></script>
+</body>
+</html>

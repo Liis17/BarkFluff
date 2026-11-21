@@ -1,0 +1,46 @@
+# CI-only: поверх docker-compose.yml. Добавляет тестовую ноду и тестовый CA; продуктовый compose не меняется.
+# Относительные пути разрешаются от первого файла (Docker/nightly/status), поэтому файлы smoke — с префиксом ./smoke/.
+services:
+  status:
+    environment:
+      SSL_CERT_FILE: /etc/ssl/smoke/ca.pem
+    volumes:
+      - ${STATUS_SMOKE_WORK:?}/ca.pem:/etc/ssl/smoke/ca.pem:ro
+
+  nginx:
+    volumes:
+      - ${STATUS_SMOKE_WORK:?}/certs:/etc/nginx/certs:ro
+
+  node-front:
+    image: nginx:alpine
+    restart: "no"
+    depends_on:
+      - mock-node
+    volumes:
+      - ./smoke/node-front.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${STATUS_SMOKE_WORK:?}/certs:/etc/nginx/certs:ro
+    # Тестовый порт только на loopback: smoke ждёт готовность фронта по HTTPS до запуска статуса.
+    ports:
+      - "127.0.0.1::443"
+    networks:
+      default:
+        aliases:
+          - beacon.smoke.test
+          - bots.smoke.test
+          - calls.smoke.test
+          - developers.smoke.test
+          - fast-auth.smoke.test
+          - federation.smoke.test
+          - files.smoke.test
+          - identity.smoke.test
+          - messages.smoke.test
+          - onliner.smoke.test
+          - updates.smoke.test
+          - users.smoke.test
+          - web.smoke.test
+
+  mock-node:
+    image: nginx:alpine
+    restart: "no"
+    volumes:
+      - ./smoke/mock-node.conf:/etc/nginx/conf.d/default.conf:ro
