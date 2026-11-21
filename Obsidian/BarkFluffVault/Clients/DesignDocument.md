@@ -33,4 +33,6 @@ Parent: [[Index]]
 
 ## Где проверять фактическую поддержку
 
+Для выбора компоновки, компонентов и визуальных токенов используй [руководство Material 3 Expressive](../../../Docs/material-3-expressive-guidelines.md). Доступность компонента сверяй по фактической платформе и версии зависимости.
+
 [[Clients/Android]], [[Clients/macOS]], [[Clients/iOS]], [[Clients/Linux-Qt]], [[Clients/Windows-WPF]], [[Clients/Windows-WPF-V2]], [[Clients/Windows-WinUI]], [[Clients/Web]].
