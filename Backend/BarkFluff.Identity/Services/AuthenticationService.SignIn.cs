@@ -1,4 +1,5 @@
 using BarkFluff.Identity.Domain;
+using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Security;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
@@ -337,8 +338,13 @@ public sealed partial class AuthenticationService
             }
 
             if (createNewSession && c.Purpose == AuthenticationPurpose.SignIn)
+            {
+                using var locationTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                locationTimeout.CancelAfter(TimeSpan.FromSeconds(2));
+                var location = await locationClient.GetLocationString(c.IpAddress, "неизвестно", locationTimeout.Token);
                 await loginNotifications.SendAsync(c.UserId, NotificationType.SuccessfulLogin, c.Username,
-                    c.IpAddress, c.DeviceName, c.OperationSystem, c.AppName, "неизвестно", Now, ct);
+                    c.IpAddress, c.DeviceName, c.OperationSystem, c.AppName, location, Now, ct);
+            }
         }
         if (c.ExpiresAt <= Now) throw Denied();
         return new AuthResponse { AccessToken = jwt.GenerateUserToken(c.UserId, c.DeviceId),
