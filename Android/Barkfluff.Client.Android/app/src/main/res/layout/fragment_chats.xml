@@ -37,12 +37,10 @@
                     android:id="@+id/headerTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:letterSpacing="-0.014"
-                    android:lineHeight="44sp"
+                    android:accessibilityHeading="true"
+                    android:textAppearance="@style/TextAppearance.Material3.DisplaySmall.Emphasized"
                     android:text="@string/nav_chats"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textFontWeight="600"
-                    android:textSize="36sp" />
+                    android:textColor="?attr/colorOnSurface" />
 
                 <TextView
                     android:id="@+id/headerSubtitle"
@@ -51,10 +49,9 @@
                     android:layout_marginTop="2dp"
                     android:layout_marginEnd="12dp"
                     android:ellipsize="end"
-                    android:lineHeight="20sp"
                     android:maxLines="1"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="14sp"
                     tools:text="12 непрочитанных сообщений" />
 
             </LinearLayout>

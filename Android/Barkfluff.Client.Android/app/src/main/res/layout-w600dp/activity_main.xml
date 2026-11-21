@@ -1,19 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mainRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/profile_settings_background"
     android:fitsSystemWindows="true">
 
-    <!-- Navigation Rail для планшетов / фолдаблов. ID совпадает с phone-вариантом
-         (bottomNavigation), чтобы MainActivity использовал тот же byBinding. -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
+    <com.google.android.material.navigationrail.NavigationRailView
         android:id="@+id/bottomNavigation"
+        tools:viewBindingType="com.google.android.material.navigation.NavigationBarView"
         android:layout_width="80dp"
         android:layout_height="0dp"
-        app:itemActiveIndicatorStyle="@style/BottomNav.ActiveIndicator.Compact"
         app:itemIconTint="@color/bottom_nav_item_color"
         app:itemTextColor="@color/bottom_nav_item_color"
         app:labelVisibilityMode="labeled"

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:app="http://schemas.android.com/apk/res-auto">
+    <SplitPairRule
+        app:clearTop="true"
+        app:finishPrimaryWithSecondary="never"
+        app:finishSecondaryWithPrimary="always"
+        app:splitMaxAspectRatioInPortrait="alwaysAllow"
+        app:splitMinHeightDp="360"
+        app:splitMinSmallestWidthDp="0"
+        app:splitMinWidthDp="840"
+        app:splitRatio="0.4">
+        <SplitPairFilter
+            app:primaryActivityName="com.barkfluff.client.MainActivity"
+            app:secondaryActivityName="com.barkfluff.client.ChatActivity" />
+    </SplitPairRule>
+</resources>

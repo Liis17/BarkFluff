@@ -508,13 +508,13 @@
 
             <ImageButton
                 android:id="@+id/clearEditButton"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_cancel_edit"
-                android:padding="4dp"
+                android:padding="12dp"
                 android:src="@drawable/ic_close"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -589,13 +589,13 @@
 
             <ImageButton
                 android:id="@+id/clearReplyButton"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_cancel_reply"
-                android:padding="4dp"
+                android:padding="12dp"
                 android:src="@drawable/ic_close"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -654,13 +654,13 @@
 
             <ImageButton
                 android:id="@+id/clearAttachmentsButton"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_clear_attachments"
-                android:padding="4dp"
+                android:padding="12dp"
                 android:src="@drawable/ic_close"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -697,13 +697,12 @@
 
         <ImageButton
             android:id="@+id/attachButton"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/cd_attach_file"
-            android:padding="11dp"
-            android:rotation="45"
-            android:src="@drawable/ic_attachment"
+            android:padding="13dp"
+            android:src="@drawable/ic_attachment_composer"
             app:tint="?attr/colorOnSurfaceVariant" />
 
         <EditText
@@ -725,11 +724,11 @@
 
         <ImageButton
             android:id="@+id/stickerButton"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/cd_stickers"
-            android:padding="11dp"
+            android:padding="13dp"
             android:src="@drawable/ic_sticker"
             app:tint="?attr/colorOnSurfaceVariant" />
 

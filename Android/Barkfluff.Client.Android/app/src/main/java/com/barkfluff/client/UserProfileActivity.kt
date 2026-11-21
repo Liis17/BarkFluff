@@ -287,6 +287,10 @@ class UserProfileActivity : AppCompatActivity() {
 
     private fun setupAvatarExpansion() {
         onBackPressedDispatcher.addCallback(this, avatarCollapseOnBack)
+        binding.profileAvatarFrame.setOnClickListener {
+            if (isAvatarExpandable()) animateAvatarExpansion(1f)
+        }
+        updateAvatarAction()
         binding.profileHeader.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> applyAvatarMorph() }
         // AvatarLoader changes GONE to VISIBLE after loading. That changes the photo's
         // own bounds without changing the header bounds, so refresh its translation too.
@@ -320,6 +324,15 @@ class UserProfileActivity : AppCompatActivity() {
     private fun isAvatarExpandable(): Boolean =
         binding.profileAvatarImageView.visibility == View.VISIBLE && binding.profileAvatarImageView.drawable != null
 
+    private fun updateAvatarAction() {
+        val canExpand = avatarExpansion == 0f && isAvatarExpandable()
+        binding.profileAvatarFrame.apply {
+            isClickable = canExpand
+            isFocusable = canExpand
+            contentDescription = if (canExpand) getString(R.string.profile_expand_avatar) else null
+        }
+    }
+
     /** Насколько вытянуть шапку, чтобы её низ совпал с низом квадратного фото. */
     private fun computeAvatarStretchMax(): Float {
         val header = binding.profileHeader
@@ -330,13 +343,17 @@ class UserProfileActivity : AppCompatActivity() {
     private fun animateAvatarExpansion(target: Float) {
         avatarExpansionAnimator?.cancel()
         if (avatarStretchMax <= 0f) avatarStretchMax = computeAvatarStretchMax()
+        avatarPullStartedExpanded = target == 1f
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            setAvatarExpansion(target)
+            return
+        }
         avatarExpansionAnimator = ValueAnimator.ofFloat(avatarExpansion, target).apply {
             duration = 260L
             interpolator = DecelerateInterpolator(1.6f)
             addUpdateListener { setAvatarExpansion(it.animatedValue as Float) }
             start()
         }
-        avatarPullStartedExpanded = target == 1f
     }
 
     private fun setAvatarExpansion(value: Float) {
@@ -355,6 +372,7 @@ class UserProfileActivity : AppCompatActivity() {
     private fun applyAvatarMorph() {
         val photo = binding.profileAvatarImageView
         val frame = binding.profileAvatarFrame
+        updateAvatarAction()
         val width = binding.profileHeader.width.toFloat()
         if (width <= 0f || frame.width <= 0) return
         updateProfileNameMaxWidth(width.toInt())

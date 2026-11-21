@@ -67,6 +67,10 @@
         android:requestLegacyExternalStorage="true"
         android:enableOnBackInvokedCallback="true">
 
+        <property
+            android:name="android.window.PROPERTY_ACTIVITY_EMBEDDING_SPLITS_ENABLED"
+            android:value="true" />
+
         <service android:name=".audio.VoicePlaybackService"
             android:exported="true" android:foregroundServiceType="mediaPlayback">
             <intent-filter>

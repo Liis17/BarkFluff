@@ -278,6 +278,7 @@
     <string name="cd_play">Play</string>
     <string name="cd_download">Download</string>
     <string name="cd_download_file">Download file</string>
+    <string name="profile_expand_avatar">Expand profile photo</string>
     <string name="cd_open_file">Open file</string>
     <string name="cd_attachment">Attachment</string>
     <string name="cd_remove_background">Remove background</string>
