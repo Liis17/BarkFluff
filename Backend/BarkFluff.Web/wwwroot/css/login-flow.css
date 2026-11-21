@@ -15,6 +15,7 @@
 }
 
 .login-flow__text-button {
+    position: relative;
     flex: 0 0 auto;
     margin: 0 0 8px;
     padding: 2px 0;
@@ -26,6 +27,13 @@
     cursor: pointer;
     text-decoration: underline;
     text-underline-offset: 2px;
+}
+
+/* Расширенная область нажатия; снизу ограничена, чтобы не перекрывать поле ввода под строкой */
+.login-flow__text-button::before {
+    content: '';
+    position: absolute;
+    inset: -12px -8px -4px;
 }
 
 .login-flow__text-button:hover:not(:disabled) {

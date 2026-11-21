@@ -46,6 +46,8 @@
   "attach.fileCount.other": "{count} файлов",
   "attach.title": "Отправить вложения",
   "attachment.audio": "Аудио",
+  "attachment.audio.pause": "Пауза",
+  "attachment.audio.play": "Воспроизвести",
   "attachment.audio.unavailable": "Аудио недоступно",
   "attachment.document": "Документ",
   "attachment.file": "Файл",

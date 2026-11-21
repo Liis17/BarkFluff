@@ -54,7 +54,10 @@ public class UserChangedNameConsumer : IConsumer<UserChangedName>
 
             foreach (var chat in chatsWithUser)
             {
-                var personDm = chat.Members![0].UserId == userId ? chat.Members[1].UserId : chat.Members[0].UserId;
+                if (chat.Members is not { Count: >= 2 } members)
+                    continue;
+
+                var personDm = members[0].UserId == userId ? members[1].UserId : members[0].UserId;
 
                 // Remote-участник fed-DM (этап 2.3) не имеет локального UserId — кеш чата
                 // ключуется по long id, для него неприменим (профиль remote-стороны — Users.RemoteUsers).

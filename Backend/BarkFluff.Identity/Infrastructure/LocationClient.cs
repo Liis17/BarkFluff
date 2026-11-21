@@ -18,7 +18,7 @@ public class LocationClient
         _logger = logger;
     }
 
-    public async Task<IpLocation?> GetLocation(string ip)
+    public async Task<IpLocation?> GetLocation(string ip, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Запрос геолокации для IP: {IpAddress}", ip);
         _metrics.Increment("geolocation_requests");
@@ -26,7 +26,7 @@ public class LocationClient
         try
         {
             var url = $"{BaseUrl}{ip}?lang=ru";
-            var response = await _httpClient.GetAsync(url);
+            using var response = await _httpClient.GetAsync(url, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -39,7 +39,7 @@ public class LocationClient
                 return null;
             }
 
-            var content = await response.Content.ReadAsStringAsync();
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
             var location = JsonSerializer.Deserialize<IpLocation>(content);
 
             if (location != null)

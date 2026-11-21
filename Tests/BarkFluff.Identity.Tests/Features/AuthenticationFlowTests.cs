@@ -628,6 +628,26 @@ public class AuthenticationFlowTests
         Assert.NotNull((await h.Complete(pending)).Session);
     }
 
+    [Theory]
+    [InlineData(true, "Russia, Moscow, Moscow")]
+    [InlineData(false, "неизвестно")]
+    public async Task PasswordSignIn_EmailIncludesLocationOfCapturedIpAddress(bool locationAvailable, string expectedLocation)
+    {
+        using var h = new Harness(emailEnabled: true, locationAvailable: locationAvailable);
+        await h.Register(AuthLoginMode.Password);
+        await h.Service.SetLoginNotificationChannel(new SetLoginNotificationChannelRequest
+        { Channel = LoginNotificationChannel.Email }, default);
+        var request = h.SignIn();
+        request.LoginMode = AuthLoginMode.Password;
+
+        var pending = await h.Service.BeginSignIn(request, default);
+        Assert.NotNull((await h.Complete(pending)).Session);
+
+        var email = Assert.Single(h.Emails, x => x.Type == NotificationType.SuccessfulLogin);
+        Assert.Equal("127.0.0.1", email.Payload["ip"]);
+        Assert.Equal(expectedLocation, email.Payload["location"]);
+    }
+
     [Fact]
     public async Task EmailSecondFactor_UsesVerifiedRegistrationAddress()
     {
@@ -945,7 +965,7 @@ public class AuthenticationFlowTests
         private string _restrictionReason = "";
         private Google.Protobuf.WellKnownTypes.Timestamp? _deletionScheduledAt;
 
-        public Harness(bool emailEnabled = false)
+        public Harness(bool emailEnabled = false, bool locationAvailable = true)
         {
             var connection = Environment.GetEnvironmentVariable("BARKFLUFF_TEST_POSTGRES");
             var builder = new DbContextOptionsBuilder<IdentityContext>();
@@ -1009,13 +1029,14 @@ public class AuthenticationFlowTests
             var notificationQueue = new NotificationQueueSender(publish.Object);
             var telegramOptions = new TelegramAuthOptions { Enabled = true, BotToken = "test-only-token" };
             var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Email:Enabled"] = emailEnabled.ToString() }).Build();
+            var locationClient = TestHelper.CreateLocationClient(locationAvailable);
             CreateServiceWithGuard = (context, abuseGuard) =>
             {
                 var loginNotifications = new LoginNotificationService(new AuthPropertiesStorage(context), _users.Object,
                     notificationQueue, Bot, telegramOptions, configuration, NullLogger<LoginNotificationService>.Instance);
                 return new AuthenticationService(context, new AuthenticationStore(context),
                     new AuthenticationSecrets(new JwtSettings { SecretKey = "test-auth-secret" }), _users.Object, TestHelper.CreateJwtService(),
-                    new PasswordsStorage(context), notificationQueue, loginNotifications, Bot, telegramOptions, configuration,
+                    new PasswordsStorage(context), notificationQueue, loginNotifications, locationClient, Bot, telegramOptions, configuration,
                     request, TestHelper.CreateUserContext(42, deviceId), abuseGuard, Clock, publish.Object, new JwtSettings());
             };
             CreateService = context => CreateServiceWithGuard(context, AbuseGuard);

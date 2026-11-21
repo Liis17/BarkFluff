@@ -87,7 +87,7 @@
             </div>
 
             <div class="sidebar-nav" id="sidebarNav">
-                <button class="nav-btn active" id="navChats">
+                <button class="nav-btn active" id="navChats" aria-current="page">
                     <span class="nav-icon">
                         <span class="bf-icon" data-bf-icon="all-chats" aria-hidden="true"></span>
                     </span>
@@ -124,7 +124,7 @@
                 <span data-i18n="connection.synced">Синхронизировано</span>
             </div>
             <div class="chat-header" id="chatHeader">
-                <button class="btn-back-to-list" id="btnBackToList" data-i18n-title="chat.backToList" title="Назад к чатам">&#8592;</button>
+                <button class="btn-back-to-list" id="btnBackToList" data-i18n-title="chat.backToList" title="Назад к чатам" data-i18n-aria-label="chat.backToList" aria-label="Назад к чатам">&#8592;</button>
                 <div class="chat-header-avatar" id="chatHeaderAvatar"></div>
                 <div class="chat-header-info">
                     <div class="chat-header-name" id="chatHeaderName"></div>
@@ -165,7 +165,7 @@
                 </div>
             </div>
             <div class="sr-only" id="feedLiveRegion" aria-live="polite" aria-atomic="true"></div>
-            <button class="scroll-to-bottom-btn" id="scrollToBottomBtn" data-i18n-title="chat.scrollToLatest" title="К последнему сообщению"><span class="scroll-badge"></span>&#8595;</button>
+            <button class="scroll-to-bottom-btn" id="scrollToBottomBtn" data-i18n-title="chat.scrollToLatest" title="К последнему сообщению" data-i18n-aria-label="chat.scrollToLatest" aria-label="К последнему сообщению"><span class="scroll-badge"></span>&#8595;</button>
 
             <div class="input-bar" id="inputBar">
                 <div class="input-bar-stack">
@@ -174,14 +174,14 @@
                             <div class="rpb-author" id="rpbAuthor"></div>
                             <div class="rpb-text" id="rpbText"></div>
                         </div>
-                        <button class="rpb-close" id="rpbClose" data-i18n-title="composer.reply.cancel" title="Отменить ответ">&times;</button>
+                        <button class="rpb-close" id="rpbClose" data-i18n-title="composer.reply.cancel" title="Отменить ответ" data-i18n-aria-label="composer.reply.cancel" aria-label="Отменить ответ">&times;</button>
                     </div>
                     <div class="edit-preview-bar" id="editPreviewBar">
                         <div class="rpb-content">
                             <div class="rpb-author" data-i18n="composer.edit.title">Редактирование</div>
                             <div class="rpb-text" id="epbText"></div>
                         </div>
-                        <button class="rpb-close" id="epbClose" data-i18n-title="composer.edit.cancel" title="Отменить редактирование">&times;</button>
+                        <button class="rpb-close" id="epbClose" data-i18n-title="composer.edit.cancel" title="Отменить редактирование" data-i18n-aria-label="composer.edit.cancel" aria-label="Отменить редактирование">&times;</button>
                     </div>
                     <div class="input-bar-inner">
                         <div class="sticker-picker" id="stickerPicker">
@@ -215,7 +215,7 @@
             <div class="sd-header">
                 <button class="sd-back" id="sdBack">&#8592;</button>
                 <div class="sd-title" id="sdTitle"><span class="bf-icon" data-bf-icon="general" aria-hidden="true"></span><span data-i18n="settings.title">Настройки</span></div>
-                <button class="sd-close" id="sdClose">&times;</button>
+                <button class="sd-close" id="sdClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             </div>
             <div class="sd-body" id="sdBody"></div>
         </div>
@@ -254,7 +254,7 @@
         <div class="confirm-dialog newchat-dialog">
             <div class="newchat-header">
                 <h3 id="newChatTitle" data-i18n="newchat.title">Новый чат</h3>
-                <button class="newchat-close" id="newChatClose">&times;</button>
+                <button class="newchat-close" id="newChatClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             </div>
             <input type="text" class="private-pass-input" id="newChatGroupTitle" data-i18n-placeholder="newchat.groupTitle.placeholder" placeholder="Название группы" maxlength="128">
             <div class="newchat-chips" id="newChatChips"></div>
@@ -404,7 +404,7 @@
 
     <div class="profile-overlay" id="profileOverlay">
         <div class="profile-panel user-profile-panel">
-            <button class="profile-close" id="profileClose">&times;</button>
+            <button class="profile-close" id="profileClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             <div class="profile-poster" id="profilePoster"></div>
             <div class="profile-header">
                 <div class="profile-avatar" id="profileAvatar"></div>
@@ -511,7 +511,7 @@
     <!-- Group info panel -->
     <div class="profile-overlay" id="groupOverlay">
         <div class="profile-panel">
-            <button class="profile-close" id="groupClose">&times;</button>
+            <button class="profile-close" id="groupClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             <div class="profile-header">
                 <div class="group-avatar-wrap">
                     <div class="profile-avatar" id="groupAvatar"></div>
@@ -566,7 +566,7 @@
 
     <div class="profile-overlay" id="chatBackgroundSelector">
         <div class="profile-panel">
-            <button class="profile-close" id="chatBackgroundSelectorClose">&times;</button>
+            <button class="profile-close" id="chatBackgroundSelectorClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             <div class="profile-header">
                 <div class="profile-name" id="chatBackgroundSelectorTitle" data-i18n="chat.background">Фон чата</div>
                 <div class="profile-status-line" data-i18n="chat.background.hint">Выберите изображение или вернитесь к глобальному фону</div>
@@ -578,7 +578,7 @@
     <!-- Sticker pack overlay -->
     <div class="profile-overlay" id="stickerPackOverlay">
         <div class="profile-panel stickerpack-panel">
-            <button class="profile-close" id="spClose">&times;</button>
+            <button class="profile-close" id="spClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             <div class="profile-header">
                 <div class="profile-avatar sp-cover" id="spCover"></div>
                 <div class="profile-name" id="spName"></div>
@@ -607,7 +607,7 @@
         <div class="dialog folder-edit-dialog">
             <div class="folder-edit-header">
                 <div class="folder-edit-title" id="folderEditTitle" data-i18n="folder.new">Новая папка</div>
-                <button class="folder-edit-close" id="folderEditClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
+                <button class="folder-edit-close" id="folderEditClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             </div>
             <div class="folder-edit-body">
                 <label class="folder-edit-label" for="folderNameInput" data-i18n="common.name">Название</label>
@@ -631,7 +631,7 @@
             <div class="pinned-list-header">
                 <div class="pinned-list-title"><span data-i18n="pinned.list.title">Закреплённые сообщения</span> <span class="pinned-list-counter" id="pinnedListCounter"></span></div>
                 <button class="btn-confirm-cancel" id="pinnedListUnpinAll" data-i18n="pinned.unpinAll">Открепить все</button>
-                <button class="folder-edit-close" id="pinnedListClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
+                <button class="folder-edit-close" id="pinnedListClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             </div>
             <div class="pinned-list-inner" id="pinnedListInner"></div>
         </div>
@@ -646,7 +646,7 @@
                     <button type="button" data-filter="all" aria-pressed="true" class="active" data-i18n="callHistory.all">Все</button>
                     <button type="button" data-filter="missed" aria-pressed="false" data-i18n="callHistory.missed">Пропущенные</button>
                 </div>
-                <button class="folder-edit-close" id="callHistoryClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
+                <button class="folder-edit-close" id="callHistoryClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             </div>
             <div class="call-history-list" id="callHistoryList"></div>
             <button type="button" class="call-history-more" id="callHistoryMore" hidden data-i18n="callHistory.more">Показать ещё</button>
@@ -658,7 +658,7 @@
         <div class="forward-modal">
             <div class="forward-modal-header">
                 <div class="forward-modal-title" data-i18n="forward.title">Переслать в...</div>
-                <button class="forward-modal-close" id="forwardClose">&times;</button>
+                <button class="forward-modal-close" id="forwardClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             </div>
             <div class="forward-chat-list" id="forwardChatList"></div>
             <div class="forward-modal-footer">
@@ -682,7 +682,7 @@
                     <div class="attach-dialog-title" data-i18n="attach.title">Отправить вложения</div>
                     <div class="attach-dialog-subtitle" id="attachDialogSubtitle"></div>
                 </div>
-                <button class="attach-dialog-close" id="attachDialogClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
+                <button class="attach-dialog-close" id="attachDialogClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             </div>
             <div class="attach-mode-toggle" id="attachModeToggle">
                 <button class="attach-mode-btn" id="attachAsImages" data-i18n="attach.asImages">Как изображения</button>
@@ -725,7 +725,7 @@
         <div class="ie-dialog">
             <div class="ie-header">
                 <div class="ie-header-title" data-i18n="editor.title">Редактор изображения</div>
-                <button class="ie-header-close" id="ieEditorClose" data-i18n-title="common.close" title="Закрыть">&times;</button>
+                <button class="ie-header-close" id="ieEditorClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
             </div>
             <div class="ie-toolbar">
                 <div class="ie-tool-group">

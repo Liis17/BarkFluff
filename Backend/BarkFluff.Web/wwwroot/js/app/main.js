@@ -492,6 +492,29 @@
 
     // ========== GROUP INFO PANEL ==========
 
+    // Пункт навигации отражает открытый раздел: «Звонки» и «Настройки» открываются
+    // оверлеями и закрываются разными путями (кнопка, фон, Escape), поэтому следим за классом.
+    function syncNavWithOverlays() {
+        var callsOverlay = $('#callHistoryOverlay');
+        var settingsOverlay = $('#settingsOverlay');
+        var items = { navChats: $('#navChats'), navCalls: $('#navCalls'), navSettings: $('#navSettings') };
+        function sync() {
+            var current = settingsOverlay.classList.contains('visible') ? 'navSettings'
+                : callsOverlay.classList.contains('visible') ? 'navCalls'
+                : 'navChats';
+            Object.keys(items).forEach(function (id) {
+                var active = id === current;
+                items[id].classList.toggle('active', active);
+                if (active) items[id].setAttribute('aria-current', 'page');
+                else items[id].removeAttribute('aria-current');
+            });
+        }
+        var observer = new MutationObserver(sync);
+        observer.observe(callsOverlay, { attributes: true, attributeFilter: ['class'] });
+        observer.observe(settingsOverlay, { attributes: true, attributeFilter: ['class'] });
+        sync();
+    }
+
     function showToast(text, isError) {
         if (!soonToastEl) return;
         if (showToast._t) clearTimeout(showToast._t);
@@ -530,6 +553,7 @@
         showToast: showToast
     });
     $('#navCalls').addEventListener('click', function () { BF.callHistory.open(); });
+    syncNavWithOverlays();
 
     // ========== STICKER PICKER ==========
 

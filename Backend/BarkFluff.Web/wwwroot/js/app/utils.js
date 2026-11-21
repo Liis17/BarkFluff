@@ -456,7 +456,8 @@
     }
 
     function formatDuration(sec) {
-        if (!sec || isNaN(sec)) return '0:00';
+        // webm из MediaRecorder отдаёт duration = Infinity, пока файл не проигран целиком.
+        if (!isFinite(sec) || sec <= 0) return '0:00';
         var m = Math.floor(sec / 60);
         var s = Math.floor(sec % 60);
         return m + ':' + s.toString().padStart(2, '0');

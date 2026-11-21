@@ -1,0 +1,48 @@
+# Отдельное развёртывание статуса ноды. Не связано с compose основной ноды (Docker/nightly/barkfluff).
+# Инструкция и переменные — в README.md и .env.example.
+name: barkfluff-status
+
+services:
+  status:
+    image: ${STATUS_IMAGE:-docker.barkfluff.com/barkfluff-status-nightly:latest}
+    restart: unless-stopped
+    # Все переменные из .env (включая Status__ServiceOrigins__<сервис>) попадают в контейнер; нужен Compose ≥ 2.24.
+    env_file:
+      - path: ./.env
+        required: false
+    environment:
+      NODE_DOMAIN: ${NODE_DOMAIN:?Задайте NODE_DOMAIN в .env}
+      FEDERATION_SPKI_PIN: ${FEDERATION_SPKI_PIN:-}
+      Status__DisabledServices: ${STATUS_DISABLED_SERVICES:-}
+    volumes:
+      - status-data:/var/lib/barkfluff-status
+    expose:
+      - "8080"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - status
+    environment:
+      # Подставляются только переменные STATUS_*; остальные $переменные nginx остаются как есть.
+      NGINX_ENVSUBST_FILTER: "^STATUS_"
+      STATUS_SERVER_NAME: ${STATUS_SERVER_NAME:-status.example.com}
+    ports:
+      - "${STATUS_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ${STATUS_CERTS_DIR:-./certs}:/etc/nginx/certs:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  status-data:

@@ -527,6 +527,12 @@
             transition: opacity var(--transition);
         }
         .pw-toggle:hover { opacity: 1; }
+        /* Область нажатия 48×48 вокруг иконки 22px */
+        .pw-toggle::before {
+            content: '';
+            position: absolute;
+            inset: -13px;
+        }
 
         /* ─────────────── CHECKBOX ─────────────── */
         .checkbox-group {
@@ -837,6 +843,7 @@
 
         /* Не .legal-link: тот класс делегирован в legal.js как открытие документа. */
         .node-bar-change {
+            position: relative;
             padding: 0;
             border: none;
             background: none;
@@ -847,6 +854,12 @@
             text-underline-offset: 2px;
         }
         .node-bar-change:hover { opacity: 0.75; }
+        /* Область нажатия 48px по высоте без изменения вида ссылки */
+        .node-bar-change::before {
+            content: '';
+            position: absolute;
+            inset: -16px -8px;
+        }
 
         /* ─────────────── FOOTER IN CARD ─────────────── */
         .card-footer {

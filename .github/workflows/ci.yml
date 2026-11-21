@@ -75,6 +75,7 @@ jobs:
       scripts: ${{ steps.select.outputs.scripts }}
       frontend: ${{ steps.select.outputs.frontend }}
       builder: ${{ steps.select.outputs.builder }}
+      status: ${{ steps.select.outputs.status }}
       selected: ${{ steps.select.outputs.selected }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -284,10 +285,31 @@ jobs:
           echo "Repeating PostgreSQL bootstrap against the same database"
           "${compose[@]}" up --abort-on-container-exit --exit-code-from postgres-bootstrap postgres postgres-bootstrap
 
+  status-docker:
+    name: "🐳 Статус ноды: образ и HTTPS-smoke"
+    needs: changes
+    if: ${{ needs.changes.outputs.status == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+      - name: Публикация Status (Linux Release)
+        run: dotnet publish Backend/BarkFluff.Status/BarkFluff.Status.csproj -c Release -o ./publish /p:UseAppHost=false
+      # Образ собирается только локально для smoke; в реестр не отправляется.
+      - name: Сборка образа Status
+        run: docker build -f Backend/BarkFluff.Status/Dockerfile.slim -t barkfluff-status:ci .
+      - name: HTTPS-smoke страницы статуса (тестовая нода, тестовый CA)
+        env:
+          STATUS_IMAGE: barkfluff-status:ci
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: bash Docker/nightly/status/smoke/smoke.sh
+
   required:
     name: Tests passed
     if: ${{ always() && (github.event_name == 'pull_request' || inputs.mode == 'tests') }}
-    needs: [guard, changes, backend-tests, client-tests, script-tests, frontend-checks, builder-tests, builder-configs]
+    needs: [guard, changes, backend-tests, client-tests, script-tests, frontend-checks, builder-tests, builder-configs, status-docker]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -319,6 +341,7 @@ jobs:
           SCRIPTS: ${{ needs.script-tests.result }}
           FRONTEND: ${{ needs.frontend-checks.result }}
           BUILDER: ${{ (needs.builder-tests.result == 'skipped' && needs.builder-configs.result == 'skipped') && 'skipped' || ((needs.builder-tests.result == 'success' && needs.builder-configs.result == 'success') && 'success' || 'failure') }}
+          STATUS: ${{ needs.status-docker.result }}
         run: python3 .github/scripts/pr_tests.py --check
 
   notify-pr:
@@ -326,7 +349,7 @@ jobs:
     if: >-
       ${{ !cancelled() && github.event_name == 'pull_request'
           && !(github.event.action == 'edited' && !github.event.changes.base) }}
-    needs: [required, guard, backend-tests, client-tests, script-tests, frontend-checks, builder-tests, builder-configs]
+    needs: [required, guard, backend-tests, client-tests, script-tests, frontend-checks, builder-tests, builder-configs, status-docker]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -347,6 +370,7 @@ jobs:
           SCRIPTS: ${{ needs.script-tests.result }}
           FRONTEND: ${{ needs.frontend-checks.result }}
           BUILDER: ${{ (needs.builder-tests.result == 'skipped' && needs.builder-configs.result == 'skipped') && 'skipped' || ((needs.builder-tests.result == 'success' && needs.builder-configs.result == 'success') && 'success' || 'failure') }}
+          STATUS: ${{ needs.status-docker.result }}
         run: python3 .github/scripts/ci_notify.py pr
 
   # ═══════════════════════════════════════════════════════════════
