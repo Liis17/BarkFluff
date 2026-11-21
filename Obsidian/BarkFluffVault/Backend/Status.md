@@ -11,7 +11,7 @@ Parent: [[Architecture]]. Status — отдельный ASP.NET-сервис с 
 - `Probing/ReadinessClassifier.cs`: чистая классификация ответа в состояние проверки.
 - `Probing/FederationPin.cs`: SPKI-пин для Federation по тому же контракту, что `S2SChannelFactory`.
 - `Storage/StatusStore.cs`: SQLite (WAL), батч слотов, дневные агрегаты, последнее состояние, очистка.
-- `Reporting/StatusReportBuilder.cs`: сборка публичного отчёта из агрегатов (чистая функция).
+- `Reporting/StatusReport.cs`: `StatusReportBuilder` собирает публичный отчёт из агрегатов.
 - `Monitoring/StatusMonitorService.cs`: цикл опроса (сразу после старта, затем каждые 30 секунд), запись батча, пересборка отчёта.
 - `wwwroot/`: одна страница без внешних ресурсов (CSP `'self'`), цвет всегда дублируется текстом и значком.
 
