@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
   <g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M17 3 21 7 17 11 13 7Z"></path>
-    <path d="m14.5 9.5-9.5 9.5"></path>
+    <path d="m13.5 2.5 8 8"></path>
+    <path d="M15.5 4.5 4.6 15.4a2.83 2.83 0 0 0 4 4L19.5 8.5"></path>
+    <path d="M8 12h8"></path>
   </g>
+  <circle cx="8.5" cy="16" r="1.2" fill="currentColor"></circle>
 </svg>
