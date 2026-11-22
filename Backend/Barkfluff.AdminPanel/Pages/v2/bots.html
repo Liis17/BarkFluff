@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Боты</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .bots-table { width: 100%; border-collapse: collapse; }
         .bots-table th, .bots-table td {
@@ -134,11 +135,11 @@
             <h1>Боты</h1>
             <div style="display:flex;gap:8px;">
                 <button class="md-btn md-btn-filled md-btn-square-press" onclick="openCreateModal()">
-                    <span class="msr size-18">add</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/add.svg);" aria-hidden="true"></span>
                     Создать системного бота
                 </button>
                 <button id="logoutBtn" class="md-icon-btn" title="Выйти">
-                    <span class="msr">logout</span>
+                    <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span>
                 </button>
             </div>
         </header>
@@ -161,7 +162,7 @@
                 </table>
             </div>
             <div id="emptyState" class="md-empty" style="display:none;">
-                <span class="msr size-48">smart_toy</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/bot.svg);" aria-hidden="true"></span>
                 <h3>Ботов пока нет</h3>
                 <p>Создайте первого системного бота или дождитесь ботов пользователей через @botfather.</p>
             </div>
@@ -174,7 +175,7 @@
     <div class="md-dialog">
         <div class="md-dialog-header">
             <h3>Создать системного бота</h3>
-            <button class="md-icon-btn" onclick="closeCreateModal()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeCreateModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <form onsubmit="createBot(event)">
             <div class="md-dialog-body">
@@ -198,7 +199,7 @@
             <div class="md-dialog-actions">
                 <button type="button" class="md-btn md-btn-text" onclick="closeCreateModal()">Отмена</button>
                 <button type="submit" id="createBtn" class="md-btn md-btn-filled md-btn-square-press">
-                    <span class="msr size-18">add</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/add.svg);" aria-hidden="true"></span>
                     Создать
                 </button>
             </div>
@@ -211,7 +212,7 @@
     <div class="md-dialog bot-dialog">
         <div class="md-dialog-header" style="border-bottom:1px solid var(--md-outline-variant);background:var(--md-surface-container-high);">
             <h3 id="botModalTitle">Бот</h3>
-            <button class="md-icon-btn" onclick="closeBotModal()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeBotModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body" id="botModalContent" style="padding:0;"></div>
     </div>
@@ -222,7 +223,7 @@
     <div class="md-dialog">
         <div class="md-dialog-header">
             <h3>Токен бота</h3>
-            <button class="md-icon-btn" onclick="closeTokenModal()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeTokenModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body">
             <p style="font-size:14px;color:var(--md-on-surface-variant);">
@@ -232,7 +233,7 @@
         </div>
         <div class="md-dialog-actions">
             <button class="md-btn md-btn-tonal md-btn-square-press" onclick="copyToken()">
-                <span class="msr size-18">content_copy</span>
+                <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/copy-plain.svg);" aria-hidden="true"></span>
                 Скопировать
             </button>
             <button class="md-btn md-btn-filled" onclick="closeTokenModal()">Готово</button>
@@ -241,9 +242,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     let bots = [];
     let currentBotData = null;
@@ -277,7 +278,7 @@
                         <div class="bot-avatar">
                             ${b.profilePicturePreview
                                 ? `<img src="${escapeHtml(b.profilePicturePreview)}" alt="">`
-                                : '<span class="msr size-20">smart_toy</span>'}
+                                : '<span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/bot.svg);" aria-hidden="true"></span>'}
                         </div>
                         <span>${escapeHtml(b.name)}</span>
                     </div>
@@ -289,10 +290,10 @@
                 <td>
                     <div class="actions" onclick="event.stopPropagation()">
                         <button class="md-icon-btn" title="Перегенерировать токен" onclick="regenerateToken(${b.id})">
-                            <span class="msr">key</span>
+                            <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/api-key.svg);" aria-hidden="true"></span>
                         </button>
                         <button class="md-icon-btn" title="Удалить" style="color:var(--md-error);" onclick="deleteBot(${b.id})">
-                            <span class="msr">delete</span>
+                            <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/delete.svg);" aria-hidden="true"></span>
                         </button>
                     </div>
                 </td>
@@ -357,14 +358,14 @@
                 <div class="bot-modal-cover" onclick="document.getElementById('botPosterFileInput').click()">
                     ${p.profilePosterUrl
                         ? `<img src="${escapeHtml(p.profilePosterUrl)}" alt="Постер профиля">`
-                        : '<span class="msr size-48" style="opacity:.55;">image</span>'}
-                    <div class="overlay"><span class="msr">image</span> Изменить постер</div>
+                        : '<span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/image.svg);opacity:.55;" aria-hidden="true"></span>'}
+                    <div class="overlay"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/image.svg);" aria-hidden="true"></span> Изменить постер</div>
                 </div>
                 <div class="bot-modal-avatar-wrap" onclick="document.getElementById('botAvatarFileInput').click()">
                     ${avatarUrl
                         ? `<img src="${escapeHtml(avatarUrl)}" alt="Аватар бота">`
                         : `<span>${getInitials(p.firstName)}</span>`}
-                    <div class="bot-modal-avatar-overlay"><span class="msr">photo_camera</span></div>
+                    <div class="bot-modal-avatar-overlay"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/image.svg);" aria-hidden="true"></span></div>
                 </div>
                 <input type="file" id="botPosterFileInput" accept="image/*" style="display:none;" onchange="handleBotPosterUpload(this, ${p.id})">
                 <input type="file" id="botAvatarFileInput" accept="image/*" style="display:none;" onchange="handleBotAvatarUpload(this, ${p.id})">
@@ -391,7 +392,7 @@
                 </div>
                 <div style="margin-top:12px;">
                     <button class="md-btn md-btn-filled md-btn-square-press" onclick="saveBotProfile(${p.id})">
-                        <span class="msr size-18">save</span> Сохранить профиль
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/save.svg);" aria-hidden="true"></span> Сохранить профиль
                     </button>
                 </div>
 
@@ -400,10 +401,10 @@
                     <div style="font-size:13px;color:var(--md-on-surface-variant);margin-bottom:10px;">Токен загружается только по запросу и не хранится в профиле.</div>
                     <div class="bot-token-actions">
                         <button id="showBotTokenBtn" class="md-btn md-btn-tonal md-btn-square-press" onclick="loadCurrentToken(${p.id})">
-                            <span class="msr size-18">visibility</span> Показать и скопировать токен
+                            <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/visibility.svg);" aria-hidden="true"></span> Показать и скопировать токен
                         </button>
                         <button class="md-btn md-btn-text" onclick="regenerateToken(${p.id}, true)">
-                            <span class="msr size-18">key</span> Перегенерировать
+                            <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/api-key.svg);" aria-hidden="true"></span> Перегенерировать
                         </button>
                     </div>
                     <div id="botTokenValue" class="bot-token-value" style="display:none;"></div>
@@ -461,7 +462,7 @@
             const value = document.getElementById('botTokenValue');
             value.textContent = profileToken;
             value.style.display = '';
-            button.innerHTML = '<span class="msr size-18">content_copy</span> Скопировать токен';
+            button.innerHTML = '<span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/copy-plain.svg);" aria-hidden="true"></span> Скопировать токен';
             await copyText(profileToken);
             button.onclick = () => copyText(profileToken);
         } catch {} finally {
@@ -495,7 +496,7 @@
                 if (value && button) {
                     value.textContent = profileToken;
                     value.style.display = '';
-                    button.innerHTML = '<span class="msr size-18">content_copy</span> Скопировать токен';
+                    button.innerHTML = '<span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/copy-plain.svg);" aria-hidden="true"></span> Скопировать токен';
                     button.onclick = () => copyText(profileToken);
                 }
                 await copyText(profileToken);

@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Федерация</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .kpi-grid {
             display: grid;
@@ -81,13 +82,13 @@
         <header class="md-app-bar">
             <h1>Федерация</h1>
             <button id="logoutBtn" class="md-icon-btn" title="Выйти">
-                <span class="msr">logout</span>
+                <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span>
             </button>
         </header>
 
         <div class="md-page">
             <div id="notConfiguredWarning" class="config-warning" style="display:none;">
-                <span class="msr">warning</span>
+                <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/warning.svg);" aria-hidden="true"></span>
                 <span>Федерация не сконфигурирована на этой ноде (пуст <code>Federation:ServerName</code>).</span>
             </div>
 
@@ -95,28 +96,28 @@
                 <div class="kpi-card">
                     <div class="kpi-head">
                         <span class="kpi-label">Server name</span>
-                        <span class="kpi-icon"><span class="msr">dns</span></span>
+                        <span class="kpi-icon"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/dns.svg);" aria-hidden="true"></span></span>
                     </div>
                     <div class="kpi-value" id="statServerName" style="font-size:20px;">—</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-head">
                         <span class="kpi-label">Статус</span>
-                        <span class="kpi-icon icon-success"><span class="msr">power</span></span>
+                        <span class="kpi-icon icon-success"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/online.svg);" aria-hidden="true"></span></span>
                     </div>
                     <div class="kpi-value" id="statEnabled" style="font-size:20px;">—</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-head">
                         <span class="kpi-label">Известных нод (active)</span>
-                        <span class="kpi-icon"><span class="msr">hub</span></span>
+                        <span class="kpi-icon"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/federation.svg);" aria-hidden="true"></span></span>
                     </div>
                     <div class="kpi-value" id="statActivePeers">—</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-head">
                         <span class="kpi-label">Outbox pending</span>
-                        <span class="kpi-icon icon-warn"><span class="msr">outbox</span></span>
+                        <span class="kpi-icon icon-warn"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/export.svg);" aria-hidden="true"></span></span>
                     </div>
                     <div class="kpi-value" id="statOutboxPending">—</div>
                     <div class="kpi-foot">Появится в Фазе 2</div>
@@ -124,7 +125,7 @@
                 <div class="kpi-card">
                     <div class="kpi-head">
                         <span class="kpi-label">Outbox deadletter</span>
-                        <span class="kpi-icon icon-error"><span class="msr">report</span></span>
+                        <span class="kpi-icon icon-error"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/report.svg);" aria-hidden="true"></span></span>
                     </div>
                     <div class="kpi-value" id="statOutboxDeadletter">—</div>
                     <div class="kpi-foot">Появится в Фазе 2</div>
@@ -135,7 +136,7 @@
                 <div class="panel-head">
                     <h2>Ключи ноды</h2>
                     <button class="md-btn md-btn-tonal md-btn-square-press" onclick="rotateKey()">
-                        <span class="msr size-18">key</span>
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/api-key.svg);" aria-hidden="true"></span>
                         Ротация ключа
                     </button>
                 </div>
@@ -157,7 +158,7 @@
                 <div class="panel-head">
                     <h2>Пиры</h2>
                     <button class="md-btn md-btn-filled md-btn-square-press" onclick="openAddPeerModal()">
-                        <span class="msr size-18">add</span>
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/add.svg);" aria-hidden="true"></span>
                         Добавить пир
                     </button>
                 </div>
@@ -177,7 +178,7 @@
                     </table>
                 </div>
                 <div id="peersEmptyState" class="md-empty" style="display:none;">
-                    <span class="msr size-48">hub</span>
+                    <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/federation.svg);" aria-hidden="true"></span>
                     <h3>Пиров пока нет</h3>
                     <p>Добавьте пира вручную или дождитесь автоматического discovery (well-known/Navigator).</p>
                 </div>
@@ -191,7 +192,7 @@
     <div class="md-dialog">
         <div class="md-dialog-header">
             <h3>Добавить пира</h3>
-            <button class="md-icon-btn" onclick="closeAddPeerModal()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeAddPeerModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <form onsubmit="submitAddPeer(event)">
             <div class="md-dialog-body">
@@ -229,7 +230,7 @@
             <div class="md-dialog-actions">
                 <button type="button" class="md-btn md-btn-text" onclick="closeAddPeerModal()">Отмена</button>
                 <button type="submit" id="addPeerBtn" class="md-btn md-btn-filled md-btn-square-press">
-                    <span class="msr size-18">add</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/add.svg);" aria-hidden="true"></span>
                     Добавить
                 </button>
             </div>
@@ -238,9 +239,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     let peers = [];
 
@@ -316,8 +317,8 @@
                 <td>
                     <div class="actions">
                         ${p.status === 'Blocked'
-                            ? `<button class="md-icon-btn" title="Разблокировать" onclick="toggleBlock('${escapeHtml(p.serverName)}', false)"><span class="msr">lock_open</span></button>`
-                            : `<button class="md-icon-btn" title="Заблокировать" style="color:var(--md-error);" onclick="toggleBlock('${escapeHtml(p.serverName)}', true)"><span class="msr">block</span></button>`}
+                            ? `<button class="md-icon-btn" title="Разблокировать" onclick="toggleBlock('${escapeHtml(p.serverName)}', false)"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/unlock.svg);" aria-hidden="true"></span></button>`
+                            : `<button class="md-icon-btn" title="Заблокировать" style="color:var(--md-error);" onclick="toggleBlock('${escapeHtml(p.serverName)}', true)"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/ban.svg);" aria-hidden="true"></span></button>`}
                     </div>
                 </td>
             </tr>

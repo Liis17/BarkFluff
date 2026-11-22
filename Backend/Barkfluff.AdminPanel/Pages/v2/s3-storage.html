@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Хранилище S3</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .info-banner {
             display: flex; align-items: flex-start; gap: 12px;
@@ -14,7 +15,7 @@
             border-radius: var(--md-shape-lg);
             margin-bottom: 24px;
         }
-        .info-banner .msr { color: var(--md-primary); flex-shrink: 0; }
+        .info-banner .bf-icon { color: var(--md-primary); flex-shrink: 0; }
         .info-banner h4 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
         .info-banner p { margin: 0; font-size: 13px; line-height: 1.55; opacity: .9; }
 
@@ -81,16 +82,16 @@
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
                 <button id="restart-files-btn" class="md-btn md-btn-tonal md-btn-square-press" data-perm="docker.control" style="background:var(--md-warning-container);color:var(--md-on-warning-container);">
-                    <span class="msr size-18">restart_alt</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/restart.svg);" aria-hidden="true"></span>
                     Перезапустить Files
                 </button>
-                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span></button>
             </div>
         </header>
 
         <div class="md-page">
             <div class="info-banner">
-                <span class="msr">info</span>
+                <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/info.svg);" aria-hidden="true"></span>
                 <div>
                     <h4>Управление конфигурацией S3 бакетов</h4>
                     <p>Здесь отображаются все S3 бакеты и их параметры из таблицы configuration. Ключи доступа не передаются в браузер: оставьте поле пустым, чтобы не менять значение, или введите новое для замены. После сохранения изменений может потребоваться перезапуск сервиса Files.</p>
@@ -100,17 +101,17 @@
             <div id="buckets-grid" class="buckets-grid"></div>
 
             <div id="empty-state" class="md-empty" style="display:none;">
-                <span class="msr size-48">cloud_off</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/cloud-off.svg);" aria-hidden="true"></span>
                 <h3>Бакеты не найдены</h3>
                 <p>Конфигурация S3 бакетов отсутствует в базе данных.</p>
             </div>
 
             <div id="error-state" class="md-empty" style="display:none;color:var(--md-error);">
-                <span class="msr size-48">error</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/error.svg);" aria-hidden="true"></span>
                 <h3 style="color:var(--md-error);">Ошибка загрузки</h3>
                 <p id="error-message"></p>
                 <button class="md-btn md-btn-filled md-btn-square-press" onclick="loadS3Config()">
-                    <span class="msr size-18">refresh</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/refresh.svg);" aria-hidden="true"></span>
                     Попробовать снова
                 </button>
             </div>
@@ -119,9 +120,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     let s3Config = {};
     let modifiedBuckets = new Set();
@@ -151,9 +152,9 @@
     }
     function getBucketIcon(id) {
         const m = {
-            'barkfluff-uploads':'cloud_upload','profile-pictures':'account_circle','message-documents':'description',
-            'message-videos':'movie','message-images':'image','message-audio':'audiotrack',
-            'chat-pictures':'photo_library','badge-images':'workspace_premium'
+            'barkfluff-uploads':'import','profile-pictures':'personal','message-documents':'document',
+            'message-videos':'video','message-images':'image','message-audio':'audio',
+            'chat-pictures':'image','badge-images':'badge'
         };
         return m[id] || 'cloud';
     }
@@ -188,7 +189,7 @@
             return `
                 <div class="bucket-card${modified?' modified':''}" data-card="${bucketId}">
                     <div class="bucket-head">
-                        <div class="bucket-icon"><span class="msr">${icon}</span></div>
+                        <div class="bucket-icon">${bfIcon(icon)}</div>
                         <div class="bucket-info">
                             <div class="bucket-name">${display}</div>
                             <div class="bucket-id">${bucketId}</div>
@@ -208,14 +209,14 @@
                             <label class="label">Access Key</label>
                             <div class="password-wrap">
                                 <input type="password" value="" autocomplete="new-password" placeholder="${params.accessKeyConfigured ? `Задан (${escapeHtml(params.accessKeyMasked || 'скрыт')}) — введите новый для замены` : 'Не задан — введите ключ'}" data-bucket="${bucketId}" data-key="accessKey" oninput="onFieldChange('${bucketId}')" id="access-${safeId}" class="md-input-outlined">
-                                <button type="button" class="md-icon-btn toggle" onclick="togglePassword('access-${safeId}')"><span class="msr size-20">visibility</span></button>
+                                <button type="button" class="md-icon-btn toggle" onclick="togglePassword('access-${safeId}')" aria-label="Показать значение"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/visibility.svg);" aria-hidden="true"></span></button>
                             </div>
                         </div>
                         <div class="field-row">
                             <label class="label">Secret Key</label>
                             <div class="password-wrap">
                                 <input type="password" value="" autocomplete="new-password" placeholder="${params.secretKeyConfigured ? 'Задан — введите новый для замены' : 'Не задан — введите секретный ключ'}" data-bucket="${bucketId}" data-key="secretKey" oninput="onFieldChange('${bucketId}')" id="secret-${safeId}" class="md-input-outlined">
-                                <button type="button" class="md-icon-btn toggle" onclick="togglePassword('secret-${safeId}')"><span class="msr size-20">visibility</span></button>
+                                <button type="button" class="md-icon-btn toggle" onclick="togglePassword('secret-${safeId}')" aria-label="Показать значение"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/visibility.svg);" aria-hidden="true"></span></button>
                             </div>
                         </div>
                         <div class="field-row">
@@ -224,10 +225,10 @@
                         </div>
                     </div>
                     <div class="bucket-foot">
-                        <span class="meta"><span class="msr size-18">schedule</span>Обновлено: ${formatDate(params.editedAt)}</span>
+                        <span class="meta"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/scheduled.svg);" aria-hidden="true"></span>Обновлено: ${formatDate(params.editedAt)}</span>
                         <div data-save-area>
                             ${modified
-                                ? `<button class="md-btn md-btn-filled md-btn-square-press" onclick="saveBucket('${bucketId}')"><span class="msr size-18">check</span>Сохранить</button>`
+                                ? `<button class="md-btn md-btn-filled md-btn-square-press" onclick="saveBucket('${bucketId}')"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/check.svg);" aria-hidden="true"></span>Сохранить</button>`
                                 : `<span style="font-size:12px;color:var(--md-on-surface-variant);font-style:italic;">Без изменений</span>`}
                         </div>
                     </div>
@@ -239,9 +240,11 @@
     window.togglePassword = function (id) {
         const input = document.getElementById(id);
         const btn = input.nextElementSibling;
-        const icon = btn.querySelector('.msr');
-        if (input.type === 'password') { input.type = 'text'; icon.textContent = 'visibility_off'; }
-        else { input.type = 'password'; icon.textContent = 'visibility'; }
+        const icon = btn.querySelector('.bf-icon');
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        bfSetIcon(icon, isHidden ? 'visibility-off' : 'visibility');
+        btn.setAttribute('aria-label', isHidden ? 'Скрыть значение' : 'Показать значение');
     };
 
     window.onFieldChange = function (bucketId) {
@@ -253,7 +256,7 @@
             card.querySelector('.bucket-info').insertAdjacentHTML('afterend', '<span class="md-status md-status-info">Изменено</span>');
         }
         const saveArea = card.querySelector('[data-save-area]');
-        if (saveArea) saveArea.innerHTML = `<button class="md-btn md-btn-filled md-btn-square-press" onclick="saveBucket('${bucketId}')"><span class="msr size-18">check</span>Сохранить</button>`;
+        if (saveArea) saveArea.innerHTML = `<button class="md-btn md-btn-filled md-btn-square-press" onclick="saveBucket('${bucketId}')"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/check.svg);" aria-hidden="true"></span>Сохранить</button>`;
     };
 
     window.saveBucket = async function (bucketId) {
@@ -275,10 +278,10 @@
             const badge = card.querySelector('.bucket-head .md-status');
             if (badge) badge.remove();
             const saveArea = card.querySelector('[data-save-area]');
-            if (saveArea) saveArea.innerHTML = `<span style="font-size:12px;color:var(--md-success);font-style:italic;">✓ Сохранено</span>`;
+            if (saveArea) saveArea.innerHTML = `<span style="font-size:12px;color:var(--md-success);font-style:italic;"><span class="bf-icon size-16" style="--bf-icon-url:url(/assets/icons/check.svg);" aria-hidden="true"></span> Сохранено</span>`;
             setTimeout(() => { if (saveArea) saveArea.innerHTML = `<span style="font-size:12px;color:var(--md-on-surface-variant);font-style:italic;">Без изменений</span>`; }, 2000);
         } catch (e) {
-            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<span class="msr size-18">check</span>Сохранить'; }
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/check.svg);" aria-hidden="true"></span>Сохранить'; }
         }
     };
 

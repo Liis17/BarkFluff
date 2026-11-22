@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Логи</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .filters {
             display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
@@ -116,15 +117,15 @@
             <h1>Логи системы</h1>
             <div style="display:flex;gap:8px;align-items:center;">
                 <button onclick="openExportModal()" class="md-btn md-btn-tonal md-btn-square-press">
-                    <span class="msr size-18">download</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/download.svg);" aria-hidden="true"></span>
                     Экспорт
                 </button>
                 <button onclick="openClearModal()" class="md-btn md-btn-error-tonal md-btn-square-press" data-perm="seq.delete" style="color:var(--md-on-error-container);background:var(--md-error-container);">
-                    <span class="msr size-18">delete</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/delete.svg);" aria-hidden="true"></span>
                     Очистить
                 </button>
                 <button id="logoutBtn" class="md-icon-btn" title="Выйти">
-                    <span class="msr">logout</span>
+                    <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span>
                 </button>
             </div>
         </header>
@@ -132,7 +133,7 @@
         <div class="md-page">
             <div class="filters">
                 <div class="md-search" style="min-width:240px;flex:1;">
-                    <span class="msr">search</span>
+                    <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/search.svg);" aria-hidden="true"></span>
                     <input id="searchInput" type="text" placeholder="Поиск по сообщению...">
                 </div>
 
@@ -143,15 +144,15 @@
                 <div class="level-buttons">
                     <button data-level="" class="md-chip selected">Все</button>
                     <button data-level="Information" class="md-chip level-info">
-                        <span class="msr size-18">info</span>
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/info.svg);" aria-hidden="true"></span>
                         Info
                     </button>
                     <button data-level="Warning" class="md-chip level-warning">
-                        <span class="msr size-18">warning</span>
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/warning.svg);" aria-hidden="true"></span>
                         Warning
                     </button>
                     <button data-level="Error" class="md-chip level-error">
-                        <span class="msr size-18">error</span>
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/error.svg);" aria-hidden="true"></span>
                         Error
                     </button>
                 </div>
@@ -163,7 +164,7 @@
                 </label>
 
                 <button id="refreshBtn" class="md-btn md-btn-filled md-btn-square-press">
-                    <span class="msr size-18">refresh</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/refresh.svg);" aria-hidden="true"></span>
                     Обновить
                 </button>
 
@@ -172,10 +173,10 @@
                         <option value="">Сохранённые фильтры</option>
                     </select>
                     <button id="saveFilterBtn" class="md-btn md-btn-tonal" type="button">
-                        <span class="msr size-18">bookmark_add</span> Сохранить
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/save.svg);" aria-hidden="true"></span> Сохранить
                     </button>
                     <button id="deleteFilterBtn" class="md-icon-btn" type="button" title="Удалить выбранный фильтр" disabled>
-                        <span class="msr">bookmark_remove</span>
+                        <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/delete.svg);" aria-hidden="true"></span>
                     </button>
 
                     <div class="view-buttons" aria-label="Режим отображения">
@@ -211,12 +212,12 @@
                     <span id="logsCount">—</span>
                     <div style="display:flex;gap:8px;">
                         <button id="prevBtn" class="md-btn md-btn-text" disabled>
-                            <span class="msr size-18">chevron_left</span>
+                            <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/chevron-left.svg);" aria-hidden="true"></span>
                             Назад
                         </button>
                         <button id="nextBtn" class="md-btn md-btn-text">
                             Вперёд
-                            <span class="msr size-18">chevron_right</span>
+                            <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/chevron-right.svg);" aria-hidden="true"></span>
                         </button>
                     </div>
                 </div>
@@ -230,17 +231,17 @@
     <div class="md-dialog">
         <div class="md-dialog-header">
             <h3>Экспорт логов</h3>
-            <button id="exportCloseBtn" class="md-icon-btn" onclick="closeExportModal()"><span class="msr">close</span></button>
+            <button id="exportCloseBtn" class="md-icon-btn" onclick="closeExportModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body">
             <div id="exportChoice">
                 <p style="color:var(--md-on-surface-variant);margin-bottom:12px;">Выгрузит логи из Seq в ZIP-архив.</p>
                 <div style="display:flex;flex-direction:column;gap:8px;">
                     <button class="md-btn md-btn-tonal md-btn-square-press" onclick="startExport('old')">
-                        <span class="msr size-18">history</span> Только старые (старше 2 недель)
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/history.svg);" aria-hidden="true"></span> Только старые (старше 2 недель)
                     </button>
                     <button class="md-btn md-btn-tonal md-btn-square-press" onclick="startExport('all')">
-                        <span class="msr size-18">database</span> Все логи
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/database.svg);" aria-hidden="true"></span> Все логи
                     </button>
                 </div>
             </div>
@@ -250,18 +251,18 @@
                 <div id="exportCounter" style="margin-top:4px;color:var(--md-on-surface-variant);font-size:13px;"></div>
             </div>
             <div id="exportDone" style="display:none;text-align:center;padding:16px;">
-                <span class="msr size-48" style="color:var(--md-success);">check_circle</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/check-circle.svg);color:var(--md-success);" aria-hidden="true"></span>
                 <p style="margin-top:8px;">Архив скачан. Рекомендуется перезапустить панель.</p>
             </div>
             <div id="exportError" style="display:none;text-align:center;padding:16px;">
-                <span class="msr size-48" style="color:var(--md-error);">error</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/error.svg);color:var(--md-error);" aria-hidden="true"></span>
                 <p id="exportErrorText" style="margin-top:8px;color:var(--md-error);"></p>
             </div>
         </div>
         <div class="md-dialog-actions" id="exportActions">
             <button class="md-btn md-btn-text" onclick="closeExportModal()">Закрыть</button>
             <button id="exportRestartBtn" class="md-btn md-btn-filled md-btn-square-press" data-perm="docker.deploy" style="display:none;" onclick="restartAfterExport()">
-                <span class="msr size-18">restart_alt</span> Перезапустить
+                <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/restart.svg);" aria-hidden="true"></span> Перезапустить
             </button>
         </div>
     </div>
@@ -272,17 +273,17 @@
     <div class="md-dialog">
         <div class="md-dialog-header">
             <h3 style="color:var(--md-error);">Очистка логов</h3>
-            <button id="clearCloseBtn" class="md-icon-btn" onclick="closeClearModal()"><span class="msr">close</span></button>
+            <button id="clearCloseBtn" class="md-icon-btn" onclick="closeClearModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body">
             <div id="clearChoice">
                 <p style="color:var(--md-on-surface-variant);margin-bottom:12px;">Удаление логов из Seq. Действие необратимо.</p>
                 <div style="display:flex;flex-direction:column;gap:8px;">
                     <button class="md-btn md-btn-tonal md-btn-square-press" onclick="askClearConfirm('old')">
-                        <span class="msr size-18">history</span> Удалить старые (старше 2 недель)
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/history.svg);" aria-hidden="true"></span> Удалить старые (старше 2 недель)
                     </button>
                     <button class="md-btn md-btn-square-press" style="background:var(--md-error);color:var(--md-on-error);" onclick="askClearConfirm('all')">
-                        <span class="msr size-18">delete_forever</span> Удалить все логи
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/delete.svg);" aria-hidden="true"></span> Удалить все логи
                     </button>
                 </div>
             </div>
@@ -294,11 +295,11 @@
                 <div id="clearStage" style="margin-top:12px;font-weight:500;">Удаление логов...</div>
             </div>
             <div id="clearDone" style="display:none;text-align:center;padding:16px;">
-                <span class="msr size-48" style="color:var(--md-success);">check_circle</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/check-circle.svg);color:var(--md-success);" aria-hidden="true"></span>
                 <p id="clearDoneText" style="margin-top:8px;">Логи успешно удалены.</p>
             </div>
             <div id="clearError" style="display:none;text-align:center;padding:16px;">
-                <span class="msr size-48" style="color:var(--md-error);">error</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/error.svg);color:var(--md-error);" aria-hidden="true"></span>
                 <p id="clearErrorText" style="margin-top:8px;color:var(--md-error);"></p>
             </div>
         </div>
@@ -310,9 +311,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     // ---- State ----
     let allLogs = [];          // нормализованные события, накопленные по страницам
@@ -533,7 +534,7 @@
             const sign = delta > 0 ? '+' : '';
             const banner = document.getElementById('deploymentComparison');
             banner.className = 'deployment-comparison open' + (delta > 0 ? ' is-worse' : delta < 0 ? ' is-better' : '');
-            banner.innerHTML = `<span class="msr size-20">${delta > 0 ? 'trending_up' : delta < 0 ? 'trending_down' : 'trending_flat'}</span>
+            banner.innerHTML = `${bfIcon(delta > 0 ? 'arrow-up-right' : delta < 0 ? 'arrow-down-right' : 'arrow-right', 'size-20')}
                 <span><strong>${escapeHtml(shortService(comparison.application))}</strong>, деплой ${formatDate(comparison.deploymentAtUtc)}:
                 ошибок за 30 минут до — <strong>${comparison.beforeErrorCount}</strong>, после — <strong>${comparison.afterErrorCount}</strong> (${sign}${delta}).</span>`;
         } catch (_) {}
@@ -591,14 +592,14 @@
         } else if (slice.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" style="padding:48px;text-align:center;color:var(--md-on-surface-variant);">
                 <div style="display:inline-flex;flex-direction:column;align-items:center;gap:8px;">
-                    <span class="msr size-48" style="opacity:.4;">inbox</span>
+                    <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/inbox.svg);opacity:.4;" aria-hidden="true"></span>
                     <div>Записей не найдено</div>
                 </div>
             </td></tr>`;
         } else {
             tbody.innerHTML = slice.map((log, i) => `
                 <tr class="log-row" data-idx="${start + i}" onclick="toggleExpand(this, ${start + i})">
-                    <td class="log-cell-toggle"><span class="msr size-18" style="color:var(--md-on-surface-variant);transition:transform .2s;">chevron_right</span></td>
+                    <td class="log-cell-toggle"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/chevron-right.svg);color:var(--md-on-surface-variant);transition:transform .2s;" aria-hidden="true"></span></td>
                     <td class="log-cell-time">${formatDate(log.timestamp)}</td>
                     <td class="log-cell-level">${levelChip(log.level)}</td>
                     <td class="log-cell-service">${log.service ? `<a class="service-link" href="/services?service=${encodeURIComponent(log.service)}" onclick="event.stopPropagation()">${escapeHtml(shortService(log.service))}</a>` : '—'}</td>
@@ -621,15 +622,15 @@
     function renderContextLinks(log) {
         const links = [];
         if (log.correlationId) links.push({ label:'Correlation ID', kind:'correlationId', value:log.correlationId, icon:'link' });
-        if (log.traceId && log.traceId !== log.correlationId) links.push({ label:'Trace ID', kind:'correlationId', value:log.traceId, icon:'timeline' });
-        if (log.requestId) links.push({ label:'Request ID', kind:'requestId', value:log.requestId, icon:'tag' });
+        if (log.traceId && log.traceId !== log.correlationId) links.push({ label:'Trace ID', kind:'correlationId', value:log.traceId, icon:'history' });
+        if (log.requestId) links.push({ label:'Request ID', kind:'requestId', value:log.requestId, icon:'code' });
         const buttons = links.map(item => `
             <button type="button" class="context-link context-filter" data-kind="${item.kind}" data-value="${escapeAttr(item.value)}" title="Показать связанные события">
-                <span class="msr size-16">${item.icon}</span>${item.label}: ${escapeHtml(item.value)}
+                ${bfIcon(item.icon, 'size-16')}${item.label}: ${escapeHtml(item.value)}
             </button>`).join('');
         const user = log.userId ? `
             <a class="context-link" href="/users?userId=${encodeURIComponent(log.userId)}" onclick="event.stopPropagation()">
-                <span class="msr size-16">person</span>Пользователь ${escapeHtml(log.userId)}
+                <span class="bf-icon size-16" style="--bf-icon-url:url(/assets/icons/personal.svg);" aria-hidden="true"></span>Пользователь ${escapeHtml(log.userId)}
             </a>` : '';
         return buttons || user ? `<div class="context-links">${buttons}${user}</div>` : '';
     }
@@ -648,11 +649,11 @@
         if (next && next.classList.contains('log-detail-row')) {
             next.remove();
             row.classList.remove('expanded');
-            row.querySelector('.msr').style.transform = '';
+            row.querySelector('.bf-icon').style.transform = '';
             return;
         }
         row.classList.add('expanded');
-        row.querySelector('.msr').style.transform = 'rotate(90deg)';
+        row.querySelector('.bf-icon').style.transform = 'rotate(90deg)';
         const log = allLogs[idx];
         const detail = document.createElement('tr');
         detail.className = 'log-detail-row';

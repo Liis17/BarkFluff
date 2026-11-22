@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Дашборд</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .kpi-grid {
@@ -96,8 +97,8 @@
             padding: 12px 4px; border: 0; background: transparent; color: var(--md-on-surface);
             font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; text-align: left;
         }
-        .metric-service-toggle .msr { transition: transform var(--md-dur-2) var(--md-easing-standard); }
-        .metric-service.open .metric-service-toggle .msr { transform: rotate(180deg); }
+        .metric-service-toggle .bf-icon { transition: transform var(--md-dur-2) var(--md-easing-standard); }
+        .metric-service.open .metric-service-toggle .bf-icon { transform: rotate(180deg); }
         .metric-service-content { display: none; padding-top: 4px; }
         .metric-service.open .metric-service-content { display: block; }
         .service-grid {
@@ -261,7 +262,7 @@
             </div>
             <div style="display:flex;gap:8px;">
                 <button id="logout-btn" class="md-btn md-btn-outlined md-btn-square-press">
-                    <span class="msr size-18">logout</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span>
                     Выйти
                 </button>
             </div>
@@ -273,7 +274,7 @@
                 <div class="kpi-card kpi-card-tonal">
                     <div class="kpi-head">
                         <span class="kpi-label">Всего событий</span>
-                        <span class="kpi-icon"><span class="msr">monitoring</span></span>
+                        <span class="kpi-icon"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/analytics.svg);" aria-hidden="true"></span></span>
                     </div>
                     <div class="kpi-value" id="kpi-total">—</div>
                     <div class="kpi-foot">За последние 24 часа</div>
@@ -282,7 +283,7 @@
                 <div class="kpi-card">
                     <div class="kpi-head">
                         <span class="kpi-label">Ошибки</span>
-                        <span class="kpi-icon icon-error"><span class="msr">error</span></span>
+                        <span class="kpi-icon icon-error"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/error.svg);" aria-hidden="true"></span></span>
                     </div>
                     <div class="kpi-value" id="kpi-errors">—</div>
                     <div class="kpi-foot">Error + Fatal</div>
@@ -291,7 +292,7 @@
                 <div class="kpi-card">
                     <div class="kpi-head">
                         <span class="kpi-label">Предупреждения</span>
-                        <span class="kpi-icon icon-warn"><span class="msr">warning</span></span>
+                        <span class="kpi-icon icon-warn"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/warning.svg);" aria-hidden="true"></span></span>
                     </div>
                     <div class="kpi-value" id="kpi-warnings">—</div>
                     <div class="kpi-foot">Warning уровень</div>
@@ -300,7 +301,7 @@
                 <div class="kpi-card">
                     <div class="kpi-head">
                         <span class="kpi-label">Активных сервисов</span>
-                        <span class="kpi-icon icon-success"><span class="msr">dns</span></span>
+                        <span class="kpi-icon icon-success"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/dns.svg);" aria-hidden="true"></span></span>
                     </div>
                     <div class="kpi-value" id="kpi-services">—</div>
                     <div class="kpi-foot">Liveness-проверка каждые 30 с</div>
@@ -309,7 +310,7 @@
                 <div class="kpi-card">
                     <div class="kpi-head">
                         <span class="kpi-label">Время работы</span>
-                        <span class="kpi-icon icon-tertiary"><span class="msr">timer</span></span>
+                        <span class="kpi-icon icon-tertiary"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/pending.svg);" aria-hidden="true"></span></span>
                     </div>
                     <div class="kpi-value" id="kpi-uptime">0:00:00</div>
                     <div class="kpi-foot" id="kpi-started-at">—</div>
@@ -358,9 +359,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     // ---- Helpers ----
     function formatDate(s) {
@@ -642,7 +643,7 @@
         const section = document.createElement('section');
         section.className = 'metric-service' + (group.expandedByDefault ? ' open' : '');
         section.dataset.service = group.serviceName;
-        section.innerHTML = `<button class="metric-service-toggle" aria-expanded="${group.expandedByDefault}"><span>${group.title}</span><span class="msr">expand_more</span></button><div class="metric-service-content"><div class="service-grid"></div></div>`;
+        section.innerHTML = `<button class="metric-service-toggle" aria-expanded="${group.expandedByDefault}"><span>${group.title}</span><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/chevron-down.svg);" aria-hidden="true"></span></button><div class="metric-service-content"><div class="service-grid"></div></div>`;
         section.querySelector('.metric-service-toggle').addEventListener('click', () => toggleMetricGroup(section, group));
         return section;
     }

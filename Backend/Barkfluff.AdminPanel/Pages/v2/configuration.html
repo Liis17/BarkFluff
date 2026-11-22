@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Settings</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
         .toolbar input { flex: 1; max-width: 420px; }
@@ -103,8 +104,8 @@
                 <span class="md-status md-status-info"><span class="dot"></span>Таблицы Settings</span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
-                <button id="refresh-btn" class="md-icon-btn" title="Обновить"><span class="msr">refresh</span></button>
-                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+                <button id="refresh-btn" class="md-icon-btn" title="Обновить"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/refresh.svg);" aria-hidden="true"></span></button>
+                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span></button>
             </div>
         </header>
 
@@ -117,17 +118,17 @@
             <div id="settings-tables-list"></div>
 
             <div id="empty-state" class="md-empty" style="display:none;">
-                <span class="msr size-48">tune</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/tune.svg);" aria-hidden="true"></span>
                 <h3>Ничего не найдено</h3>
                 <p>Нет настроек, подходящих под фильтр.</p>
             </div>
 
             <div id="error-state" class="md-empty" style="display:none;color:var(--md-error);">
-                <span class="msr size-48">error</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/error.svg);" aria-hidden="true"></span>
                 <h3 style="color:var(--md-error);">Ошибка загрузки</h3>
                 <p id="error-message"></p>
                 <button class="md-btn md-btn-filled md-btn-square-press" onclick="loadSettings()">
-                    <span class="msr size-18">refresh</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/refresh.svg);" aria-hidden="true"></span>
                     Попробовать снова
                 </button>
             </div>
@@ -145,7 +146,7 @@
             </div>
             <div class="diff-grid">
                 <div class="diff-value"><span class="diff-label">Было</span><span id="diff-before"></span></div>
-                <span class="msr">arrow_forward</span>
+                <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/arrow-right.svg);" aria-hidden="true"></span>
                 <div class="diff-value"><span class="diff-label">Станет</span><span id="diff-after"></span></div>
             </div>
         </div>
@@ -163,16 +164,16 @@
                 <h3>История настройки</h3>
                 <div class="field-hint" id="history-title"></div>
             </div>
-            <button class="md-icon-btn" title="Закрыть" onclick="closeHistory()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" title="Закрыть" onclick="closeHistory()"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body" id="history-body"></div>
     </div>
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     let allItems = [];               // строки физических таблиц Settings
     const openTables = new Set();    // раскрытые таблицы
@@ -244,10 +245,10 @@
             return `
                 <div class="settings-card${open ? ' open' : ''}" data-table="${escapeHtml(name)}">
                     <div class="settings-head" onclick="toggleTable('${escapeHtml(name)}')">
-                        <div class="settings-icon"><span class="msr">table</span></div>
+                        <div class="settings-icon"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/database.svg);" aria-hidden="true"></span></div>
                         <div class="settings-name">${escapeHtml(name)}</div>
                         <span class="settings-count">${idxs.length} параметров</span>
-                        <span class="msr settings-chevron">expand_more</span>
+                        <span class="bf-icon settings-chevron" style="--bf-icon-url:url(/assets/icons/chevron-down.svg);" aria-hidden="true"></span>
                     </div>
                     ${open ? renderTable(idxs) : ''}
                 </div>
@@ -283,8 +284,8 @@
         if (editing) {
             valueCell = renderEditor(item, idx);
             actionsCell = `
-                <button class="md-icon-btn" title="Сохранить" onclick="saveValue(${idx})"><span class="msr size-20" style="color:var(--md-primary);">check</span></button>
-                <button class="md-icon-btn" title="Отмена" onclick="cancelEdit()"><span class="msr size-20">close</span></button>
+                <button class="md-icon-btn" title="Сохранить" onclick="saveValue(${idx})"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/check.svg);color:var(--md-primary);" aria-hidden="true"></span></button>
+                <button class="md-icon-btn" title="Отмена" onclick="cancelEdit()"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
             `;
         } else {
             const masked = item.masked;
@@ -292,8 +293,8 @@
                 ? `<span class="value-text value-masked">••••••••</span>`
                 : `<span class="value-text">${escapeHtml(item.value)}</span>`;
             actionsCell = `
-                <button class="md-icon-btn" title="История" onclick="openHistory(${idx})"><span class="msr size-20">history</span></button>
-                ${canWriteConfig ? `<button class="md-icon-btn" title="Изменить" onclick="startEdit(${idx})"><span class="msr size-20">edit</span></button>` : ''}
+                <button class="md-icon-btn" title="История" onclick="openHistory(${idx})"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/history.svg);" aria-hidden="true"></span></button>
+                ${canWriteConfig ? `<button class="md-icon-btn" title="Изменить" onclick="startEdit(${idx})"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/edit.svg);" aria-hidden="true"></span></button>` : ''}
             `;
         }
 
@@ -463,14 +464,14 @@
             const revisions = await BF.request(`/api/configuration/history?${query}`, { errorToast: false });
             renderHistory(revisions);
         } catch (error) {
-            body.innerHTML = `<div class="md-empty" style="color:var(--md-error);"><span class="msr size-48">error</span><p>${escapeHtml(error.message)}</p></div>`;
+            body.innerHTML = `<div class="md-empty" style="color:var(--md-error);"><span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/error.svg);" aria-hidden="true"></span><p>${escapeHtml(error.message)}</p></div>`;
         }
     };
 
     function renderHistory(revisions) {
         const body = document.getElementById('history-body');
         if (!revisions.length) {
-            body.innerHTML = '<div class="md-empty"><span class="msr size-48">history</span><h3>История пока пуста</h3><p>Она появится после следующего изменения.</p></div>';
+            body.innerHTML = '<div class="md-empty"><span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/history.svg);" aria-hidden="true"></span><h3>История пока пуста</h3><p>Она появится после следующего изменения.</p></div>';
             return;
         }
 
@@ -484,7 +485,7 @@
                 </div>
                 <div class="history-diff">
                     <code>${escapeHtml(revision.previousValue || '∅ пусто')}</code>
-                    <span class="msr size-18">arrow_forward</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/arrow-right.svg);" aria-hidden="true"></span>
                     <code>${escapeHtml(revision.newValue || '∅ пусто')}</code>
                 </div>
                 ${revision.sourceRevisionId ? `<div class="field-hint" style="margin-top:8px;">Откат изменения #${revision.sourceRevisionId}</div>` : ''}
