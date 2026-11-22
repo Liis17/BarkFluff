@@ -23,7 +23,8 @@ internal static class MessengerTestDoubles
         FakeRealtimeMessengerService? realtime = null,
         FakeOnlinePresenceService? presence = null,
         FakePrivateChatKeyStore? keys = null,
-        IUiDispatcher? dispatcher = null)
+        IUiDispatcher? dispatcher = null,
+        TimeProvider? timeProvider = null)
     {
         var effectiveMessenger = messenger ?? new FakeMessengerService();
         var effectivePresence = presence ?? new FakeOnlinePresenceService();
@@ -34,7 +35,8 @@ internal static class MessengerTestDoubles
             effectivePresence,
             localization,
             dispatcher ?? new InlineUiDispatcher(),
-            new ProfileViewModel(effectiveMessenger, effectivePresence, localization));
+            new ProfileViewModel(effectiveMessenger, effectivePresence, localization),
+            timeProvider);
     }
 
     public static Chat CreateChat(string id, string title = "Chat", long peerUserId = 0, ChatType chatType = ChatType.Regular)
@@ -203,6 +205,15 @@ internal sealed class FakeMessengerService : IMessengerService
     public Func<string, Task<string>>? FileUrl { get; set; }
     public Func<Task<(ErrorReturner, List<PinnedMessageInfo>?)>>? PinnedHistory { get; set; }
     public Func<Task<(ErrorReturner, List<Chat>?)>>? ChatSnapshot { get; set; }
+    public Func<string, bool, Task<ErrorReturner>>? ChangeMute { get; set; }
+    public Func<Task<(ErrorReturner, List<BarkFluff.Proto.Users.MutedChat>?)>>? MuteSnapshot { get; set; }
+    public List<BarkFluff.Proto.Users.MutedChat>? MutedChats { get; set; }
+
+    public Task<ErrorReturner> SetChatMutedAsync(string chatId, bool muted, CancellationToken cancellationToken) =>
+        ChangeMute?.Invoke(chatId, muted) ?? Task.FromResult(new ErrorReturner(true));
+
+    public Task<(ErrorReturner error, List<BarkFluff.Proto.Users.MutedChat>? chats)> GetMutedChatsAsync(CancellationToken cancellationToken) =>
+        MuteSnapshot?.Invoke() ?? Task.FromResult((new ErrorReturner(MutedChats is not null), MutedChats));
 
     public Func<long, Task<(ErrorReturner, UserData?)>>? UserProfile { get; set; }
     public UserData? UserData { get; set; }

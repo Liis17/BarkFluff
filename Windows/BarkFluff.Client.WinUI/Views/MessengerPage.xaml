@@ -8,9 +8,13 @@
     NavigationCacheMode="Required">
 
     <Page.Resources>
+        <MenuFlyout x:Key="ChatListMenu" Closed="OnChatListMenuClosed">
+            <MenuFlyoutItem />
+        </MenuFlyout>
+
         <!--  Строка списка чатов.  -->
         <DataTemplate x:Key="ChatListItemTemplate" x:DataType="vm:ChatItemViewModel">
-            <Grid Margin="0,4" MinHeight="56">
+            <Grid Margin="0,4" MinHeight="56" Background="Transparent">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="52" />
                     <ColumnDefinition Width="*" />
@@ -46,18 +50,34 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top">
-                    <TextBlock HorizontalAlignment="Right"
-                               FontSize="12"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="{x:Bind LastMessageAtLabel, Mode=OneWay}" />
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontSize="12"
+                                  Glyph="&#xE74F;"
+                                  AutomationProperties.Name="{StaticResource Messenger_ChatMuted}"
+                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                  Visibility="{x:Bind IsMuted, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <TextBlock FontSize="12"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="{x:Bind LastMessageAtLabel, Mode=OneWay}" />
+                    </StackPanel>
                     <Border Margin="0,8,0,0"
                             Padding="6,1"
                             HorizontalAlignment="Right"
                             Background="{ThemeResource AccentFillColorDefaultBrush}"
                             CornerRadius="10"
-                            Visibility="{x:Bind HasUnreadMessages, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            Visibility="{x:Bind HasUnmutedUnreadMessages, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <TextBlock FontSize="11"
                                    Foreground="{StaticResource ChatUnreadBadgeTextBrush}"
+                                   Text="{x:Bind UnreadCount, Mode=OneWay}" />
+                    </Border>
+                    <Border Margin="0,8,0,0"
+                            Padding="6,1"
+                            HorizontalAlignment="Right"
+                            Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                            CornerRadius="10"
+                            Visibility="{x:Bind HasMutedUnreadMessages, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock FontSize="11"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                    Text="{x:Bind UnreadCount, Mode=OneWay}" />
                     </Border>
                 </StackPanel>
@@ -447,11 +467,13 @@
                           Padding="0"
                           Background="Transparent"
                           BorderThickness="0"
+                          ContextRequested="OnChatListContextRequested"
                           ItemTemplate="{StaticResource ChatListItemTemplate}"
                           ItemsSource="{x:Bind ViewModel.VisibleChats}"
                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                           ScrollViewer.VerticalScrollBarVisibility="Auto"
-                          SelectedItem="{x:Bind ViewModel.SelectedChat, Mode=TwoWay}" />
+                          SelectedItem="{x:Bind ViewModel.SelectedChat, Mode=TwoWay}">
+                </ListView>
 
                 <ProgressRing Grid.RowSpan="3"
                               HorizontalAlignment="Center"
@@ -471,34 +493,52 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!--  Заголовок ведёт на профиль собеседника; borderless Button даёт фокус и клавиатуру даром.  -->
-            <Button Margin="12,12,12,8"
-                    Padding="8"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Left"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Command="{x:Bind ViewModel.OpenPeerProfileCommand}"
-                    Visibility="{x:Bind ViewModel.HasSelectedChat, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <StackPanel>
-                    <TextBlock FontSize="20"
-                               FontWeight="SemiBold"
-                               Text="{x:Bind ViewModel.SelectedChat.Title, Mode=OneWay}" />
-                    <TextBlock Opacity=".7"
-                               Style="{StaticResource MutedText}"
-                               Text="{x:Bind ViewModel.SelectedChat.PresenceLabel, Mode=OneWay}"
-                               Visibility="{x:Bind ViewModel.IsPresenceLabelVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <TextBlock Opacity=".7"
-                               Style="{StaticResource MutedText}"
-                               Text="{x:Bind ViewModel.SelectedChat.RestrictionMessage, Mode=OneWay}"
-                               Visibility="{x:Bind ViewModel.SelectedChat.IsRestricted, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <!--  Пока связь восстанавливается, статус собеседника устарел и показывать его нельзя.  -->
-                    <TextBlock Opacity=".7"
-                               Style="{StaticResource MutedText}"
-                               Text="{StaticResource Messenger_Reconnecting}"
-                               Visibility="{x:Bind ViewModel.IsChatHeaderReconnectingVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                </StackPanel>
-            </Button>
+            <Grid Margin="12,12,12,8"
+                  Visibility="{x:Bind ViewModel.HasSelectedChat, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <!--  Заголовок ведёт на профиль собеседника; borderless Button даёт фокус и клавиатуру даром.  -->
+                <Button Padding="8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{x:Bind ViewModel.OpenPeerProfileCommand}">
+                    <StackPanel>
+                        <TextBlock FontSize="20"
+                                   FontWeight="SemiBold"
+                                   Text="{x:Bind ViewModel.SelectedChat.Title, Mode=OneWay}" />
+                        <TextBlock Opacity=".7"
+                                   Style="{StaticResource MutedText}"
+                                   Text="{x:Bind ViewModel.SelectedChat.PresenceLabel, Mode=OneWay}"
+                                   Visibility="{x:Bind ViewModel.IsPresenceLabelVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <TextBlock Opacity=".7"
+                                   Style="{StaticResource MutedText}"
+                                   Text="{x:Bind ViewModel.SelectedChat.RestrictionMessage, Mode=OneWay}"
+                                   Visibility="{x:Bind ViewModel.SelectedChat.IsRestricted, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <!--  Пока связь восстанавливается, статус собеседника устарел и показывать его нельзя.  -->
+                        <TextBlock Opacity=".7"
+                                   Style="{StaticResource MutedText}"
+                                   Text="{StaticResource Messenger_Reconnecting}"
+                                   Visibility="{x:Bind ViewModel.IsChatHeaderReconnectingVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="1"
+                        VerticalAlignment="Center"
+                        AutomationProperties.Name="{StaticResource Messenger_ChatOptions}"
+                        ToolTipService.ToolTip="{StaticResource Messenger_ChatOptions}">
+                    <FontIcon FontSize="16" Glyph="&#xE712;" />
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Text="{x:Bind ViewModel.SelectedChat.MuteMenuHeader, Mode=OneWay}"
+                                            Command="{x:Bind ViewModel.ToggleChatMuteCommand}"
+                                            CommandParameter="{x:Bind ViewModel.SelectedChat, Mode=OneWay}" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </Grid>
 
             <!--  Плашка закрепа: клик уводит к закрепу и перелистывает на следующий, крестик открепляет.  -->
             <Border Grid.Row="1"

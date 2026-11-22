@@ -40,7 +40,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         IOnlinePresenceService presence,
         ILocalizationService localization,
         IUiDispatcher uiDispatcher,
-        ProfileViewModel profile)
+        ProfileViewModel profile,
+        TimeProvider? timeProvider = null)
     {
         _messenger = messenger;
         _privateChatKeyStore = privateChatKeyStore;
@@ -48,6 +49,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _presence = presence;
         _localization = localization;
         _uiDispatcher = uiDispatcher;
+        _muteClock = timeProvider ?? TimeProvider.System;
         Profile = profile;
         _presence.PresenceChanged += OnPresenceChanged;
         _presence.ConnectionChanged += OnPresenceConnectionChanged;
@@ -145,6 +147,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     public void Reset()
     {
         EndRealtimeSession();
+        ActionError = null;
         IsLoading = false;
         CancelPendingReadBatch();
         _chatVersion++;
@@ -565,6 +568,12 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     public async Task OpenSearchResultAsync(UserSearchResultViewModel result)
     {
+        var session = _realtimeSession;
+        if (session is null || !IsCurrent(session))
+        {
+            return;
+        }
+
         var existing = Chats.FirstOrDefault(chat => chat.PeerUserId == result.UserId);
         if (existing is not null)
         {
@@ -573,21 +582,24 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
-        var currentUserId = _messenger.CurrentUserId;
-        if (currentUserId is null)
+        ActionError = null;
+        var chatIdResult = await _messenger.GetPersonChatIdAsync(result.UserId);
+        if (!IsCurrent(session))
         {
             return;
         }
-
-        ActionError = null;
-        var chatIdResult = await _messenger.GetPersonChatIdAsync(result.UserId);
         if (!chatIdResult.error.IsSuccess)
         {
             ActionError = DescribeError(chatIdResult.error);
             return;
         }
 
+        var request = session.ChatSnapshotRequest;
         var chatsResult = await _messenger.GetChatsAsync();
+        if (!IsCurrent(session))
+        {
+            return;
+        }
         if (!chatsResult.error.IsSuccess || chatsResult.chats is null)
         {
             ActionError = DescribeError(chatsResult.error);
@@ -604,10 +616,26 @@ public sealed partial class MessengerViewModel : ObservableObject
         var item = Chats.FirstOrDefault(chat => chat.Id == definition.Id);
         if (item is null)
         {
-            item = await CreateChatItemAsync(definition, currentUserId.Value);
-            Chats.Insert(0, item);
-            ApplyChatFilter();
-            await TrackPresenceForChatsAsync();
+            var created = await CreateChatItemAsync(definition, session.UserId);
+            if (!IsCurrent(session))
+            {
+                return;
+            }
+
+            item = Chats.FirstOrDefault(chat => chat.Id == definition.Id);
+            if (item is null)
+            {
+                item = created;
+                ObserveMuteHint(session, item, request, definition.Muted);
+                UpdateMuteIndicator(session, item);
+                Chats.Insert(0, item);
+                ApplyChatFilter();
+                await TrackPresenceForChatsAsync();
+                if (!IsCurrent(session))
+                {
+                    return;
+                }
+            }
         }
 
         SearchText = string.Empty;
@@ -1182,7 +1210,7 @@ public sealed partial class ChatItemViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(LastMessageAtLabel))]
     private DateTimeOffset? _lastMessageAt;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasUnreadMessages))]
+    [NotifyPropertyChangedFor(nameof(HasUnreadMessages), nameof(HasMutedUnreadMessages), nameof(HasUnmutedUnreadMessages))]
     private long _unreadCount;
     [ObservableProperty] private long _firstUnreadMessageId;
     [ObservableProperty]

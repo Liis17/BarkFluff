@@ -255,6 +255,10 @@ namespace BarkFluff.WebApi.Core
         public async Task<ErrorReturner> Logout(GlobalParam globalParam) => await UserManager.Logout(globalParam);
         public async Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil = null) => await UserManager.SetChatMuted(chatId, muted, globalParam, mutedUntil);
         public async Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam) => await UserManager.GetMutedChats(globalParam);
+        public Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil, CancellationToken cancellationToken) =>
+            UserManager.SetChatMuted(chatId, muted, globalParam, mutedUntil, cancellationToken);
+        public Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam, CancellationToken cancellationToken) =>
+            UserManager.GetMutedChats(globalParam, cancellationToken);
         public async Task<ErrorReturner> SetFirebaseToken(string firebaseToken, GlobalParam globalParam) => await UserManager.SetFirebaseToken(firebaseToken, globalParam);
         public async Task<(ErrorReturner error, Proto.Users.ResolveFederatedUserResponse? user)> ResolveFederatedUser(string fid, GlobalParam globalParam) => await UserManager.ResolveFederatedUser(fid, globalParam);
         #endregion

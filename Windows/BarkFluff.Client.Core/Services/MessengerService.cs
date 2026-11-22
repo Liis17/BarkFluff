@@ -25,6 +25,12 @@ public sealed class MessengerService : IMessengerService
     public Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default) =>
         WithParametersAsync(parameters => _webApi.GetChats(parameters));
 
+    public Task<ErrorReturner> SetChatMutedAsync(string chatId, bool muted, CancellationToken cancellationToken) =>
+        WithParametersAsync(parameters => _webApi.SetChatMuted(chatId, muted, parameters, null, cancellationToken));
+
+    public Task<(ErrorReturner error, List<BarkFluff.Proto.Users.MutedChat>? chats)> GetMutedChatsAsync(CancellationToken cancellationToken) =>
+        WithParametersAsync(parameters => _webApi.GetMutedChats(parameters, cancellationToken));
+
     public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(
         string chatId,
         string text,

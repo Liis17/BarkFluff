@@ -20,6 +20,10 @@ public sealed partial class MessengerViewModel
         internal ResyncLoop PinRefresh { get; set; } = null!;
         internal bool ReportChatRefreshError { get; set; }
         internal long ChatSnapshotRequest { get; set; }
+        internal Dictionary<string, DateTimeOffset?> MutedChats { get; set; } = [];
+        internal Dictionary<string, long>? PendingMuteHints { get; set; }
+        internal bool HasAuthoritativeMutes { get; set; }
+        internal ITimer? MuteExpiryTimer { get; set; }
         internal Action Unsubscribe { get; set; } = null!;
     }
 
@@ -83,6 +87,7 @@ public sealed partial class MessengerViewModel
         }
 
         _realtimeSession = null;
+        session.MuteExpiryTimer?.Dispose();
         session.Unsubscribe();
         session.Lifetime.Cancel();
         session.Lifetime.Dispose();

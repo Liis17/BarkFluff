@@ -76,21 +76,22 @@ public sealed partial class MessengerViewModel
     {
         var revision = session.Journal.Revision;
         var request = ++session.ChatSnapshotRequest;
+        _ = RefreshMuteSnapshotAsync(session, request);
         var (error, definitions) = await _messenger.GetChatsAsync(token).WaitAsync(token);
         if (!IsCurrent(session) || request != session.ChatSnapshotRequest)
         {
             return true;
         }
 
-        if (!error.IsSuccess || definitions is null)
+        if (error is not { IsSuccess: true } || definitions is null)
         {
             if (reportError)
             {
-                ActionError = DescribeError(error);
+                ActionError = DescribeError(error ?? new ErrorReturner(false));
             }
             else if (session.ReportChatRefreshError)
             {
-                ReportBackgroundError(error);
+                ReportBackgroundError(error ?? new ErrorReturner(false));
             }
 
             return false;
@@ -109,6 +110,7 @@ public sealed partial class MessengerViewModel
         {
             if (!Chats.Any(chat => chat.Id == item.Id))
             {
+                UpdateMuteIndicator(session, item);
                 Chats.Add(item);
             }
         }
@@ -116,6 +118,7 @@ public sealed partial class MessengerViewModel
         foreach (var definition in definitions)
         {
             var item = Chats.First(chat => chat.Id == definition.Id);
+            ObserveMuteHint(session, item, request, definition.Muted);
             item.ApplySnapshot(definition,
                 applyPreview: session.Journal.ChatRevision(item.Id, item.IsPrivate) <= revision,
                 applyUnread: session.Journal.UnreadRevision(item.Id, item.IsPrivate) <= revision);

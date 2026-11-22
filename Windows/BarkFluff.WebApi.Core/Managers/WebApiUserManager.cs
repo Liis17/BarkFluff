@@ -185,12 +185,16 @@ namespace BarkFluff.WebApi.Core.Managers
         /// Отключить или включить уведомления конкретного чата.
         /// mutedUntil = null при muted=true означает «навсегда».
         /// </summary>
-        public async Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil = null)
+        public Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil = null) =>
+            SetChatMuted(chatId, muted, globalParam, mutedUntil, CancellationToken.None);
+
+        public async Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil, CancellationToken cancellationToken)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var request = new Proto.Users.SetChatMutedRequest
                     {
                         ChatId = chatId,
@@ -199,7 +203,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     if (mutedUntil.HasValue)
                         request.MutedUntil = Timestamp.FromDateTime(mutedUntil.Value.ToUniversalTime());
 
-                    await UsersAC!.SetChatMutedAsync(request);
+                    await UsersAC!.SetChatMutedAsync(request, cancellationToken: cancellationToken);
                     return new ErrorReturner(true);
                 }, globalParam);
             }
@@ -212,13 +216,17 @@ namespace BarkFluff.WebApi.Core.Managers
         /// <summary>
         /// Список чатов с активным mute у текущего пользователя.
         /// </summary>
-        public async Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam)
+        public Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam) =>
+            GetMutedChats(globalParam, CancellationToken.None);
+
+        public async Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam, CancellationToken cancellationToken)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    var response = await UsersAC!.GetMutedChatsAsync(new Proto.Users.GetMutedChatsRequest());
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var response = await UsersAC!.GetMutedChatsAsync(new Proto.Users.GetMutedChatsRequest(), cancellationToken: cancellationToken);
                     return (new ErrorReturner(true), response.Chats.ToList());
                 }, globalParam);
             }

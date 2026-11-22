@@ -451,4 +451,9 @@
     <x:String x:Key="Messenger_ReadOnlyBlocked">Пользователь заблокирован</x:String>
     <x:String x:Key="Messenger_ReadOnlyDeleted">Аккаунт удалён</x:String>
     <x:String x:Key="Messenger_UserUnavailable">Пользователь заблокирован или удалён и недоступен.</x:String>
+    <x:String x:Key="Messenger_MuteChat">Отключить уведомления</x:String>
+    <x:String x:Key="Messenger_UnmuteChat">Включить уведомления</x:String>
+    <x:String x:Key="Messenger_ChatMuted">Уведомления отключены</x:String>
+    <x:String x:Key="Messenger_ChatOptions">Действия чата</x:String>
+    <x:String x:Key="Messenger_ChatMuteFailed">Не удалось изменить уведомления чата.</x:String>
 </ResourceDictionary>

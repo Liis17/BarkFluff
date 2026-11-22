@@ -14,6 +14,9 @@ public interface IMessengerService
 
     Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default);
 
+    Task<ErrorReturner> SetChatMutedAsync(string chatId, bool muted, CancellationToken cancellationToken);
+    Task<(ErrorReturner error, List<BarkFluff.Proto.Users.MutedChat>? chats)> GetMutedChatsAsync(CancellationToken cancellationToken);
+
     Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(
         string chatId,
         string text,

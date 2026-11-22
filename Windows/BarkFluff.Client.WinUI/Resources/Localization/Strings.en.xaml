@@ -451,4 +451,9 @@
     <x:String x:Key="Messenger_ReadOnlyBlocked">This user is blocked</x:String>
     <x:String x:Key="Messenger_ReadOnlyDeleted">This account was deleted</x:String>
     <x:String x:Key="Messenger_UserUnavailable">This user is blocked or deleted and unavailable.</x:String>
+    <x:String x:Key="Messenger_MuteChat">Mute notifications</x:String>
+    <x:String x:Key="Messenger_UnmuteChat">Unmute notifications</x:String>
+    <x:String x:Key="Messenger_ChatMuted">Notifications muted</x:String>
+    <x:String x:Key="Messenger_ChatOptions">Chat actions</x:String>
+    <x:String x:Key="Messenger_ChatMuteFailed">Couldn't change chat notifications.</x:String>
 </ResourceDictionary>
