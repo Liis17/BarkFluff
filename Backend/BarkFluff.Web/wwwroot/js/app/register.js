@@ -306,8 +306,8 @@
         if (!el) return;
         el.className = 'reg-field-status';
         if (kind === 'loading') { el.classList.add('reg-status-loading'); el.textContent = ''; }
-        else if (kind === 'ok') { el.classList.add('reg-status-ok'); el.textContent = '✓'; }
-        else if (kind === 'err') { el.classList.add('reg-status-err'); el.textContent = '✗'; }
+        else if (kind === 'ok') { el.classList.add('reg-status-ok'); el.innerHTML = BF.icons.html('check'); }
+        else if (kind === 'err') { el.classList.add('reg-status-err'); el.innerHTML = BF.icons.html('close'); }
         else { el.textContent = ''; }
     }
 
@@ -618,7 +618,7 @@
             var inp = $('regPassword');
             var show = inp.type === 'password';
             inp.type = show ? 'text' : 'password';
-            this.textContent = show ? '🙈' : '👁';
+            this.innerHTML = BF.icons.html(show ? 'password-hidden' : 'password-visible');
         });
 
         // Step 6 avatar

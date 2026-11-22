@@ -8,7 +8,7 @@
 
     window.BF = window.BF || {};
 
-    var ROOT = '/icons/';
+    var ROOT = (document.currentScript && document.currentScript.dataset.iconRoot) || '/icons/';
     var NAME_PATTERN = /^[a-z0-9-]+$/;
 
     function iconPath(name) {

@@ -296,7 +296,7 @@
         unameEl.className = 'sd-user-username';
         var arrowEl = document.createElement('div');
         arrowEl.className = 'sd-user-arrow';
-        arrowEl.textContent = '›';
+        arrowEl.innerHTML = BF.icons.html('chevron-right');
         userInfo.appendChild(nameEl);
         userInfo.appendChild(unameEl);
         profileBlock.appendChild(avatarEl);
@@ -476,7 +476,7 @@
                 '<span class="sd-item-icon">' + ICONS.server + '</span>' +
                 '<span class="sd-item-label">' +
                 BF.utils.escapeHtml((nodeMeta && nodeMeta.name) || BF.node.origin() || '') +
-                '</span><span class="sd-item-arrow">›</span>';
+                '</span><span class="sd-item-arrow">' + BF.icons.html('chevron-right') + '</span>';
             makeActivatable(nodeRow, switchNode);
             secNode.appendChild(nodeRow);
             body.appendChild(secNode);
@@ -487,11 +487,7 @@
         logoutBtn.className = 'btn-logout-settings';
         logoutBtn.id = 'settingsLogoutBtn';
         logoutBtn.innerHTML =
-            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-            '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>' +
-            '<polyline points="16 17 21 12 16 7"/>' +
-            '<line x1="21" y1="12" x2="9" y2="12"/>' +
-            '</svg>' +
+            BF.icons.html('logout') +
             '<span>' + BF.utils.escapeHtml(BF.i18n.t('settings.logout')) + '</span>';
         logoutBtn.addEventListener('click', function () {
             BF.utils.openOverlay(confirmOverlay);
@@ -536,7 +532,7 @@
             row.innerHTML =
                 '<span class="sd-item-icon">' + item.icon + '</span>' +
                 '<span class="sd-item-label">' + item.label + '</span>' +
-                '<span class="sd-item-arrow">›</span>';
+                '<span class="sd-item-arrow">' + BF.icons.html('chevron-right') + '</span>';
             makeActivatable(row, function () { navigate(item.view); });
             sec.appendChild(row);
         });
@@ -1553,7 +1549,7 @@
                 var rm = document.createElement('button');
                 rm.type = 'button';
                 rm.className = 'sd-bg-card-remove';
-                rm.textContent = '×';
+                rm.innerHTML = BF.icons.html('close');
                 rm.title = BF.i18n.t('personalization.removeFromCollection');
                 rm.addEventListener('click', function (e) {
                     e.stopPropagation();
@@ -1576,7 +1572,7 @@
 
             var add = document.createElement('div');
             add.className = 'sd-bg-card sd-bg-card-add';
-            add.textContent = '+';
+            add.innerHTML = BF.icons.html('add');
             add.title = BF.i18n.t('personalization.addBackground');
             add.addEventListener('click', function () { bgInput.click(); });
             grid.appendChild(add);

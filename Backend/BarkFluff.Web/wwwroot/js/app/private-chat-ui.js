@@ -184,7 +184,7 @@
                     if (deps.setChatReadOnly) deps.setChatReadOnly(peer);
                     if (peerIsRestricted) {
                         var name = BF.utils.restrictedUserName(peer);
-                        chatHeaderName.textContent = '\u{1F512} ' + name;
+                        chatHeaderName.replaceChildren(BF.icons.element('private'), ' ' + name);
                         chatHeaderAvatar.replaceChildren();
                         chatHeaderAvatar.textContent = name[0] || '?';
                     }
@@ -198,7 +198,10 @@
                 .catch(function () {});
         }
 
-        chatHeaderName.textContent = '\u{1F512} ' + (chat.title || BF.i18n.t('newchat.mode.private'));
+        chatHeaderName.replaceChildren(
+            BF.icons.element('private'),
+            ' ' + (chat.title || BF.i18n.t('newchat.mode.private'))
+        );
         if (chat.picture) chatHeaderAvatar.innerHTML = '<img src="' + deps.escapeHtml(chat.picture) + '" alt="">';
         else chatHeaderAvatar.textContent = (chat.title || '?')[0].toUpperCase();
         chatHeaderStatus.hidden = false;
