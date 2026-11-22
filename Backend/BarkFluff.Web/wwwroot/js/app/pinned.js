@@ -18,6 +18,7 @@
     var sorted = [];                // sorted by pinnedAt DESC (newest first)
     var totalCount = 0;
     var barIndex = 0;
+    var barSwitching = false; // переключение по клику на превью: только тогда кроссфейд текста
 
     // --- External helpers (provided by main.js via init) ---
     var getMyUserId = function () { return null; };
@@ -220,6 +221,8 @@
     // --- Bar render ---
 
     function renderBar() {
+        var switching = barSwitching;
+        barSwitching = false;
         if (!pinnedBar) return;
         if (totalCount === 0) {
             pinnedBar.classList.remove('visible');
@@ -255,6 +258,13 @@
                 }).catch(function () {});
             }
         }
+
+        if (switching && pinnedBarPreview) {
+            // Перезапуск кроссфейда: снятие класса и чтение layout позволяют проиграть анимацию снова.
+            pinnedBarPreview.classList.remove('is-switching');
+            void pinnedBarPreview.offsetWidth;
+            pinnedBarPreview.classList.add('is-switching');
+        }
     }
 
     function wireBar() {
@@ -271,6 +281,7 @@
                 // Перевод на следующий по кругу для следующего клика
                 if (totalCount > 1) {
                     barIndex = (barIndex + 1) % totalCount;
+                    barSwitching = true;
                     renderBar();
                 }
             });

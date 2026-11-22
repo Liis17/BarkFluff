@@ -43,6 +43,7 @@
 
     // Оконная виртуализация: в DOM только строки видимой области ± OVERSCAN (высота строки фиксирована).
     var OVERSCAN = 8;
+    var MOVE_MS = 220; // переезд строки при изменении порядка (см. .chat-item.is-moving в messenger.css)
     var ROW = 75; // --chat-row-height
     var CHAT_SKELETON_ROWS = 8;
     var NAV = 0; // нижний padding списка под плавающую навигацию
@@ -426,6 +427,7 @@
         var focusedKey = focusedRowKey();
         var focusedIndex = focusedKey !== null ? indexById.get(focusedKey) : undefined;
 
+        var prevIndexById = indexById;
         visibleChats = [];
         indexById = new Map();
         filtered.forEach(function (chat) {
@@ -434,6 +436,12 @@
             indexById.set(key, visibleChats.length);
             visibleChats.push(chat);
         });
+        // Тот же набор чатов (новое сообщение переставило порядок) — строки переезжают; смена папки или состава — без переезда.
+        var sameSet =
+            prevIndexById.size === indexById.size &&
+            Array.from(indexById.keys()).every(function (key) {
+                return prevIndexById.has(key);
+            });
 
         var currentChatId = deps.getCurrentChatId();
         var activeKey = currentChatId == null ? null : String(currentChatId);
@@ -460,7 +468,7 @@
             }
         }
 
-        renderWindow();
+        renderWindow(sameSet);
         if (refocus) focusRow(indexById.get(roverId));
     }
 
@@ -479,10 +487,13 @@
         }
     }
 
+    // Источник — прокрутка или изменение размеров: переезд строк здесь не анимируется.
     function scheduleWindow() {
         if (windowFramePending) return;
         windowFramePending = true;
-        requestAnimationFrame(renderWindow);
+        requestAnimationFrame(function () {
+            renderWindow(false);
+        });
     }
 
     function createRow() {
@@ -493,9 +504,23 @@
         return el;
     }
 
+    // is-moving включает transition у переезжающей строки; снимается таймером после MOVE_MS.
+    function setMoving(row, moving) {
+        clearTimeout(row.moveTimer);
+        row.moveTimer = null;
+        row.el.classList.toggle('is-moving', moving);
+        if (moving) {
+            row.moveTimer = setTimeout(function () {
+                row.moveTimer = null;
+                row.el.classList.remove('is-moving');
+            }, MOVE_MS + 40);
+        }
+    }
+
     // Синхронизирует DOM с окном прокрутки. Узлы строк переиспользуются по chat.id;
     // строка с фокусом не удаляется и не переносится (перенос узла снимает фокус).
-    function renderWindow() {
+    // animateMoves: true только при изменении данных с тем же набором чатов (render), не при прокрутке и фокусе.
+    function renderWindow(animateMoves) {
         windowFramePending = false;
         var n = visibleChats.length;
         spacer.style.height = n * ROW + 'px';
@@ -532,19 +557,25 @@
             var key = String(chat.id);
             var row = rows.get(key);
             if (!row) {
-                row = { el: createRow(), html: null, top: -1, index: -1 };
+                row = { el: createRow(), html: null, top: -1, index: -1, unread: null, moveTimer: null };
                 rows.set(key, row);
             }
             var el = row.el;
             el.dataset.chatId = chat.id;
             var html = rowHtml(chat);
+            var unread = chat.countUnread || 0;
             if (html !== row.html) {
                 el.innerHTML = html;
+                // Рост счётчика — pop бейджа; первый рендер строки и уменьшение счётчика — без анимации.
+                el.classList.toggle('unread-up', row.unread !== null && unread > row.unread);
                 row.html = html;
                 el.setAttribute('aria-label', rowLabel(el, chat));
             }
+            row.unread = unread;
             var top = index * ROW;
             if (top !== row.top) {
+                // Переезд только у строк, уже бывших в DOM; новые строки из окна появляются сразу.
+                setMoving(row, animateMoves === true && row.top !== -1);
                 el.style.transform = 'translateY(' + top + 'px)';
                 row.top = top;
             }
@@ -570,7 +601,7 @@
         if (!chat) return;
         roverId = String(chat.id);
         revealIndex(index, false);
-        renderWindow();
+        renderWindow(false);
         var row = rows.get(roverId);
         if (row) row.el.focus({ preventScroll: true });
     }

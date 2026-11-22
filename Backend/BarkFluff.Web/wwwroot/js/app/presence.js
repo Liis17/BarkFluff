@@ -14,6 +14,8 @@
     var onlineSubscribedUserIds = new Set();
     var onlineStatuses = new Map();
     var typingUsers = new Map(); // userId -> timeout handle
+    var TYPING_DOTS_HTML =
+        '<span class="typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>';
 
     function isOnline(userId) {
         var entry = onlineStatuses.get(userId);
@@ -52,6 +54,13 @@
         }
     }
 
+    // Строки «печатает…» уже содержат многоточие: его заменяют анимированные точки (декоративные, без дубля).
+    // Смена статуса перезаписывает textContent, поэтому точки исчезают вместе с прежним текстом.
+    function setTypingStatus(text) {
+        chatHeaderStatus.textContent = text.replace(/…$/, '');
+        chatHeaderStatus.insertAdjacentHTML('beforeend', TYPING_DOTS_HTML);
+    }
+
     function renderTypingIndicator() {
         var chatInfo = deps.getCurrentChatInfo();
         if (!deps.getCurrentChatId() || !chatInfo) return;
@@ -81,12 +90,13 @@
                     if (!user) return BF.i18n.t('common.someone');
                     return (user.firstName || '').split(' ')[0] || user.username || BF.i18n.t('common.someone');
                 });
-            chatHeaderStatus.textContent = BF.i18n.t(
-                typingUsers.size > 1 ? 'status.typing.many' : 'status.typing.named',
-                { names: names.join(', ') }
+            setTypingStatus(
+                BF.i18n.t(typingUsers.size > 1 ? 'status.typing.many' : 'status.typing.named', {
+                    names: names.join(', ')
+                })
             );
         } else {
-            chatHeaderStatus.textContent = BF.i18n.t('status.typing');
+            setTypingStatus(BF.i18n.t('status.typing'));
         }
     }
 

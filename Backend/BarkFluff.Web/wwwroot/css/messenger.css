@@ -502,6 +502,9 @@
         .chat-item:hover { background: rgba(0, 0, 0, 0.04); }
         .chat-item.active { background: rgba(140, 53, 28, 0.08); }
 
+        /* Переезд строки при изменении порядка: класс ставит chat-list.js и снимает таймером; у новых строк его нет */
+        .chat-item.is-moving { transition: transform 220ms var(--ease-out), background 0.15s; }
+
         .chat-avatar {
             width: 50px;
             height: 50px;
@@ -626,6 +629,14 @@
 
         .chat-unread.visible { display: block; }
         .chat-unread.muted { background: var(--text-sub); }
+
+        /* Pop бейджа при росте счётчика: класс unread-up ставит chat-list.js на строку */
+        .chat-item.unread-up .chat-unread { animation: chatUnreadPop 200ms var(--ease-out); }
+        @keyframes chatUnreadPop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
 
         .search-results {
             display: none;
@@ -990,6 +1001,27 @@
         .chat-header-name { font-size: 16px; font-weight: 600; cursor: pointer; }
         .chat-header-status { font-size: 12px; color: var(--text-sub); }
         .chat-header-status.online { color: var(--online-color); }
+
+        /* Точки после «печатает…» (presence.js; многоточие в строке заменено ими). Декоративные, aria-hidden */
+        .chat-header-status .typing-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            margin-left: 4px;
+        }
+        .typing-dots > span {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: typingDot 1.2s ease-in-out infinite;
+        }
+        .typing-dots > span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots > span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingDot {
+            0%, 60%, 100% { opacity: 0.25; }
+            30% { opacity: 1; }
+        }
 
         /* --- Calls UI --- */
         .chat-header-actions { display: flex; gap: 4px; flex-shrink: 0; }
@@ -4524,17 +4556,29 @@
             background: var(--dialog-bg);
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
             border: 1px solid var(--card-border);
-            display: none;
+            display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             font-size: 20px;
             color: var(--text-main);
-            transition: box-shadow 0.2s, transform 0.15s;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: scale(0.9);
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms, box-shadow 0.2s;
         }
 
-        .scroll-to-bottom-btn.visible { display: flex; }
-        .scroll-to-bottom-btn:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24); transform: scale(1.05); }
+        /* Скрытая кнопка не видна, не кликается и выпадает из фокуса (visibility) — как .newchat-menu */
+        .scroll-to-bottom-btn.visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: scale(1);
+            transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out), visibility 0s linear, box-shadow 0.2s;
+        }
+        .scroll-to-bottom-btn:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24); }
+        .scroll-to-bottom-btn.visible:hover { transform: scale(1.05); }
 
         .scroll-to-bottom-btn .scroll-badge {
             position: absolute;
@@ -4972,6 +5016,16 @@
             border-left: 3px solid var(--primary);
         }
         .edit-preview-bar.visible { display: flex; }
+        /* Вход панелей: opacity + сдвиг; выход без анимации (display: none сразу) */
+        .reply-preview-bar,
+        .edit-preview-bar { transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out); }
+        @starting-style {
+            .reply-preview-bar.visible,
+            .edit-preview-bar.visible {
+                opacity: 0;
+                transform: var(--bar-enter-from);
+            }
+        }
         .edit-preview-bar .rpb-content { flex: 1; min-width: 0; }
         .edit-preview-bar .rpb-author {
             font-size: 12px;
@@ -5419,6 +5473,19 @@
         }
         .pinned-bar.hidden { display: none; }
 
+        /* Баннеры над лентой (закреп, звонок, только чтение): вход opacity + сдвиг, выход мгновенный ([hidden]/.hidden) */
+        .pinned-bar,
+        .chat-readonly-banner,
+        .chat-call-banner { transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out); }
+        @starting-style {
+            .pinned-bar:not(.hidden),
+            .chat-readonly-banner:not([hidden]),
+            .chat-call-banner:not([hidden]) {
+                opacity: 0;
+                transform: var(--banner-enter-from);
+            }
+        }
+
         .pinned-bar-counter {
             font-size: 11px;
             color: var(--text-sub);
@@ -5435,6 +5502,11 @@
             overflow: hidden;
         }
         .pinned-bar-preview:hover .pinned-bar-author { color: var(--primary); }
+        /* Кроссфейд превью при переключении между закреплёнными (класс ставит pinned.js по клику) */
+        .pinned-bar-preview.is-switching { animation: pinnedSwitch 150ms var(--ease-out); }
+        @keyframes pinnedSwitch {
+            from { opacity: 0; transform: translateY(4px); }
+        }
 
         .pinned-bar-author {
             font-size: 12px;
@@ -5868,4 +5940,34 @@
                 transform: translateX(-50%);
                 transition: opacity 120ms var(--ease-out);
             }
+        }
+
+        /* Панели, баннеры, кнопка «вниз», переезд строк, pop бейджа и «печатает»: без движения, только короткий opacity */
+        :root {
+            --bar-enter-from: translateY(6px);
+            --banner-enter-from: translateY(-4px);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --bar-enter-from: none;
+                --banner-enter-from: none;
+            }
+            .reply-preview-bar,
+            .edit-preview-bar,
+            .pinned-bar,
+            .chat-readonly-banner,
+            .chat-call-banner { transition: opacity 120ms var(--ease-out); }
+            .pinned-bar-preview.is-switching { animation: none; }
+            .chat-item.is-moving { transition: background 0.15s; }
+            .chat-item.unread-up .chat-unread { animation: none; }
+            .typing-dots > span { animation: none; opacity: 0.6; }
+            .scroll-to-bottom-btn,
+            .scroll-to-bottom-btn.visible { transform: none; transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms, box-shadow 0.2s; }
+            .scroll-to-bottom-btn.visible { transition: opacity 120ms var(--ease-out), visibility 0s linear, box-shadow 0.2s; }
+        }
+
+        /* Мобильный сайдбар переключается без скольжения; открытие и закрытие списка идут по тем же классам */
+        @media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+            .sidebar,
+            .chat-area { transition: none; }
         }
