@@ -369,6 +369,7 @@
                 <button type="button" class="md-chip selected" data-status="all" onclick="setUserStatusFilter('all')">Все</button>
                 <button type="button" class="md-chip" data-status="blocked" onclick="setUserStatusFilter('blocked')">Заблокированные</button>
                 <button type="button" class="md-chip" data-status="pending_deletion" onclick="setUserStatusFilter('pending_deletion')">В удалении</button>
+                <button type="button" class="md-chip" data-status="deleted" onclick="setUserStatusFilter('deleted')">Удалённые</button>
             </div>
             <div class="users-list" id="usersList"></div>
             <div id="emptyState" class="md-empty" style="display:none;">
@@ -518,7 +519,7 @@
     }
 
     window.setUserStatusFilter = function (status) {
-        if (!['all', 'blocked', 'pending_deletion'].includes(status)) return;
+        if (!['all', 'blocked', 'pending_deletion', 'deleted'].includes(status)) return;
         currentStatusFilter = status;
         document.querySelectorAll('#userStatusFilters [data-status]').forEach(button => {
             button.classList.toggle('selected', button.dataset.status === status);
