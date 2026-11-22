@@ -43,7 +43,7 @@ public static class UsersEndpoints
             return await next(filterContext);
         });
 
-        // GET /api/users?query=&status=all|blocked|pending_deletion&offset=0&size=50
+        // GET /api/users?query=&status=all|blocked|pending_deletion|deleted&offset=0&size=50
         group.MapGet("/", async (
             string? query,
             string? status,
@@ -52,8 +52,8 @@ public static class UsersEndpoints
             UsersServerApi.UsersServerApiClient usersClient) =>
         {
             var statusFilter = status?.Trim().ToLowerInvariant();
-            if (statusFilter is not (null or "" or "all" or "blocked" or "pending_deletion"))
-                return Results.BadRequest(new { error = "status must be all, blocked, or pending_deletion" });
+            if (statusFilter is not (null or "" or "all" or "blocked" or "pending_deletion" or "deleted"))
+                return Results.BadRequest(new { error = "status must be all, blocked, pending_deletion, or deleted" });
 
             var request = new SearchUsersServerRequest
             {
@@ -61,10 +61,14 @@ public static class UsersEndpoints
                 Offset = offset ?? 0,
                 Size = size ?? 50
             };
-            if (statusFilter == "blocked")
-                request.StatusFilter = AccountStatus.Blocked;
-            else if (statusFilter == "pending_deletion")
-                request.StatusFilter = AccountStatus.PendingDeletion;
+            // «Все» — только Active и Blocked; «В удалении» и «Удалённые» видны только своими фильтрами.
+            request.StatusFilters.AddRange(statusFilter switch
+            {
+                "blocked" => new[] { AccountStatus.Blocked },
+                "pending_deletion" => new[] { AccountStatus.PendingDeletion },
+                "deleted" => new[] { AccountStatus.Deleted },
+                _ => new[] { AccountStatus.Active, AccountStatus.Blocked }
+            });
 
             var response = await usersClient.SearchUsersServerAsync(request);
             var restrictions = response.Results

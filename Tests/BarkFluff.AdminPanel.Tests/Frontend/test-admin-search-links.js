@@ -125,7 +125,8 @@ const users = vm.runInNewContext([
 
 assert.deepEqual(plain(users.readUsersUrlState('')), { query: '', status: 'all', page: 1, userId: null });
 assert.deepEqual(plain(users.readUsersUrlState('?q=ivan&status=blocked&page=3')), { query: 'ivan', status: 'blocked', page: 3, userId: null });
-assert.deepEqual(plain(users.readUsersUrlState('?status=deleted&page=0&userId=12a')), { query: '', status: 'all', page: 1, userId: null });
+assert.deepEqual(plain(users.readUsersUrlState('?status=removed&page=0&userId=12a')), { query: '', status: 'all', page: 1, userId: null });
+assert.equal(users.readUsersUrlState('?status=deleted').status, 'deleted');
 assert.equal(users.readUsersUrlState('?page=-2').page, 1);
 assert.equal(users.readUsersUrlState('?page=abc').page, 1);
 assert.equal(users.readUsersUrlState('?page=1e3').page, 1);

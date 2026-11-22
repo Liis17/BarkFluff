@@ -369,6 +369,7 @@
                 <button type="button" class="md-chip selected" data-status="all" onclick="setUserStatusFilter('all')">Все</button>
                 <button type="button" class="md-chip" data-status="blocked" onclick="setUserStatusFilter('blocked')">Заблокированные</button>
                 <button type="button" class="md-chip" data-status="pending_deletion" onclick="setUserStatusFilter('pending_deletion')">В удалении</button>
+                <button type="button" class="md-chip" data-status="deleted" onclick="setUserStatusFilter('deleted')">Удалённые</button>
             </div>
             <div class="users-list" id="usersList"></div>
             <div id="emptyState" class="md-empty" style="display:none;">
@@ -461,7 +462,7 @@
     let sessionsExpanded = false;
     let badgeAddUserId = null;
     const PAGE_SIZE = 50;
-    const USER_STATUSES = ['all', 'blocked', 'pending_deletion'];
+    const USER_STATUSES = ['all', 'blocked', 'pending_deletion', 'deleted'];
     const MAX_RESTORED_PAGES = 20;
     let openedUserId = null;
 

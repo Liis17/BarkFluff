@@ -14,7 +14,7 @@
 
 `users.block` и `users.delete` разрешены только SecurityAdmin и Owner. Маршруты POST `/api/users/{id}/block`, POST `/unblock`, POST `/deletion` и DELETE `/deletion` проверяют обязательную причину (до 500 символов), привязывают к Telegram step-up `userId`, действие и причину и делегируют изменение `IdentityServerApi.SetAccountRestrictionServer`.
 
-GET `/api/users` передаёт Users фильтр `status=all|blocked|pending_deletion`; Users выполняет фильтрацию до пагинации и считает общий total. Список и карточка пользователя показывают статус, причину, время ограничения и дату окончательного удаления. Tombstone со статусом Deleted отображается без действий. UI и JSON-маршруты находятся в `Pages/v2/users.html` и `Endpoints/UsersEndpoints.cs`.
+GET `/api/users` переводит `status` в набор `status_filters`: `all` (и пустой) — Active и Blocked, `blocked`, `pending_deletion` и `deleted` — один статус. Аккаунты «В удалении» и «Удалённые» видны только своими фильтрами, в том числе при поиске по ID в списке. Карточка `GET /api/users/{id}` набором не ограничивается. Users применяет набор до пагинации и считает общий total по той же выборке. Список и карточка пользователя показывают статус, причину, время ограничения и дату окончательного удаления. Tombstone со статусом Deleted отображается без действий. UI и JSON-маршруты находятся в `Pages/v2/users.html` и `Endpoints/UsersEndpoints.cs`.
 
 ## Тестовая отправка push
 
