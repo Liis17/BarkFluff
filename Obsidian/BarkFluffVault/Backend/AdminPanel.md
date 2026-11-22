@@ -45,6 +45,10 @@ Nightly compose запускает панель от root и монтирует 
 
 Сборка: dotnet build Backend/Barkfluff.AdminPanel/Barkfluff.AdminPanel.csproj. Конфигурация по умолчанию — Backend/Barkfluff.AdminPanel/appsettings.json.
 
+Дашборд `Pages/v2/dashboard.html` показывает проблемные сервисы (`down`, `degraded`, `unknown`) первыми, в порядке тяжести; внутри группы порядок снимка сохраняется. Заголовок «Состояние сервисов» показывает `generatedAtUtc` снимка и обновляется при каждом опросе. Для проблемного сервиса доступна ссылка «Открыть логи»: `/logs` с `service`, `level=Error` и `from` — время снимка минус час. Снимок содержит `SeqEnabled` (значение `Seq:Enabled` на момент сбора); при `false` вместо логов ссылка ведёт в «Сервисы» на строку сервиса (подсветка через `focusLinkedService`).
+
+Страница логов `Pages/v2/logs.html` принимает `from` (ISO UTC с часовым поясом; иное значение игнорируется). Значение уходит в `/api/seq/events` как `fromUtc` и показывается рядом с фильтрами с кнопкой сброса. Период применяется только к событиям: в режиме групп ошибок он не работает, верхней границы у периода нет.
+
 ## Логирование
 
 Собственные логи AdminPanel подключены к `AddBarkFluffSerilog("BarkFluff.AdminPanel")` после загрузки Settings и повторного наложения env; применяются общие request trace scopes и независимые root-level flags `ConsoleOutput`, `SeqEnable`, `LognaraEnable`. Панель использует `ServiceId.Unknown`, поэтому flags sinks задаются локально; `Lognara:AgentUrl` может поступить из global Settings. Defaults, priority и lifecycle embedded agent описаны в [[Backend/GrpcServer]]. Чтение/сжатие логов и кеширование метрик панели остаются Seq-интеграцией. При Lognara-only новые сервисные логи и метрики видны в Lognara Dock; переключение UI панели на Lognara не реализовано.
