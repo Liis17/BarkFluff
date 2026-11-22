@@ -9,6 +9,6 @@
     <path d="M9 5 7.5 3.2"></path>
     <path d="M15 5l1.5-1.8"></path>
   </g>
-  <circle cx="10" cy="7.3" r="0.7" fill="currentColor"></circle>
-  <circle cx="14" cy="7.3" r="0.7" fill="currentColor"></circle>
+  <circle cx="10" cy="7.3" r="0.9" fill="currentColor"></circle>
+  <circle cx="14" cy="7.3" r="0.9" fill="currentColor"></circle>
 </svg>

@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
   <g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M7.2 19.5h10a4 4 0 0 0 .7-7.9A6.5 6.5 0 0 0 5.4 9.8 4.9 4.9 0 0 0 7.2 19.5Z"></path>
-    <path d="M12 17v-6"></path>
-    <path d="m9.5 13.5 2.5-2.5 2.5 2.5"></path>
+    <ellipse cx="9" cy="6.5" rx="6" ry="2.5"></ellipse>
+    <path d="M3 6.5V18c0 1.4 2.7 2.5 6 2.5h.6"></path>
+    <path d="M3 12.2c0 1.4 2.7 2.5 6 2.5h1.3"></path>
+    <path d="M15 6.5v2"></path>
+    <path d="M13.8 19.5h6a2.4 2.4 0 0 0 .4-4.7 3.9 3.9 0 0 0-7.5-1.1 2.9 2.9 0 0 0 1.1 5.8Z"></path>
   </g>
 </svg>
