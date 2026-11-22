@@ -49,6 +49,14 @@
         .deployment-comparison.open { display: flex; }
         .deployment-comparison.is-worse { background: var(--md-error-container); color: var(--md-on-error-container); }
         .deployment-comparison.is-better { background: var(--md-success-container); color: var(--md-on-success-container); }
+        .period-filter {
+            display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+            margin: -8px 0 12px; padding: 8px 12px;
+            border-radius: var(--md-shape-md);
+            background: var(--md-secondary-container); color: var(--md-on-secondary-container);
+            font-size: 13px;
+        }
+        .period-filter.open { display: flex; }
 
         .logs-card {
             background: var(--md-surface-container-lowest);
@@ -191,6 +199,8 @@
                 </div>
             </div>
 
+            <div id="periodFilter" class="period-filter" role="status"></div>
+
             <div id="deploymentComparison" class="deployment-comparison" role="status"></div>
 
             <div class="logs-card">
@@ -328,6 +338,7 @@
     let activeService = '';
     let searchQuery = '';
     let activeContext = null;
+    let activeFromUtc = '';
     let viewMode = 'events';
     let groupMetadata = null;
     let deployments = [];
@@ -483,7 +494,30 @@
             button.classList.toggle('selected', button.dataset.level === activeLevel));
         document.querySelectorAll('.view-buttons .md-chip').forEach(button =>
             button.classList.toggle('selected', button.dataset.view === viewMode));
+        renderPeriodFilter();
     }
+
+    // Период из URL (?from=ISO UTC): значение без часового пояса или с невалидной датой игнорируется.
+    const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+    function parseFromUtc(value) {
+        if (!value || !ISO_DATE_TIME_PATTERN.test(value)) return '';
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? '' : date.toISOString();
+    }
+    function renderPeriodFilter() {
+        const box = document.getElementById('periodFilter');
+        box.classList.toggle('open', Boolean(activeFromUtc));
+        if (!activeFromUtc) { box.innerHTML = ''; return; }
+        const note = viewMode === 'groups' ? ' · в группах ошибок период не применяется' : '';
+        box.innerHTML = `${bfIcon('history', 'size-18')}<span>Период: с ${escapeHtml(formatDate(activeFromUtc))}${escapeHtml(note)}</span>
+            <button type="button" class="md-btn md-btn-text" onclick="resetPeriodFilter()">Сбросить период</button>`;
+    }
+    window.resetPeriodFilter = async function () {
+        activeFromUtc = '';
+        markFilterDirty();
+        syncFilterControls();
+        await reload();
+    };
 
     async function applySavedFilter(id) {
         const filter = readSavedFilters().find(item => item.id === id);
@@ -550,6 +584,7 @@
             if (activeLevel && viewMode === 'events') params.set('level', activeLevel);
             if (searchQuery) params.set('search', searchQuery);
             if (activeContext) params.set(activeContext.kind, activeContext.value);
+            if (activeFromUtc && viewMode === 'events') params.set('fromUtc', activeFromUtc);
 
             if (viewMode === 'groups') {
                 params.delete('count');
@@ -876,6 +911,7 @@
         activeContext = contextKind ? { kind:contextKind, value:params.get(contextKind) } : null;
         viewMode = params.get('view') === 'groups' ? 'groups' : 'events';
         activeLevel = viewMode === 'groups' ? 'Error' : (params.get('level') || '');
+        activeFromUtc = parseFromUtc(params.get('from'));
         syncFilterControls();
     }
 
