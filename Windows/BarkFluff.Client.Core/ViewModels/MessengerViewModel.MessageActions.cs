@@ -31,7 +31,7 @@ public sealed partial class MessengerViewModel
     private PinnedPreviewViewModel? _pinnedPreview;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsEditing), nameof(IsComposerHintVisible), nameof(ComposerHintTitle), nameof(ComposerHintPreview))]
+    [NotifyPropertyChangedFor(nameof(IsEditing), nameof(IsComposerHintVisible), nameof(ComposerHintTitle), nameof(ComposerHintPreview), nameof(CanAttach))]
     private MessageItemViewModel? _editingMessage;
 
     [ObservableProperty]

@@ -471,4 +471,27 @@
     <x:String x:Key="Messenger_ChatMuted">Notifications muted</x:String>
     <x:String x:Key="Messenger_ChatOptions">Chat actions</x:String>
     <x:String x:Key="Messenger_ChatMuteFailed">Couldn't change chat notifications.</x:String>
+    <x:String x:Key="Messenger_AttachmentAdd">Attach files</x:String>
+    <x:String x:Key="Messenger_AttachmentRemove">Remove attachment</x:String>
+    <x:String x:Key="Messenger_AttachmentAsFile">Send as file</x:String>
+    <x:String x:Key="Messenger_AttachmentDrop">Attach to message</x:String>
+    <x:String x:Key="Messenger_AttachmentPrivate">Attachments are unavailable in private chats.</x:String>
+    <x:String x:Key="Messenger_AttachmentLimit">You can attach up to 10 files per message.</x:String>
+    <x:String x:Key="Messenger_AttachmentReadFailed">Could not open the attachment. The file may be empty or unavailable.</x:String>
+    <x:String x:Key="Messenger_AttachmentTooLarge">The file exceeds the upload limit of 512 MiB per request.</x:String>
+    <x:String x:Key="Messenger_AttachmentStorageFull">Not enough space in your storage.</x:String>
+    <x:String x:Key="Messenger_AttachmentUploadFailed">Upload failed.</x:String>
+    <x:String x:Key="Messenger_AttachmentConnectionTimeout">The upload stopped transferring data. Check your connection and retry.</x:String>
+    <x:String x:Key="Messenger_AttachmentResponseTimeout">The server took too long to respond. Retry the upload.</x:String>
+    <x:String x:Key="Messenger_AttachmentUploading">Uploading…</x:String>
+    <x:String x:Key="Messenger_AttachmentWaiting">Waiting to upload</x:String>
+    <x:String x:Key="Messenger_AttachmentReady">Uploaded</x:String>
+    <x:String x:Key="Messenger_AttachmentCancelled">Upload cancelled</x:String>
+    <x:String x:Key="Messenger_AttachmentRetry">Retry upload</x:String>
+    <x:String x:Key="Messenger_AttachmentPhoto">Photo</x:String>
+    <x:String x:Key="Messenger_AttachmentGif">GIF</x:String>
+    <x:String x:Key="Messenger_AttachmentVideo">Video</x:String>
+    <x:String x:Key="Messenger_AttachmentAudio">Audio</x:String>
+    <x:String x:Key="Messenger_AttachmentFile">File</x:String>
+    <x:String x:Key="Messenger_AttachmentClipboardName">Clipboard image.png</x:String>
 </ResourceDictionary>

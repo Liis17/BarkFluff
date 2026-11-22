@@ -88,6 +88,7 @@ public sealed partial class MessengerViewModel
     private void EndRealtimeSession()
     {
         var session = _realtimeSession;
+        _ = CancelAttachmentsAsync();
         if (session is null)
         {
             return;
@@ -215,7 +216,8 @@ public sealed partial class MessengerViewModel
             if (wasLast)
             {
                 var last = isOpen && _feedIncludesTail ? Messages.LastOrDefault() : null;
-                chat.SetLastMessage(last?.Id ?? 0, last?.Text ?? string.Empty, last?.SentAt, last?.EditedAt);
+                chat.SetLastMessage(last?.Id ?? 0, last?.Text ?? string.Empty, last?.SentAt, last?.EditedAt,
+                    last?.Attachments.FirstOrDefault()?.Type);
             }
 
             if (wasLast || wasFirstUnread || existing is null && chat.UnreadCount > 0)
@@ -247,7 +249,7 @@ public sealed partial class MessengerViewModel
                     session.ChatRefresh.RequestConfirmation();
                 }
                 chat.SetLastMessage(update.MessageId, effective?.Message?.Text ?? string.Empty, sentAt,
-                    change.EditTime?.ToDateTimeOffset());
+                    change.EditTime?.ToDateTimeOffset(), effective?.Message?.Attachments.FirstOrDefault()?.Type);
                 MoveChatToTop(chat);
             }
         }
@@ -256,7 +258,8 @@ public sealed partial class MessengerViewModel
         {
             if (chat.LastMessageId == edited.MessageId && !(chat.LastMessageEditedAt > edited.EditedAt?.ToDateTimeOffset()))
             {
-                chat.SetLastMessage(edited.MessageId, edited.Text, chat.LastMessageAt, edited.EditedAt?.ToDateTimeOffset());
+                chat.SetLastMessage(edited.MessageId, edited.Text, chat.LastMessageAt, edited.EditedAt?.ToDateTimeOffset(),
+                    edited.Attachments.FirstOrDefault()?.Type);
             }
 
             if (isOpen)

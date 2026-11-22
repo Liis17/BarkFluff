@@ -210,12 +210,13 @@ namespace BarkFluff.WebApi.Core.Managers
         /// <summary>
         /// Отправка сообщения в чат
         /// </summary>
-        public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter)
+        public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter, CancellationToken cancellationToken = default)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     Proto.Messages.SendMessageResponse response;
                     string chatId;
                     if (!options.isUserId)
@@ -225,7 +226,7 @@ namespace BarkFluff.WebApi.Core.Managers
                         {
                             ChatId = options.recipient,
                             Message = BuildOutgoingMessage(letter),
-                        });
+                        }, cancellationToken: cancellationToken);
                     }
                     else
                     {
@@ -234,7 +235,7 @@ namespace BarkFluff.WebApi.Core.Managers
                         {
                             UserId = long.Parse(options.recipient),
                             Message = BuildOutgoingMessage(letter),
-                        });
+                        }, cancellationToken: cancellationToken);
                     }
 
                     return (new ErrorReturner(true), MapMessage(response.Message, chatId));

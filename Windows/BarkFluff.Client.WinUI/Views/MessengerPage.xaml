@@ -608,6 +608,10 @@
 
             <ScrollViewer x:Name="FeedScroller"
                           Grid.Row="2"
+                          AllowDrop="True"
+                          DragOver="OnAttachmentDragOver"
+                          DragLeave="OnAttachmentDragLeave"
+                          Drop="OnAttachmentDrop"
                           HorizontalScrollBarVisibility="Disabled"
                           SizeChanged="OnFeedScrollerSizeChanged"
                           VerticalAnchorRatio="0.01"
@@ -623,7 +627,7 @@
                     ScrollViewer меряет ребёнка бесконечной высотой, поэтому MinHeight
                     выставляется из code-behind по фактическому размеру вьюпорта.
                 -->
-                <Grid x:Name="FeedHost">
+                <Grid x:Name="FeedHost" Background="Transparent">
                     <ItemsRepeater x:Name="MessageFeed"
                                    VerticalAlignment="Bottom"
                                    ItemTemplate="{StaticResource MessageBubbleTemplate}"
@@ -681,6 +685,69 @@
             </Border>
 
             <StackPanel Grid.Row="4" Margin="12,6,12,0">
+                <StackPanel Visibility="{x:Bind ViewModel.CanAttach, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               Text="{x:Bind ViewModel.AttachmentComposer.Error, Mode=OneWay}"
+                               TextWrapping="Wrap"
+                               Visibility="{x:Bind ViewModel.AttachmentComposer.Error, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                    <ScrollViewer HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled"
+                                  Visibility="{x:Bind ViewModel.AttachmentComposer.HasFiles, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.AttachmentComposer.Files, Mode=OneWay}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PendingAttachment">
+                                    <Border Width="238" Padding="8" CornerRadius="8" Background="{ThemeResource ControlFillColorSecondaryBrush}">
+                                        <StackPanel Spacing="4">
+                                            <Grid ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Image Width="44" Height="44" Stretch="UniformToFill" Loaded="OnAttachmentThumbnailLoaded"
+                                                       Visibility="{x:Bind HasThumbnail, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis"
+                                                               ToolTipService.ToolTip="{x:Bind Name}" />
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <TextBlock Text="{x:Bind TypeLabel, Mode=OneWay}" Style="{StaticResource MutedText}" />
+                                                        <TextBlock Text="{x:Bind SizeLabel}" Style="{StaticResource MutedText}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                                <Button Grid.Column="2" Padding="6" Command="{x:Bind RemoveCommand}"
+                                                        IsEnabled="{x:Bind CanRemove, Mode=OneWay}"
+                                                        AutomationProperties.Name="{StaticResource Messenger_AttachmentRemove}"
+                                                        ToolTipService.ToolTip="{StaticResource Messenger_AttachmentRemove}">
+                                                    <FontIcon FontSize="12" Glyph="&#xE711;" />
+                                                </Button>
+                                            </Grid>
+                                            <CheckBox Content="{StaticResource Messenger_AttachmentAsFile}"
+                                                      IsChecked="{x:Bind AsDocument, Mode=TwoWay}"
+                                                      IsEnabled="{x:Bind CanChangeType, Mode=OneWay}"
+                                                      Visibility="{x:Bind SupportsAsDocument, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                            <ProgressBar Maximum="100" Value="{x:Bind Progress, Mode=OneWay}"
+                                                         Visibility="{x:Bind IsUploading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                            <TextBlock Text="{x:Bind Status, Mode=OneWay}" TextWrapping="Wrap" />
+                                            <Button Content="{StaticResource Messenger_Cancel}" Command="{x:Bind CancelCommand}"
+                                                    Visibility="{x:Bind IsUploading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                            <Button Content="{StaticResource Messenger_AttachmentRetry}" Click="OnRetryAttachmentClick"
+                                                    IsEnabled="{x:Bind CanRemove, Mode=OneWay}"
+                                                    Visibility="{x:Bind CanRetry, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+                <TextBlock Text="{StaticResource Messenger_AttachmentPrivate}" Style="{StaticResource MutedText}"
+                           TextWrapping="Wrap"
+                           Visibility="{x:Bind ViewModel.HasPrivateAttachmentRestriction, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                            Text="{x:Bind ViewModel.ActionError, Mode=OneWay}"
                            TextWrapping="Wrap"
@@ -696,19 +763,33 @@
 
             <Grid Grid.Row="5"
                   Margin="12,8,12,0"
+                  Background="Transparent"
+                  AllowDrop="True"
+                  DragOver="OnAttachmentDragOver"
+                  DragLeave="OnAttachmentDragLeave"
+                  Drop="OnAttachmentDrop"
                   Visibility="{x:Bind ViewModel.HasSelectedChat, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBox MinHeight="42"
+                <Button Margin="0,0,8,0" VerticalAlignment="Bottom"
+                        Click="OnAttachClick"
+                        IsEnabled="{x:Bind CanBeginAttachmentInput(ViewModel.CanAttach, ViewModel.AttachmentComposer.IsSending), Mode=OneWay}"
+                        AutomationProperties.Name="{StaticResource Messenger_AttachmentAdd}"
+                        ToolTipService.ToolTip="{StaticResource Messenger_AttachmentAdd}">
+                    <FontIcon Glyph="&#xE723;" />
+                </Button>
+                <TextBox Grid.Column="1" MinHeight="42"
                          MaxHeight="120"
                          AcceptsReturn="True"
+                         Paste="OnComposerPaste"
                          IsEnabled="{x:Bind ViewModel.SelectedChat.CanSend, Mode=OneWay}"
                          Text="{x:Bind ViewModel.DraftText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          TextWrapping="Wrap"
                          behaviors:SendOnEnterBehavior.Command="{x:Bind ViewModel.SendCommand}" />
-                <Button Grid.Column="1"
+                <Button Grid.Column="2"
                         Margin="8,0,0,0"
                         VerticalAlignment="Bottom"
                         Command="{x:Bind ViewModel.SendCommand}"
@@ -716,6 +797,9 @@
                         Content="{StaticResource Messenger_Send}"
                         Style="{StaticResource AccentButtonStyle}" />
             </Grid>
+            <Border x:Name="AttachmentDropHighlight" Grid.Row="2" Grid.RowSpan="4"
+                    IsHitTestVisible="False" Visibility="Collapsed" BorderThickness="2" CornerRadius="8"
+                    BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" />
         </Grid>
 
         <!--

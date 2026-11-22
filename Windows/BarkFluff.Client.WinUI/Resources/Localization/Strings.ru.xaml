@@ -471,4 +471,27 @@
     <x:String x:Key="Messenger_ChatMuted">Уведомления отключены</x:String>
     <x:String x:Key="Messenger_ChatOptions">Действия чата</x:String>
     <x:String x:Key="Messenger_ChatMuteFailed">Не удалось изменить уведомления чата.</x:String>
+    <x:String x:Key="Messenger_AttachmentAdd">Прикрепить файлы</x:String>
+    <x:String x:Key="Messenger_AttachmentRemove">Удалить вложение</x:String>
+    <x:String x:Key="Messenger_AttachmentAsFile">Отправить как файл</x:String>
+    <x:String x:Key="Messenger_AttachmentDrop">Прикрепить к сообщению</x:String>
+    <x:String x:Key="Messenger_AttachmentPrivate">В приватных чатах вложения недоступны.</x:String>
+    <x:String x:Key="Messenger_AttachmentLimit">К сообщению можно прикрепить до 10 файлов.</x:String>
+    <x:String x:Key="Messenger_AttachmentReadFailed">Не удалось открыть вложение. Возможно, файл пуст или недоступен.</x:String>
+    <x:String x:Key="Messenger_AttachmentTooLarge">Размер файла превышает лимит загрузки 512 МиБ на запрос.</x:String>
+    <x:String x:Key="Messenger_AttachmentStorageFull">Недостаточно места в вашем хранилище.</x:String>
+    <x:String x:Key="Messenger_AttachmentUploadFailed">Не удалось загрузить файл.</x:String>
+    <x:String x:Key="Messenger_AttachmentConnectionTimeout">Связь прервалась при загрузке файла. Проверьте подключение и повторите попытку.</x:String>
+    <x:String x:Key="Messenger_AttachmentResponseTimeout">Сервер слишком долго не отвечает. Повторите загрузку.</x:String>
+    <x:String x:Key="Messenger_AttachmentUploading">Загрузка…</x:String>
+    <x:String x:Key="Messenger_AttachmentWaiting">Ожидает загрузки</x:String>
+    <x:String x:Key="Messenger_AttachmentReady">Загружено</x:String>
+    <x:String x:Key="Messenger_AttachmentCancelled">Загрузка отменена</x:String>
+    <x:String x:Key="Messenger_AttachmentRetry">Повторить загрузку</x:String>
+    <x:String x:Key="Messenger_AttachmentPhoto">Фото</x:String>
+    <x:String x:Key="Messenger_AttachmentGif">GIF</x:String>
+    <x:String x:Key="Messenger_AttachmentVideo">Видео</x:String>
+    <x:String x:Key="Messenger_AttachmentAudio">Аудио</x:String>
+    <x:String x:Key="Messenger_AttachmentFile">Файл</x:String>
+    <x:String x:Key="Messenger_AttachmentClipboardName">Изображение из буфера.png</x:String>
 </ResourceDictionary>

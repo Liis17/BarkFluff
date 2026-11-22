@@ -3,6 +3,7 @@ using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
 
 using System.Drawing.Imaging;
+using RotateFlipType = System.Drawing.RotateFlipType;
 
 namespace BarkFluff.WebApi.Core
 {
@@ -74,7 +75,7 @@ namespace BarkFluff.WebApi.Core
             catch (Exception ex)
             {
                 // Log error but don't throw - caller will handle by using original file
-                System.Diagnostics.Debug.WriteLine($"ImageProcessor: Failed to convert image: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ImageProcessor: Failed to convert image: {ex.GetType().Name}");
                 return false;
             }
         }
@@ -90,6 +91,7 @@ namespace BarkFluff.WebApi.Core
                 {
                     using (var image = SixLabors.ImageSharp.Image.Load(sourcePath))
                     {
+                        image.Mutate(context => context.AutoOrient());
                         ResizeIfNeeded(image);
 
                         var encoder = new JpegEncoder
@@ -105,7 +107,7 @@ namespace BarkFluff.WebApi.Core
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"ImageProcessor: ImageSharp conversion failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"ImageProcessor: ImageSharp conversion failed: {ex.GetType().Name}");
                     return false;
                 }
             });
@@ -122,6 +124,7 @@ namespace BarkFluff.WebApi.Core
                 {
                     using (var original = System.Drawing.Image.FromFile(sourcePath))
                     {
+                        ApplyExifOrientation(original);
                         var imageToSave = original;
                         bool resized = false;
 
@@ -161,10 +164,36 @@ namespace BarkFluff.WebApi.Core
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"ImageProcessor: System.Drawing conversion failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"ImageProcessor: System.Drawing conversion failed: {ex.GetType().Name}");
                     return false;
                 }
             });
+        }
+
+        private static void ApplyExifOrientation(System.Drawing.Image image)
+        {
+            const int orientationId = 0x0112;
+            if (!image.PropertyIdList.Contains(orientationId))
+                return;
+
+            if (image.GetPropertyItem(orientationId)?.Value is not { Length: >= 2 } value)
+                return;
+
+            var transform = value[0] switch
+            {
+                2 => RotateFlipType.RotateNoneFlipX,
+                3 => RotateFlipType.Rotate180FlipNone,
+                4 => RotateFlipType.Rotate180FlipX,
+                5 => RotateFlipType.Rotate90FlipX,
+                6 => RotateFlipType.Rotate90FlipNone,
+                7 => RotateFlipType.Rotate270FlipX,
+                8 => RotateFlipType.Rotate270FlipNone,
+                _ => RotateFlipType.RotateNoneFlipNone
+            };
+
+            image.RemovePropertyItem(orientationId);
+            if (transform != RotateFlipType.RotateNoneFlipNone)
+                image.RotateFlip(transform);
         }
 
         /// <summary>
@@ -201,7 +230,7 @@ namespace BarkFluff.WebApi.Core
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"ImageProcessor: Failed to delete temp file: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"ImageProcessor: Failed to delete temp file: {ex.GetType().Name}");
                     }
                 }
                 return filePath;

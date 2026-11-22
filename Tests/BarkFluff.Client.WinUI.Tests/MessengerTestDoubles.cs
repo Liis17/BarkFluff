@@ -251,8 +251,20 @@ internal sealed class FakeMessengerService : IMessengerService
             ? (new ErrorReturner(false, "чаты недоступны"), null)
             : (new ErrorReturner(true), [.. Chats]));
 
-    public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, long replyToMessageId = 0, IReadOnlyList<long>? forwardedMessageIds = null, CancellationToken cancellationToken = default) =>
-        SendResponse?.Invoke() ?? Task.FromResult<(ErrorReturner, MessageModel?)>(SendFails
+    public Func<string, string, long, IReadOnlyList<string>, Task<(ErrorReturner, MessageModel?)>>? SendAttachments { get; set; }
+    public Func<string, BarkFluff.Proto.Files.UploadFileType, IProgress<double>, CancellationToken, Task<(ErrorReturner, string?)>>? UploadAttachment { get; set; }
+    public Func<CancellationToken, Task<long?>>? GetAttachmentStorageAvailable { get; set; }
+
+    public Task<long?> GetAttachmentStorageAvailableAsync(CancellationToken cancellationToken) =>
+        GetAttachmentStorageAvailable?.Invoke(cancellationToken) ?? Task.FromResult<long?>(null);
+
+    public Task<(ErrorReturner error, string? fileId)> UploadAttachmentAsync(string path, string name, string? contentType,
+        BarkFluff.Proto.Files.UploadFileType type, IProgress<double> progress, CancellationToken cancellationToken) =>
+        UploadAttachment!(name, type, progress, cancellationToken);
+
+    public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, long replyToMessageId = 0, IReadOnlyList<long>? forwardedMessageIds = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? attachmentIds = null) =>
+        (attachmentIds is { Count: > 0 } ? SendAttachments?.Invoke(chatId, text, replyToMessageId, attachmentIds) : null)
+        ?? SendResponse?.Invoke() ?? Task.FromResult<(ErrorReturner, MessageModel?)>(SendFails
             ? (new ErrorReturner(false, "сообщение не отправлено"), null)
             : (new ErrorReturner(true), null));
 

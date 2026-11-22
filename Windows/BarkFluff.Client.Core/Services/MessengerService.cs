@@ -1,4 +1,5 @@
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Files;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
@@ -62,13 +63,23 @@ public sealed class MessengerService : IMessengerService
         string text,
         long replyToMessageId = 0,
         IReadOnlyList<long>? forwardedMessageIds = null,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default,
+        IReadOnlyList<string>? attachmentIds = null) =>
         WithParametersAsync(parameters => _webApi.SendMessage(parameters, (false, chatId), new ForwardingLetter
         {
             Text = text,
             ReplyToMessageId = replyToMessageId,
             ForwardedMessageIds = forwardedMessageIds?.ToList() ?? [],
-        }));
+            FilesId = attachmentIds?.ToList() ?? [],
+        }, cancellationToken));
+
+    public Task<long?> GetAttachmentStorageAvailableAsync(CancellationToken cancellationToken) =>
+        WithParametersAsync(parameters => _webApi.GetAttachmentStorageAvailableAsync(parameters, cancellationToken));
+
+    public Task<(ErrorReturner error, string? fileId)> UploadAttachmentAsync(string path, string name, string? contentType,
+        UploadFileType type, IProgress<double> progress, CancellationToken cancellationToken) =>
+        WithParametersAsync(parameters => Task.Run(
+            () => _webApi.UploadFileAsync(parameters, path, name, contentType, type, progress, cancellationToken), cancellationToken));
 
     public Task<(ErrorReturner error, MessageModel? message)> EditMessageAsync(string chatId, long messageId, string text, CancellationToken cancellationToken = default) =>
         WithParametersAsync(parameters => _webApi.EditMessage(parameters, chatId, messageId, text));
@@ -136,7 +147,7 @@ public sealed class MessengerService : IMessengerService
         }
 
         var result = await _webApi.GetFile(parameters, fileId);
-        return result.error.IsSuccess ? result.url ?? string.Empty : string.Empty;
+        return result.error is { IsSuccess: true } ? result.url ?? string.Empty : string.Empty;
     }
 
     public byte[]? UnlockPrivateChat(Chat chat, string passphrase) => WebApiClient.UnlockPrivateChat(chat, passphrase);

@@ -311,7 +311,8 @@ public sealed partial class MessengerViewModel
                 {
                     if (latest?.Regular is { } message)
                     {
-                        chat.SetLastMessage(latest.Id, message.Text, latest.SentAt, message.EditedAt?.ToDateTimeOffset());
+                        chat.SetLastMessage(latest.Id, message.Text, latest.SentAt, message.EditedAt?.ToDateTimeOffset(),
+                            message.Attachments.FirstOrDefault()?.Type);
                     }
                     else if (coversAll && Messages.Count == 0)
                     {

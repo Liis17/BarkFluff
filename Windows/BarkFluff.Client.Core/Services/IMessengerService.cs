@@ -1,4 +1,5 @@
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Files;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
@@ -24,7 +25,13 @@ public interface IMessengerService
         string text,
         long replyToMessageId = 0,
         IReadOnlyList<long>? forwardedMessageIds = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        IReadOnlyList<string>? attachmentIds = null);
+
+    Task<long?> GetAttachmentStorageAvailableAsync(CancellationToken cancellationToken);
+
+    Task<(ErrorReturner error, string? fileId)> UploadAttachmentAsync(string path, string name, string? contentType,
+        UploadFileType type, IProgress<double> progress, CancellationToken cancellationToken);
 
     Task<(ErrorReturner error, MessageModel? message)> EditMessageAsync(string chatId, long messageId, string text, CancellationToken cancellationToken = default);
 

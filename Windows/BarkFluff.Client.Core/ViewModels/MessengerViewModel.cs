@@ -54,6 +54,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _presence = presence;
         _localization = localization;
         _uiDispatcher = uiDispatcher;
+        AttachmentComposer = new(messenger, localization, uiDispatcher);
         _muteClock = timeProvider ?? TimeProvider.System;
         _chatFolders = chatFolders;
         _typing = typing;
@@ -290,6 +291,9 @@ public sealed partial class MessengerViewModel : ObservableObject
         _feedIncludesTail = true;
         _chatVersion++;
         WatchTyping(newValue);
+        _ = CancelAttachmentsAsync();
+        OnPropertyChanged(nameof(CanAttach));
+        OnPropertyChanged(nameof(HasPrivateAttachmentRestriction));
         ResetHistoryWindow();
         _feedLoadCompletion?.TrySetResult();
         _feedLoadCompletion = null;
@@ -315,7 +319,8 @@ public sealed partial class MessengerViewModel : ObservableObject
     private async Task SendAsync()
     {
         var currentUserId = _messenger.CurrentUserId;
-        if (currentUserId is null || SelectedChat is null || !SelectedChat.CanSend || string.IsNullOrWhiteSpace(DraftText))
+        if (currentUserId is null || SelectedChat is null || !SelectedChat.CanSend ||
+            (string.IsNullOrWhiteSpace(DraftText) && (!CanAttach || !AttachmentComposer.HasFiles)))
         {
             return;
         }
@@ -374,15 +379,17 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
         else
         {
-            var result = await _messenger.SendMessageAsync(chat.Id, draft.Trim(), reply?.Id ?? 0);
-            if (!IsOpen(session, chat, version))
+            var sent = AttachmentComposer.HasFiles
+                ? await SendWithAttachmentsAsync(chat, session, version, draft.Trim(), reply?.Id ?? 0)
+                : await _messenger.SendMessageAsync(chat.Id, draft.Trim(), reply?.Id ?? 0);
+            if (!IsOpen(session, chat, version) || sent is not { } result)
             {
                 return;
             }
 
-            if (!result.error.IsSuccess || result.message is not { } message)
+            if (result.error is not { IsSuccess: true } || result.message is not { } message)
             {
-                ActionError = DescribeError(result.error);
+                ActionError = result.error is null ? _localization.GetString("Messenger_ActionFailed") : DescribeError(result.error);
                 return;
             }
 
@@ -879,14 +886,19 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     private async Task<MessageAttachmentItemViewModel> CreateAttachmentItemAsync(AttachmentsModel attachment)
     {
+        var fileUrl = await ResolveFileUrlAsync(attachment.FileId);
         var previewUrl = attachment.PreviewUrl;
-        if (attachment.Type is MessageAttachmentType.Image or MessageAttachmentType.Video or MessageAttachmentType.Gif or MessageAttachmentType.Sticker
+        if (attachment.Type == MessageAttachmentType.Gif && !string.IsNullOrWhiteSpace(fileUrl))
+        {
+            // Серверное превью GIF — JPEG. Для анимации ленте нужен оригинал.
+            previewUrl = fileUrl;
+        }
+        else if (attachment.Type is MessageAttachmentType.Image or MessageAttachmentType.Video or MessageAttachmentType.Gif or MessageAttachmentType.Sticker
             && string.IsNullOrWhiteSpace(previewUrl))
         {
             previewUrl = await ResolveFileUrlAsync(attachment.PreviewFileId);
         }
 
-        var fileUrl = await ResolveFileUrlAsync(attachment.FileId);
         return new MessageAttachmentItemViewModel(
             attachment.Type,
             previewUrl,
@@ -1177,7 +1189,8 @@ public sealed partial class ChatItemViewModel : ObservableObject
             SnapshotLastMessageId = chat.LastMessage?.Id ?? 0;
             SnapshotLastActivity = chat.LastActivityAt?.ToDateTimeOffset();
             SetLastMessage(SnapshotLastMessageId, chat.LastMessage?.Content?.Text ?? string.Empty,
-                SnapshotLastActivity, chat.LastMessage?.EditedAt?.ToDateTimeOffset());
+                SnapshotLastActivity, chat.LastMessage?.EditedAt?.ToDateTimeOffset(),
+                chat.LastMessage?.Content?.Attachments.FirstOrDefault()?.Type);
         }
 
         if (applyUnread)
@@ -1187,10 +1200,21 @@ public sealed partial class ChatItemViewModel : ObservableObject
         }
     }
 
-    internal void SetLastMessage(long id, string text, DateTimeOffset? sentAt, DateTimeOffset? editedAt = null)
+    internal void SetLastMessage(long id, string text, DateTimeOffset? sentAt, DateTimeOffset? editedAt = null,
+        MessageAttachmentType? attachmentType = null)
     {
         LastMessageId = id;
-        Preview = IsPrivate ? string.Empty : CreatePreview(text, 20);
+        Preview = IsPrivate ? string.Empty : string.IsNullOrWhiteSpace(text) && attachmentType is not null
+            ? _localization.GetString(attachmentType switch
+            {
+                MessageAttachmentType.Image => "Messenger_AttachmentPhoto",
+                MessageAttachmentType.Gif => "Messenger_AttachmentGif",
+                MessageAttachmentType.Video => "Messenger_AttachmentVideo",
+                MessageAttachmentType.Audio => "Messenger_AttachmentAudio",
+                MessageAttachmentType.Document => "Messenger_AttachmentFile",
+                _ => "Messenger_Attachment"
+            })
+            : CreatePreview(text, 20);
         LastMessageAt = sentAt;
         LastMessageEditedAt = editedAt;
     }
@@ -1431,6 +1455,7 @@ public sealed class MessageAttachmentItemViewModel(
     int imageWidth,
     int imageHeight)
 {
+    internal MessageAttachmentType Type => type;
     public string PreviewUrl { get; } = previewUrl;
     public string FileUrl { get; } = fileUrl;
     public string FileName { get; } = fileName;
