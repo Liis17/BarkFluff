@@ -15,7 +15,7 @@
                 <controls:SettingsRow Glyph="&#xE7ED;"
                                       Description="{StaticResource Settings_Notifications_ReceivePush}"
                                       Header="{StaticResource Settings_Notifications_Title}">
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.IsEnabled, Mode=OneWay}" Toggled="OnToggled" OffContent="" OnContent="" />
+                    <ToggleSwitch IsEnabled="{x:Bind ViewModel.CanChange, Mode=OneWay}" IsOn="{x:Bind ViewModel.IsEnabled, Mode=OneWay}" Toggled="OnToggled" OffContent="" OnContent="" />
                 </controls:SettingsRow>
             </Border>
 

@@ -26,6 +26,7 @@ public sealed partial class MainWindow : Window
 
     private readonly MainWindowViewModel _viewModel;
     private bool _isExitRequested;
+    private bool _isWindowActive;
     private CancellationTokenSource? _windowSizeSaveCancellation;
     private Task? _windowSizeSaveTask;
     private bool _windowCloseReady;
@@ -43,6 +44,11 @@ public sealed partial class MainWindow : Window
         // WinUI-версия H.NotifyIcon не даёт событий клика, только команды.
         TrayIcon.DoubleClickCommand = new RelayCommand(ShowFromTray);
 
+        Activated += (_, args) =>
+        {
+            _isWindowActive = args.WindowActivationState != WindowActivationState.Deactivated;
+            UpdateNotificationWindowState();
+        };
         AppWindow.Closing += OnAppWindowClosing;
         AppWindow.Changed += OnAppWindowChanged;
         _viewModel.Settings.WindowBoundsResetRequested += OnWindowBoundsResetRequested;
@@ -188,6 +194,7 @@ public sealed partial class MainWindow : Window
     {
         RootNavigation.IsBackEnabled = ContentFrame.CanGoBack;
         AppTitleBar.IsBackButtonEnabled = ContentFrame.CanGoBack;
+        UpdateNotificationWindowState();
     }
 
     private void OnTitleBarBackRequested(TitleBar sender, object args)
@@ -213,7 +220,9 @@ public sealed partial class MainWindow : Window
         if (!_isExitRequested && _viewModel.Settings.ClosingBehavior == WindowClosingBehavior.MinimizeToTray)
         {
             eventArgs.Cancel = true;
+            _isWindowActive = false;
             this.Hide();
+            UpdateNotificationWindowState();
             return;
         }
 
@@ -251,7 +260,8 @@ public sealed partial class MainWindow : Window
             try
             {
                 var typing = App.Services.GetRequiredService<IChatTypingService>();
-                await Task.WhenAll(typing.StopAsync(), CleanupLoginForExitAsync()).WaitAsync(TimeSpan.FromSeconds(3));
+                await Task.WhenAll(typing.StopAsync(), CleanupLoginForExitAsync(),
+                    ((App)Application.Current).StopNotificationsAsync()).WaitAsync(TimeSpan.FromSeconds(3));
             }
             catch (TimeoutException)
             {
@@ -283,6 +293,30 @@ public sealed partial class MainWindow : Window
             position.X,
             position.Y,
             cancellationToken);
+    }
+
+    private void UpdateNotificationWindowState()
+    {
+        if (_viewModel.CurrentViewModel is MessengerViewModel messenger)
+        {
+            messenger.SetNotificationWindowState(_isWindowActive,
+                ContentFrame.CurrentSourcePageType == typeof(MessengerPage) && AppWindow.IsVisible);
+        }
+    }
+
+    internal async Task OpenNotificationAsync(MessageNotificationTarget? target)
+    {
+        ShowFromTray();
+        if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
+        {
+            presenter.Restore();
+        }
+
+        if (target is not null && _viewModel.CurrentViewModel is MessengerViewModel messenger &&
+            await messenger.OpenNotificationChatAsync(target) && _viewModel.CurrentViewModel == messenger)
+        {
+            NavigateToCurrentViewModel();
+        }
     }
 
     private void OnTrayShowRequested(object sender, RoutedEventArgs eventArgs) => ShowFromTray();

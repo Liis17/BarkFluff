@@ -12,6 +12,8 @@ public interface IMessengerService
 
     string CurrentNodeAddress { get; }
 
+    Task<Chat?> FindChatAsync(string chatId, CancellationToken cancellationToken = default);
+
     Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default);
 
     Task<ErrorReturner> SetChatMutedAsync(string chatId, bool muted, CancellationToken cancellationToken);

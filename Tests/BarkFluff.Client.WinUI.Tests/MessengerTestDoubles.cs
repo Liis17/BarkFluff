@@ -2,6 +2,7 @@ using BarkFluff.Client.Core.Infrastructure.Localization;
 using BarkFluff.Client.Core.Infrastructure.Threading;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
+using BarkFluff.Client.Core.ViewModels.Settings;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.WebApi.Core;
@@ -27,7 +28,9 @@ internal static class MessengerTestDoubles
         TimeProvider? timeProvider = null,
         IChatFoldersState? chatFolders = null,
         IChatTypingService? typing = null,
-        ILocalizationService? localization = null)
+        ILocalizationService? localization = null,
+        MessageNotificationService? notifications = null,
+        SettingsNotificationsViewModel? notificationSettings = null)
     {
         var effectiveMessenger = messenger ?? new FakeMessengerService();
         var effectivePresence = presence ?? new FakeOnlinePresenceService();
@@ -39,7 +42,7 @@ internal static class MessengerTestDoubles
             localization,
             dispatcher ?? new InlineUiDispatcher(),
             new ProfileViewModel(effectiveMessenger, effectivePresence, localization),
-            timeProvider, chatFolders, typing);
+            timeProvider, chatFolders, typing, notifications, notificationSettings);
     }
 
     public static Chat CreateChat(string id, string title = "Chat", long peerUserId = 0, ChatType chatType = ChatType.Regular)
@@ -200,6 +203,10 @@ internal sealed class FakeMessengerService : IMessengerService
     public string CurrentNodeAddress { get; set; } = string.Empty;
 
     public List<Chat> Chats { get; } = [];
+    public Func<string, Task<Chat?>>? FindChat { get; set; }
+
+    public Task<Chat?> FindChatAsync(string chatId, CancellationToken cancellationToken = default) =>
+        FindChat?.Invoke(chatId) ?? Task.FromResult<Chat?>(null);
 
     public List<MessageModel> Messages { get; } = [];
     public List<PrivateMessageModel> PrivateMessages { get; } = [];

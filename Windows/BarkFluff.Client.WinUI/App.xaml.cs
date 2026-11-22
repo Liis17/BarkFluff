@@ -8,6 +8,7 @@ using BarkFluff.Client.Core.ViewModels.Settings;
 using BarkFluff.Client.WinUI.Infrastructure.Appearance;
 using BarkFluff.Client.WinUI.Infrastructure.Dialogs;
 using BarkFluff.Client.WinUI.Infrastructure.Localization;
+using BarkFluff.Client.WinUI.Infrastructure.Notifications;
 using BarkFluff.Client.WinUI.Infrastructure.Threading;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -27,10 +28,15 @@ public partial class App : Application
 
     private IHost? _host;
     private Window? _window;
+    private readonly WindowsNotificationPresenter _notificationPresenter = new();
+    private MainWindow? _notificationWindow;
+    private MessageNotificationTarget? _pendingNotification;
 
     public App()
     {
         InitializeComponent();
+        var dispatcher = new DispatcherQueueUiDispatcher();
+        _notificationPresenter.Register(target => dispatcher.Post(() => OnNotificationInvoked(target)));
         AttachCrashLogging();
     }
 
@@ -44,6 +50,7 @@ public partial class App : Application
     {
         try
         {
+            _pendingNotification ??= _notificationPresenter.ReadStartupActivation();
             _host = CreateHost();
             await _host.StartAsync();
 
@@ -100,6 +107,11 @@ public partial class App : Application
                 navigation.ShowWelcome();
             }
 
+            if (navigation.CurrentViewModel is not MessengerViewModel)
+            {
+                _notificationPresenter.RemoveAll();
+            }
+
             var mainWindow = services.GetRequiredService<MainWindow>();
             _window = mainWindow;
 
@@ -120,6 +132,12 @@ public partial class App : Application
             services.GetRequiredService<IDialogService>().Attach(mainWindow.RootElement.XamlRoot);
 
             mainWindow.Activate();
+            _notificationWindow = mainWindow;
+            if (_pendingNotification is { } target)
+            {
+                _pendingNotification = null;
+                OnNotificationInvoked(target);
+            }
         }
         catch (Exception exception)
         {
@@ -133,6 +151,7 @@ public partial class App : Application
     /// </summary>
     private void ShowStartupFailure(Exception exception)
     {
+        _ = _notificationPresenter.StopAsync();
         ShutdownHost();
 
         var window = new Window
@@ -215,7 +234,25 @@ public partial class App : Application
         teardown.Wait(HostShutdownTimeout);
     }
 
-    private static IHost CreateHost()
+    private void OnNotificationInvoked(MessageNotificationTarget? target)
+    {
+        if (_notificationWindow is { } window)
+        {
+            _ = window.OpenNotificationAsync(target);
+        }
+        else
+        {
+            _pendingNotification = target;
+        }
+    }
+
+    internal Task StopNotificationsAsync()
+    {
+        _notificationWindow = null;
+        return _notificationPresenter.StopAsync();
+    }
+
+    private IHost CreateHost()
     {
         var builder = Host.CreateApplicationBuilder();
 
@@ -242,6 +279,8 @@ public partial class App : Application
         builder.Services.AddSingleton<IUserPreferencesService, UserPreferencesService>();
         builder.Services.AddSingleton<IChatFoldersState, ChatFoldersState>();
         builder.Services.AddSingleton<IDeviceSettingsService, DeviceSettingsService>();
+        builder.Services.AddSingleton<INotificationPresenter>(_notificationPresenter);
+        builder.Services.AddSingleton<MessageNotificationService>();
         builder.Services.AddSingleton<ISettingsPreferences, SettingsPreferences>();
         builder.Services.AddSingleton<IAboutSettingsService, AboutSettingsService>();
         builder.Services.AddSingleton<HttpClient>(_ => UpdateHttpClientFactory.Create());

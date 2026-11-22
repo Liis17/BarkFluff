@@ -95,4 +95,17 @@
     <AppxBundle>Never</AppxBundle>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
   </PropertyGroup>
+  <Target Name="ValidateNotificationActivatorExecutable" AfterTargets="_GenerateAppxManifest"
+          Condition="'@(FinalAppxManifest)' != ''">
+    <XmlPeek XmlInputPath="@(FinalAppxManifest)"
+             Query="//*[local-name()='ExeServer' and namespace-uri()='http://schemas.microsoft.com/appx/manifest/com/windows10' and @Arguments='----AppNotificationActivated:']/@Executable">
+      <Output TaskParameter="Result" PropertyName="_NotificationActivatorExecutable" />
+    </XmlPeek>
+    <ItemGroup>
+      <_NotificationActivatorPayload Include="@(AppxPackagePayload)"
+                                     Condition="'%(AppxPackagePayload.TargetPath)' == '$(_NotificationActivatorExecutable)' and Exists('%(AppxPackagePayload.FullPath)')" />
+    </ItemGroup>
+    <Error Condition="'$(_NotificationActivatorExecutable)' == '' or '@(_NotificationActivatorPayload)' == ''"
+           Text="В содержимом MSIX отсутствует exe активатора уведомлений из AppxManifest.xml: '$(_NotificationActivatorExecutable)'." />
+  </Target>
 </Project>

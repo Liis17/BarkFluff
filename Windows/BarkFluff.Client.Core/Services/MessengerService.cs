@@ -25,6 +25,32 @@ public sealed class MessengerService : IMessengerService
     public Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default) =>
         WithParametersAsync(parameters => _webApi.GetChats(parameters));
 
+    public async Task<Chat?> FindChatAsync(string chatId, CancellationToken cancellationToken = default)
+    {
+        const int pageSize = 50;
+        if (_session.CurrentConnection?.ConnectionParameters is not { } parameters)
+        {
+            return null;
+        }
+
+        for (var offset = 0; ;)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var page = await _webApi.ListChatsPageAsync(parameters, offset, pageSize, cancellationToken);
+            if (page.error is not { IsSuccess: true } || page.chats is not { Count: > 0 } chats)
+            {
+                return null;
+            }
+
+            var match = chats.Find(chat => chat.Id == chatId);
+            offset += chats.Count;
+            if (match is not null || offset >= page.totalCount)
+            {
+                return match;
+            }
+        }
+    }
+
     public Task<ErrorReturner> SetChatMutedAsync(string chatId, bool muted, CancellationToken cancellationToken) =>
         WithParametersAsync(parameters => _webApi.SetChatMuted(chatId, muted, parameters, null, cancellationToken));
 

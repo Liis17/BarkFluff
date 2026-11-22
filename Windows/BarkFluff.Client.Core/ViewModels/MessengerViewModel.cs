@@ -1,4 +1,5 @@
 using BarkFluff.Client.Core.Models;
+using BarkFluff.Client.Core.ViewModels.Settings;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.Infrastructure.Localization;
 using BarkFluff.Client.Core.Infrastructure.Presence;
@@ -43,7 +44,9 @@ public sealed partial class MessengerViewModel : ObservableObject
         ProfileViewModel profile,
         TimeProvider? timeProvider = null,
         IChatFoldersState? chatFolders = null,
-        IChatTypingService? typing = null)
+        IChatTypingService? typing = null,
+        MessageNotificationService? notifications = null,
+        SettingsNotificationsViewModel? notificationSettings = null)
     {
         _messenger = messenger;
         _privateChatKeyStore = privateChatKeyStore;
@@ -54,6 +57,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         _muteClock = timeProvider ?? TimeProvider.System;
         _chatFolders = chatFolders;
         _typing = typing;
+        _notifications = notifications;
+        _notificationSettings = notificationSettings;
         Profile = profile;
         _presence.PresenceChanged += OnPresenceChanged;
         _presence.ConnectionChanged += OnPresenceConnectionChanged;
@@ -301,6 +306,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         PrivatePassphrase = string.Empty;
         if (newValue is not null)
         {
+            ClearChatNotifications(newValue);
             _ = LoadMessagesAsync(newValue, _chatVersion);
         }
     }

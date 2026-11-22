@@ -989,6 +989,24 @@ jobs:
             'Assets\master\',
             "Assets\$($env:ASSET_DIRECTORY)\")
 
+          $sourceToastClsid = 'B46F53B2-4682-4E4C-B696-89B5F684B179'
+          $toastClsid = switch ($env:CHANNEL) {
+            'release' { $sourceToastClsid }
+            'dev' { 'CE28FAC5-3702-4410-B3A5-425284F2FE6D' }
+            'nightly' { 'E4170BC3-C566-4F96-8791-71746BE83912' }
+            default { throw "Неизвестный канал MSIX: $($env:CHANNEL)" }
+          }
+          $preparedManifest = $preparedManifest.Replace($sourceToastClsid, $toastClsid)
+          if ($toastClsid -ne $sourceToastClsid -and $preparedManifest.Contains($sourceToastClsid)) {
+            throw 'В manifest остался CLSID активатора уведомлений канала release'
+          }
+          [xml]$activationManifest = $preparedManifest
+          $toastActivation = $activationManifest.SelectSingleNode("//*[local-name()='ToastNotificationActivation']")
+          $toastClass = $activationManifest.SelectSingleNode("//*[local-name()='ExeServer' and @Arguments='----AppNotificationActivated:']/*[local-name()='Class']")
+          if ($toastActivation.ToastActivatorCLSID -ne $toastClsid -or $toastClass.Id -ne $toastClsid) {
+            throw "CLSID активатора уведомлений и COM-класса должны совпадать с CLSID канала $($env:CHANNEL): $toastClsid"
+          }
+
           $expectedAssetPrefix = "Assets\$($env:ASSET_DIRECTORY)\"
           $assetReferenceCount = [regex]::Matches(
             $preparedManifest,

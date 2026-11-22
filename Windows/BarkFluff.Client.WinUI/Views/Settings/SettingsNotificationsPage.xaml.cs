@@ -9,6 +9,12 @@ public sealed partial class SettingsNotificationsPage : Page
 {
     public SettingsNotificationsPage() => InitializeComponent();
     public SettingsNotificationsViewModel ViewModel { get; private set; } = null!;
-    protected override void OnNavigatedTo(NavigationEventArgs e) { base.OnNavigatedTo(e); ViewModel=App.Services.GetRequiredService<SettingsNotificationsViewModel>(); Bindings.Update(); }
-    private async void OnToggled(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => await ViewModel.SetEnabledAsync(((ToggleSwitch)sender).IsOn);
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        ViewModel = App.Services.GetRequiredService<SettingsNotificationsViewModel>();
+        _ = ViewModel.LoadAsync();
+        Bindings.Update();
+    }
+    private async void OnToggled(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => await (ViewModel?.SetEnabledAsync(((ToggleSwitch)sender).IsOn) ?? Task.CompletedTask);
 }

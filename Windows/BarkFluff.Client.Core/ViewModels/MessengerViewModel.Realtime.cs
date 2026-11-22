@@ -22,6 +22,9 @@ public sealed partial class MessengerViewModel
         internal long ChatSnapshotRequest { get; set; }
         internal Dictionary<string, DateTimeOffset?> MutedChats { get; set; } = [];
         internal Dictionary<string, long>? PendingMuteHints { get; set; }
+        internal Task<bool>? ChatSnapshot { get; set; }
+        internal Dictionary<long, Task<string?>> NotificationSenders { get; } = [];
+        internal TaskCompletionSource NotificationMutesReady { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal bool HasAuthoritativeMutes { get; set; }
         internal ITimer? MuteExpiryTimer { get; set; }
         internal Action Unsubscribe { get; set; } = null!;
@@ -54,6 +57,7 @@ public sealed partial class MessengerViewModel
             ? RefreshPinsAsync(chat, _chatVersion, reportError: false)
             : Task.FromResult(true), session.Lifetime.Token) { Delay = ResyncDelay };
         _realtimeSession = session;
+        _notificationSettings?.StartSession(() => IsCurrent(session), session.Lifetime.Token);
         EventHandler foldersChanged = (_, _) => PostSession(session, _ => _chatFolders?.Invalidate());
         _realtimeMessenger.ChatFoldersChanged += foldersChanged;
         EventHandler<IncomingMessage> received = (_, incoming) => OnMessageChanged(session,
@@ -90,6 +94,8 @@ public sealed partial class MessengerViewModel
         }
 
         _realtimeSession = null;
+        _notificationSettings?.EndSession();
+        _notifications?.EndSession();
         _chatFolders?.Reset();
         FolderActionError = null;
         session.MuteExpiryTimer?.Dispose();
@@ -111,6 +117,7 @@ public sealed partial class MessengerViewModel
 
     private void OnResyncRequested(RealtimeSession scope, bool immediate) => PostSession(scope, session =>
     {
+        _notificationSettings?.RetryInitialLoad();
         BeginFeedCatchUp();
         if (immediate)
         {
@@ -164,7 +171,9 @@ public sealed partial class MessengerViewModel
 
         try
         {
-            await ApplyRecordedUpdateAsync(session, chat, update, change, existing);
+            var applying = ApplyRecordedUpdateAsync(session, chat, update, change, existing);
+            _ = NotifyIncomingAsync(session, update, chat);
+            await applying;
         }
         finally
         {

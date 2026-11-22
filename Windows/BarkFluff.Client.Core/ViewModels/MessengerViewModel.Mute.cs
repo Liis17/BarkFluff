@@ -105,6 +105,7 @@ public sealed partial class MessengerViewModel
                     }
                 }
             }
+            current.NotificationMutesReady.TrySetResult();
         });
     }
 

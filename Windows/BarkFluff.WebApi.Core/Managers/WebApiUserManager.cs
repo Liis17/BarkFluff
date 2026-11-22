@@ -138,13 +138,16 @@ namespace BarkFluff.WebApi.Core.Managers
         /// <summary>
         /// Возвращает текущее устройство.
         /// </summary>
-        public async Task<(ErrorReturner error, Proto.Users.Device? device)> GetCurrentDevice(GlobalParam globalParam)
+        public Task<(ErrorReturner error, Proto.Users.Device? device)> GetCurrentDevice(GlobalParam globalParam) =>
+            GetCurrentDevice(globalParam, CancellationToken.None);
+
+        internal async Task<(ErrorReturner error, Proto.Users.Device? device)> GetCurrentDevice(GlobalParam globalParam, CancellationToken cancellationToken)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    var response = await UsersAC!.GetCurrentDeviceAsync(new Proto.Users.GetCurrentDeviceRequest { });
+                    var response = await UsersAC!.GetCurrentDeviceAsync(new Proto.Users.GetCurrentDeviceRequest(), cancellationToken: cancellationToken);
                     return (new ErrorReturner(true), response.Device);
                 }, globalParam);
             }
@@ -152,7 +155,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Неверный токен обновления."), null);
             }
-            catch (Exception ex)
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
                 return (new ErrorReturner(false, "Ошибка получения текущего устройства"), null);
             }
@@ -622,7 +625,10 @@ namespace BarkFluff.WebApi.Core.Managers
             }
         }
 
-        public async Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam)
+        public Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam) =>
+            SetNotificationsEnabled(enabled, globalParam, CancellationToken.None);
+
+        internal async Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam, CancellationToken cancellationToken)
         {
             try
             {
@@ -631,11 +637,11 @@ namespace BarkFluff.WebApi.Core.Managers
                     await UsersAC!.SetNotificationsEnabledAsync(new Proto.Users.SetNotificationsEnabledRequest
                     {
                         Enabled = enabled
-                    });
+                    }, cancellationToken: cancellationToken);
                     return new ErrorReturner(true);
                 }, globalParam);
             }
-            catch (Exception)
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
                 return new ErrorReturner(false, "Ошибка изменения настроек уведомлений");
             }

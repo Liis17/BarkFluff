@@ -365,8 +365,8 @@
     <x:String x:Key="Settings_ChatFolders_MoveDown">Move down</x:String>
 
     <x:String x:Key="Settings_Notifications_Title">Notifications</x:String>
-    <x:String x:Key="Settings_Notifications_ReceivePush">Receive push notifications</x:String>
-    <x:String x:Key="Settings_Notifications_Hint">Turning notifications off disables push notifications on this device only. Other devices keep receiving them.</x:String>
+    <x:String x:Key="Settings_Notifications_ReceivePush">Show system notifications</x:String>
+    <x:String x:Key="Settings_Notifications_Hint">This setting applies only to this device.</x:String>
 
     <x:String x:Key="Settings_Language_Title">Language</x:String>
     <x:String x:Key="Settings_Language_Section">Application language</x:String>
@@ -466,6 +466,8 @@
     <x:String x:Key="Messenger_UserUnavailable">This user is blocked or deleted and unavailable.</x:String>
     <x:String x:Key="Messenger_MuteChat">Mute notifications</x:String>
     <x:String x:Key="Messenger_UnmuteChat">Unmute notifications</x:String>
+    <x:String x:Key="Notifications_NewMessage">New message</x:String>
+    <x:String x:Key="Notifications_PrivateMessage">New encrypted message</x:String>
     <x:String x:Key="Messenger_ChatMuted">Notifications muted</x:String>
     <x:String x:Key="Messenger_ChatOptions">Chat actions</x:String>
     <x:String x:Key="Messenger_ChatMuteFailed">Couldn't change chat notifications.</x:String>

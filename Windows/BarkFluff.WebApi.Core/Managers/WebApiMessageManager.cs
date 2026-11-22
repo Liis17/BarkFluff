@@ -136,6 +136,26 @@ namespace BarkFluff.WebApi.Core.Managers
             }
         }
 
+        internal async Task<(ErrorReturner error, List<Proto.Messages.Chat>? chats, int totalCount)> ListChatsPageAsync(
+            GlobalParam globalParam, int offset, int size, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.ListChatsAsync(new Proto.Messages.ListChatsRequest
+                    {
+                        Pagination = new Proto.Shared.PageRequest { Offset = offset, Size = size },
+                    }, cancellationToken: cancellationToken);
+                    return (new ErrorReturner(true), (List<Proto.Messages.Chat>?)response.Chats.ToList(), response.TotalCount);
+                }, globalParam);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return (new ErrorReturner(false), null, 0);
+            }
+        }
+
         /// <summary>
         /// Получить информацию о чате по его идентификатору.
         /// </summary>

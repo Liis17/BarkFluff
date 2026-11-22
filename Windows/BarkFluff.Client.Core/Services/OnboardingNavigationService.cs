@@ -65,6 +65,11 @@ public sealed class OnboardingNavigationService : IOnboardingNavigationService
             loginViewModel.ClearSensitiveState();
         }
 
+        if (CurrentViewModel is MessengerViewModel messenger && viewModel is not MessengerViewModel)
+        {
+            messenger.Reset();
+        }
+
         CurrentViewModel = viewModel;
         CurrentViewModelChanged?.Invoke(this, new OnboardingNavigationEventArgs(viewModel));
     }

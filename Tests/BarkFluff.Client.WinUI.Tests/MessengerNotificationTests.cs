@@ -1,0 +1,292 @@
+using System.Xml.Linq;
+using BarkFluff.Client.Core.Services;
+using BarkFluff.Client.Core.ViewModels;
+using BarkFluff.Client.Core.ViewModels.Settings;
+using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Shared;
+using BarkFluff.WebApi.Core;
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+using static BarkFluff.Client.WinUI.Tests.MessengerTestDoubles;
+
+namespace BarkFluff.Client.WinUI.Tests;
+
+public sealed class MessengerNotificationTests
+{
+    [Theory]
+    [InlineData(false, false, false, false, false)]
+    [InlineData(true, true, false, false, false)]
+    [InlineData(true, false, true, true, false)]
+    [InlineData(true, false, true, false, true)]
+    [InlineData(true, false, false, true, true)]
+    public async Task AppliesDeviceMuteAndForegroundPolicy(
+        bool enabled, bool muted, bool selected, bool active, bool shows)
+    {
+        var fixture = new Fixture(enabled);
+        if (muted)
+        {
+            fixture.Messenger.MutedChats = [new() { ChatId = "known" }];
+        }
+
+        await fixture.ViewModel.LoadAsync();
+        if (selected)
+        {
+            fixture.ViewModel.SelectedChat = Assert.Single(fixture.ViewModel.Chats);
+        }
+
+        fixture.ViewModel.SetNotificationWindowState(active, messengerVisible: true);
+        fixture.Receive(1);
+        Assert.Equal(shows ? 1 : 0, fixture.Presenter.Shown.Count);
+    }
+
+    [Fact]
+    public async Task OffPageMuteAppliesBeforeAnyChatLookup()
+    {
+        var fixture = new Fixture();
+        fixture.Messenger.MutedChats = [new() { ChatId = "off-page" }];
+        await fixture.ViewModel.LoadAsync();
+        fixture.Receive(1, "off-page");
+        fixture.Receive(2, "other-off-page");
+
+        Assert.DoesNotContain(fixture.ViewModel.Chats, chat => chat.Id == "off-page");
+        Assert.Equal("other-off-page", Assert.Single(fixture.Presenter.Shown).Target.ChatId);
+    }
+
+    [Fact]
+    public async Task RealtimeSkipsOwnSystemEditsAndDuplicates()
+    {
+        var fixture = new Fixture();
+        await fixture.ViewModel.LoadAsync();
+
+        fixture.Realtime.Raise(new IncomingMessage("known", CreateMessage(1, "known", 1)));
+        var system = CreateMessage(2, "known", 2);
+        system.Type = MessageContentType.System;
+        fixture.Realtime.Raise(new IncomingMessage("known", system));
+        var message = CreateMessage(3, "known", 2);
+        fixture.Realtime.Raise(new MessageUpdate("known", false, 3, MessageUpdateKind.Edit, Message: message));
+
+        fixture.Receive(4);
+        fixture.Realtime.Raise(new MessageUpdate("known", false, 4, MessageUpdateKind.New,
+            Message: CreateMessage(4, "known", 2)));
+        Assert.Single(fixture.Presenter.Shown);
+    }
+
+    [Fact]
+    public async Task HistoryAndResyncDoNotNotify()
+    {
+        var fixture = new Fixture();
+        var history = Enumerable.Range(1, 60).Select(id =>
+        {
+            var message = CreateMessage(id, "known", 2);
+            message.SentAt.Seconds = id;
+            return message;
+        }).ToList();
+        fixture.Messenger.HistoryPage = (_, anchor, before, after) =>
+        {
+            var index = anchor == 0 ? history.Count : history.FindIndex(row => row.MessageId == anchor);
+            var start = Math.Max(0, index - before);
+            return Task.FromResult<(ErrorReturner, List<MessageModel>?)>(
+                (new(true), history.Skip(start).Take(index - start + 1 + after).ToList()));
+        };
+        await fixture.ViewModel.LoadAsync();
+        fixture.ViewModel.SelectedChat = Assert.Single(fixture.ViewModel.Chats);
+        Assert.DoesNotContain(fixture.ViewModel.Messages, message => message.Id == 1);
+        await fixture.ViewModel.LoadOlderHistoryCommand.ExecuteAsync(null);
+        Assert.Contains(fixture.ViewModel.Messages, message => message.Id == 1);
+
+        var incoming = CreateMessage(61, "known", 2);
+        incoming.SentAt.Seconds = 61;
+        history.Add(incoming);
+        fixture.Realtime.Resync();
+
+        Assert.Contains(fixture.ViewModel.Messages, message => message.Id == 61);
+        Assert.Empty(fixture.Presenter.Shown);
+    }
+
+    [Fact]
+    public async Task PreviewIsPlainXmlAndPrivateMessageDoesNotExposeChatOrMessage()
+    {
+        var fixture = new Fixture();
+        fixture.Messenger.Chats[0].Title = "Chat <A> & B";
+        fixture.Messenger.UserData = new() { FirstName = "Alice" };
+        fixture.Messenger.Chats.Add(CreateChat("private", "Private title", chatType: ChatType.Private));
+        await fixture.ViewModel.LoadAsync();
+        fixture.Realtime.Raise(new IncomingMessage("known", CreateMessage(1, "known", 2, "**hello** & world")));
+        fixture.Realtime.Raise(new MessageUpdate("private", true, 2, MessageUpdateKind.New,
+            Encrypted: new EncryptedMessage { Id = 2, ChatId = "private", SenderId = 2 }));
+
+        var normal = fixture.Presenter.Shown[0];
+        var xml = MessageNotificationPayload.CreateXml(normal);
+        Assert.Contains("&lt;A&gt; &amp; B", xml);
+        Assert.Equal(new[] { "Chat <A> & B · Alice", "hello & world" },
+            XElement.Parse(xml).Descendants("text").Select(text => text.Value));
+
+        var encrypted = fixture.Presenter.Shown[1];
+        Assert.Equal("BarkFluff", encrypted.Title);
+        Assert.Equal("Notifications_PrivateMessage", encrypted.Text);
+    }
+
+    [Theory]
+    [InlineData(0x0001)]
+    [InlineData(0xD800)]
+    [InlineData(0xDC00)]
+    public async Task NotificationXmlDropsInvalidCharactersFromChatSenderAndPreview(int invalidCodeUnit)
+    {
+        var invalid = (char)invalidCodeUnit;
+        const string emoji = "\U0001F431";
+        var fixture = new Fixture();
+        fixture.Messenger.Chats[0].Title = $"Chat{invalid}{emoji}";
+        fixture.Messenger.UserData = new() { FirstName = $"Alice{invalid}{emoji}" };
+        await fixture.ViewModel.LoadAsync();
+        fixture.Realtime.Raise(new IncomingMessage("known", CreateMessage(1, "known", 2, $"Hello{invalid}{emoji}")));
+
+        var xml = MessageNotificationPayload.CreateXml(Assert.Single(fixture.Presenter.Shown));
+        Assert.Equal(new[] { $"Chat{emoji} · Alice{emoji}", $"Hello{emoji}" },
+            XElement.Parse(xml).Descendants("text").Select(text => text.Value));
+    }
+
+    [Fact]
+    public async Task ResyncRetriesDeviceFlagUntilFirstSuccess()
+    {
+        var fixture = new Fixture();
+        var device = fixture.Device.CurrentDevice;
+        fixture.Device.CurrentDevice = null;
+        await fixture.ViewModel.LoadAsync();
+        fixture.Receive(1);
+        Assert.Empty(fixture.Presenter.Shown);
+        Assert.Equal(1, fixture.Device.CurrentDeviceReads);
+
+        fixture.Realtime.Resync();
+        Assert.Equal(2, fixture.Device.CurrentDeviceReads);
+        Assert.False(fixture.Settings.IsEnabled);
+
+        fixture.Device.CurrentDevice = device;
+        fixture.Realtime.Resync();
+        Assert.Equal(3, fixture.Device.CurrentDeviceReads);
+        Assert.True(fixture.Settings.IsEnabled);
+        fixture.Receive(2);
+        Assert.Single(fixture.Presenter.Shown);
+
+        fixture.Realtime.Resync();
+        Assert.Equal(3, fixture.Device.CurrentDeviceReads);
+    }
+
+    [Fact]
+    public async Task ActivationRoundTripsAndOpensOnlyMatchingSessionIncludingOffPageChat()
+    {
+        var fixture = new Fixture();
+        await fixture.ViewModel.LoadAsync();
+
+        var target = new MessageNotificationTarget("node?one=1&two=2", 1, "off-page");
+        var xml = XElement.Parse(MessageNotificationPayload.CreateXml(new(target, "title", "text")));
+        var argument = xml.Attribute("launch")!.Value.Split('=', 2)[1];
+        Assert.Equal(target, MessageNotificationPayload.Parse(argument));
+        Assert.Null(MessageNotificationPayload.Parse("!invalid!"));
+
+        fixture.Messenger.FindChat = id => Task.FromResult<Chat?>(CreateChat(id, chatType: ChatType.Private));
+        Assert.False(await fixture.ViewModel.OpenNotificationChatAsync(target with { UserId = 2 }));
+        Assert.False(await fixture.ViewModel.OpenNotificationChatAsync(target with { Node = "wrong" }));
+        Assert.Null(fixture.ViewModel.SelectedChat);
+
+        Assert.True(await fixture.ViewModel.OpenNotificationChatAsync(target));
+        Assert.Equal(target.ChatId, fixture.ViewModel.SelectedChat!.Id);
+        Assert.True(fixture.ViewModel.SelectedChat.IsPrivate);
+        Assert.Contains(target, fixture.Presenter.ClearedChats);
+    }
+
+    [Fact]
+    public async Task SessionChangeInvalidatesPendingChatLookup()
+    {
+        var fixture = new Fixture();
+        await fixture.ViewModel.LoadAsync();
+        var lookup = new TaskCompletionSource<Chat?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Messenger.FindChat = _ => lookup.Task;
+        var open = fixture.ViewModel.OpenNotificationChatAsync(new(fixture.Messenger.CurrentNodeAddress, 1, "off-page"));
+
+        fixture.Messenger.CurrentUserId = 5;
+        await fixture.ViewModel.LoadAsync();
+        lookup.SetResult(CreateChat("off-page"));
+        Assert.False(await open);
+        Assert.Null(fixture.ViewModel.SelectedChat);
+        Assert.DoesNotContain(fixture.ViewModel.Chats, chat => chat.Id == "off-page");
+        Assert.Equal(1, fixture.Presenter.ClearCount);
+    }
+
+    [Fact]
+    public async Task SettingsReloadDeviceFlagAndDisableClearsImmediatelyEvenWhileSaving()
+    {
+        var fixture = new Fixture(enabled: false);
+        await fixture.ViewModel.LoadAsync();
+        Assert.False(fixture.Settings.IsEnabled);
+        Assert.True(fixture.Settings.CanChange);
+
+        fixture.Device.CurrentDevice!.NotificationsEnabled = true;
+        await fixture.Settings.LoadAsync();
+        Assert.True(fixture.Settings.IsEnabled);
+        fixture.Receive(1);
+        Assert.Single(fixture.Presenter.Shown);
+
+        var save = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Device.SetNotificationsEnabled = enabled =>
+        {
+            Assert.False(enabled);
+            return save.Task;
+        };
+        var disabling = fixture.Settings.SetEnabledAsync(false);
+        Assert.False(fixture.Settings.IsEnabled);
+        fixture.Receive(2);
+        Assert.Empty(fixture.Presenter.Shown);
+
+        save.SetResult("Error_SettingsSaveFailed");
+        await disabling;
+        Assert.True(fixture.Settings.IsEnabled);
+        Assert.Equal("Error_SettingsSaveFailed", fixture.Settings.ErrorMessage);
+        fixture.Receive(3);
+        Assert.Single(fixture.Presenter.Shown);
+        fixture.ViewModel.Reset();
+        Assert.Empty(fixture.Presenter.Shown);
+        fixture.Receive(4);
+        Assert.Empty(fixture.Presenter.Shown);
+    }
+
+    private sealed class Fixture
+    {
+        public Fixture(bool enabled = true)
+        {
+            Device.CurrentDevice!.NotificationsEnabled = enabled;
+            Messenger.Chats.Add(CreateChat("known"));
+            var localization = new StubLocalizationService();
+            var notifications = new MessageNotificationService(Presenter, localization);
+            Settings = new(Device, localization, notifications);
+            ViewModel = CreateViewModel(Messenger, Realtime, notifications: notifications, notificationSettings: Settings);
+        }
+
+        public FakeRealtimeMessengerService Realtime { get; } = new();
+        public FakeMessengerService Messenger { get; } = new() { CurrentNodeAddress = "node?one=1&two=2", MutedChats = [] };
+        public FakeDeviceSettingsService Device { get; } = new();
+        public CapturingPresenter Presenter { get; } = new();
+        public SettingsNotificationsViewModel Settings { get; }
+        public MessengerViewModel ViewModel { get; }
+
+        public void Receive(long id, string chat = "known") =>
+            Realtime.Raise(new IncomingMessage(chat, CreateMessage(id, chat, 2)));
+    }
+
+    private sealed class CapturingPresenter : INotificationPresenter
+    {
+        public List<MessageNotification> Shown { get; } = [];
+        public List<MessageNotificationTarget> ClearedChats { get; } = [];
+        public int ClearCount { get; private set; }
+
+        public void Show(MessageNotification notification) => Shown.Add(notification);
+        public void RemoveChat(MessageNotificationTarget target)
+        {
+            ClearedChats.Add(target);
+            Shown.RemoveAll(notification => notification.Target == target);
+        }
+        public void RemoveAll()
+        {
+            ClearCount++;
+            Shown.Clear();
+        }
+    }
+}

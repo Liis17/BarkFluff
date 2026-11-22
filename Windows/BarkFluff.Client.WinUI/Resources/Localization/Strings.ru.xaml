@@ -365,8 +365,8 @@
     <x:String x:Key="Settings_ChatFolders_MoveDown">Переместить ниже</x:String>
 
     <x:String x:Key="Settings_Notifications_Title">Уведомления</x:String>
-    <x:String x:Key="Settings_Notifications_ReceivePush">Получать push-уведомления</x:String>
-    <x:String x:Key="Settings_Notifications_Hint">Отключение уведомлений отключит push-уведомления только на этом устройстве. На других устройствах уведомления продолжат приходить.</x:String>
+    <x:String x:Key="Settings_Notifications_ReceivePush">Показывать системные уведомления</x:String>
+    <x:String x:Key="Settings_Notifications_Hint">Настройка действует только на этом устройстве.</x:String>
 
     <x:String x:Key="Settings_Language_Title">Язык</x:String>
     <x:String x:Key="Settings_Language_Section">Язык приложения</x:String>
@@ -466,6 +466,8 @@
     <x:String x:Key="Messenger_UserUnavailable">Пользователь заблокирован или удалён и недоступен.</x:String>
     <x:String x:Key="Messenger_MuteChat">Отключить уведомления</x:String>
     <x:String x:Key="Messenger_UnmuteChat">Включить уведомления</x:String>
+    <x:String x:Key="Notifications_NewMessage">Новое сообщение</x:String>
+    <x:String x:Key="Notifications_PrivateMessage">Новое зашифрованное сообщение</x:String>
     <x:String x:Key="Messenger_ChatMuted">Уведомления отключены</x:String>
     <x:String x:Key="Messenger_ChatOptions">Действия чата</x:String>
     <x:String x:Key="Messenger_ChatMuteFailed">Не удалось изменить уведомления чата.</x:String>

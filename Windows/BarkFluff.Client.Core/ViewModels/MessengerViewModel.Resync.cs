@@ -73,7 +73,10 @@ public sealed partial class MessengerViewModel
         return chatsOk && results.All(success => success);
     }
 
-    private async Task<bool> RefreshChatsAsync(RealtimeSession session, bool reportError, CancellationToken token)
+    private Task<bool> RefreshChatsAsync(RealtimeSession session, bool reportError, CancellationToken token) =>
+        session.ChatSnapshot = RefreshChatsCoreAsync(session, reportError, token);
+
+    private async Task<bool> RefreshChatsCoreAsync(RealtimeSession session, bool reportError, CancellationToken token)
     {
         var revision = session.Journal.Revision;
         var request = ++session.ChatSnapshotRequest;
