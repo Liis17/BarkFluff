@@ -1,5 +1,6 @@
-/* Computes a content hash over the service-worker APP_SHELL files and writes it
-   into CACHE_NAME so shell-asset changes invalidate the SW cache automatically.
+/* Computes a content hash over the service-worker APP_SHELL files and the shared
+   icon pack (served cache-first from /icons) and writes it into CACHE_NAME so
+   their changes invalidate the SW cache automatically.
    The browser checks the main service-worker script byte-for-byte on navigation,
    so the version must live in service-worker.js itself (not an importScripts). */
 const fs = require('node:fs/promises');
@@ -9,6 +10,7 @@ const crypto = require('node:crypto');
 const projectRoot = path.resolve(__dirname, '..');
 const wwwroot = path.join(projectRoot, 'wwwroot');
 const serviceWorkerPath = path.join(wwwroot, 'service-worker.js');
+const iconPack = path.resolve(projectRoot, '..', '..', 'Icons');
 
 const ROUTE_TO_FILE = {
     '/': 'index.html',
@@ -34,12 +36,31 @@ function resolveShellFile(urlPath) {
     return path.join(wwwroot, relative.split('?')[0]);
 }
 
-async function computeShellVersion(entries) {
+async function listIconFiles() {
+    const files = await fs.readdir(iconPack, { recursive: true });
+    return files
+        .filter(function (file) {
+            return file.endsWith('.svg');
+        })
+        .map(function (file) {
+            return file.split(path.sep).join('/');
+        })
+        .sort();
+}
+
+async function computeShellVersion(entries, icons) {
     const hash = crypto.createHash('sha1');
     for (const entry of entries) {
         const filePath = resolveShellFile(entry);
         const content = await fs.readFile(filePath);
         hash.update(entry).update('\0').update(content).update('\0');
+    }
+    for (const icon of icons) {
+        const content = await fs.readFile(path.join(iconPack, icon));
+        hash.update('/icons/' + icon)
+            .update('\0')
+            .update(content)
+            .update('\0');
     }
     return hash.digest('hex').slice(0, 8);
 }
@@ -47,7 +68,7 @@ async function computeShellVersion(entries) {
 async function run() {
     const original = await fs.readFile(serviceWorkerPath, 'utf8');
     const entries = parseAppShell(original);
-    const version = await computeShellVersion(entries);
+    const version = await computeShellVersion(entries, await listIconFiles());
     const next = original.replace(
         /const CACHE_NAME = 'barkfluff-shell-[^']+'/,
         "const CACHE_NAME = 'barkfluff-shell-" + version + "'"
