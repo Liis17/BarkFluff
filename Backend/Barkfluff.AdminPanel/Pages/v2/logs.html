@@ -178,6 +178,9 @@
                     <button id="deleteFilterBtn" class="md-icon-btn" type="button" title="Удалить выбранный фильтр" disabled>
                         <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/delete.svg);" aria-hidden="true"></span>
                     </button>
+                    <button id="copyFilterLinkBtn" class="md-btn md-btn-tonal" type="button" title="Скопировать ссылку на текущие фильтры">
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/link.svg);" aria-hidden="true"></span> Скопировать ссылку
+                    </button>
 
                     <div class="view-buttons" aria-label="Режим отображения">
                         <button data-view="events" class="md-chip selected" type="button">События</button>
@@ -736,6 +739,7 @@
         localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(filters));
         renderSavedFilters();
     });
+    document.getElementById('copyFilterLinkBtn').addEventListener('click', copyFilterLink);
     document.getElementById('deploymentSelect').addEventListener('change', event => {
         document.getElementById('compareDeploymentBtn').disabled = event.target.value === '';
         document.getElementById('deploymentComparison').className = 'deployment-comparison';
@@ -867,16 +871,63 @@
         await BF.logout();
     });
 
+    // Ссылка на фильтры и восстановление из URL используют одни и те же параметры.
+    const LOG_CONTEXT_KINDS = ['correlationId', 'requestId', 'userId'];
+
+    function buildFilterQuery(state = { service: activeService, level: activeLevel, search: searchQuery, context: activeContext, viewMode }) {
+        const params = new URLSearchParams();
+        if (state.service) params.set('service', state.service);
+        if (state.viewMode === 'groups') params.set('view', 'groups');
+        else if (state.level) params.set('level', state.level);
+        if (state.search) params.set('search', state.search);
+        if (state.context?.kind && state.context?.value) params.set(state.context.kind, state.context.value);
+        return params;
+    }
+
+    function parseFilterQuery(params) {
+        const contextKind = LOG_CONTEXT_KINDS.find(kind => params.get(kind));
+        const viewMode = params.get('view') === 'groups' ? 'groups' : 'events';
+        return {
+            service: params.get('service') || '',
+            level: viewMode === 'groups' ? 'Error' : (params.get('level') || ''),
+            search: params.get('search') || '',
+            context: contextKind ? { kind:contextKind, value:params.get(contextKind) } : null,
+            viewMode
+        };
+    }
+
     function applyUrlFilters() {
-        const params = new URLSearchParams(window.location.search);
-        activeService = params.get('service') || '';
-        searchQuery = params.get('search') || '';
-        const contextKinds = ['correlationId', 'requestId', 'userId'];
-        const contextKind = contextKinds.find(kind => params.get(kind));
-        activeContext = contextKind ? { kind:contextKind, value:params.get(contextKind) } : null;
-        viewMode = params.get('view') === 'groups' ? 'groups' : 'events';
-        activeLevel = viewMode === 'groups' ? 'Error' : (params.get('level') || '');
+        const state = parseFilterQuery(new URLSearchParams(window.location.search));
+        activeService = state.service;
+        activeLevel = state.level;
+        searchQuery = state.search;
+        activeContext = state.context;
+        viewMode = state.viewMode;
         syncFilterControls();
+    }
+
+    async function copyText(text) {
+        if (navigator.clipboard?.writeText) {
+            try { await navigator.clipboard.writeText(text); return true; } catch {}
+        }
+        // Контекст без secure context (http) не даёт navigator.clipboard — копируем через выделенный textarea.
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+        document.body.appendChild(area);
+        area.select();
+        let copied = false;
+        try { copied = document.execCommand('copy'); } catch {}
+        area.remove();
+        return copied;
+    }
+
+    async function copyFilterLink() {
+        const query = buildFilterQuery().toString();
+        const link = `${window.location.origin}/logs${query ? `?${query}` : ''}`;
+        if (await copyText(link)) BF.toast('Ссылка на фильтры скопирована', 'success');
+        else window.prompt('Скопируйте ссылку на фильтры', link);
     }
 
     (async function () {

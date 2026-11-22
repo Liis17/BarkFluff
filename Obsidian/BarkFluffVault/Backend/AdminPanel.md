@@ -16,6 +16,12 @@
 
 GET `/api/users` передаёт Users фильтр `status=all|blocked|pending_deletion`; Users выполняет фильтрацию до пагинации и считает общий total. Список и карточка пользователя показывают статус, причину, время ограничения и дату окончательного удаления. Tombstone со статусом Deleted отображается без действий. UI и JSON-маршруты находятся в `Pages/v2/users.html` и `Endpoints/UsersEndpoints.cs`.
 
+## Ссылки на текущую выборку
+
+`Pages/v2/logs.html`: кнопка «Скопировать ссылку» строит абсолютный `/logs` из сервиса, уровня (только в режиме событий), поиска, одного контекста (`correlationId`, `requestId` или `userId`) и `view=groups`. `buildFilterQuery` и `parseFilterQuery` задают один набор параметров для ссылки и для восстановления фильтров при открытии. Без `navigator.clipboard` (http) копирование идёт через textarea.
+
+`Pages/v2/users.html`: `history.replaceState` пишет `q`, `status` (не пишется для `all`), `page` — число подгруженных порций по 50 — и `userId` открытой карточки. Закрытие карточки убирает только `userId`. Users ограничивает `size` 50, поэтому страница восстанавливает порции последовательными запросами, не более 20. Старая ссылка `/users?userId=N` без `q` ищет по id и открывает карточку.
+
 ## Управление сервисом
 
 При запуске `Program.cs` вызывает `LoadConfiguration(ServiceId.Unknown, requireValidSettings: false)`.
