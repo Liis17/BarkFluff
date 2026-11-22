@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Data;
 using Barkfluff.AdminPanel.Models;
 
 using System.Collections.Concurrent;
@@ -12,6 +13,8 @@ namespace Barkfluff.AdminPanel.Services;
 /// падении (crash-loop / exited / unhealthy) шаг откатывается на предыдущий образ или ветку.
 /// docker image prune выполняется только после завершения всей задачи — старые образы
 /// должны оставаться доступными для отката.
+/// История задач сохраняется в LiteDB на переходах состояний (не на опросах health) и
+/// поднимается при старте; незавершённые задачи после перезапуска панели помечаются прерванными.
 /// </summary>
 public class DeployJobService : BackgroundService
 {
@@ -42,24 +45,31 @@ public class DeployJobService : BackgroundService
     private static readonly TimeSpan HealthTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan InitialSettleDelay = TimeSpan.FromSeconds(2);
     private const int MaxFinishedJobs = 20;
+    private const string InterruptedReason = "Прервано перезапуском панели";
 
     private readonly Channel<DeployJob> _queue = Channel.CreateUnbounded<DeployJob>();
     private readonly ConcurrentDictionary<Guid, DeployJob> _jobs = new();
     private readonly DockerService _docker;
     private readonly ComposeImageService _compose;
     private readonly SeqService _seq;
+    private readonly DeployJobDbContext _history;
     private readonly ILogger<DeployJobService> _logger;
+    // Все обращения к LiteDB и очистка истории идут под одним замком: запись из фонового потока
+    // и очистка из HTTP-запроса постановки задачи не должны перекрываться
+    private readonly object _historyLock = new();
 
     public DeployJobService(
         DockerService docker,
         ComposeImageService compose,
         SeqService seq,
-        ILogger<DeployJobService> logger)
+        ILogger<DeployJobService> logger,
+        DeployJobDbContext history)
     {
         _docker = docker;
         _compose = compose;
         _seq = seq;
         _logger = logger;
+        _history = history;
     }
 
     public DeployJob EnqueueUpdate(IEnumerable<string> services) => Enqueue(DeployJobKind.Update, services, null);
@@ -79,6 +89,7 @@ public class DeployJobService : BackgroundService
             CreatedAtUtc = DateTime.UtcNow
         };
         _jobs[job.Id] = job;
+        Persist(job);
         TrimFinishedJobs();
         _queue.Writer.TryWrite(job);
 
@@ -114,13 +125,29 @@ public class DeployJobService : BackgroundService
 
     private void TrimFinishedJobs()
     {
-        var stale = _jobs.Values
-            .Where(j => j.State is DeployJobState.Completed or DeployJobState.Failed)
-            .OrderByDescending(j => j.FinishedAtUtc ?? j.CreatedAtUtc)
-            .Skip(MaxFinishedJobs)
-            .ToList();
-        foreach (var job in stale)
-            _jobs.TryRemove(job.Id, out _);
+        lock (_historyLock)
+        {
+            var stale = _jobs.Values
+                .Where(j => j.State is DeployJobState.Completed or DeployJobState.Failed)
+                .OrderByDescending(j => j.FinishedAtUtc ?? j.CreatedAtUtc)
+                .Skip(MaxFinishedJobs)
+                .ToList();
+            foreach (var job in stale)
+            {
+                _jobs.TryRemove(job.Id, out _);
+                DeleteFromHistory(job.Id);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Поднять историю из LiteDB до приёма задач: иначе задачи, поставленные в этом процессе,
+    /// попадут в загрузку и будут помечены прерванными.
+    /// </summary>
+    public override Task StartAsync(CancellationToken cancellationToken)
+    {
+        RestoreHistory();
+        return base.StartAsync(cancellationToken);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -133,11 +160,13 @@ public class DeployJobService : BackgroundService
     {
         job.State = DeployJobState.Running;
         job.StartedAtUtc = DateTime.UtcNow;
+        Persist(job);
         _logger.LogInformation("Deploy job {JobId} ({Kind}) запущен", job.Id, job.Kind);
 
         foreach (var step in job.Steps)
         {
             step.State = DeployStepState.InProgress;
+            Persist(job);
             var stopping = false;
             try
             {
@@ -157,6 +186,7 @@ public class DeployJobService : BackgroundService
                 _logger.LogError(ex, "Deploy job {JobId}: шаг {Service} провалился", job.Id, step.Service);
             }
 
+            Persist(job);
             await RecordDeploymentAsync(job, step);
             if (stopping)
                 break;
@@ -183,7 +213,151 @@ public class DeployJobService : BackgroundService
             : null;
         job.FinishedAtUtc = DateTime.UtcNow;
         _logger.LogInformation("Deploy job {JobId} завершён: {State}{Error}", job.Id, job.State, job.Error is null ? "" : $" — {job.Error}");
+        Persist(job);
+        TrimFinishedJobs();
     }
+
+    private void RestoreHistory()
+    {
+        try
+        {
+            lock (_historyLock)
+            {
+                var now = DateTime.UtcNow;
+                var records = _history.Jobs.FindAll().OrderByDescending(r => r.CreatedAtUtc).ToList();
+                foreach (var record in records)
+                {
+                    var job = FromRecord(record);
+                    if (job is null)
+                    {
+                        _logger.LogWarning("Deploy job {JobId}: запись истории не распознана и пропущена", record.Id);
+                        continue;
+                    }
+
+                    // Задача не продолжается после перезапуска: часть шагов уже могла изменить контейнеры
+                    if (job.State is DeployJobState.Queued or DeployJobState.Running)
+                    {
+                        MarkInterrupted(job, now);
+                        Persist(job);
+                    }
+
+                    _jobs[job.Id] = job;
+                }
+
+                TrimFinishedJobs();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось загрузить историю задач деплоя; история начинается пустой");
+        }
+    }
+
+    private static void MarkInterrupted(DeployJob job, DateTime now)
+    {
+        foreach (var step in job.Steps.Where(s => s.State is DeployStepState.Pending or DeployStepState.InProgress))
+        {
+            step.State = DeployStepState.Failed;
+            step.Message = InterruptedReason;
+        }
+
+        job.State = DeployJobState.Failed;
+        job.Error = InterruptedReason;
+        job.FinishedAtUtc = now;
+    }
+
+    /// <summary>
+    /// Сохранить снимок задачи. Снимок строится в вызывающем потоке (тот же, что меняет шаги),
+    /// поэтому запись не читает список шагов параллельно с изменениями. Ошибка записи деплой не прерывает.
+    /// </summary>
+    private void Persist(DeployJob job)
+    {
+        var record = ToRecord(job);
+        try
+        {
+            lock (_historyLock)
+                _history.Jobs.Upsert(record);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Deploy job {JobId}: не удалось сохранить историю задачи", job.Id);
+        }
+    }
+
+    private void DeleteFromHistory(Guid id)
+    {
+        try
+        {
+            lock (_historyLock)
+                _history.Jobs.Delete(id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Deploy job {JobId}: не удалось удалить запись истории", id);
+        }
+    }
+
+    private static DeployJobRecord ToRecord(DeployJob job) => new()
+    {
+        Id = job.Id,
+        Kind = job.Kind.ToString(),
+        State = job.State.ToString(),
+        Error = job.Error,
+        CreatedAtUtc = job.CreatedAtUtc,
+        StartedAtUtc = job.StartedAtUtc,
+        FinishedAtUtc = job.FinishedAtUtc,
+        Steps = job.Steps.Select(step => new DeployStepRecord
+        {
+            Service = step.Service,
+            Branch = step.Branch,
+            State = step.State.ToString(),
+            Message = step.Message,
+            RolledBack = step.RolledBack
+        }).ToList()
+    };
+
+    /// <summary>Восстановить задачу из записи; null — если значение перечисления не распознано</summary>
+    private static DeployJob? FromRecord(DeployJobRecord record)
+    {
+        if (!Enum.TryParse<DeployJobKind>(record.Kind, out var kind)
+            || !Enum.TryParse<DeployJobState>(record.State, out var state))
+            return null;
+
+        var steps = new List<DeployStep>(record.Steps.Count);
+        foreach (var step in record.Steps)
+        {
+            if (!Enum.TryParse<DeployStepState>(step.State, out var stepState))
+                return null;
+            steps.Add(new DeployStep
+            {
+                Service = step.Service,
+                Branch = step.Branch,
+                State = stepState,
+                Message = step.Message,
+                RolledBack = step.RolledBack
+            });
+        }
+
+        return new DeployJob
+        {
+            Id = record.Id,
+            Kind = kind,
+            State = state,
+            Error = record.Error,
+            Steps = steps,
+            CreatedAtUtc = AsUtc(record.CreatedAtUtc),
+            StartedAtUtc = record.StartedAtUtc is { } started ? AsUtc(started) : null,
+            FinishedAtUtc = record.FinishedAtUtc is { } finished ? AsUtc(finished) : null
+        };
+    }
+
+    // LiteDB отдаёт DateTime в локальном времени машины; приводим к UTC, как пишется в запись
+    private static DateTime AsUtc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+    };
 
     private async Task RecordDeploymentAsync(DeployJob job, DeployStep step)
     {

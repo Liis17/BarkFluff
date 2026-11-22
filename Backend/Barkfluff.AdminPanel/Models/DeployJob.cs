@@ -66,3 +66,39 @@ public class DeployJob
 
     public DateTime? FinishedAtUtc { get; set; }
 }
+
+/// <summary>
+/// Снимок задачи для LiteDB (история между перезапусками панели). Состояния — строками,
+/// чтобы сохранённые данные не зависели от порядка значений enum.
+/// </summary>
+public class DeployJobRecord
+{
+    public Guid Id { get; set; }
+
+    public string Kind { get; set; } = string.Empty;
+
+    public string State { get; set; } = string.Empty;
+
+    public string? Error { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; }
+
+    public DateTime? StartedAtUtc { get; set; }
+
+    public DateTime? FinishedAtUtc { get; set; }
+
+    public List<DeployStepRecord> Steps { get; set; } = new();
+}
+
+public class DeployStepRecord
+{
+    public string Service { get; set; } = string.Empty;
+
+    public string? Branch { get; set; }
+
+    public string State { get; set; } = string.Empty;
+
+    public string? Message { get; set; }
+
+    public bool RolledBack { get; set; }
+}
