@@ -88,7 +88,7 @@
                     if (member.userId !== deps.getMyUserId()) {
                         var removeButton = document.createElement('button');
                         removeButton.className = 'group-member-remove';
-                        removeButton.innerHTML = '&times;';
+                        removeButton.innerHTML = BF.icons.html('close');
                         removeButton.title = BF.i18n.t('common.delete');
                         removeButton.addEventListener('click', function () {
                             confirmRemoveMember(member, fullName);

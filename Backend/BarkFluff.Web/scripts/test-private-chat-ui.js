@@ -28,7 +28,8 @@ function makeEl(id) {
             }
         },
         addEventListener: function () {},
-        appendChild: function () {}
+        appendChild: function () {},
+        replaceChildren: function () {}
     };
 }
 
@@ -45,6 +46,7 @@ function createUiHarness(options) {
         messages: options.messages || []
     };
     var BF = {
+        icons: { element: function () { return makeEl('span'); } },
         i18n: {
             t: function (key) {
                 return key;

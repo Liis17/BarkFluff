@@ -3,7 +3,7 @@
  * Потребляет события BF.calls и управляет DOM + window.LivekitClient (Room).
  *
  * Самодостаточен: имя/аватар пользователя берёт через BF.api.getUser, myUserId — из JWT.
- * Requires: BF.calls, BF.api, BF.utils, BF.tokens, window.LivekitClient
+ * Requires: BF.calls, BF.api, BF.utils, BF.tokens, BF.icons, window.LivekitClient
  * Exposes: BF.callsUI (тонкая обёртка, в основном работает через события)
  */
 (function () {
@@ -11,19 +11,16 @@
 
     window.BF = window.BF || {};
 
-    // --- SVG-иконки (stroke=currentColor, 24×24) ---
     var ICONS = {
-        mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
-        micOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
-        video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
-        videoOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
-        monitor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
-        // Перечёркивание во всех off-иконках идёт в одну сторону (↘, 1,1→23,23).
-        monitorOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
-        // Классическая «трубка завершения» (сплошная, как красная кнопка отбоя).
-        phoneEnd: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08A.99.99 0 0 1 0 12.38c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>',
-        quality: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
-        chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 14 12 8 18 14"/></svg>'
+        mic: BF.icons.html('voice'),
+        micOff: BF.icons.html('microphone-off'),
+        video: BF.icons.html('video'),
+        videoOff: BF.icons.html('video-off'),
+        monitor: BF.icons.html('screen-share'),
+        monitorOff: BF.icons.html('screen-share-off'),
+        phoneEnd: BF.icons.html('call-end'),
+        quality: BF.icons.html('tune'),
+        chevron: BF.icons.html('chevron-up')
     };
 
     // --- Палитра аватаров (детерминированная по identity, как отдельные цвета участников) ---
@@ -945,7 +942,7 @@
     }
 
     // --- Контрол-кнопки (иконки + состояние) ---
-    function setIcon(btn, svg) { if (btn) btn.innerHTML = svg; }
+    function setIcon(btn, icon) { if (btn) btn.innerHTML = icon; }
     function renderControls() {
         setIcon(btnMic, micOn ? ICONS.mic : ICONS.micOff);
         btnMic.classList.toggle('active', micOn);

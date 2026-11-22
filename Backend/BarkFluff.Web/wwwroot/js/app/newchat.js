@@ -80,7 +80,7 @@
             chip.textContent = displayName(user);
             var x = document.createElement('button');
             x.className = 'newchat-chip-remove';
-            x.textContent = '×';
+            x.innerHTML = BF.icons.html('close');
             x.addEventListener('click', function () {
                 selected.delete(user.id);
                 renderChips();

@@ -67,7 +67,7 @@
         <div class="sidebar">
             <div class="search-container">
                 <div class="search-wrapper">
-                    <span class="search-icon">&#128269;</span>
+                    <span class="search-icon"><span class="bf-icon" data-bf-icon="search" aria-hidden="true"></span></span>
                     <input type="text" class="search-input" id="searchInput" data-i18n-placeholder="sidebar.search.placeholder" placeholder="Поиск">
                 </div>
             </div>
@@ -81,9 +81,9 @@
                 <span class="bf-icon" data-bf-icon="edit" aria-hidden="true"></span>
             </button>
             <div class="newchat-menu" id="newChatMenu">
-                <button data-mode="message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span data-i18n="newchat.mode.message">Новое сообщение</span></button>
-                <button data-mode="group"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span data-i18n="newchat.mode.group">Новая группа</span></button>
-                <button data-mode="private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span data-i18n="newchat.mode.private">Приватный чат</span></button>
+                <button data-mode="message"><span class="bf-icon" data-bf-icon="messages" aria-hidden="true"></span><span data-i18n="newchat.mode.message">Новое сообщение</span></button>
+                <button data-mode="group"><span class="bf-icon" data-bf-icon="groups" aria-hidden="true"></span><span data-i18n="newchat.mode.group">Новая группа</span></button>
+                <button data-mode="private"><span class="bf-icon" data-bf-icon="private" aria-hidden="true"></span><span data-i18n="newchat.mode.private">Приватный чат</span></button>
             </div>
 
             <div class="sidebar-nav" id="sidebarNav">
@@ -111,7 +111,7 @@
         <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="Изменить ширину списка чатов"></div>
 
         <div class="connection-banner" id="connectionBanner" role="status" aria-live="polite">
-            <span class="connection-banner-icon" aria-hidden="true">&#9888;</span>
+            <span class="connection-banner-icon" aria-hidden="true"><span class="bf-icon" data-bf-icon="warning" aria-hidden="true"></span></span>
             <span id="connectionBannerText" data-i18n="connection.reconnecting">Переподключаемся…</span>
             <button class="connection-retry-btn" id="connectionRetryButton" type="button" data-i18n="connection.retry">Повторить</button>
         </div>
@@ -124,7 +124,7 @@
                 <span data-i18n="connection.synced">Синхронизировано</span>
             </div>
             <div class="chat-header" id="chatHeader">
-                <button class="btn-back-to-list" id="btnBackToList" data-i18n-title="chat.backToList" title="Назад к чатам" data-i18n-aria-label="chat.backToList" aria-label="Назад к чатам">&#8592;</button>
+                <button class="btn-back-to-list" id="btnBackToList" data-i18n-title="chat.backToList" title="Назад к чатам" data-i18n-aria-label="chat.backToList" aria-label="Назад к чатам"><span class="bf-icon" data-bf-icon="back" aria-hidden="true"></span></button>
                 <div class="chat-header-avatar" id="chatHeaderAvatar"></div>
                 <div class="chat-header-info">
                     <div class="chat-header-name" id="chatHeaderName"></div>
@@ -148,12 +148,12 @@
                     <div class="pinned-bar-author" id="pinnedBarAuthor" data-i18n="pinned.bar.author">Закреплённое</div>
                     <div class="pinned-bar-text" id="pinnedBarText"></div>
                 </div>
-                <button class="pinned-bar-open" id="pinnedBarOpen" data-i18n-title="pinned.bar.openAll" title="Все закреплённые сообщения">&#9776;</button>
+                <button class="pinned-bar-open" id="pinnedBarOpen" data-i18n-title="pinned.bar.openAll" title="Все закреплённые сообщения"><span class="bf-icon" data-bf-icon="menu" aria-hidden="true"></span></button>
             </div>
 
             <div class="chat-empty" id="chatEmpty">
                 <div class="chat-empty-card">
-                    <div class="chat-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
+                    <div class="chat-empty-icon"><span class="bf-icon" data-bf-icon="messages" aria-hidden="true"></span></div>
                     <div class="chat-empty-text" data-i18n="chat.empty.hint">Чтобы начать диалог выберите чат из списка слева</div>
                 </div>
             </div>
@@ -174,14 +174,14 @@
                             <div class="rpb-author" id="rpbAuthor"></div>
                             <div class="rpb-text" id="rpbText"></div>
                         </div>
-                        <button class="rpb-close" id="rpbClose" data-i18n-title="composer.reply.cancel" title="Отменить ответ" data-i18n-aria-label="composer.reply.cancel" aria-label="Отменить ответ">&times;</button>
+                        <button class="rpb-close" id="rpbClose" data-i18n-title="composer.reply.cancel" title="Отменить ответ" data-i18n-aria-label="composer.reply.cancel" aria-label="Отменить ответ"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
                     </div>
                     <div class="edit-preview-bar" id="editPreviewBar">
                         <div class="rpb-content">
                             <div class="rpb-author" data-i18n="composer.edit.title">Редактирование</div>
                             <div class="rpb-text" id="epbText"></div>
                         </div>
-                        <button class="rpb-close" id="epbClose" data-i18n-title="composer.edit.cancel" title="Отменить редактирование" data-i18n-aria-label="composer.edit.cancel" aria-label="Отменить редактирование">&times;</button>
+                        <button class="rpb-close" id="epbClose" data-i18n-title="composer.edit.cancel" title="Отменить редактирование" data-i18n-aria-label="composer.edit.cancel" aria-label="Отменить редактирование"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
                     </div>
                     <div class="input-bar-inner">
                         <div class="sticker-picker" id="stickerPicker">
@@ -213,9 +213,9 @@
     <div class="settings-overlay" id="settingsOverlay">
         <div class="settings-dialog" id="settingsDialog">
             <div class="sd-header">
-                <button class="sd-back" id="sdBack">&#8592;</button>
+                <button class="sd-back" id="sdBack" data-i18n-aria-label="common.back" aria-label="Назад"><span class="bf-icon" data-bf-icon="back" aria-hidden="true"></span></button>
                 <div class="sd-title" id="sdTitle"><span class="bf-icon" data-bf-icon="general" aria-hidden="true"></span><span data-i18n="settings.title">Настройки</span></div>
-                <button class="sd-close" id="sdClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+                <button class="sd-close" id="sdClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
             <div class="sd-body" id="sdBody"></div>
         </div>
@@ -254,7 +254,7 @@
         <div class="confirm-dialog newchat-dialog">
             <div class="newchat-header">
                 <h3 id="newChatTitle" data-i18n="newchat.title">Новый чат</h3>
-                <button class="newchat-close" id="newChatClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+                <button class="newchat-close" id="newChatClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
             <input type="text" class="private-pass-input" id="newChatGroupTitle" data-i18n-placeholder="newchat.groupTitle.placeholder" placeholder="Название группы" maxlength="128">
             <div class="newchat-chips" id="newChatChips"></div>
@@ -308,10 +308,10 @@
     </div>
 
     <div class="image-overlay" id="imageOverlay">
-        <button class="overlay-nav prev" id="overlayPrev" data-i18n-aria-label="common.previous" aria-label="Предыдущее" hidden>&#8249;</button>
+        <button class="overlay-nav prev" id="overlayPrev" data-i18n-aria-label="common.previous" aria-label="Предыдущее" hidden><span class="bf-icon" data-bf-icon="chevron-left" aria-hidden="true"></span></button>
         <img id="overlayImage" src="" alt="">
         <video id="overlayVideo" controls tabindex="0" style="display:none;max-width:90vw;max-height:90vh;border-radius:8px;"></video>
-        <button class="overlay-nav next" id="overlayNext" data-i18n-aria-label="common.next" aria-label="Следующее" hidden>&#8250;</button>
+        <button class="overlay-nav next" id="overlayNext" data-i18n-aria-label="common.next" aria-label="Следующее" hidden><span class="bf-icon" data-bf-icon="chevron-right" aria-hidden="true"></span></button>
     </div>
 
     <!-- Доступ к микрофону и камере до начала звонка -->
@@ -333,8 +333,8 @@
             <div class="call-ring-name" id="callRingName" data-i18n="call.incoming">Входящий звонок</div>
             <div class="call-ring-sub" id="callRingSub"></div>
             <div class="call-ring-actions">
-                <button class="call-round-btn call-btn-reject" id="callRingReject" data-i18n-title="call.reject" title="Отклонить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 8.63 19.24M5 5a2 2 0 0 0-1 .54 19.5 19.5 0 0 0-3 8.63 2 2 0 0 0 .54 1.84"/><line x1="23" y1="1" x2="1" y2="23"/></svg></button>
-                <button class="call-round-btn call-btn-accept" id="callRingAccept" data-i18n-title="call.accept" title="Принять"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.56 2.81.69A2 2 0 0 1 22 16.92z"/></svg></button>
+                <button class="call-round-btn call-btn-reject" id="callRingReject" data-i18n-title="call.reject" title="Отклонить"><span class="bf-icon" data-bf-icon="call-reject" aria-hidden="true"></span></button>
+                <button class="call-round-btn call-btn-accept" id="callRingAccept" data-i18n-title="call.accept" title="Принять"><span class="bf-icon" data-bf-icon="calls" aria-hidden="true"></span></button>
             </div>
         </div>
     </div>
@@ -398,7 +398,7 @@
 
     <div class="profile-overlay" id="profileOverlay">
         <div class="profile-panel user-profile-panel">
-            <button class="profile-close" id="profileClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+            <button class="profile-close" id="profileClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             <div class="profile-poster" id="profilePoster"></div>
             <div class="profile-header">
                 <div class="profile-avatar" id="profileAvatar"></div>
@@ -410,77 +410,47 @@
             </div>
             <div class="profile-actions">
                 <button class="profile-action-btn primary" id="profileMsgBtn" data-i18n-aria-label="profile.writeMessage" aria-label="Написать сообщение">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    </svg>
+                    <span class="bf-icon" data-bf-icon="messages" aria-hidden="true"></span>
                     <span data-i18n="profile.message">Сообщение</span>
                 </button>
                 <button class="profile-action-btn icon-only" id="profileCallAudioBtn" data-i18n-title="call.audio" data-i18n-aria-label="call.audio" title="Аудиозвонок" aria-label="Аудиозвонок">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.1 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.78.6 2.62a2 2 0 0 1-.45 2.11L9 10.71a16 16 0 0 0 4.29 4.29l1.26-1.26a2 2 0 0 1 2.11-.45c.84.28 1.72.48 2.62.6A2 2 0 0 1 22 16.92z"></path>
-                    </svg>
+                    <span class="bf-icon" data-bf-icon="calls" aria-hidden="true"></span>
                 </button>
                 <button class="profile-action-btn icon-only" id="profileCallVideoBtn" data-i18n-title="call.video" data-i18n-aria-label="call.video" title="Видеозвонок" aria-label="Видеозвонок">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="2" y="6" width="14" height="12" rx="2"></rect>
-                        <path d="m22 8-6 4 6 4V8z"></path>
-                    </svg>
+                    <span class="bf-icon" data-bf-icon="video" aria-hidden="true"></span>
                 </button>
                 <button class="profile-action-btn icon-only" id="profileBackgroundButton" data-i18n-title="chat.background" data-i18n-aria-label="chat.background" title="Фон чата" aria-label="Фон чата">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="3"></rect>
-                        <circle cx="8" cy="8" r="1.5"></circle>
-                        <path d="m21 15-5-5L5 21"></path>
-                    </svg>
+                    <span class="bf-icon" data-bf-icon="image" aria-hidden="true"></span>
                 </button>
             </div>
             <div class="profile-info-section profile-details-card">
                 <div class="profile-info-item">
                     <span class="profile-info-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="5" width="18" height="14" rx="2"></rect>
-                            <path d="M7 9h4"></path>
-                            <path d="M7 13h2"></path>
-                            <circle cx="16" cy="11" r="2"></circle>
-                            <path d="M14 15.5c.7-.7 3.3-.7 4 0"></path>
-                        </svg>
+                        <span class="bf-icon" data-bf-icon="user-id" aria-hidden="true"></span>
                     </span>
                     <span class="profile-info-text">
                         <span class="profile-info-value" id="profileUserId"></span>
                         <span class="profile-info-label" data-i18n="profile.userId">ID пользователя</span>
                     </span>
                     <button class="profile-info-copy" data-copy="profileUserId" data-i18n-title="common.copy" data-i18n-aria-label="profile.userId.copy" title="Копировать" aria-label="Копировать ID пользователя">
-                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
+                        <span class="bf-icon" data-bf-icon="copy-plain" aria-hidden="true"></span>
                     </button>
                 </div>
                 <div class="profile-info-item">
                     <span class="profile-info-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                        </svg>
+                        <span class="bf-icon" data-bf-icon="messages" aria-hidden="true"></span>
                     </span>
                     <span class="profile-info-text">
                         <span class="profile-info-value" id="profileChatId"></span>
                         <span class="profile-info-label" data-i18n="profile.chatId">ID чата</span>
                     </span>
                     <button class="profile-info-copy" data-copy="profileChatId" data-i18n-title="common.copy" data-i18n-aria-label="profile.chatId.copy" title="Копировать" aria-label="Копировать ID чата">
-                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
+                        <span class="bf-icon" data-bf-icon="copy-plain" aria-hidden="true"></span>
                     </button>
                 </div>
                 <div class="profile-info-item no-copy">
                     <span class="profile-info-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-                            <path d="M16 2v4"></path>
-                            <path d="M8 2v4"></path>
-                            <path d="M3 10h18"></path>
-                        </svg>
+                        <span class="bf-icon" data-bf-icon="calendar" aria-hidden="true"></span>
                     </span>
                     <span class="profile-info-text">
                         <span class="profile-info-value" id="profileRegDate"></span>
@@ -505,15 +475,15 @@
     <!-- Group info panel -->
     <div class="profile-overlay" id="groupOverlay">
         <div class="profile-panel">
-            <button class="profile-close" id="groupClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+            <button class="profile-close" id="groupClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             <div class="profile-header">
                 <div class="group-avatar-wrap">
                     <div class="profile-avatar" id="groupAvatar"></div>
-                    <button class="group-avatar-edit" id="groupAvatarEdit" data-i18n-title="group.changePhoto" title="Сменить фото">&#128247;</button>
+                    <button class="group-avatar-edit" id="groupAvatarEdit" data-i18n-title="group.changePhoto" title="Сменить фото"><span class="bf-icon" data-bf-icon="photography" aria-hidden="true"></span></button>
                 </div>
                 <div class="group-name-row">
                     <div class="profile-name" id="groupName"></div>
-                    <button class="group-name-edit" id="groupNameEdit" data-i18n-title="group.rename" title="Переименовать">&#9998;</button>
+                    <button class="group-name-edit" id="groupNameEdit" data-i18n-title="group.rename" title="Переименовать"><span class="bf-icon" data-bf-icon="edit" aria-hidden="true"></span></button>
                 </div>
                 <div class="profile-status-line" id="groupCount"></div>
             </div>
@@ -522,7 +492,7 @@
                     <span class="profile-info-label" data-i18n="profile.chatId">ID чата</span>
                     <span class="profile-info-value">
                         <span id="groupChatId"></span>
-                        <button class="profile-info-copy" data-copy="groupChatId" data-i18n-title="common.copy" title="Копировать">&#128203;</button>
+                        <button class="profile-info-copy" data-copy="groupChatId" data-i18n-title="common.copy" title="Копировать"><span class="bf-icon" data-bf-icon="copy-plain" aria-hidden="true"></span></button>
                     </span>
                 </div>
             </div>
@@ -560,7 +530,7 @@
 
     <div class="profile-overlay" id="chatBackgroundSelector">
         <div class="profile-panel">
-            <button class="profile-close" id="chatBackgroundSelectorClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+            <button class="profile-close" id="chatBackgroundSelectorClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             <div class="profile-header">
                 <div class="profile-name" id="chatBackgroundSelectorTitle" data-i18n="chat.background">Фон чата</div>
                 <div class="profile-status-line" data-i18n="chat.background.hint">Выберите изображение или вернитесь к глобальному фону</div>
@@ -572,7 +542,7 @@
     <!-- Sticker pack overlay -->
     <div class="profile-overlay" id="stickerPackOverlay">
         <div class="profile-panel stickerpack-panel">
-            <button class="profile-close" id="spClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+            <button class="profile-close" id="spClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             <div class="profile-header">
                 <div class="profile-avatar sp-cover" id="spCover"></div>
                 <div class="profile-name" id="spName"></div>
@@ -601,7 +571,7 @@
         <div class="dialog folder-edit-dialog">
             <div class="folder-edit-header">
                 <div class="folder-edit-title" id="folderEditTitle" data-i18n="folder.new">Новая папка</div>
-                <button class="folder-edit-close" id="folderEditClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+                <button class="folder-edit-close" id="folderEditClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
             <div class="folder-edit-body">
                 <label class="folder-edit-label" for="folderNameInput" data-i18n="common.name">Название</label>
@@ -625,7 +595,7 @@
             <div class="pinned-list-header">
                 <div class="pinned-list-title"><span data-i18n="pinned.list.title">Закреплённые сообщения</span> <span class="pinned-list-counter" id="pinnedListCounter"></span></div>
                 <button class="btn-confirm-cancel" id="pinnedListUnpinAll" data-i18n="pinned.unpinAll">Открепить все</button>
-                <button class="folder-edit-close" id="pinnedListClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+                <button class="folder-edit-close" id="pinnedListClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
             <div class="pinned-list-inner" id="pinnedListInner"></div>
         </div>
@@ -640,7 +610,7 @@
                     <button type="button" data-filter="all" aria-pressed="true" class="active" data-i18n="callHistory.all">Все</button>
                     <button type="button" data-filter="missed" aria-pressed="false" data-i18n="callHistory.missed">Пропущенные</button>
                 </div>
-                <button class="folder-edit-close" id="callHistoryClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+                <button class="folder-edit-close" id="callHistoryClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
             <div class="call-history-list" id="callHistoryList"></div>
             <button type="button" class="call-history-more" id="callHistoryMore" hidden data-i18n="callHistory.more">Показать ещё</button>
@@ -652,7 +622,7 @@
         <div class="forward-modal">
             <div class="forward-modal-header">
                 <div class="forward-modal-title" data-i18n="forward.title">Переслать в...</div>
-                <button class="forward-modal-close" id="forwardClose" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+                <button class="forward-modal-close" id="forwardClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
             <div class="forward-chat-list" id="forwardChatList"></div>
             <div class="forward-modal-footer">
@@ -676,7 +646,7 @@
                     <div class="attach-dialog-title" data-i18n="attach.title">Отправить вложения</div>
                     <div class="attach-dialog-subtitle" id="attachDialogSubtitle"></div>
                 </div>
-                <button class="attach-dialog-close" id="attachDialogClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+                <button class="attach-dialog-close" id="attachDialogClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
             <div class="attach-mode-toggle" id="attachModeToggle">
                 <button class="attach-mode-btn" id="attachAsImages" data-i18n="attach.asImages">Как изображения</button>
@@ -719,36 +689,36 @@
         <div class="ie-dialog">
             <div class="ie-header">
                 <div class="ie-header-title" data-i18n="editor.title">Редактор изображения</div>
-                <button class="ie-header-close" id="ieEditorClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть">&times;</button>
+                <button class="ie-header-close" id="ieEditorClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
             <div class="ie-toolbar">
                 <div class="ie-tool-group">
                     <button class="ie-tool-btn" id="ieCrop" type="button" data-i18n-title="editor.crop" title="Обрезка">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></svg>
+                        <span class="bf-icon" data-bf-icon="crop" aria-hidden="true"></span>
                     </button>
                     <button class="ie-tool-btn" id="ieRotateLeft" type="button" data-i18n-title="editor.rotateLeft" title="Повернуть влево">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        <span class="bf-icon" data-bf-icon="rotate-left" aria-hidden="true"></span>
                     </button>
                     <button class="ie-tool-btn" id="ieRotateRight" type="button" data-i18n-title="editor.rotateRight" title="Повернуть вправо">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        <span class="bf-icon" data-bf-icon="rotate-right" aria-hidden="true"></span>
                     </button>
                     <button class="ie-tool-btn" id="ieFlipH" type="button" data-i18n-title="editor.flipH" title="Отразить по горизонтали">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><polygon points="3 8 9 12 3 16" fill="currentColor" stroke="none"/><polygon points="21 8 15 12 21 16" fill="currentColor" stroke="none"/></svg>
+                        <span class="bf-icon" data-bf-icon="flip-horizontal" aria-hidden="true"></span>
                     </button>
                     <button class="ie-tool-btn" id="ieFlipV" type="button" data-i18n-title="editor.flipV" title="Отразить по вертикали">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="12" x2="22" y2="12"/><polygon points="8 3 12 9 16 3" fill="currentColor" stroke="none"/><polygon points="8 21 12 15 16 21" fill="currentColor" stroke="none"/></svg>
+                        <span class="bf-icon" data-bf-icon="flip-vertical" aria-hidden="true"></span>
                     </button>
                 </div>
                 <div class="ie-divider"></div>
                 <div class="ie-tool-group">
                     <button class="ie-tool-btn" id="ieBrush" type="button" data-i18n-title="editor.brush" title="Кисть">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        <span class="bf-icon" data-bf-icon="edit" aria-hidden="true"></span>
                     </button>
                     <button class="ie-tool-btn" id="iePixelate" type="button" data-i18n-title="editor.pixelate" title="Пикселизация (скрыть приватное)">
-                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="3" y="3" width="5" height="5"/><rect x="14" y="3" width="5" height="5"/><rect x="9" y="9" width="5" height="5"/><rect x="3" y="14" width="5" height="5"/><rect x="16" y="16" width="5" height="5"/></svg>
+                        <span class="bf-icon" data-bf-icon="pixelate" aria-hidden="true"></span>
                     </button>
                     <button class="ie-tool-btn" id="ieEraser" type="button" data-i18n-title="editor.eraser" title="Ластик">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H8.5l-5-5a2 2 0 0 1 0-2.83l8.34-8.34a2 2 0 0 1 2.83 0l5.5 5.5a2 2 0 0 1 0 2.83L13.5 20"/><line x1="6.5" y1="11.5" x2="14" y2="19"/></svg>
+                        <span class="bf-icon" data-bf-icon="eraser" aria-hidden="true"></span>
                     </button>
                 </div>
                 <div class="ie-divider"></div>
