@@ -41,7 +41,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         ILocalizationService localization,
         IUiDispatcher uiDispatcher,
         ProfileViewModel profile,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IChatFoldersState? chatFolders = null)
     {
         _messenger = messenger;
         _privateChatKeyStore = privateChatKeyStore;
@@ -50,6 +51,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _localization = localization;
         _uiDispatcher = uiDispatcher;
         _muteClock = timeProvider ?? TimeProvider.System;
+        _chatFolders = chatFolders;
         Profile = profile;
         _presence.PresenceChanged += OnPresenceChanged;
         _presence.ConnectionChanged += OnPresenceConnectionChanged;
@@ -114,6 +116,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
 
         StartRealtimeSession(currentUserId.Value);
+        _chatFolders?.Start();
         var session = _realtimeSession!;
         var token = session.Lifetime.Token;
         IsLoading = true;

@@ -73,6 +73,7 @@ public sealed partial class MessengerPage : Page
         mute.Command = ViewModel.ToggleChatMuteCommand;
         mute.CommandParameter = chat;
         mute.IsEnabled = !chat.IsChangingMute;
+        PopulateFolders((MenuFlyoutSubItem)menu.Items[1], chat);
         if (position is { } point)
         {
             menu.ShowAt(list, point);
@@ -84,8 +85,62 @@ public sealed partial class MessengerPage : Page
         return true;
     }
 
-    private void OnChatListMenuClosed(object sender, object args) =>
-        ((MenuFlyoutItem)((MenuFlyout)sender).Items[0]).CommandParameter = null;
+    private void PopulateFolders(MenuFlyoutSubItem submenu, ChatItemViewModel chat)
+    {
+        submenu.Items.Clear();
+        if (ViewModel.ChatFolders is not { } state)
+        {
+            submenu.IsEnabled = false;
+            return;
+        }
+
+        var lifetime = state.Lifetime;
+        submenu.IsEnabled = !lifetime.IsCancellationRequested;
+        foreach (var folder in state.Folders)
+        {
+            var item = new ToggleMenuFlyoutItem
+            {
+                Text = folder.FolderName,
+                IsChecked = folder.ChatList.Contains(chat.Id),
+                IsEnabled = !state.IsSaving
+            };
+            item.Click += async (_, _) => await ViewModel.SetChatFolderAsync(chat, folder.FolderId, item.IsChecked, lifetime);
+            submenu.Items.Add(item);
+        }
+
+        if (submenu.Items.Count == 0)
+        {
+            if (state.IsBusy || state.LoadError is not null)
+            {
+                submenu.Items.Add(new MenuFlyoutItem
+                {
+                    Text = ResourceString(state.IsBusy ? "Messenger_ChatFolders_Loading" : "Error_SettingsLoadFailed"),
+                    IsEnabled = false
+                });
+            }
+            else
+            {
+                var openSettings = new MenuFlyoutItem { Text = ResourceString("Messenger_ChatFolders_Empty") };
+                openSettings.Click += (_, _) =>
+                {
+                    if (lifetime == state.Lifetime)
+                    {
+                        Frame.Navigate(typeof(SettingsPage), "chatfolders");
+                    }
+                };
+                submenu.Items.Add(openSettings);
+            }
+        }
+    }
+
+    private static string ResourceString(string key) => (string)Application.Current.Resources[key];
+
+    private void OnChatListMenuClosed(object sender, object args)
+    {
+        var menu = (MenuFlyout)sender;
+        ((MenuFlyoutItem)menu.Items[0]).CommandParameter = null;
+        ((MenuFlyoutSubItem)menu.Items[1]).Items.Clear();
+    }
 
     /// <summary>
     /// Системным и приватным сообщениям действия недоступны. В WinUI нет аналога

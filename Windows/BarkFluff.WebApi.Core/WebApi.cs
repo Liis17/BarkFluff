@@ -308,7 +308,9 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> UpdateChatFolder(string folderId, GlobalParam globalParam, string? folderName = null, string? folderIcon = null, List<string>? chatList = null) => await ChatFolderManager.UpdateChatFolder(folderId, globalParam, folderName, folderIcon, chatList);
         public async Task<ErrorReturner> DeleteChatFolder(string folderId, GlobalParam globalParam) => await ChatFolderManager.DeleteChatFolder(folderId, globalParam);
         public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> AddChatToFolder(string folderId, string chatId, GlobalParam globalParam) => await ChatFolderManager.AddChatToFolder(folderId, chatId, globalParam);
+        public Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> AddChatToFolder(string folderId, string chatId, GlobalParam globalParam, CancellationToken cancellationToken) => ChatFolderManager.AddChatToFolder(folderId, chatId, globalParam, cancellationToken);
         public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> RemoveChatFromFolder(string folderId, string chatId, GlobalParam globalParam) => await ChatFolderManager.RemoveChatFromFolder(folderId, chatId, globalParam);
+        public Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> RemoveChatFromFolder(string folderId, string chatId, GlobalParam globalParam, CancellationToken cancellationToken) => ChatFolderManager.RemoveChatFromFolder(folderId, chatId, globalParam, cancellationToken);
         public async Task<ErrorReturner> ReorderChatFolders(Dictionary<string, int> orders, GlobalParam globalParam) => await ChatFolderManager.ReorderChatFolders(orders, globalParam);
         #endregion
 
@@ -514,6 +516,9 @@ namespace BarkFluff.WebApi.Core
 
         #region Реалтайм обновления (делегирование к UpdateManager)
         public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.JustUpdate(globalParam, ct);
+        public Task<(ErrorReturner error, IAsyncEnumerable<ChatFoldersChangedEvent>? stream)> SubscribeToChatFoldersChanged(
+            GlobalParam globalParam, CancellationToken ct = default) => UpdateManager.SubscribeToChatFoldersChanged(globalParam, ct);
+
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToReadReceipts(globalParam, ct);
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageEditedEvent>? stream)> SubscribeToMessagesEdited(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesEdited(globalParam, ct);
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageDeletedEvent>? stream)> SubscribeToMessagesDeleted(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesDeleted(globalParam, ct);

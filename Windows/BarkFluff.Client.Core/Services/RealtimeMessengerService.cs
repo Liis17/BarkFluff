@@ -29,6 +29,7 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
     public event EventHandler<bool>? ConnectionChanged;
     public event EventHandler<MessageUpdate>? MessageChanged;
     public event EventHandler<bool>? ResyncRequested;
+    public event EventHandler? ChatFoldersChanged;
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -59,6 +60,7 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
         _streams =
         [
             ListenForNewMessagesAsync(ct => _webApi.JustUpdate(parameters, ct), IsCurrent, token),
+            ListenForChatFoldersAsync(ct => _webApi.SubscribeToChatFoldersChanged(parameters, ct), IsCurrent, token),
             Listen(_webApi.SubscribeToReadReceipts, e => MessageRead?.Invoke(this, new(e.ChatId, e.MessageId, e.NewReadBy.ToArray()))),
             Listen(_webApi.SubscribeToPrivateMessagesRead, e => PrivateMessageRead?.Invoke(this, new(e.ChatId, e.UserId, e.LastReadMessageId))),
             Listen(_webApi.SubscribeToMessagesEdited, e =>
@@ -107,16 +109,25 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
             }
         }, isCurrent, token, primary: true, delay);
 
+    internal Task ListenForChatFoldersAsync(
+        Func<CancellationToken, Task<(ErrorReturner, IAsyncEnumerable<ChatFoldersChangedEvent>?)>> subscribe,
+        Func<bool> isCurrent, CancellationToken token, Func<TimeSpan, CancellationToken, Task>? delay = null) =>
+        ListenAsync(subscribe, _ => PublishFolderSignal(), isCurrent, token, delay: delay,
+            streamOpened: PublishFolderSignal, stopOnUnimplemented: true);
+
+    private void PublishFolderSignal() => ChatFoldersChanged?.Invoke(this, EventArgs.Empty);
+
     internal Task ListenAsync<T>(Func<CancellationToken, Task<(ErrorReturner, IAsyncEnumerable<T>?)>> subscribe,
         Action<T> receive, Func<bool> isCurrent, CancellationToken token, bool primary = false,
-        Func<TimeSpan, CancellationToken, Task>? delay = null)
+        Func<TimeSpan, CancellationToken, Task>? delay = null, Action? streamOpened = null,
+        bool stopOnUnimplemented = false)
     {
         var first = false;
         return StreamRetryLoop.RunAsync(
             async ct =>
             {
                 var (error, stream) = await subscribe(ct);
-                return error.IsSuccess ? stream : null;
+                return error?.IsSuccess == true ? stream : null;
             },
             item =>
             {
@@ -150,10 +161,17 @@ public sealed class RealtimeMessengerService : IRealtimeMessengerService
             {
                 if (isCurrent())
                 {
-                    ResyncRequested?.Invoke(this, false);
+                    if (streamOpened is null)
+                    {
+                        ResyncRequested?.Invoke(this, false);
+                    }
+                    else
+                    {
+                        streamOpened();
+                    }
                 }
             },
-            delay: delay);
+            delay: delay, stopOnUnimplemented: stopOnUnimplemented);
     }
 
     public async Task StopAsync()

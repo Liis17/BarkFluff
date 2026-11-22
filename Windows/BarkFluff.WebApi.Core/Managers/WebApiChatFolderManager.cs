@@ -138,17 +138,18 @@ namespace BarkFluff.WebApi.Core.Managers
         /// Добавить чат в папку.
         /// </summary>
         public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> AddChatToFolder(
-            string folderId, string chatId, GlobalParam globalParam)
+            string folderId, string chatId, GlobalParam globalParam, CancellationToken cancellationToken = default)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var response = await UsersAC!.AddChatToFolderAsync(new Proto.Users.AddChatToFolderRequest
                     {
                         FolderId = folderId,
                         ChatId = chatId
-                    });
+                    }, cancellationToken: cancellationToken);
                     return ((ErrorReturner, Proto.Users.ChatFolderData?))(new ErrorReturner(true), response.Folder);
                 }, globalParam);
             }
@@ -166,17 +167,18 @@ namespace BarkFluff.WebApi.Core.Managers
         /// Убрать чат из папки.
         /// </summary>
         public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> RemoveChatFromFolder(
-            string folderId, string chatId, GlobalParam globalParam)
+            string folderId, string chatId, GlobalParam globalParam, CancellationToken cancellationToken = default)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var response = await UsersAC!.RemoveChatFromFolderAsync(new Proto.Users.RemoveChatFromFolderRequest
                     {
                         FolderId = folderId,
                         ChatId = chatId
-                    });
+                    }, cancellationToken: cancellationToken);
                     return ((ErrorReturner, Proto.Users.ChatFolderData?))(new ErrorReturner(true), response.Folder);
                 }, globalParam);
             }

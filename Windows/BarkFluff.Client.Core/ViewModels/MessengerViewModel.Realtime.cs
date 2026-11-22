@@ -54,6 +54,8 @@ public sealed partial class MessengerViewModel
             ? RefreshPinsAsync(chat, _chatVersion, reportError: false)
             : Task.FromResult(true), session.Lifetime.Token) { Delay = ResyncDelay };
         _realtimeSession = session;
+        EventHandler foldersChanged = (_, _) => PostSession(session, _ => _chatFolders?.Invalidate());
+        _realtimeMessenger.ChatFoldersChanged += foldersChanged;
         EventHandler<IncomingMessage> received = (_, incoming) => OnMessageChanged(session,
             new(incoming.ChatId, false, incoming.Message.MessageId, MessageUpdateKind.New, Message: incoming.Message));
         EventHandler<MessageUpdate> changed = (_, update) => OnMessageChanged(session, update);
@@ -69,6 +71,7 @@ public sealed partial class MessengerViewModel
         _realtimeMessenger.PrivateMessageRead += privateRead;
         session.Unsubscribe = () =>
         {
+            _realtimeMessenger.ChatFoldersChanged -= foldersChanged;
             _realtimeMessenger.MessageReceived -= received;
             _realtimeMessenger.MessageChanged -= changed;
             _realtimeMessenger.ResyncRequested -= resync;
@@ -87,6 +90,8 @@ public sealed partial class MessengerViewModel
         }
 
         _realtimeSession = null;
+        _chatFolders?.Reset();
+        FolderActionError = null;
         session.MuteExpiryTimer?.Dispose();
         session.Unsubscribe();
         session.Lifetime.Cancel();

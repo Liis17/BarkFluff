@@ -43,6 +43,7 @@ public sealed partial class MessengerViewModel
             return true;
         }
 
+        _chatFolders?.Invalidate();
         var chat = SelectedChat;
         var version = _chatVersion;
         var window = _historyWindowLifetime.Token;

@@ -347,7 +347,13 @@
     <x:String x:Key="Settings_ChatFolders_EditTitle">Папка</x:String>
     <x:String x:Key="Settings_ChatFolders_Name">Название папки</x:String>
     <x:String x:Key="Settings_ChatFolders_Icon">Иконка</x:String>
-    <x:String x:Key="Settings_ChatFolders_ManageChats">Управлять чатами</x:String>
+    <x:String x:Key="Settings_ChatFolders_ManageChats">Чаты</x:String>
+    <x:String x:Key="Settings_ChatFolders_SearchChats">Поиск чатов</x:String>
+    <x:String x:Key="Settings_ChatFolders_NoChats">Чаты не найдены</x:String>
+    <x:String x:Key="Messenger_ChatFolders">Папки</x:String>
+    <x:String x:Key="Messenger_ChatFolders_Empty">Нет папок. Открыть настройки папок</x:String>
+    <x:String x:Key="Messenger_ChatFolders_Loading">Загрузка папок…</x:String>
+    <x:String x:Key="Settings_ChatFolders_Edit">Изменить папку</x:String>
     <x:String x:Key="Settings_ChatFolders_Delete">Удалить папку</x:String>
     <x:String x:Key="Settings_ChatFolders_DeleteConfirm">Удалить папку? Чаты останутся на месте.</x:String>
     <x:String x:Key="Settings_ChatFolders_MoveUp">Переместить выше</x:String>
@@ -429,6 +435,8 @@
     <!--  Ошибки настроек: сервисы возвращают ключ, экран его разрешает  -->
     <x:String x:Key="Error_SettingsLoadFailed">Не удалось загрузить настройки.</x:String>
     <x:String x:Key="Error_SettingsSaveFailed">Не удалось сохранить настройку.</x:String>
+    <x:String x:Key="Error_ChatFoldersSaveInProgress">Изменение папки ещё сохраняется. Повторите попытку после сохранения.</x:String>
+    <x:String x:Key="Error_ChatFoldersSelectionPartiallySaved">Сохранилась только часть изменений состава папки. Проверьте состав и повторите попытку.</x:String>
     <x:String x:Key="Error_UsernameTaken">Имя пользователя уже занято.</x:String>
     <x:String x:Key="Error_TwoFactorFailed">Не удалось изменить настройку двухфакторной аутентификации.</x:String>
     <x:String x:Key="Error_TwoFactorCodeInvalid">Код подтверждения неверный.</x:String>

@@ -24,7 +24,8 @@ internal static class MessengerTestDoubles
         FakeOnlinePresenceService? presence = null,
         FakePrivateChatKeyStore? keys = null,
         IUiDispatcher? dispatcher = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IChatFoldersState? chatFolders = null)
     {
         var effectiveMessenger = messenger ?? new FakeMessengerService();
         var effectivePresence = presence ?? new FakeOnlinePresenceService();
@@ -36,7 +37,7 @@ internal static class MessengerTestDoubles
             localization,
             dispatcher ?? new InlineUiDispatcher(),
             new ProfileViewModel(effectiveMessenger, effectivePresence, localization),
-            timeProvider);
+            timeProvider, chatFolders);
     }
 
     public static Chat CreateChat(string id, string title = "Chat", long peerUserId = 0, ChatType chatType = ChatType.Regular)
@@ -125,12 +126,14 @@ internal sealed class FakeRealtimeMessengerService : IRealtimeMessengerService
     public event EventHandler<PrivateMessageReadReceipt>? PrivateMessageRead;
     public event EventHandler<MessageUpdate>? MessageChanged;
     public event EventHandler<bool>? ResyncRequested;
+    public event EventHandler? ChatFoldersChanged;
     public event EventHandler<bool>? ConnectionChanged;
 
     public void Raise(IncomingMessage message) => MessageReceived?.Invoke(this, message);
 
     public void Raise(MessageUpdate update) => MessageChanged?.Invoke(this, update);
 
+    public void SignalFoldersChanged() => ChatFoldersChanged?.Invoke(this, EventArgs.Empty);
     public void Resync(bool immediate = true) => ResyncRequested?.Invoke(this, immediate);
 
     public void Raise(MessageReadReceipt receipt) => MessageRead?.Invoke(this, receipt);

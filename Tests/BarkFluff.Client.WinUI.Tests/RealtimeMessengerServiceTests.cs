@@ -2,6 +2,7 @@ using BarkFluff.Client.Core.Services;
 using BarkFluff.Proto.Shared;
 using BarkFluff.Proto.Updates;
 using BarkFluff.WebApi.Core;
+using Grpc.Core;
 using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 
 namespace BarkFluff.Client.WinUI.Tests;
@@ -114,6 +115,80 @@ public sealed class RealtimeMessengerServiceTests
             await next.Task;
             yield return Event(2);
             lifetime.Cancel();
+        }
+    }
+
+    [Fact]
+    public async Task FolderStream_OldNodeStopsWithoutRetryOrConnectionIndicator()
+    {
+        using var api = new WebApiClient();
+        await using var service = new RealtimeMessengerService(api, new ClientSession());
+        using var lifetime = new CancellationTokenSource();
+        var attempts = 0;
+        var signals = 0;
+        var connection = new List<bool>();
+        service.ChatFoldersChanged += (_, _) => signals++;
+        service.ConnectionChanged += (_, connected) => connection.Add(connected);
+
+        await service.ListenForChatFoldersAsync(_ =>
+        {
+            attempts++;
+            return Connect(Read());
+        }, () => true, lifetime.Token, (delay, _) =>
+        {
+            if (delay >= TimeSpan.FromSeconds(2))
+            {
+                lifetime.Cancel();
+            }
+            return Task.CompletedTask;
+        }).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.False(lifetime.IsCancellationRequested);
+        Assert.Equal(1, attempts);
+        Assert.Equal(0, signals);
+        Assert.Empty(connection);
+
+        static async IAsyncEnumerable<ChatFoldersChangedEvent> Read()
+        {
+            yield return await Task.FromException<ChatFoldersChangedEvent>(
+                new RpcException(new Status(StatusCode.Unimplemented, "")));
+        }
+    }
+
+    [Fact]
+    public async Task FolderStream_SignalsOnEventAndOnSilentReopen()
+    {
+        using var api = new WebApiClient();
+        await using var service = new RealtimeMessengerService(api, new ClientSession());
+        using var lifetime = new CancellationTokenSource();
+        var attempts = 0;
+        var signals = new List<int>();
+        var end = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.ChatFoldersChanged += (_, _) =>
+        {
+            signals.Add(attempts);
+            if (attempts == 2)
+            {
+                lifetime.Cancel();
+                end.TrySetResult();
+            }
+        };
+
+        await service.ListenForChatFoldersAsync(_ => Connect(Read(++attempts)), () => !lifetime.IsCancellationRequested,
+            lifetime.Token, (_, _) => Task.CompletedTask).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal([1, 2], signals);
+
+        async IAsyncEnumerable<ChatFoldersChangedEvent> Read(int attempt)
+        {
+            if (attempt == 1)
+            {
+                yield return new ChatFoldersChangedEvent();
+            }
+            else
+            {
+                await end.Task;
+            }
         }
     }
 

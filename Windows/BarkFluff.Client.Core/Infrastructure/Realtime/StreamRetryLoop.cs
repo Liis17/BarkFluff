@@ -1,3 +1,5 @@
+using Grpc.Core;
+
 namespace BarkFluff.Client.Core.Infrastructure.Realtime;
 
 /// <summary>
@@ -49,11 +51,13 @@ internal static class StreamRetryLoop
         Func<int, TimeSpan> backoff,
         CancellationToken cancellationToken,
         Action? onStreamOpened = null,
-        Func<TimeSpan, CancellationToken, Task>? delay = null)
+        Func<TimeSpan, CancellationToken, Task>? delay = null,
+        bool stopOnUnimplemented = false)
     {
         delay ??= Task.Delay;
         var attempt = 0;
-        var openedOnce = false;
+        // Необязательный поток сначала проверяем на немедленное завершение.
+        var openedOnce = stopOnUnimplemented;
         while (!cancellationToken.IsCancellationRequested)
         {
             var startedAt = Environment.TickCount64;
@@ -92,7 +96,7 @@ internal static class StreamRetryLoop
                             hasMore = await first;
                             if (hasMore && !cancellationToken.IsCancellationRequested)
                             {
-                                if (!announced)
+                                if (!announced && !stopOnUnimplemented)
                                 {
                                     onStreamOpened();
                                 }
@@ -106,6 +110,10 @@ internal static class StreamRetryLoop
                         onItem(reader.Current);
                     }
                 }
+            }
+            catch (RpcException ex) when (stopOnUnimplemented && ex.StatusCode == StatusCode.Unimplemented)
+            {
+                return;
             }
             catch (OperationCanceledException)
             {

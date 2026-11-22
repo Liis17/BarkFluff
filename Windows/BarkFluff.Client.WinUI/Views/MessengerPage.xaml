@@ -10,6 +10,7 @@
     <Page.Resources>
         <MenuFlyout x:Key="ChatListMenu" Closed="OnChatListMenuClosed">
             <MenuFlyoutItem />
+            <MenuFlyoutSubItem Text="{StaticResource Messenger_ChatFolders}" />
         </MenuFlyout>
 
         <!--  Строка списка чатов.  -->
@@ -427,11 +428,19 @@
             </Grid.RowDefinitions>
 
             <!--  Пока чат не выбран, шапка с индикатором связи скрыта, и обрыв был бы невидим.  -->
-            <TextBlock Margin="0,0,0,8"
-                       Opacity=".7"
-                       Style="{StaticResource MutedText}"
-                       Text="{StaticResource Messenger_Reconnecting}"
-                       Visibility="{x:Bind ViewModel.IsChatListReconnectingVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <StackPanel>
+                <TextBlock Margin="0,0,0,8"
+                           Opacity=".7"
+                           Style="{StaticResource MutedText}"
+                           Text="{StaticResource Messenger_Reconnecting}"
+                           Visibility="{x:Bind ViewModel.IsChatListReconnectingVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock Margin="0,0,0,8"
+                           AutomationProperties.LiveSetting="Polite"
+                           Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                           Text="{x:Bind ViewModel.FolderActionError, Mode=OneWay}"
+                           TextWrapping="Wrap"
+                           Visibility="{x:Bind ViewModel.FolderActionError, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+            </StackPanel>
 
             <TextBox Grid.Row="1" PlaceholderText="{StaticResource Messenger_Search}" Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 

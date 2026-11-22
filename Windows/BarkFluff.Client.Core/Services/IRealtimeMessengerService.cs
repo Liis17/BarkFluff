@@ -31,6 +31,8 @@ public interface IRealtimeMessengerService : IAsyncDisposable
 
     event EventHandler<MessageUpdate>? MessageChanged;
 
+    event EventHandler? ChatFoldersChanged { add { } remove { } }
+
     /// <summary>True on the primary stream's first item, false on a subscription opening.</summary>
     event EventHandler<bool>? ResyncRequested;
 

@@ -239,6 +239,7 @@ public partial class App : Application
         builder.Services.AddSingleton<ISecuritySettingsService, SecuritySettingsService>();
         builder.Services.AddSingleton<IAccountSettingsService, AccountSettingsService>();
         builder.Services.AddSingleton<IUserPreferencesService, UserPreferencesService>();
+        builder.Services.AddSingleton<IChatFoldersState, ChatFoldersState>();
         builder.Services.AddSingleton<IDeviceSettingsService, DeviceSettingsService>();
         builder.Services.AddSingleton<ISettingsPreferences, SettingsPreferences>();
         builder.Services.AddSingleton<IAboutSettingsService, AboutSettingsService>();
@@ -262,7 +263,7 @@ public partial class App : Application
         builder.Services.AddSingleton<SettingsDevicesViewModel>();
         builder.Services.AddSingleton<SettingsStorageViewModel>();
         builder.Services.AddSingleton<SettingsPersonalizationViewModel>();
-        builder.Services.AddSingleton<SettingsChatFoldersViewModel>();
+        builder.Services.AddTransient<SettingsChatFoldersViewModel>();
         builder.Services.AddSingleton<SettingsLanguageViewModel>();
         builder.Services.AddSingleton<SettingsUpdateViewModel>();
         builder.Services.AddSingleton<SettingsAboutViewModel>();

@@ -347,7 +347,13 @@
     <x:String x:Key="Settings_ChatFolders_EditTitle">Folder</x:String>
     <x:String x:Key="Settings_ChatFolders_Name">Folder name</x:String>
     <x:String x:Key="Settings_ChatFolders_Icon">Icon</x:String>
-    <x:String x:Key="Settings_ChatFolders_ManageChats">Manage chats</x:String>
+    <x:String x:Key="Settings_ChatFolders_ManageChats">Chats</x:String>
+    <x:String x:Key="Settings_ChatFolders_SearchChats">Search chats</x:String>
+    <x:String x:Key="Settings_ChatFolders_NoChats">No matching chats</x:String>
+    <x:String x:Key="Messenger_ChatFolders">Folders</x:String>
+    <x:String x:Key="Messenger_ChatFolders_Empty">No folders. Open folder settings</x:String>
+    <x:String x:Key="Messenger_ChatFolders_Loading">Loading folders…</x:String>
+    <x:String x:Key="Settings_ChatFolders_Edit">Edit folder</x:String>
     <x:String x:Key="Settings_ChatFolders_Delete">Delete the folder</x:String>
     <x:String x:Key="Settings_ChatFolders_DeleteConfirm">Delete the folder? The chats will stay where they are.</x:String>
     <x:String x:Key="Settings_ChatFolders_MoveUp">Move up</x:String>
@@ -429,6 +435,8 @@
     <!--  Settings errors: services return a key, the page resolves it  -->
     <x:String x:Key="Error_SettingsLoadFailed">Could not load the settings.</x:String>
     <x:String x:Key="Error_SettingsSaveFailed">Could not save the setting.</x:String>
+    <x:String x:Key="Error_ChatFoldersSaveInProgress">A folder change is being saved. Try again when it finishes.</x:String>
+    <x:String x:Key="Error_ChatFoldersSelectionPartiallySaved">Only some chat changes were saved. Review the folder and try again.</x:String>
     <x:String x:Key="Error_UsernameTaken">That username is already taken.</x:String>
     <x:String x:Key="Error_TwoFactorFailed">Could not change the two-factor authentication setting.</x:String>
     <x:String x:Key="Error_TwoFactorCodeInvalid">The confirmation code is incorrect.</x:String>
