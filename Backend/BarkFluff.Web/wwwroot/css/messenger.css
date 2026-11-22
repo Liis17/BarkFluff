@@ -1021,124 +1021,166 @@
         /* Active call screen */
         .call-screen {
             display: none; position: fixed; inset: 0; z-index: 1150;
-            background: #121214; color: #f2f2f4; flex-direction: column;
+            background: #121214; color: #f2f2f4; flex-direction: column; overflow: hidden;
             font-variant-numeric: tabular-nums;
         }
         .call-screen.visible { display: flex; }
         .call-screen-top {
-            padding: 12px 20px 6px; display: flex; align-items: baseline; gap: 12px;
+            position: relative; z-index: 2; padding: 16px 24px 0; display: flex; align-items: center; gap: 12px;
+            transition: opacity 220ms ease;
         }
         .call-screen-title { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
-        .call-screen-timer { font-size: 12px; color: #8a8a92; }
+        .call-screen-timer {
+            display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px;
+            background: rgba(255,255,255,.06); font-size: 12px; color: #b4b4bc;
+        }
+        .call-screen-timer:empty { display: none; }
 
-        /* Основная область: spotlight (опционально) → сетка стримов → голосовой ряд. */
-        .call-main {
-            flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px;
-            padding: 6px 20px 14px;
+        /* Фон: размытые аватары говорящих (только аудио-режим). */
+        .call-bg { position: absolute; inset: 0; pointer-events: none; }
+        .call-blob {
+            position: absolute; left: 50%; top: 42%; width: 560px; height: 560px; margin: -280px 0 0 -280px;
+            border-radius: 50%; overflow: hidden; filter: blur(90px) saturate(1.3); opacity: 0;
+            transition: opacity 450ms ease, transform 320ms var(--ease-out);
         }
+        .call-blob img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .call-blob.in { opacity: .32; }
+        .call-blob.in.multi { opacity: .26; }
+        .call-screen.video .call-blob, .call-screen.waiting .call-blob { opacity: 0; }
 
-        /* --- Spotlight: крупный блок выбранного стрима, остальные остаются в рельсе сетки --- */
-        .call-spotlight { display: none; flex: 1; min-height: 0; align-items: center; justify-content: center; }
-        .call-spotlight.visible { display: flex; }
-        .call-spotlight-box {
-            position: relative; max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9;
-            width: 100%; min-height: 180px; border-radius: 18px; overflow: hidden;
-            background: #0d0d10; border: 1px solid rgba(255,255,255,.09);
-        }
-        .call-spotlight-video-host { position: absolute; inset: 0; }
-        .call-spotlight-video-host video { width: 100%; height: 100%; object-fit: cover; background: #0d0d10; }
-        .call-spotlight-canvas {
-            position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 92px;
-            mix-blend-mode: screen; pointer-events: none; opacity: 0; transition: opacity 220ms ease;
-        }
-        .call-spotlight-ring {
-            position: absolute; inset: 0; border-radius: 18px; border: 2px solid #f0f0f2;
-            opacity: 0; pointer-events: none;
-        }
-        .call-spotlight-pill {
-            position: absolute; left: 14px; bottom: 14px; display: flex; align-items: center; gap: 8px;
-            padding: 6px 12px; border-radius: 999px; background: rgba(10,10,12,.6); backdrop-filter: blur(8px);
-            font-size: 13px; font-weight: 600;
-        }
-        .call-spotlight-exit {
-            position: absolute; top: 12px; right: 12px; height: 32px; padding: 0 14px; border: 0;
-            border-radius: 999px; cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;
-            background: rgba(10,10,12,.65); color: #f2f2f4; backdrop-filter: blur(8px); transition: background 160ms ease;
-        }
-        .call-spotlight-exit:hover { background: rgba(255,255,255,.18); }
+        /* Сцена: герои (аудио) или плитки видео; раскрытая плитка выходит за её пределы. */
+        .call-main { position: relative; z-index: 2; flex: 1; min-height: 0; margin: 12px 24px 0; }
 
-        /* --- Сетка стримов (камера/демонстрация — равноправные блоки, включая свои) --- */
-        .call-stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
-        .call-grid { display: grid; gap: 12px; justify-content: center; align-content: center; }
-        .call-tile {
-            position: relative; cursor: pointer; width: 100%; aspect-ratio: 16 / 9;
-            background: #0d0d10; border: 1px solid rgba(255,255,255,.08); border-radius: 16px; overflow: hidden;
+        /* --- Аудио-режим: крупно те, кто говорит (позиции и масштаб задаёт JS) --- */
+        .call-hero {
+            --hero-av: 184px;
+            position: absolute; left: 0; right: 0; top: 50%; height: 0;
+            transition: opacity 220ms ease, transform 300ms var(--ease-out);
         }
-        .call-tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #0d0d10; }
-        /* Демонстрация экрана — целиком (без обрезки). */
-        .call-tile.screen video { object-fit: contain; }
-        .call-tile-canvas {
-            position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 78px;
-            mix-blend-mode: screen; pointer-events: none; opacity: 0; transition: opacity 220ms ease;
+        .call-screen.video .call-hero, .call-screen.waiting .call-hero { opacity: 0; transform: scale(.96); pointer-events: none; }
+        .call-hero-item {
+            position: absolute; left: 50%; top: calc(var(--hero-av) * -0.5 - 24px); width: 280px; margin-left: -140px;
+            display: flex; flex-direction: column; align-items: center; opacity: 0;
+            transition: transform 280ms var(--ease-out), opacity 200ms ease;
         }
-        .call-tile-ring {
-            position: absolute; inset: 0; border-radius: 16px; border: 2px solid #f0f0f2;
-            opacity: 0; pointer-events: none; z-index: 2;
+        .call-hero-item.in { opacity: 1; }
+        .call-hero-avw {
+            position: relative; width: var(--hero-av); height: var(--hero-av); transform-origin: 50% 100%;
+            transition: transform 280ms var(--ease-out);
         }
-        .call-tile-pill {
-            position: absolute; left: 12px; bottom: 12px; z-index: 3; display: flex; align-items: center; gap: 7px;
-            padding: 5px 11px; border-radius: 999px; background: rgba(10,10,12,.62); backdrop-filter: blur(8px);
-            font-size: 12px; font-weight: 600; max-width: calc(100% - 24px);
-        }
-        .call-tile-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .call-tile-muted { display: none; flex: none; color: #e8503c; }
-        .call-tile-muted svg { width: 13px; height: 13px; display: block; }
-        /* Подсказка «развернуть» по наведению. */
-        .call-tile-hint {
-            position: absolute; top: 10px; right: 10px; z-index: 3; width: 30px; height: 30px;
-            border-radius: 9px; background: rgba(10,10,12,.6); color: #f2f2f4; opacity: 0;
+        .call-hero-avatar {
+            position: relative; z-index: 1; width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
             display: flex; align-items: center; justify-content: center;
-            transition: opacity .15s, background .15s; pointer-events: none;
+            font-size: calc(var(--hero-av) * 0.38); font-weight: 650; color: #fff;
         }
-        .call-tile:hover .call-tile-hint { opacity: 1; }
-        .call-tile-hint svg { width: 15px; height: 15px; }
+        .call-hero-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .call-hero-ring, .call-hero-ring2 {
+            position: absolute; border-radius: 50%; opacity: 0; pointer-events: none; transition: opacity 180ms ease;
+        }
+        .call-hero-ring { inset: -12px; border: 2px solid rgba(255,255,255,.8); }
+        .call-hero-ring2 { inset: -26px; border: 1px solid rgba(255,255,255,.2); }
+        .call-hero-item.speak .call-hero-ring, .call-hero-item.speak .call-hero-ring2 { opacity: 1; }
+        .call-hero-meta { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 26px; max-width: 100%; }
+        .call-hero-name {
+            font-size: 26px; font-weight: 650; letter-spacing: -0.01em; max-width: 100%;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .call-hero.multi .call-hero-name { font-size: 20px; }
+        .call-hero-sub { font-size: 14px; color: #8a8a92; min-height: 18px; }
 
-        /* --- Голосовой ряд: участники без активного видео --- */
-        .call-voices { flex: none; display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 10px; }
-        .call-voice-tile {
-            position: relative; width: 196px; height: 132px; border-radius: 14px; background: #1a1a1e;
-            border: 1px solid rgba(255,255,255,.07); overflow: hidden; display: flex; flex-direction: column;
+        /* --- Видео-режим: плитки (позиции задаёт JS через transform, FLIP-переходы) --- */
+        .call-vstage { position: absolute; inset: 0; }
+        .call-vt {
+            position: absolute; left: 0; top: 0; transform-origin: 0 0;
+            transition: transform 300ms var(--ease-out);
         }
-        .call-voice-ring {
-            position: absolute; inset: 0; border-radius: 14px; border: 2px solid #f0f0f2;
-            opacity: 0; pointer-events: none; z-index: 2;
+        .call-vt.full { z-index: 2; }
+        .call-vt-inner {
+            position: absolute; inset: 0; border-radius: 18px; overflow: hidden; background: #0d0d10; cursor: pointer;
+            opacity: 0; transform: scale(.94); transition: opacity 220ms ease, transform 300ms var(--ease-out), border-radius 300ms var(--ease-out);
         }
-        .call-voice-body {
-            flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center;
-            justify-content: center; gap: 5px; padding: 10px 12px 0; overflow: hidden;
+        .call-vt.in .call-vt-inner { opacity: 1; transform: none; }
+        .call-vt.hid .call-vt-inner { opacity: 0; transform: scale(.96); pointer-events: none; }
+        .call-vt-inner video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #0d0d10; }
+        /* Демонстрация экрана и раскрытая плитка — целиком, без обрезки. */
+        .call-vt.screen video, .call-vt.full video { object-fit: contain; }
+        .call-vt.full .call-vt-inner { border-radius: 0; }
+        .call-vt.full .call-vt-inner, .call-vt.full video { background: #000; }
+        .call-vt-ring {
+            position: absolute; inset: 0; z-index: 2; border-radius: inherit; box-shadow: inset 0 0 0 2px #f0f0f2;
+            opacity: 0; pointer-events: none; transition: opacity 160ms ease;
         }
-        .call-voice-avatar {
-            width: 38px; height: 38px; flex: none; border-radius: 50%; display: flex; align-items: center;
-            justify-content: center; font-size: 14px; font-weight: 650; color: #fff; overflow: hidden;
+        .call-vt.speak:not(.full) .call-vt-ring { opacity: 1; }
+        .call-vt-pill {
+            position: absolute; left: 10px; bottom: 10px; z-index: 3; display: flex; align-items: center; gap: 7px;
+            height: 30px; padding: 0 11px 0 4px; border-radius: 999px; background: rgba(10,10,12,.62); backdrop-filter: blur(10px);
+            font-size: 12px; font-weight: 600; max-width: calc(100% - 20px); white-space: nowrap;
         }
-        .call-voice-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .call-voice-name { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
-        .call-voice-status { font-size: 11px; color: #8a8a92; }
-        .call-voice-canvas { flex: none; width: 100%; height: 46px; display: block; mix-blend-mode: screen; opacity: 0; transition: opacity 220ms ease; }
-        .call-voice-muted {
-            display: none; position: absolute; top: 9px; right: 9px; z-index: 3; width: 24px; height: 24px;
-            border-radius: 50%; background: rgba(0,0,0,.45); align-items: center; justify-content: center; color: #e8503c;
+        .call-vt.screen .call-vt-pill { padding-left: 10px; }
+        .call-vt-name { overflow: hidden; text-overflow: ellipsis; }
+        .call-vt-avatar {
+            width: 22px; height: 22px; flex: none; border-radius: 50%; overflow: hidden; display: flex;
+            align-items: center; justify-content: center; font-size: 10px; font-weight: 650; color: #fff;
         }
-        .call-voice-muted svg { width: 13px; height: 13px; display: block; }
+        .call-vt-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .call-vt-icon { color: #c9c9d1; flex: none; }
+        .call-vt-icon svg, .call-vt-muted svg { width: 13px; height: 13px; display: block; }
+        .call-vt-muted { display: none; flex: none; color: #ff7a66; }
+        .call-vt.mute .call-vt-muted { display: block; }
+        .call-vt.small .call-vt-pill { left: 6px; bottom: 6px; height: 24px; font-size: 11px; }
+        .call-vt.small .call-vt-avatar { width: 16px; height: 16px; font-size: 8px; }
+        .call-vt.full .call-vt-pill { left: 20px; top: 16px; bottom: auto; }
+        .call-vt-expand {
+            position: absolute; top: 10px; right: 10px; z-index: 3; height: 28px; padding: 0 11px; border: 0; border-radius: 999px;
+            background: rgba(10,10,12,.62); color: #f2f2f4; font: 600 11px/1 inherit; cursor: pointer;
+            opacity: 0; transition: opacity 150ms ease, background 150ms ease;
+        }
+        .call-vt-inner:hover .call-vt-expand, .call-vt-expand:focus-visible, .call-vt.full .call-vt-expand { opacity: 1; }
+        .call-vt-expand:hover { background: rgba(255,255,255,.18); }
+        .call-vt.full .call-vt-expand { top: 14px; right: 18px; height: 32px; font-size: 12px; }
+        .call-vt.small .call-vt-expand { display: none; }
 
-        /* Компактная плотность: активен spotlight или маленькая высота окна. */
-        .call-screen.tight .call-voice-tile { width: 152px; height: 88px; }
-        .call-screen.tight .call-voice-body { gap: 4px; padding: 6px 10px 0; }
-        .call-screen.tight .call-voice-avatar { width: 24px; height: 24px; font-size: 10px; }
-        .call-screen.tight .call-voice-status { display: none; }
-        .call-screen.tight .call-voice-canvas { height: 30px; }
+        /* Раскрытие на весь экран: верх и нижний ряд гаснут, панель кнопок остаётся поверх видео. */
+        .call-screen.full .call-screen-top, .call-screen.full .call-strip { opacity: 0; pointer-events: none; }
+        .call-screen.full .call-main { z-index: 4; }
+        .call-screen.full .call-controls { z-index: 6; }
+        .call-screen.full .call-controls::before {
+            content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 160px; pointer-events: none;
+            background: linear-gradient(transparent, rgba(0,0,0,.55));
+        }
 
-        /* Waiting for peer — оверлей над сеткой (себя может быть уже видно в сетке/голосовом ряду). */
+        /* --- Нижний ряд: плашки участников (порядок стабильный) --- */
+        .call-strip {
+            position: relative; z-index: 2; display: flex; gap: 10px; justify-content: safe center;
+            padding: 16px 24px 16px; overflow-x: auto; scrollbar-width: none; transition: opacity 220ms ease;
+        }
+        .call-strip::-webkit-scrollbar { display: none; }
+        .call-member {
+            flex: none; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 14px 0 6px;
+            border-radius: 999px; background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+            backdrop-filter: blur(12px); transition: box-shadow 160ms ease;
+        }
+        .call-member.gone { display: none; }
+        .call-member.speak { box-shadow: inset 0 0 0 2px rgba(240,240,242,.9); }
+        .call-member-avatar {
+            width: 36px; height: 36px; flex: none; border-radius: 50%; overflow: hidden; display: flex;
+            align-items: center; justify-content: center; font-size: 15px; font-weight: 650; color: #fff;
+        }
+        .call-member-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .call-member-name { font-size: 14px; font-weight: 650; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .call-member-muted { display: none; color: #ff7a66; }
+        .call-member-muted svg { width: 15px; height: 15px; display: block; }
+        .call-member.mute .call-member-muted { display: block; }
+
+        /* Эквалайзер «говорит»: пять полосок, высоту задаёт JS по уровню голоса. */
+        .call-eq { display: flex; align-items: center; gap: 3px; height: 16px; width: 0; overflow: hidden; transition: width 160ms var(--ease-out); }
+        .call-eq i { display: block; flex: none; width: 3px; height: 4px; border-radius: 2px; background: #f0f0f2; }
+        .call-member.speak .call-eq { width: 27px; }
+        .call-vt-pill .call-eq { height: 12px; }
+        .call-vt-pill .call-eq i { width: 2.5px; }
+        .call-vt.speak .call-vt-pill .call-eq { width: 23px; }
+
+        /* Waiting for peer — оверлей над сценой (себя может быть уже видно плиткой или плашкой). */
         .call-waiting {
             display: none; position: absolute; inset: 0; z-index: 3; flex-direction: column;
             align-items: center; justify-content: center; gap: 14px; pointer-events: none;
@@ -1161,8 +1203,13 @@
         .call-waiting-name { font-size: 20px; font-weight: 700; }
         .call-waiting-sub { font-size: 14px; color: #8a8a92; }
 
-        /* Контролы */
-        .call-controls { display: flex; justify-content: center; align-items: flex-start; gap: 12px; padding: 4px 20px 22px; position: relative; z-index: 5; }
+        /* Контролы: одна плавающая панель */
+        .call-controls { display: flex; justify-content: center; padding: 0 16px 22px; position: relative; z-index: 5; }
+        .call-bar {
+            position: relative; display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 999px;
+            background: #1c1c20; border: 1px solid rgba(255,255,255,.06); box-shadow: 0 12px 32px rgba(0,0,0,.35);
+        }
+        .call-bar-sep { width: 1px; height: 24px; background: rgba(255,255,255,.1); margin: 0 4px; }
         .call-ctl {
             position: relative;
             width: 48px; height: 48px; border-radius: 50%; border: none;
@@ -1174,7 +1221,8 @@
         .call-ctl svg { width: 20px; height: 20px; }
         .call-ctl:hover { filter: brightness(1.18); }
         .call-ctl.active { background: #f0f0f2; color: #141418; }
-        .call-ctl-end { background: #e8412a; color: #fff; margin-left: 6px; }
+        .call-ctl-end { width: 64px; border-radius: 999px; background: #e8412a; color: #fff; }
+        .call-ctl-end svg { width: 24px; height: 24px; }
         .call-ctl-end:hover { background: #f2543d; }
         /* Спиннер «применяю качество» поверх кнопки качества. */
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -1184,10 +1232,22 @@
             width: 24px; height: 24px; border: 2px solid rgba(255,255,255,0.35);
             border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite;
         }
+        @media (max-width: 600px) {
+            .call-screen-top { padding: 12px 16px 0; }
+            .call-main { margin: 8px 16px 0; }
+            .call-strip { padding: 12px 16px; }
+            .call-bar { gap: 4px; padding: 6px; }
+            .call-ctl { width: 44px; height: 44px; }
+            .call-ctl-end { width: 56px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .call-hero, .call-hero-item, .call-hero-avw, .call-blob, .call-vt, .call-vt-inner { transition: opacity 150ms ease; }
+            .call-vt-inner, .call-vt.hid .call-vt-inner, .call-screen.video .call-hero { transform: none; }
+        }
 
         /* Quality popover */
         .call-quality-panel {
-            display: block; position: absolute; left: 50%; bottom: 88px;
+            display: block; position: absolute; left: 50%; bottom: 100px;
             transform: translateX(-50%) translateY(6px) scale(0.98);
             transform-origin: bottom center;
             background: #1a1a1e; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; padding: 14px 16px; z-index: 4;
@@ -1223,14 +1283,17 @@
         }
 
         /* Выбор устройства (карет на кнопке микрофона/камеры) */
-        .call-ctl-wrap { position: relative; display: flex; }
+        .call-ctl-wrap { position: relative; display: flex; align-items: center; border-radius: 999px; background: #2a2a2f; color: #f2f2f4; transition: background .16s ease, color .16s ease; }
+        .call-ctl-wrap:hover { filter: brightness(1.18); }
+        .call-ctl-wrap .call-ctl, .call-ctl-wrap .call-ctl.active { background: transparent; color: inherit; }
+        .call-ctl-wrap .call-ctl:hover { filter: none; }
+        .call-ctl-wrap.active { background: #f0f0f2; color: #141418; }
         .call-ctl-caret {
-            position: absolute; right: -3px; bottom: -3px; width: 22px; height: 22px;
-            border-radius: 50%; border: 2px solid #121214; background: #3a3a3f; color: #fff;
-            padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            width: 26px; height: 48px; margin: 0 4px 0 -8px; padding: 0; border: 0; background: transparent;
+            color: inherit; opacity: .6; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
         .call-ctl-caret svg { width: 12px; height: 12px; }
-        .call-ctl-caret:hover { background: #4a4a4f; }
+        .call-ctl-caret:hover { opacity: 1; }
         .call-ctl-menu {
             display: block; position: absolute; left: 50%; bottom: 64px;
             transform: translateX(-50%) translateY(6px) scale(0.98);

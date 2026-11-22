@@ -23,8 +23,7 @@
         // Классическая «трубка завершения» (сплошная, как красная кнопка отбоя).
         phoneEnd: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08A.99.99 0 0 1 0 12.38c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>',
         quality: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
-        chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 14 12 8 18 14"/></svg>',
-        expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'
+        chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 14 12 8 18 14"/></svg>'
     };
 
     // --- Палитра аватаров (детерминированная по identity, как отдельные цвета участников) ---
@@ -38,8 +37,7 @@
     // --- DOM ---
     var ringOverlay, ringAvatar, ringName, ringSub, ringAccept, ringReject;
     var permissionOverlay, permissionTitle, permissionText, permissionRequest, permissionCancel;
-    var screenEl, stageEl, gridEl, voicesEl, titleEl, timerEl, btnMic, btnCam, btnScreen, btnHangup;
-    var spotlightEl, spotlightVideoHost, spotlightCanvasEl, spotlightRingEl, spotlightNameEl, spotlightExitBtn;
+    var screenEl, mainEl, heroEl, vstageEl, stripEl, bgEl, titleEl, timerEl, btnMic, btnCam, btnScreen, btnHangup;
     var waitingAvatar, waitingName, waitingSub;
     var btnQuality, qualityPanel, audioChips, videoChips, videoQualityGroup, audioQualityGroup;
     var micCaret, micMenu, camCaret, camMenu;
@@ -47,17 +45,25 @@
 
     // --- LiveKit ---
     var room = null;
-    var streamTiles = {};      // key (camKey/screenKey) -> tile с видео (сетка/рельс)
-    var voiceTiles = {};       // identity -> компактная плитка без видео
-    var participants = {};     // identity -> { bands, wake, speaking, analyser, hasAudio, slots[], audioEls[], inRoom }
-    var spotlightKey = null;   // ключ стрим-тайла, сейчас в spotlight
-    var spotlightSlot = null;  // персистентный WebGL-слот canvas'а spotlight'а
+    var streamTiles = {};      // key (camKey/screenKey) -> плитка с видео (камера или демонстрация экрана)
+    var participants = {};     // identity -> { level, active, analyser, hasAudio, audioEls[], inRoom }
+    var members = {};          // identity -> плашка участника и его имя/аватар
+    var memberOrder = [];      // порядок входа — стабильный порядок плашек и плиток
+    var heroIds = [];          // кто крупно в аудио-режиме
+    var heroIsDefault = true;  // крупно показан не говорящий, а собеседник по умолчанию
+    var heroNodes = {};        // identity -> DOM крупного аватара и его фонового пятна
+    var heroHoldTimer = null;
+    var fullKey = null;        // ключ плитки, раскрытой на весь экран звонка
     var micOn = false, camOn = false, screenOn = false;
 
-    // --- Частотный анализ голоса (WebAudio, только реальные треки — без симуляции) ---
+    // --- Голос (WebAudio, только реальные треки — без симуляции) ---
     var SPEAK_LEVEL_THRESHOLD = 0.1;
-    var rafId = null, lastFrameTs = 0, timeAccum = 0;
-    var ro = null; // общий ResizeObserver на канвасы + контейнеры сетки
+    var SPEAK_ON_MS = 150, SPEAK_OFF_MS = 800; // гистерезис «говорит»
+    var HERO_MAX = 3, HERO_HOLD_MS = 1500;
+    // Масштаб аватара и смещения по X (в базовых размерах аватара) для 1–3 говорящих.
+    var HERO_LAYOUT = { 1: { s: 1, x: [0] }, 2: { s: 0.78, x: [-0.92, 0.92] }, 3: { s: 0.62, x: [-1.36, 0, 1.36] } };
+    var rafId = null, lastFrameTs = 0;
+    var ro = null; // ResizeObserver области сцены
 
     // Выбранные устройства (in-app пикеры) — null = устройство по умолчанию.
     var selectedMicId = null, selectedCamId = null;
@@ -292,105 +298,7 @@
     }
 
     // ============================================================
-    // WebGL2 — визуализация спектра голоса (перенос 1:1 из Call.dc.html)
-    // ============================================================
-    function shaderSources() {
-        var vertex = '#version 300 es\nvoid main(){vec2 v=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(v*2.0-1.0,0.0,1.0);}';
-        var fragment = [
-            '#version 300 es', 'precision highp float;',
-            'uniform vec2 uRes; uniform float uTime,uLow,uMid,uHigh,uLevel,uWake;',
-            'out vec4 outColor; const float PI=3.14159265359;',
-            'vec3 spectral(float n){return n<.5?vec3(.26,.18,1.):n<1.5?vec3(.74,.17,.96):n<2.5?vec3(1.,.22,.52):vec3(1.,.66,.22);}',
-            'float wave(float x,float amp,float env,float drift,float shift,float harm){return amp*env*(1.+.14*sin(x*.42-drift*.6))*(sin(x*1.1+drift+shift)+harm*sin(x*2.53+drift*1.6+shift*1.5+1.7));}',
-            'vec3 ribbon(vec2 p,float aspect,float amp,float spread,float drift,float harm){',
-            ' float xN=p.x/max(aspect,1.); float env=cos(PI*.5*min(abs(.92*xN),1.)); env*=env;',
-            ' float thick=(.020+.016*(1.-.55*clamp(abs(xN)*.75,0.,1.)))*(1.+.35*uMid);',
-            ' float soft=.020+.012*uMid, intensity=.019*(1.+.7*uLevel);',
-            ' float main=wave(p.x,amp,env,drift,0.,harm); vec3 color=vec3(0.); vec3 hues=vec3(0.);',
-            ' for(int i=0;i<4;i++){ float fi=float(i); vec3 hue=spectral(fi); hues+=hue;',
-            '  float y=wave(p.x,amp+.03*uMid,env,drift,mix(-spread,spread,fi/3.),harm); float d=abs(p.y-y);',
-            '  float line=intensity/(sqrt(d*d+soft*soft)+thick)*exp(-d*d);',
-            '  float lo=min(main,y),hi=max(main,y),outside=max(0.,max(p.y-hi,lo-p.y));',
-            '  float band=4.9*intensity*exp(-outside/.08); color+=hue*(line+band);}',
-            ' color/=max((hues.r+hues.g+hues.b)/3.,.0001);',
-            ' float dm=abs(p.y-main); color+=.42*intensity/(sqrt(dm*dm+soft*soft)+thick); return color;}',
-            'float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}',
-            'void main(){',
-            ' float aspect=uRes.x/uRes.y; vec2 p=(gl_FragCoord.xy+.5)*2./uRes-1.; float ndcY=p.y; p.x*=aspect/.62; p.y/=.62;',
-            ' float amp=mix(.12,.80+.45*uLow,uWake); float spread=mix(.6,3.3+1.6*uHigh+.6*uMid,uWake); float harm=mix(.1,.34+.22*uHigh,uWake);',
-            ' float xN=p.x/max(aspect,1.); vec3 col=ribbon(p,aspect,amp,spread,uTime*mix(.9,2.1,uWake),harm);',
-            ' col=pow(max(col,0.),vec3(1.12)); col*=1.35; col*=exp(-pow(xN*1.25,2.)); col*=1.-smoothstep(.62,.99,abs(ndcY));',
-            ' col+=(hash(gl_FragCoord.xy)-.5)/255.; outColor=vec4(col,1.);}'
-        ].join('\n');
-        return { vertex: vertex, fragment: fragment };
-    }
-
-    function createGlProgram(gl) {
-        var src = shaderSources();
-        function mk(type, code) {
-            var s = gl.createShader(type);
-            gl.shaderSource(s, code); gl.compileShader(s);
-            if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
-            return s;
-        }
-        var prog = gl.createProgram();
-        gl.attachShader(prog, mk(gl.VERTEX_SHADER, src.vertex));
-        gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, src.fragment));
-        gl.linkProgram(prog);
-        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(prog)); return null; }
-        gl.useProgram(prog);
-        var u = {};
-        ['uRes', 'uTime', 'uLow', 'uMid', 'uHigh', 'uLevel', 'uWake'].forEach(function (n) { u[n] = gl.getUniformLocation(prog, n); });
-        return { prog: prog, u: u };
-    }
-
-    function sizeCanvas(el, gl) {
-        if (!el || !gl) return;
-        var dpr = Math.min(window.devicePixelRatio || 1, 2);
-        var r = el.getBoundingClientRect();
-        if (!r.width || !r.height) return;
-        var w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
-        if (el.width !== w || el.height !== h) { el.width = w; el.height = h; }
-        gl.viewport(0, 0, el.width, el.height);
-    }
-
-    function registerCanvasSlot(canvasEl) {
-        var gl = canvasEl.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'low-power' });
-        if (!gl) return { canvas: canvasEl, gl: null, prog: null, u: null, ring: null };
-        var pu = createGlProgram(gl);
-        if (!pu) return { canvas: canvasEl, gl: null, prog: null, u: null, ring: null };
-        sizeCanvas(canvasEl, gl);
-        return { canvas: canvasEl, gl: gl, prog: pu.prog, u: pu.u, ring: null };
-    }
-
-    function drawShaderSlot(slot, bands, wake, time) {
-        var gl = slot.gl;
-        if (!gl) return;
-        gl.useProgram(slot.prog);
-        gl.uniform2f(slot.u.uRes, slot.canvas.width, slot.canvas.height);
-        gl.uniform1f(slot.u.uTime, time);
-        gl.uniform1f(slot.u.uLow, bands.low);
-        gl.uniform1f(slot.u.uMid, bands.mid);
-        gl.uniform1f(slot.u.uHigh, bands.high);
-        gl.uniform1f(slot.u.uLevel, bands.level);
-        gl.uniform1f(slot.u.uWake, wake);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
-    }
-
-    function observeEl(el) {
-        if (!el) return;
-        if (!ro) ro = new ResizeObserver(function () { resizeAllCanvases(); updateLayout(); });
-        ro.observe(el);
-    }
-
-    function resizeAllCanvases() {
-        Object.keys(participants).forEach(function (id) {
-            participants[id].slots.forEach(function (s) { sizeCanvas(s.canvas, s.gl); });
-        });
-    }
-
-    // ============================================================
-    // Частотный анализ (перенос micBands/follow из Call.dc.html)
+    // Частотный анализ голоса → уровень и устойчивое «говорит»
     // ============================================================
     function follow(cur, target, dt, attack, release) {
         return cur + (target - cur) * Math.min(1, dt * (target > cur ? attack : release));
@@ -410,19 +318,13 @@
         });
     }
 
-    function readBands(p) {
-        return p.analyser ? readFreqBands(p.analyser) : [0, 0, 0];
-    }
-
     function getOrCreateParticipant(identity) {
         if (!participants[identity]) {
             participants[identity] = {
                 identity: identity,
-                bands: { low: 0, mid: 0, high: 0, level: 0 },
-                wake: 0, speaking: false, audioState: undefined,
-                analyser: null, hasAudio: false,
-                audioEls: [], slots: [],
-                seed: Math.random() * 7, inRoom: true
+                level: 0, active: false, activeSince: 0, loudAt: 0, quietAt: 0,
+                audioState: undefined, analyser: null, hasAudio: false,
+                audioEls: [], inRoom: true
             };
         }
         return participants[identity];
@@ -441,64 +343,100 @@
             src.connect(an); // в destination не подключаем — только анализ, без эха
             p.analyser = { ctx: audioCtx, an: an, data: new Uint8Array(an.frequencyBinCount), src: src };
             p.hasAudio = true;
-        } catch (e) { /* WebAudio недоступен — визуализации не будет, не критично */ }
+        } catch (e) { /* WebAudio недоступен — индикации голоса не будет, не критично */ }
     }
     function detachMeter(identity) {
         var p = participants[identity];
-        if (!p || !p.analyser) { if (p) p.hasAudio = false; return; }
-        try { p.analyser.src.disconnect(); } catch (e) {}
+        if (!p) return;
+        if (p.analyser) { try { p.analyser.src.disconnect(); } catch (e) {} }
         p.analyser = null;
         p.hasAudio = false;
-        p.bands.low = p.bands.mid = p.bands.high = p.bands.level = 0;
-        p.wake = 0; p.speaking = false;
+        p.level = 0; p.loudAt = p.quietAt = 0;
+        if (p.active) setSpeaking(identity, false);
     }
 
     // ============================================================
-    // Рендер-цикл (перенос componentDidMount/step из Call.dc.html)
+    // Рендер-цикл: уровень голоса, гистерезис «говорит», кольца и эквалайзеры
     // ============================================================
     function stepAll(dt) {
-        timeAccum += dt;
+        var now = performance.now();
         Object.keys(participants).forEach(function (id) {
             var p = participants[id];
-            var v = readBands(p);
-            var b = p.bands;
-            b.low = follow(b.low, v[0], dt, 9, 3.5);
-            b.mid = follow(b.mid, v[1], dt, 10, 4);
-            b.high = follow(b.high, v[2], dt, 11, 4.5);
-            b.level = follow(b.level, (v[0] + v[1] + v[2]) * 0.42, dt, 8, 3);
-            p.wake = follow(p.wake, b.level > 0.05 ? Math.min(1, 0.55 + b.level * 1.4) : 0, dt, 4.5, 1.4);
+            var v = p.analyser ? readFreqBands(p.analyser) : [0, 0, 0];
+            p.level = follow(p.level, (v[0] + v[1] + v[2]) * 0.42, dt, 8, 3);
 
-            var speaking = b.level > SPEAK_LEVEL_THRESHOLD;
-            p.speaking = speaking;
+            // Гистерезис: короткие всплески и паузы между словами не дёргают раскладку.
+            var loud = p.hasAudio && p.level > SPEAK_LEVEL_THRESHOLD;
+            if (loud) {
+                p.quietAt = 0;
+                if (!p.active) {
+                    if (!p.loudAt) p.loudAt = now;
+                    else if (now - p.loudAt >= SPEAK_ON_MS) setSpeaking(id, true);
+                }
+            } else {
+                p.loudAt = 0;
+                if (p.active) {
+                    if (!p.quietAt) p.quietAt = now;
+                    else if (now - p.quietAt >= SPEAK_OFF_MS) setSpeaking(id, false);
+                }
+            }
 
-            var audioState = !p.hasAudio ? 'off' : (speaking ? 'speaking' : 'online');
+            var audioState = !p.hasAudio ? 'off' : (p.active ? 'speaking' : 'online');
             if (audioState !== p.audioState) {
                 p.audioState = audioState;
                 updateParticipantAudioUI(id, audioState);
             }
-
-            var ringOpacity = speaking ? String(0.5 + 0.5 * Math.min(1, b.level * 2)) : '0';
-            var visTarget = p.hasAudio ? '0.96' : '0';
-            p.slots.forEach(function (slot) {
-                if (slot.ring && slot.ring.style.opacity !== ringOpacity) slot.ring.style.opacity = ringOpacity;
-                if (slot.canvas.dataset.vis !== visTarget) { slot.canvas.dataset.vis = visTarget; slot.canvas.style.opacity = visTarget; }
-                if (!p.hasAudio || !slot.gl) return;
-                drawShaderSlot(slot, b, p.wake, timeAccum + p.seed * 5);
-            });
+            if (p.active) drawLevel(id, p.level, now);
         });
     }
 
-    function updateParticipantAudioUI(identity, state) {
-        var vt = voiceTiles[identity];
-        if (vt) {
-            vt.statusEl.textContent = state === 'off' ? BF.i18n.t('call.status.micOff')
-                : (state === 'speaking' ? BF.i18n.t('call.status.speaking') : BF.i18n.t('status.online'));
-            vt.mutedEl.style.display = state === 'off' ? 'flex' : 'none';
+    // Только transform колец и высота пяти полосок — без перерасчёта раскладки.
+    function drawLevel(identity, level, now) {
+        var k = Math.min(1, level * 2);
+        var hn = heroNodes[identity];
+        if (hn && !hn.leaving) {
+            hn.ring.style.transform = 'scale(' + (1 + k * 0.05).toFixed(3) + ')';
+            hn.ring2.style.transform = 'scale(' + (1 + k * 0.11).toFixed(3) + ')';
         }
-        [camKey(identity), screenKey(identity)].forEach(function (key) {
-            var st = streamTiles[key];
-            if (st && st.mutedIconEl) st.mutedIconEl.style.display = state === 'off' ? 'flex' : 'none';
-        });
+        var bars = [];
+        var m = members[identity];
+        if (m) bars = bars.concat(m.chipBars);
+        var st = streamTiles[camKey(identity)];
+        if (st) bars = bars.concat(st.bars);
+        for (var i = 0; i < bars.length; i++) {
+            var h = 4 + 11 * k * Math.abs(Math.sin(now / 120 + (i % 5) * 1.3));
+            bars[i].style.height = h.toFixed(1) + 'px';
+        }
+    }
+
+    function setSpeaking(identity, on) {
+        var p = participants[identity];
+        if (!p) return;
+        p.active = on;
+        if (on) p.activeSince = performance.now();
+        var m = members[identity];
+        if (m) m.chipEl.classList.toggle('speak', on);
+        var st = streamTiles[camKey(identity)];
+        if (st) st.el.classList.toggle('speak', on);
+        if (!on && heroNodes[identity]) {
+            heroNodes[identity].ring.style.transform = '';
+            heroNodes[identity].ring2.style.transform = '';
+        }
+        refreshHero();
+    }
+
+    function updateParticipantAudioUI(identity, state) {
+        var off = state === 'off';
+        var m = members[identity];
+        if (m) m.chipEl.classList.toggle('mute', off);
+        var hn = heroNodes[identity];
+        if (hn) {
+            hn.el.classList.toggle('speak', state === 'speaking');
+            hn.sub.textContent = state === 'speaking' ? BF.i18n.t('call.status.speaking')
+                : (off ? BF.i18n.t('call.status.micOff') : '');
+        }
+        var st = streamTiles[camKey(identity)];
+        if (st) st.el.classList.toggle('mute', off);
     }
 
     function startRenderLoop() {
@@ -516,117 +454,271 @@
         if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     }
 
+    function reducedMotion() {
+        return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    function el(tag, cls, html) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (html) e.innerHTML = html;
+        return e;
+    }
+
+    function eqHtml() { return '<i></i><i></i><i></i><i></i><i></i>'; }
+
     // ============================================================
-    // Плитки: голосовые (без видео) и стрим (камера/экран — равноправные)
+    // Участники: плашки нижнего ряда (все, в порядке входа)
     // ============================================================
     function camKey(identity) { return identity; }
     function screenKey(identity) { return identity + '#screen'; }
 
-    function hasAnyStreamTile(identity) {
-        return Object.keys(streamTiles).some(function (k) { return streamTiles[k].identity === identity; });
+    function paintAvatar(avatarEl, m) {
+        avatarEl.style.background = avatarColor(m.identity);
+        fillAvatar(avatarEl, m.user, m.name);
     }
 
-    function ensureVoiceTile(identity, isLocal) {
-        if (voiceTiles[identity] || hasAnyStreamTile(identity)) return voiceTiles[identity] || null;
-        var el = document.createElement('div'); el.className = 'call-voice-tile';
-        var ring = document.createElement('div'); ring.className = 'call-voice-ring';
-        var body = document.createElement('div'); body.className = 'call-voice-body';
-        var avatar = document.createElement('div'); avatar.className = 'call-voice-avatar';
-        var name = document.createElement('div'); name.className = 'call-voice-name';
-        var status = document.createElement('div'); status.className = 'call-voice-status';
-        body.appendChild(avatar); body.appendChild(name); body.appendChild(status);
-        var canvas = document.createElement('canvas'); canvas.className = 'call-voice-canvas';
-        var muted = document.createElement('div'); muted.className = 'call-voice-muted'; muted.innerHTML = ICONS.micOff;
-        el.appendChild(ring); el.appendChild(body); el.appendChild(canvas); el.appendChild(muted);
-        voicesEl.appendChild(el);
+    function ensureMember(identity, isLocal) {
+        if (members[identity]) return members[identity];
+        var chip = el('div', 'call-member');
+        var avatar = el('div', 'call-member-avatar');
+        var name = el('span', 'call-member-name');
+        var eq = el('span', 'call-eq', eqHtml());
+        var muted = el('span', 'call-member-muted', ICONS.micOff);
+        chip.appendChild(avatar); chip.appendChild(name); chip.appendChild(eq); chip.appendChild(muted);
+        stripEl.appendChild(chip);
 
         var base = isLocal ? BF.i18n.t('call.you') : ('#' + identity);
+        var m = {
+            identity: identity, isLocal: !!isLocal, name: base, user: null,
+            chipEl: chip, chipAvatar: avatar, chipName: name, chipBars: [].slice.call(eq.children)
+        };
+        members[identity] = m;
+        memberOrder.push(identity);
         name.textContent = base;
-        avatar.style.background = avatarColor(identity);
-        avatar.textContent = base.charAt(0).toUpperCase();
-        status.textContent = BF.i18n.t('call.status.micOff');
-
-        var tile = { el: el, ringEl: ring, canvasEl: canvas, nameEl: name, statusEl: status, avatarEl: avatar, mutedEl: muted, identity: identity, isLocal: !!isLocal };
-        voiceTiles[identity] = tile;
+        paintAvatar(avatar, m);
+        var p = participants[identity];
+        if (p) { chip.classList.toggle('mute', !p.hasAudio); chip.classList.toggle('speak', p.active); }
+        else chip.classList.add('mute');
 
         resolveUser(isLocal ? getMyUserId() : Number(identity)).then(function (user) {
-            if (!voiceTiles[identity]) return;
-            var nm = userName(user, base);
-            name.textContent = nm;
-            fillAvatar(avatar, user, nm);
+            if (members[identity] !== m) return;
+            m.user = user;
+            m.name = userName(user, base);
+            refreshMemberViews(identity);
         });
-
-        var p = getOrCreateParticipant(identity);
-        var slot = registerCanvasSlot(canvas);
-        slot.ring = ring;
-        p.slots.push(slot);
-        observeEl(canvas);
-        updateLayout();
-        return tile;
+        refreshScene();
+        return m;
     }
-    function removeVoiceTile(identity) {
-        var tile = voiceTiles[identity];
-        if (!tile) return;
+
+    // Имя и аватар пришли из профиля — обновляем все места, где виден участник.
+    function refreshMemberViews(identity) {
+        var m = members[identity];
+        if (!m) return;
+        m.chipName.textContent = m.name;
+        paintAvatar(m.chipAvatar, m);
+        var hn = heroNodes[identity];
+        if (hn) { hn.name.textContent = m.name; paintAvatar(hn.avatar, m); paintBlob(hn.blob, m); }
+        [camKey(identity), screenKey(identity)].forEach(function (key) {
+            var st = streamTiles[key];
+            if (st) fillTileLabel(st, m);
+        });
+    }
+
+    function removeMember(identity) {
+        var m = members[identity];
+        if (!m) return;
+        try { m.chipEl.remove(); } catch (e) {}
+        delete members[identity];
+        memberOrder = memberOrder.filter(function (id) { return id !== identity; });
+        refreshScene();
+    }
+
+    // ============================================================
+    // Аудио-режим: крупно те, кто говорит (до HERO_MAX одновременно)
+    // ============================================================
+    function anySpeaking() {
+        return memberOrder.some(function (id) { return participants[id] && participants[id].active; });
+    }
+
+    function defaultHero() {
+        var remote = memberOrder.filter(function (id) { return !members[id].isLocal; });
+        return remote.length ? [remote[0]] : memberOrder.slice(0, 1);
+    }
+
+    function updateHeroIds() {
+        heroIds = heroIds.filter(function (id) { return !!members[id]; });
+        var speaking = memberOrder.filter(function (id) { return participants[id] && participants[id].active; });
+        if (speaking.length) {
+            if (heroHoldTimer) { clearTimeout(heroHoldTimer); heroHoldTimer = null; }
+            heroIsDefault = false;
+            // Уже показанные остаются на местах, новые говорящие добавляются справа.
+            var next = heroIds.filter(function (id) { return speaking.indexOf(id) !== -1; });
+            speaking.sort(function (a, b) { return participants[a].activeSince - participants[b].activeSince; })
+                .forEach(function (id) { if (next.indexOf(id) === -1) next.push(id); });
+            heroIds = next.slice(-HERO_MAX);
+            return;
+        }
+        if (!heroIds.length || heroIsDefault) {
+            heroIds = defaultHero();
+            heroIsDefault = true;
+            return;
+        }
+        // Все замолчали: держим раскладку паузу, затем остаётся последний говоривший.
+        if (heroIds.length > 1 && !heroHoldTimer) {
+            heroHoldTimer = setTimeout(function () {
+                heroHoldTimer = null;
+                if (anySpeaking() || heroIds.length < 2) return;
+                heroIds = heroIds.slice(-1);
+                placeHero();
+            }, HERO_HOLD_MS);
+        }
+    }
+
+    function paintBlob(blob, m) {
+        var src = m.user && (m.user.profilePicture || m.user.profilePicturePreview);
+        blob.style.background = src ? '' : avatarColor(m.identity);
+        blob.innerHTML = src ? '<img src="' + escapeAttr(src) + '" alt="">' : '';
+    }
+
+    function heroNode(identity) {
+        if (heroNodes[identity]) return heroNodes[identity];
+        var m = members[identity];
+        var item = el('div', 'call-hero-item');
+        var avw = el('div', 'call-hero-avw');
+        var ring2 = el('div', 'call-hero-ring2');
+        var ring = el('div', 'call-hero-ring');
+        var avatar = el('div', 'call-hero-avatar');
+        avw.appendChild(ring2); avw.appendChild(ring); avw.appendChild(avatar);
+        var meta = el('div', 'call-hero-meta');
+        var name = el('div', 'call-hero-name');
+        var sub = el('div', 'call-hero-sub');
+        meta.appendChild(name); meta.appendChild(sub);
+        item.appendChild(avw); item.appendChild(meta);
+        heroEl.appendChild(item);
+        var blob = el('div', 'call-blob');
+        bgEl.appendChild(blob);
+
+        name.textContent = m.name;
+        paintAvatar(avatar, m);
+        paintBlob(blob, m);
+        var n = { el: item, avw: avw, ring: ring, ring2: ring2, avatar: avatar, name: name, sub: sub, blob: blob, fresh: true, leaving: null };
+        heroNodes[identity] = n;
         var p = participants[identity];
-        if (p) p.slots = p.slots.filter(function (s) { return s.canvas !== tile.canvasEl; });
-        try { tile.el.remove(); } catch (e) {}
-        delete voiceTiles[identity];
-        updateLayout();
+        updateParticipantAudioUI(identity, p ? (p.audioState || 'off') : 'off');
+        return n;
+    }
+
+    function refreshHero() { updateHeroIds(); placeHero(); }
+
+    function placeHero() {
+        if (!heroEl || !mainEl) return;
+        var n = heroIds.length;
+        var W = mainEl.clientWidth, H = mainEl.clientHeight;
+        if (n && W && H) {
+            // Базовый размер аватара: не больше 184px, влезает по высоте и по ширине для n говорящих.
+            var base = Math.max(72, Math.min(184, H * 0.46, W / (n === 1 ? 2.2 : n === 2 ? 3.3 : 4.4)));
+            var lay = HERO_LAYOUT[n];
+            var instant = reducedMotion();
+            heroEl.style.setProperty('--hero-av', base + 'px');
+            heroEl.classList.toggle('multi', n > 1);
+            heroIds.forEach(function (id, i) {
+                var hn = heroNode(id);
+                if (hn.leaving) { clearTimeout(hn.leaving); hn.leaving = null; }
+                var x = lay.x[i] * base, s = lay.s, dy = -(1 - s) * base / 2;
+                var itemTf = 'translate(' + x.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+                if (hn.fresh) {
+                    hn.fresh = false;
+                    hn.el.style.transition = hn.avw.style.transition = 'none';
+                    hn.el.style.transform = itemTf;
+                    hn.avw.style.transform = 'scale(' + (instant ? s : s * 0.9) + ')';
+                    hn.el.getBoundingClientRect();
+                    hn.el.style.transition = hn.avw.style.transition = '';
+                }
+                hn.el.style.transform = itemTf;
+                hn.avw.style.transform = 'scale(' + s + ')';
+                hn.el.classList.add('in');
+                hn.blob.style.transform = 'translateX(' + (x * 1.2).toFixed(1) + 'px) scale(' + (n > 1 ? 0.75 : 1) + ')';
+                hn.blob.classList.add('in');
+                hn.blob.classList.toggle('multi', n > 1);
+            });
+        }
+        Object.keys(heroNodes).forEach(function (id) {
+            if (heroIds.indexOf(id) !== -1) return;
+            var hn = heroNodes[id];
+            if (hn.leaving) return;
+            hn.el.classList.remove('in');
+            hn.blob.classList.remove('in');
+            hn.leaving = setTimeout(function () {
+                try { hn.el.remove(); hn.blob.remove(); } catch (e) {}
+                if (heroNodes[id] === hn) delete heroNodes[id];
+            }, 460);
+        });
+    }
+
+    // ============================================================
+    // Видео-режим: плитки камер и демонстраций экрана
+    // ============================================================
+    function fillTileLabel(tile, m) {
+        if (tile.screen) {
+            tile.nameEl.textContent = BF.i18n.t('call.tile.screen', { name: m.name });
+        } else {
+            tile.nameEl.textContent = m.name;
+            paintAvatar(tile.avatarEl, m);
+        }
     }
 
     function ensureStreamTile(identity, isLocal, kind) {
         var key = kind === 'screen' ? screenKey(identity) : camKey(identity);
         if (streamTiles[key]) return streamTiles[key];
-        removeVoiceTile(identity);
+        var m = ensureMember(identity, isLocal);
+        var screen = kind === 'screen';
 
-        var el = document.createElement('div');
-        el.className = 'call-tile' + (kind === 'screen' ? ' screen' : '');
-        var ring = document.createElement('div'); ring.className = 'call-tile-ring';
-        var canvas = document.createElement('canvas'); canvas.className = 'call-tile-canvas';
-        var pill = document.createElement('div'); pill.className = 'call-tile-pill';
-        var nameSpan = document.createElement('span'); nameSpan.className = 'call-tile-name';
-        var mutedIcon = document.createElement('span'); mutedIcon.className = 'call-tile-muted'; mutedIcon.innerHTML = ICONS.micOff; mutedIcon.style.display = 'none';
-        pill.appendChild(nameSpan); pill.appendChild(mutedIcon);
-        var hint = document.createElement('div'); hint.className = 'call-tile-hint'; hint.innerHTML = ICONS.expand;
-        el.appendChild(ring); el.appendChild(pill); el.appendChild(hint); el.appendChild(canvas);
-        el.addEventListener('click', function (e) { e.stopPropagation(); enterSpotlight(key); });
-        gridEl.appendChild(el);
-
-        var base = isLocal ? BF.i18n.t('call.you') : ('#' + identity);
-        nameSpan.textContent = kind === 'screen' ? BF.i18n.t('call.tile.screen', { name: base }) : base;
+        var outer = el('div', 'call-vt' + (screen ? ' screen' : ''));
+        var inner = el('div', 'call-vt-inner');
+        var ring = el('div', 'call-vt-ring');
+        var pill = el('div', 'call-vt-pill');
+        var avatar = null, nameSpan = el('span', 'call-vt-name'), eq = null;
+        if (screen) {
+            pill.appendChild(el('span', 'call-vt-icon', ICONS.monitor));
+            pill.appendChild(nameSpan);
+        } else {
+            avatar = el('div', 'call-vt-avatar');
+            eq = el('span', 'call-eq', eqHtml());
+            pill.appendChild(avatar); pill.appendChild(nameSpan); pill.appendChild(eq);
+            pill.appendChild(el('span', 'call-vt-muted', ICONS.micOff));
+        }
+        var expand = el('button', 'call-vt-expand');
+        expand.type = 'button';
+        inner.appendChild(ring); inner.appendChild(pill); inner.appendChild(expand);
+        outer.appendChild(inner);
+        // Клик по плитке раскрывает её на весь экран звонка, повторный — сворачивает.
+        inner.addEventListener('click', function (e) { e.stopPropagation(); toggleFull(key); });
+        vstageEl.appendChild(outer);
 
         var tile = {
-            el: el, ringEl: ring, canvasEl: canvas, nameEl: nameSpan, mutedIconEl: mutedIcon,
-            videoEl: null, track: null, identity: identity, isLocal: !!isLocal, screen: kind === 'screen'
+            key: key, el: outer, inner: inner, ringEl: ring, nameEl: nameSpan, avatarEl: avatar, expandEl: expand,
+            bars: eq ? [].slice.call(eq.children) : [], videoEl: null, track: null,
+            identity: identity, isLocal: !!isLocal, screen: screen, rect: null
         };
         streamTiles[key] = tile;
-
-        resolveUser(isLocal ? getMyUserId() : Number(identity)).then(function (user) {
-            if (!streamTiles[key]) return;
-            var nm = userName(user, base);
-            tile.nameEl.textContent = kind === 'screen' ? BF.i18n.t('call.tile.screen', { name: nm }) : nm;
-            if (spotlightKey === key) spotlightNameEl.textContent = tile.nameEl.textContent;
-        });
-
-        var p = getOrCreateParticipant(identity);
-        var slot = registerCanvasSlot(canvas);
-        slot.ring = ring;
-        p.slots.push(slot);
-        observeEl(canvas);
-        updateLayout();
+        fillTileLabel(tile, m);
+        var p = participants[identity];
+        if (!screen && p) { outer.classList.toggle('speak', p.active); outer.classList.toggle('mute', !p.hasAudio); }
+        else if (!screen) outer.classList.add('mute');
+        refreshScene();
         return tile;
     }
+
     function removeStreamTile(key) {
         var tile = streamTiles[key];
         if (!tile) return;
-        if (spotlightKey === key) exitSpotlight(true);
-        var p = participants[tile.identity];
-        if (p) p.slots = p.slots.filter(function (s) { return s.canvas !== tile.canvasEl; });
-        try { tile.el.remove(); } catch (e) {}
         delete streamTiles[key];
-        updateLayout();
-        var identity = tile.identity, pp = participants[identity];
-        if (!hasAnyStreamTile(identity) && pp && pp.inRoom) ensureVoiceTile(identity, tile.isLocal);
+        if (fullKey === key) fullKey = null;
+        tile.el.classList.remove('in');
+        tile.el.style.pointerEvents = 'none';
+        setTimeout(function () { try { tile.el.remove(); } catch (e) {} }, reducedMotion() ? 0 : 320);
+        refreshScene();
     }
 
     function setTileVideo(tile, track, mirror) {
@@ -637,7 +729,7 @@
         if (mirror) videoEl.style.transform = 'scaleX(-1)';
         if (tile.videoEl) { try { tile.videoEl.remove(); } catch (e) {} }
         tile.videoEl = videoEl; tile.track = track;
-        tile.el.insertBefore(videoEl, tile.ringEl.nextSibling);
+        tile.inner.insertBefore(videoEl, tile.inner.firstChild);
     }
 
     function onVideoActive(identity, kind, isLocal, track) {
@@ -655,42 +747,14 @@
         detachMeter(identity);
         removeStreamTile(camKey(identity));
         removeStreamTile(screenKey(identity));
-        removeVoiceTile(identity);
         if (p) p.audioEls.forEach(function (a) { try { a.remove(); } catch (e) {} });
         delete participants[identity];
+        removeMember(identity);
     }
 
-    // --- Spotlight + рельс (клик по стрим-тайлу переносит его в крупный блок) ---
-    function enterSpotlight(key) {
-        var tile = streamTiles[key];
-        if (!tile || key === spotlightKey) return;
-        if (spotlightKey) exitSpotlight(false);
-        spotlightKey = key;
-        spotlightVideoHost.appendChild(tile.videoEl);
-        spotlightNameEl.textContent = tile.nameEl.textContent;
-        tile.el.style.display = 'none';
-        var p = getOrCreateParticipant(tile.identity);
-        spotlightSlot.ring = spotlightRingEl;
-        p.slots.push(spotlightSlot);
-        screenEl.classList.add('has-spotlight');
-        spotlightEl.classList.add('visible');
-        updateLayout();
-        setTimeout(function () { sizeCanvas(spotlightCanvasEl, spotlightSlot.gl); }, 60);
-    }
-    function exitSpotlight(forRemoval) {
-        if (!spotlightKey) return;
-        var key = spotlightKey, tile = streamTiles[key];
-        spotlightKey = null;
-        if (tile) {
-            if (!forRemoval && tile.videoEl) tile.el.insertBefore(tile.videoEl, tile.ringEl.nextSibling);
-            tile.el.style.display = '';
-        }
-        Object.keys(participants).forEach(function (id) {
-            participants[id].slots = participants[id].slots.filter(function (s) { return s !== spotlightSlot; });
-        });
-        screenEl.classList.remove('has-spotlight');
-        spotlightEl.classList.remove('visible');
-        updateLayout();
+    function toggleFull(key) {
+        fullKey = fullKey === key || !streamTiles[key] ? null : key;
+        refreshScene();
     }
 
     function isScreenShare(track, pub) {
@@ -698,42 +762,92 @@
         return (pub && pub.source === SS) || (track && track.source === SS);
     }
 
-    // --- Адаптивная сетка стримов + плотность голосового ряда (layout/applyDensity) ---
-    function applyDensity() {
-        var tight = !!spotlightKey || window.innerHeight < 640;
-        screenEl.classList.toggle('tight', tight);
+    // Демонстрации экрана первыми, затем камеры — в порядке входа участников.
+    function orderedTileKeys() {
+        var keys = [];
+        memberOrder.forEach(function (id) { if (streamTiles[screenKey(id)]) keys.push(screenKey(id)); });
+        memberOrder.forEach(function (id) { if (streamTiles[camKey(id)]) keys.push(camKey(id)); });
+        return keys;
     }
-    function updateLayout() {
-        applyDensity();
+
+    function fitAspect(w, h) {
+        var r = 16 / 9;
+        return w / h > r ? { w: h * r, h: h } : { w: w, h: w / r };
+    }
+
+    // Раскладка: с демонстрацией экрана — крупно слева и колонка справа; иначе сетка 16:9.
+    function computeRects(keys, W, H) {
+        var g = 12, n = keys.length, out = [];
+        if (n > 1 && streamTiles[keys[0]].screen) {
+            var m = n - 1, rw = Math.min(240, W * 0.26), rh = rw * 9 / 16;
+            if (m * rh + (m - 1) * g > H) { rh = (H - (m - 1) * g) / m; rw = rh * 16 / 9; }
+            var big = fitAspect(W - rw - g, H), x0 = (W - (big.w + g + rw)) / 2, y0 = (H - big.h) / 2;
+            out.push({ x: x0, y: y0, w: big.w, h: big.h });
+            for (var i = 0; i < m; i++) out.push({ x: x0 + big.w + g, y: y0 + i * (rh + g), w: rw, h: rh, small: true });
+            return out;
+        }
+        var cols = n <= 1 ? 1 : n <= 4 ? 2 : 3, rows = Math.ceil(n / cols);
+        var cell = fitAspect((W - g * (cols - 1)) / cols, (H - g * (rows - 1)) / rows);
+        var top = (H - (rows * cell.h + (rows - 1) * g)) / 2;
+        for (var j = 0; j < n; j++) {
+            var r = Math.floor(j / cols), inRow = r < rows - 1 ? cols : n - cols * (rows - 1), c = j % cols;
+            var left = (W - (inRow * cell.w + (inRow - 1) * g)) / 2;
+            out.push({ x: left + c * (cell.w + g), y: top + r * (cell.h + g), w: cell.w, h: cell.h, small: cell.w < 300 });
+        }
+        return out;
+    }
+
+    // FLIP: размер выставляем сразу, переход играем только через transform.
+    function placeTile(tile, r, animate) {
+        var prev = tile.rect, s = tile.el.style;
+        if (prev && prev.x === r.x && prev.y === r.y && prev.w === r.w && prev.h === r.h) return;
+        s.width = r.w + 'px'; s.height = r.h + 'px';
+        if (animate && prev) {
+            s.transition = 'none';
+            s.transform = 'translate(' + prev.x + 'px,' + prev.y + 'px) scale(' + (prev.w / r.w) + ',' + (prev.h / r.h) + ')';
+            tile.el.getBoundingClientRect();
+            s.transition = '';
+        }
+        s.transform = 'translate(' + r.x + 'px,' + r.y + 'px)';
+        tile.rect = { x: r.x, y: r.y, w: r.w, h: r.h };
+    }
+
+    function placeTiles(keys, animate) {
+        var W = vstageEl.clientWidth, H = vstageEl.clientHeight;
+        if (!W || !H) return;
+        var rects = computeRects(keys, W, H);
+        // Раскрытая плитка растягивается на весь экран звонка (координаты относительно области сцены).
+        var full = { x: -mainEl.offsetLeft, y: -mainEl.offsetTop, w: screenEl.clientWidth, h: screenEl.clientHeight };
+        var anim = animate && !reducedMotion();
+        keys.forEach(function (key, i) {
+            var tile = streamTiles[key], isFull = fullKey === key;
+            tile.el.classList.toggle('full', isFull);
+            tile.el.classList.toggle('hid', !!fullKey && !isFull);
+            tile.el.classList.toggle('small', !isFull && !!rects[i].small);
+            tile.expandEl.textContent = BF.i18n.t(isFull ? 'call.collapse' : 'call.expand');
+            placeTile(tile, isFull ? full : rects[i], anim);
+            if (!tile.el.classList.contains('in')) {
+                requestAnimationFrame(function () { if (streamTiles[key] === tile) tile.el.classList.add('in'); });
+            }
+        });
+    }
+
+    // Единая точка пересчёта сцены: режимы экрана, плашки, герои, плитки.
+    function refreshScene(animate) {
         if (!screenEl) return;
-        var hasAny = Object.keys(streamTiles).length > 0 || Object.keys(voiceTiles).length > 0;
-        var hasRemote = Object.keys(streamTiles).some(function (k) { return !streamTiles[k].isLocal; })
-            || Object.keys(voiceTiles).some(function (k) { return !voiceTiles[k].isLocal; });
+        var hasRemote = memberOrder.some(function (id) { return !members[id].isLocal; });
         screenEl.classList.toggle('waiting', !hasRemote);
-        screenEl.classList.toggle('waiting-empty', !hasAny);
-        if (!gridEl || !stageEl) return;
-        var keys = Object.keys(streamTiles).filter(function (k) { return k !== spotlightKey; });
-        var n = keys.length, gap = 12, aspect = 16 / 9;
-        if (spotlightKey) {
-            stageEl.style.flex = '0 0 auto';
-            if (!n) { gridEl.style.gridTemplateColumns = ''; return; }
-            var railH = Math.max(76, Math.min(124, stageEl.parentElement.clientHeight * 0.22));
-            gridEl.style.gridTemplateColumns = 'repeat(' + n + ', minmax(0, ' + Math.round(railH * aspect) + 'px))';
-            return;
-        }
-        stageEl.style.flex = '1';
-        var W = stageEl.clientWidth, H = stageEl.clientHeight;
-        if (!W || !H || !n) return;
-        var best = 0, cols = 1;
-        for (var c = 1; c <= n; c++) {
-            var r = Math.ceil(n / c);
-            var byW = (W - gap * (c - 1)) / c;
-            var byH = ((H - gap * (r - 1)) / r) * aspect;
-            var tileSize = Math.min(byW, byH);
-            if (tileSize > best) { best = tileSize; cols = c; }
-        }
-        var size = Math.max(180, Math.min(best, 920));
-        gridEl.style.gridTemplateColumns = 'repeat(' + cols + ', ' + Math.floor(size) + 'px)';
+        screenEl.classList.toggle('waiting-empty', !memberOrder.length);
+        var keys = orderedTileKeys();
+        if (fullKey && keys.indexOf(fullKey) === -1) fullKey = null;
+        screenEl.classList.toggle('video', keys.length > 0);
+        screenEl.classList.toggle('full', !!fullKey);
+        // Участник с камерой уже виден плиткой — его плашку из нижнего ряда убираем.
+        memberOrder.forEach(function (id) {
+            members[id].chipEl.classList.toggle('gone', !!streamTiles[camKey(id)]);
+        });
+        refreshHero();
+        placeTiles(keys, animate !== false);
     }
 
     // --- LiveKit события ---
@@ -747,7 +861,7 @@
             var p = getOrCreateParticipant(participant.identity);
             p.audioEls.push(a);
             attachMeter(participant.identity, track);
-            if (!hasAnyStreamTile(participant.identity)) ensureVoiceTile(participant.identity, false);
+            ensureMember(participant.identity, false);
         }
     }
     function onTrackUnsubscribed(track, pub, participant) {
@@ -789,7 +903,7 @@
         room.on(L.RoomEvent.LocalTrackUnpublished, onLocalTrackUnpublished);
         room.on(L.RoomEvent.ParticipantConnected, function (p) {
             getOrCreateParticipant(p.identity).inRoom = true;
-            ensureVoiceTile(p.identity, false);
+            ensureMember(p.identity, false);
             startTimer(); // первый собеседник вошёл — звонок состоялся
         });
         room.on(L.RoomEvent.ParticipantDisconnected, function (p) { removeParticipant(p); });
@@ -798,13 +912,12 @@
 
         room.connect(d.livekitUrl, d.accessToken).then(function () {
             getOrCreateParticipant(room.localParticipant.identity).inRoom = true;
-            ensureVoiceTile(room.localParticipant.identity, true);
+            ensureMember(room.localParticipant.identity, true);
             var remotes = room.remoteParticipants || room.participants;
             if (remotes && remotes.forEach) remotes.forEach(function (p) {
                 getOrCreateParticipant(p.identity).inRoom = true;
-                ensureVoiceTile(p.identity, false);
+                ensureMember(p.identity, false);
             });
-            updateLayout();
             return room.localParticipant.setMicrophoneEnabled(true, micCaptureOpts(), audioPublishOpts());
         }).then(function () {
             micOn = true; renderControls();
@@ -818,19 +931,17 @@
     }
 
     function clearAllParticipants() {
-        Object.keys(streamTiles).forEach(function (k) { try { streamTiles[k].el.remove(); } catch (e) {} });
         streamTiles = {};
-        Object.keys(voiceTiles).forEach(function (k) { try { voiceTiles[k].el.remove(); } catch (e) {} });
-        voiceTiles = {};
         Object.keys(participants).forEach(function (id) {
             participants[id].audioEls.forEach(function (a) { try { a.remove(); } catch (e) {} });
         });
         participants = {};
-        spotlightKey = null;
-        if (spotlightVideoHost) spotlightVideoHost.innerHTML = '';
-        if (spotlightEl) spotlightEl.classList.remove('visible');
-        if (screenEl) screenEl.classList.remove('has-spotlight');
-        if (audioHostEl) audioHostEl.innerHTML = '';
+        members = {}; memberOrder = [];
+        heroIds = []; heroIsDefault = true; heroNodes = {};
+        if (heroHoldTimer) { clearTimeout(heroHoldTimer); heroHoldTimer = null; }
+        fullKey = null;
+        [vstageEl, heroEl, stripEl, bgEl, audioHostEl].forEach(function (c) { if (c) c.innerHTML = ''; });
+        if (screenEl) screenEl.classList.remove('video', 'full');
     }
 
     // --- Контрол-кнопки (иконки + состояние) ---
@@ -838,9 +949,11 @@
     function renderControls() {
         setIcon(btnMic, micOn ? ICONS.mic : ICONS.micOff);
         btnMic.classList.toggle('active', micOn);
+        btnMic.parentElement.classList.toggle('active', micOn);
         btnMic.title = BF.i18n.t(micOn ? 'call.mic.off' : 'call.mic.on');
         setIcon(btnCam, camOn ? ICONS.videoOff : ICONS.video);
         btnCam.classList.toggle('active', camOn);
+        btnCam.parentElement.classList.toggle('active', camOn);
         btnCam.title = BF.i18n.t(camOn ? 'call.camera.off' : 'call.camera.on');
         setIcon(btnScreen, screenOn ? ICONS.monitorOff : ICONS.monitor);
         btnScreen.classList.toggle('active', screenOn);
@@ -999,8 +1112,9 @@
         screenEl.classList.add('waiting');   // до подключения собеседника
         screenEl.classList.add('visible');
         connectLiveKit(d);
-        observeEl(stageEl); observeEl(gridEl);
-        onWinResize = function () { resizeAllCanvases(); updateLayout(); };
+        if (!ro && window.ResizeObserver) ro = new ResizeObserver(function () { refreshScene(false); });
+        if (ro) ro.observe(mainEl);
+        onWinResize = function () { refreshScene(false); };
         addEventListener('resize', onWinResize);
         startRenderLoop();
         setTimeout(onWinResize, 60);
@@ -1012,9 +1126,10 @@
         stopRingtone();
         stopRenderLoop();
         if (onWinResize) { removeEventListener('resize', onWinResize); onWinResize = null; }
+        if (ro) ro.disconnect();
         if (room) { try { room.disconnect(); } catch (e) {} room = null; }
         clearAllParticipants();
-        screenEl.classList.remove('visible', 'waiting', 'has-spotlight', 'tight', 'waiting-empty');
+        screenEl.classList.remove('visible', 'waiting', 'waiting-empty', 'video', 'full');
         closeAllPopovers();
         setAudioPending(false); setVideoPending(false);
         activeCallId = null;
@@ -1108,7 +1223,13 @@
                 screenOn = !screenOn; renderControls();
             }).catch(function (e) { console.error('screen share failed', e); });
         });
-        if (spotlightExitBtn) spotlightExitBtn.addEventListener('click', function (e) { e.stopPropagation(); exitSpotlight(false); });
+        // Esc сворачивает раскрытую на весь экран плитку.
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape' || !fullKey || !screenEl.classList.contains('visible')) return;
+            e.preventDefault();
+            fullKey = null;
+            refreshScene();
+        });
 
         // Выбор устройства (карет на кнопке микрофона/камеры).
         if (micCaret) micCaret.addEventListener('click', function (e) {
@@ -1151,11 +1272,9 @@
         ringAccept = $('callRingAccept'); ringReject = $('callRingReject');
         permissionOverlay = $('callPermissionOverlay'); permissionTitle = $('callPermissionTitle');
         permissionText = $('callPermissionText'); permissionRequest = $('callPermissionRequest'); permissionCancel = $('callPermissionCancel');
-        screenEl = $('callScreen'); stageEl = $('callStage'); gridEl = $('callGrid'); voicesEl = $('callVoices');
+        screenEl = $('callScreen'); mainEl = $('callMain'); heroEl = $('callHero'); vstageEl = $('callVStage');
+        stripEl = $('callStrip'); bgEl = $('callBg');
         titleEl = $('callScreenTitle'); timerEl = $('callScreenTimer');
-        spotlightEl = $('callSpotlight'); spotlightVideoHost = $('callSpotlightVideoHost');
-        spotlightCanvasEl = $('callSpotlightCanvas'); spotlightRingEl = $('callSpotlightRing');
-        spotlightNameEl = $('callSpotlightName'); spotlightExitBtn = $('callSpotlightExit');
         btnMic = $('callToggleMic'); btnCam = $('callToggleCam');
         btnScreen = $('callToggleScreen'); btnHangup = $('callHangup');
         waitingAvatar = $('callWaitingAvatar'); waitingName = $('callWaitingName'); waitingSub = $('callWaitingSub');
@@ -1169,8 +1288,6 @@
         audioHostEl = document.createElement('div');
         audioHostEl.style.cssText = 'position:fixed;width:0;height:0;overflow:hidden;';
         document.body.appendChild(audioHostEl);
-
-        spotlightSlot = registerCanvasSlot(spotlightCanvasEl);
 
         setIcon(btnHangup, ICONS.phoneEnd);
         setIcon(btnQuality, ICONS.quality);

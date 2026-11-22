@@ -108,7 +108,9 @@ CLIENTS = {
                 'Android/build.gradle.kts', 'Android/gradle.properties', 'Android/gradle/**',
                 'Android/gradlew', 'Android/gradlew.bat', 'Android/tools/**', 'Android/android-rebuild.trigger',
                 # Legal markdown is packaged into the APK by copyLegalDocs.
-                'Backend/Barkfluff.WebServer/html/legal/**', CLIENT_VERSION),
+                'Backend/Barkfluff.WebServer/html/legal/**',
+                # Shared SVG icons are converted into drawables by generateSharedIcons.
+                'Icons/**', CLIENT_VERSION),
     'macos': ('Mac/Barkfluff/**', 'Mac/macos-rebuild.trigger', CLIENT_VERSION),
     'winui': ('Windows/BarkFluff.Client.WinUI/**', 'Windows/BarkFluff.Client.Core/**',
               'Windows/BarkFluff.WebApi.Core/**', 'Windows/BarkFluff.ClientV2.WPF/**',

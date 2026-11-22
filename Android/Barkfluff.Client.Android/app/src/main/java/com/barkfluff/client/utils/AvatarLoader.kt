@@ -14,7 +14,12 @@ import coil.request.ImageRequest
 import coil.size.Size
 import coil.transform.CircleCropTransformation
 import com.barkfluff.client.R
+import com.barkfluff.client.domain.gateway.FileMediaGateway
 import com.barkfluff.client.security.TlsCallFactory
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.CancellationException
@@ -30,6 +35,12 @@ import java.util.concurrent.TimeUnit
  * Показывает инициалы на цветном фоне при отсутствии аватара.
  */
 object AvatarLoader {
+
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface Dependencies {
+        fun fileMediaGateway(): FileMediaGateway
+    }
 
     // Палитра цветов для плейсхолдеров (Material 3)
     private val PLACEHOLDER_COLORS = intArrayOf(
@@ -60,9 +71,9 @@ object AvatarLoader {
         }
     }
     
-    internal fun getUrlFromCache(fileId: String): String? {
-        return fileUrlCache?.getUrl(fileId)
-    }
+    // Копия в runtime-кеше нужна, чтобы по истёкшей ссылке найти её fileId.
+    internal fun getUrlFromCache(fileId: String): String? =
+        fileUrlCache?.getUrl(fileId)?.also { urlCache.putIfAbsent(fileId, it) }
     
     internal fun putUrlInCache(fileId: String, url: String) {
         MainScope().launch {
@@ -88,6 +99,7 @@ object AvatarLoader {
         // Очищаем runtime URL кеш
         urlCache.clear()
         staleUrlRefreshGuard.clear()
+        expiredUrlRefresher?.clear()
 
         // Очищаем персистентный URL кеш
         MainScope().launch {
@@ -98,6 +110,25 @@ object AvatarLoader {
     // ImageLoader выбирает TLS-клиент по hostname каждого запроса (ленивая инициализация).
     private var imageLoaderInstance: ImageLoader? = null
     private var tlsCallFactory: TlsCallFactory? = null
+    private var expiredUrlRefresher: ExpiredFileUrlRefresher? = null
+
+    private fun createExpiredUrlRefresher(appContext: Context) = ExpiredFileUrlRefresher(
+        fileIdForUrl = { url -> urlCache.entries.firstOrNull { it.value == url }?.key },
+        currentUrl = { fileId -> urlCache[fileId] },
+        fetchUrl = { fileId ->
+            EntryPointAccessors.fromApplication(appContext, Dependencies::class.java)
+                .fileMediaGateway().downloadUrl(fileId).getOrNull()
+        },
+        onRefreshed = { fileId, expiredUrl, freshUrl ->
+            if (freshUrl != null) {
+                urlCache[fileId] = freshUrl
+                fileUrlCache?.putUrl(fileId, freshUrl)
+            } else {
+                urlCache.remove(fileId, expiredUrl)
+                fileUrlCache?.removeUrl(fileId, expiredUrl)
+            }
+        },
+    )
 
     @OptIn(ExperimentalCoilApi::class)
     internal fun getImageLoader(context: android.content.Context): ImageLoader {
@@ -110,8 +141,11 @@ object AvatarLoader {
                         writeTimeout(30, TimeUnit.SECONDS)
                     }
                     tlsCallFactory = callFactory
+                    val refresher = createExpiredUrlRefresher(context.applicationContext)
+                    expiredUrlRefresher = refresher
                     imageLoaderInstance = ImageLoader.Builder(context.applicationContext)
                         .callFactory(callFactory)
+                        .components { add(ExpiredFileUrlInterceptor(refresher)) }
                         .memoryCache {
                             coil.memory.MemoryCache.Builder(context.applicationContext)
                                 .maxSizePercent(0.25)
