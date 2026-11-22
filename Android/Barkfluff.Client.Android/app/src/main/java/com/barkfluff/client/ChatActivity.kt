@@ -2689,7 +2689,7 @@ class ChatActivity : AppCompatActivity() {
                 }
                 add(MessageActionsOverlay.Action(
                     MessageActionId.OUTGOING_CANCEL,
-                    R.drawable.ic_close,
+                    R.drawable.icon_close,
                     getString(R.string.btn_cancel),
                     danger = outgoingState == com.barkfluff.client.cache.OutgoingMessageState.FAILED
                 ))
@@ -2747,7 +2747,7 @@ class ChatActivity : AppCompatActivity() {
             }
             if (imageAtts.isNotEmpty()) {
                 add(MessageActionsOverlay.Action(
-                    MessageActionId.SAVE_IMAGES, R.drawable.ic_action_save_gallery,
+                    MessageActionId.SAVE_IMAGES, R.drawable.icon_save_image,
                     getString(if (imageAtts.size == 1) R.string.message_save_image else R.string.message_save_images),
                 ))
             }

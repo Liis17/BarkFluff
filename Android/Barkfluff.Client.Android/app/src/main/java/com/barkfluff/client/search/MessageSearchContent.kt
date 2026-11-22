@@ -87,7 +87,7 @@ fun MessageSearchContent(
                 onClick = onClearFilters,
                 modifier = Modifier.heightIn(min = 48.dp),
                 label = { Text(stringResource(R.string.search_reset_filters)) },
-                leadingIcon = { Icon(painterResource(R.drawable.ic_close), null, Modifier.size(FilterChipDefaults.IconSize)) },
+                leadingIcon = { Icon(painterResource(R.drawable.icon_close), null, Modifier.size(FilterChipDefaults.IconSize)) },
             )
         }
         Box(Modifier.fillMaxSize()) {

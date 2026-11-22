@@ -175,7 +175,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -223,7 +223,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -272,7 +272,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -321,7 +321,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -370,7 +370,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -435,7 +435,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -467,7 +467,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_widgets"
+                            android:src="@drawable/icon_widgets"
                             android:translationX="-1dp"
                             app:tint="@color/profile_settings_icon" />
 
@@ -484,7 +484,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -533,7 +533,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -598,7 +598,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -654,7 +654,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -702,7 +702,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -734,7 +734,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_link"
+                            android:src="@drawable/icon_link"
                             app:tint="@color/profile_settings_icon" />
 
                         <LinearLayout
@@ -766,7 +766,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
@@ -821,7 +821,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -885,7 +885,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>
@@ -934,7 +934,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_chevron_right"
+                            android:src="@drawable/icon_chevron_right"
                             app:tint="@color/profile_settings_on_surface_variant" />
 
                     </LinearLayout>

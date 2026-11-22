@@ -63,7 +63,7 @@ object MediaSendNotification {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            builder.addAction(R.drawable.ic_close, context.getString(R.string.btn_cancel), pendingIntent)
+            builder.addAction(R.drawable.icon_close, context.getString(R.string.btn_cancel), pendingIntent)
         }
 
         return builder.build()

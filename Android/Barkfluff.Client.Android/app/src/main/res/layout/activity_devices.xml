@@ -51,7 +51,7 @@
                     android:background="@drawable/bg_settings_tonal_square"
                     android:importantForAccessibility="no"
                     android:padding="18dp"
-                    android:src="@drawable/ic_qr_code"
+                    android:src="@drawable/icon_qr_code"
                     app:tint="@color/profile_settings_on_tonal_container" />
 
                 <TextView
@@ -70,7 +70,7 @@
                     android:layout_height="54dp"
                     android:layout_marginTop="16dp"
                     android:text="@string/devices_connect"
-                    app:icon="@drawable/ic_qr_code"
+                    app:icon="@drawable/icon_qr_code"
                     app:iconGravity="textStart"
                     app:iconPadding="8dp" />
 
@@ -141,7 +141,7 @@
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_chevron_right"
+                    android:src="@drawable/icon_chevron_right"
                     app:tint="@color/profile_settings_on_surface_variant" />
 
             </LinearLayout>

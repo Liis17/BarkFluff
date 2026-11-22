@@ -84,7 +84,7 @@
                 android:background="@drawable/duration_label_background"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_content_cut"
+                android:src="@drawable/icon_cut"
                 android:visibility="gone"
                 app:tint="@android:color/white" />
 

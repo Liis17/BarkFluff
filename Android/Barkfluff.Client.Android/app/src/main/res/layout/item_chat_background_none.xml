@@ -33,7 +33,7 @@
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/ic_close"
+                android:src="@drawable/icon_close"
                 android:importantForAccessibility="no"
                 app:tint="?attr/colorOnSurfaceVariant" />
 

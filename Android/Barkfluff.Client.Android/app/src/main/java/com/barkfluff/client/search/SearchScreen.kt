@@ -224,7 +224,7 @@ internal fun SearchHeader(
                             }
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_close),
+                            painter = painterResource(R.drawable.icon_close),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )

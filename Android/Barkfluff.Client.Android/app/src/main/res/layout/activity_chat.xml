@@ -265,7 +265,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/btn_close"
             android:padding="12dp"
-            android:src="@drawable/ic_close"
+            android:src="@drawable/icon_close"
             app:tint="?attr/colorOnSurface" />
 
         <TextView
@@ -515,7 +515,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_cancel_edit"
                 android:padding="12dp"
-                android:src="@drawable/ic_close"
+                android:src="@drawable/icon_close"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </LinearLayout>
@@ -596,7 +596,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_cancel_reply"
                 android:padding="12dp"
-                android:src="@drawable/ic_close"
+                android:src="@drawable/icon_close"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </LinearLayout>
@@ -661,7 +661,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_clear_attachments"
                 android:padding="12dp"
-                android:src="@drawable/ic_close"
+                android:src="@drawable/icon_close"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </LinearLayout>

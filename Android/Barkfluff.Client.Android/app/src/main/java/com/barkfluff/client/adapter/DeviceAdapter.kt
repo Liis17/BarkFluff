@@ -117,24 +117,24 @@ class DeviceAdapter(
 
             return when {
                 // Steam Deck
-                combinedName.contains("steam deck") || combinedName.contains("steamdeck") -> R.drawable.ic_steam_deck
-                os.contains("steamos") || os.contains("steam os") -> R.drawable.ic_steam_deck
+                combinedName.contains("steam deck") || combinedName.contains("steamdeck") -> R.drawable.icon_default_steam_deck
+                os.contains("steamos") || os.contains("steam os") -> R.drawable.icon_default_steam_deck
 
                 // VR-гарнитура
-                isVrDevice(os, combinedName) -> R.drawable.ic_vr_headset
+                isVrDevice(os, combinedName) -> R.drawable.icon_default_vr_headset
 
                 // Google Pixel
-                originalName.contains("pixel") -> R.drawable.ic_pixel
+                originalName.contains("pixel") -> R.drawable.icon_default_pixel
 
                 // Samsung Galaxy Ultra
-                isSamsungUltra(originalName) -> R.drawable.ic_samsung_ultra
+                isSamsungUltra(originalName) -> R.drawable.icon_default_samsung_ultra
 
                 // iPhone
                 originalName.contains("iphone") -> R.drawable.icon_default_iphone
 
                 // Tablet / iPad
-                os.contains("ipad") || os.contains("tablet") -> R.drawable.ic_tablet
-                combinedName.contains("tablet") || combinedName.contains("ipad") || combinedName.contains("планшет") -> R.drawable.ic_tablet
+                os.contains("ipad") || os.contains("tablet") -> R.drawable.icon_default_tablet
+                combinedName.contains("tablet") || combinedName.contains("ipad") || combinedName.contains("планшет") -> R.drawable.icon_default_tablet
 
                 // Web-клиент
                 appName.contains("web") -> R.drawable.icon_web

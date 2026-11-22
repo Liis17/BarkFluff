@@ -18,7 +18,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:navigationIcon="@drawable/ic_close"
+            app:navigationIcon="@drawable/icon_close"
             app:navigationIconTint="?attr/colorOnSurface"
             app:title="@string/share_pick_chat_title"
             app:subtitle="@string/share_pick_chat_subtitle"

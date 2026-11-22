@@ -325,7 +325,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         binding.headerIcon.setImageResource(
             when (step) {
                 1 -> R.drawable.icon_lock
-                else -> R.drawable.ic_password_dots
+                else -> R.drawable.icon_password
             }
         )
         binding.headerIcon.imageTintList = ColorStateList.valueOf(

@@ -47,7 +47,7 @@
             android:minWidth="48dp"
             android:minHeight="48dp"
             android:contentDescription="@string/cd_close"
-            app:icon="@drawable/ic_close"
+            app:icon="@drawable/icon_close"
             app:iconTint="#FFFFFFFF" />
 
         <Space
@@ -141,7 +141,7 @@
         <ImageView
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:src="@drawable/ic_compress"
+            android:src="@drawable/icon_compress"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             app:tint="#FFFFFFFF" />

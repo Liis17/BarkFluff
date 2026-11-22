@@ -244,7 +244,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_link"
+                        android:src="@drawable/icon_link"
                         app:tint="@color/profile_settings_icon" />
 
                     <LinearLayout

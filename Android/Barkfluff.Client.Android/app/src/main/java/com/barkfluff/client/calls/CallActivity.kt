@@ -247,8 +247,8 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         controlBar.removeAllViews()
         micButton = addControl(R.drawable.icon_voice, getString(R.string.call_control_microphone)) { toggleMicrophone() }
         cameraButton = addControl(R.drawable.icon_video, getString(R.string.call_control_camera)) { toggleCamera() }
-        addControl(R.drawable.ic_call_end, getString(R.string.call_control_end), big = true) { endCallAndClose() }
-        screenButton = addControl(R.drawable.ic_screen_share, getString(R.string.call_control_screen_share)) { startScreenShare() }
+        addControl(R.drawable.icon_call_end, getString(R.string.call_control_end), big = true) { endCallAndClose() }
+        screenButton = addControl(R.drawable.icon_screen_share, getString(R.string.call_control_screen_share)) { startScreenShare() }
         addControl(R.drawable.icon_more, getString(R.string.call_control_more)) { showMoreSheet() }
     }
 
@@ -625,7 +625,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         val cameraOn = local?.cameraEnabled ?: false
         val screenOn = local?.screenTrack != null
 
-        micButton.setImageResource(if (micOn) R.drawable.icon_voice else R.drawable.ic_mic_off)
+        micButton.setImageResource(if (micOn) R.drawable.icon_voice else R.drawable.icon_voice_off)
         applyButtonState(micButton, active = !micOn)
         micButton.contentDescription = getString(if (micOn) R.string.call_mic_disable else R.string.call_mic_enable)
 

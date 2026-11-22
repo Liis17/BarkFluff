@@ -69,7 +69,7 @@
                         android:layout_marginTop="2dp"
                         android:contentDescription="@null"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_widgets"
+                        android:src="@drawable/icon_widgets"
                         app:tint="@color/profile_settings_icon" />
 
                     <TextView

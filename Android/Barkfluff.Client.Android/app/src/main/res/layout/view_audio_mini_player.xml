@@ -45,7 +45,7 @@
             android:layout_width="48dp" android:layout_height="48dp"
             android:padding="14dp" android:scaleType="fitCenter"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_close" android:contentDescription="@string/cd_voice_player_close"
+            android:src="@drawable/icon_close" android:contentDescription="@string/cd_voice_player_close"
             app:tint="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
     <com.google.android.material.progressindicator.LinearProgressIndicator android:id="@+id/miniProgress"

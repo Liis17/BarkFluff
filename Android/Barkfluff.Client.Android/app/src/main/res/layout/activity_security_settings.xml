@@ -104,7 +104,7 @@
                     android:paddingHorizontal="20dp">
                     <ImageView android:layout_width="24dp" android:layout_height="24dp" android:importantForAccessibility="no" android:src="@drawable/ic_key" app:tint="@color/profile_settings_icon" />
                     <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_weight="1" android:text="@string/security_change_password" android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="@color/profile_settings_on_surface" />
-                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/ic_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/icon_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
                 </LinearLayout>
                 <Space android:layout_width="match_parent" android:layout_height="3dp" />
                 <LinearLayout
@@ -159,9 +159,9 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingHorizontal="20dp">
-                    <ImageView android:layout_width="24dp" android:layout_height="24dp" android:importantForAccessibility="no" android:src="@drawable/ic_link" app:tint="@color/profile_settings_icon" />
+                    <ImageView android:layout_width="24dp" android:layout_height="24dp" android:importantForAccessibility="no" android:src="@drawable/icon_link" app:tint="@color/profile_settings_icon" />
                     <TextView android:id="@+id/textTelegramBinding" android:text="@string/security_link_telegram" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_weight="1" android:ellipsize="end" android:maxLines="1" android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="@color/profile_settings_on_surface" />
-                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/ic_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/icon_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
                 </LinearLayout>
                 <LinearLayout
                     android:id="@+id/itemTwoFactorTelegram"
@@ -190,7 +190,7 @@
                     <ImageView android:layout_width="24dp" android:layout_height="24dp" android:importantForAccessibility="no" android:src="@drawable/icon_mail" app:tint="@color/profile_settings_icon" />
                     <TextView android:id="@+id/textEmailBinding" android:text="@string/security_bind_email" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_weight="1" android:ellipsize="end" android:maxLines="1" android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="@color/profile_settings_on_surface" />
                     <TextView android:id="@+id/textEmailBindingValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_marginEnd="12dp" android:ellipsize="end" android:maxLines="1" android:maxWidth="180dp" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="@color/profile_settings_on_surface_variant" />
-                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/ic_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/icon_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
                 </LinearLayout>
                 <LinearLayout
                     android:id="@+id/itemLoginPolicy"
@@ -205,7 +205,7 @@
                     <ImageView android:layout_width="24dp" android:layout_height="24dp" android:importantForAccessibility="no" android:src="@drawable/icon_personal" app:tint="@color/profile_settings_icon" />
                     <TextView android:id="@+id/textLoginPolicy" android:text="@string/login_mode_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_weight="1" android:ellipsize="end" android:maxLines="1" android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="@color/profile_settings_on_surface" />
                     <TextView android:id="@+id/textLoginPolicyValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_marginEnd="12dp" android:ellipsize="end" android:maxLines="1" android:maxWidth="180dp" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="@color/profile_settings_on_surface_variant" />
-                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/ic_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/icon_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
                 </LinearLayout>
                 <LinearLayout
                     android:id="@+id/itemRecoveryCodes"
@@ -220,7 +220,7 @@
                     <ImageView android:layout_width="24dp" android:layout_height="24dp" android:importantForAccessibility="no" android:src="@drawable/icon_history" app:tint="@color/profile_settings_icon" />
                     <TextView android:id="@+id/textRecoveryCodes" android:text="@string/security_recovery_codes_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_weight="1" android:ellipsize="end" android:maxLines="1" android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="@color/profile_settings_on_surface" />
                     <TextView android:id="@+id/textRecoveryCodesValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_marginEnd="12dp" android:ellipsize="end" android:maxLines="1" android:maxWidth="180dp" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="@color/profile_settings_on_surface_variant" />
-                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/ic_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:importantForAccessibility="no" android:src="@drawable/icon_chevron_right" app:tint="@color/profile_settings_on_surface_variant" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
