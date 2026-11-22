@@ -584,6 +584,7 @@
   "settings.badges.empty": "У вас пока нет бейджей",
   "settings.badges.hint": "Основной бейдж показывается рядом с вашим именем. Нажмите на бейдж, чтобы выбрать его, или ещё раз, чтобы снять выбор.",
   "settings.badges.primary": "Основной",
+  "badge.received": "Получен {date}",
   "settings.bio": "Биография",
   "settings.installApp": "Установить приложение BarkFluff",
   "settings.language.hint": "Интерфейс переключится сразу — перезагружать страницу не нужно.",

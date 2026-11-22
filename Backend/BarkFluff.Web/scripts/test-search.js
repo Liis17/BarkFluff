@@ -83,7 +83,14 @@ function createHarness(options) {
     var focused = [];
     var settings = options || {};
     var chats = settings.chats || [];
+    var badgeSlots = [];
     var BF = {
+        userBadges: {
+            slotHtml: function (userId) {
+                badgeSlots.push(userId);
+                return '<span class="user-badge-slot" data-badge-user="' + userId + '"></span>';
+            }
+        },
         api: {
             searchUsers: function (query) {
                 userSearches.push(query);
@@ -181,6 +188,7 @@ function createHarness(options) {
         userSearches: userSearches,
         messageSearches: messageSearches,
         messageOptions: messageOptions,
+        badgeSlots: badgeSlots,
         answerMessages: function (index, hits, nextCursor) {
             pendingMessageSearches[index].resolve({ hits: hits, nextCursor: nextCursor || null });
         },
@@ -228,6 +236,7 @@ async function main() {
         await settle();
         assert.equal(h.results.children.length, 2, 'the chat plus the found user');
         assert.match(h.results.children[1].innerHTML, /@alina/);
+        assert.match(h.results.children[1].innerHTML, /data-badge-user="10"/, 'the found user gets a primary badge slot');
     });
 
     await test('typing again cancels the pending debounce and drops a stale response', async function () {
@@ -293,6 +302,7 @@ async function main() {
         var result = h.results.children[0].innerHTML;
         assert.match(result, /accountRestriction\.userBlocked/);
         assert.doesNotMatch(result, /private-name|avatar\.png/);
+        assert.deepEqual(h.badgeSlots, [], 'restricted users get no badge');
         h.results.children[0].listeners.click();
         await settle();
         assert.deepEqual(h.toastCalls, [['accountRestriction.userUnavailable', true]]);

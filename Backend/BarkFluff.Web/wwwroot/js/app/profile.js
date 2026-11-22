@@ -1,7 +1,7 @@
 /**
  * User profile panel (#profileOverlay): profile card, badges, media tabs of the open chat, "write a message",
  * chat background button and copy-to-clipboard for the ids.
- * Requires: BF.api, BF.files, BF.i18n, BF.utils, BF.chatMedia, BF.chatBackground, BF.sound
+ * Requires: BF.api, BF.files, BF.i18n, BF.utils, BF.userBadges, BF.chatMedia, BF.chatBackground, BF.sound
  * Exposes: BF.profile
  */
 (function () {
@@ -18,6 +18,8 @@
     var profileStatus;
     var profileBio;
     var profileBadges;
+    var profileBadgesCard;
+    var profilePrimaryBadge = null;
     var profileRegDate;
     var profileMediaPanels;
     var currentProfileUserId = null;
@@ -90,25 +92,52 @@
                 profileRegDate.textContent = '—';
             }
 
-            profileBadges.innerHTML = '';
-            if (!restricted && user.badges && user.badges.length > 0) {
-                user.badges.forEach(function (b) {
-                    var el = document.createElement('div');
-                    el.className = 'profile-badge';
-                    if (b.imageUrl) {
-                        var bImg = document.createElement('img');
-                        bImg.src = b.imageUrl;
-                        bImg.alt = '';
-                        el.appendChild(bImg);
-                    }
-                    el.appendChild(document.createTextNode(b.name || ''));
-                    profileBadges.appendChild(el);
+            renderBadges(restricted ? [] : BF.userBadges.cached(userId) || []);
+            if (!restricted) {
+                // Как на Android: сначала кеш, затем свежий список с сервера.
+                BF.userBadges.load(userId, true).then(function (badges) {
+                    if (currentProfileUserId === userId) renderBadges(badges);
                 });
             }
 
             loadMedia('media');
             BF.utils.openOverlay(profileOverlay);
         });
+    }
+
+    function badgeButton(badge, className) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = className;
+        button.title = badge.name || '';
+        button.setAttribute('aria-label', badge.name || '');
+        button.appendChild(BF.userBadges.miniImage(badge));
+        button.addEventListener('click', function () {
+            BF.userBadges.showViewer(badge);
+        });
+        return button;
+    }
+
+    // Основной бейдж — рядом с именем, остальные — в карточке «Бейджи»; без остальных карточка скрыта.
+    function renderBadges(badges) {
+        var primary = BF.userBadges.primaryOf(badges);
+        if (profilePrimaryBadge && profilePrimaryBadge.parentNode)
+            profilePrimaryBadge.parentNode.removeChild(profilePrimaryBadge);
+        profilePrimaryBadge = null;
+        if (primary) {
+            profilePrimaryBadge = badgeButton(primary, 'profile-primary-badge');
+            profileName.appendChild(profilePrimaryBadge);
+        }
+        var others = badges.filter(function (b) {
+            return !b.isPrimary;
+        });
+        profileBadges.replaceChildren.apply(
+            profileBadges,
+            others.map(function (b) {
+                return badgeButton(b, 'profile-badge');
+            })
+        );
+        if (profileBadgesCard) profileBadgesCard.hidden = others.length === 0;
     }
 
     function copyText(text) {
@@ -134,6 +163,7 @@
         profileStatus = $('#profileStatus');
         profileBio = $('#profileBio');
         profileBadges = $('#profileBadges');
+        profileBadgesCard = $('#profileBadgesCard');
         profileRegDate = $('#profileRegDate');
         profileMediaPanels = BF.chatMedia.createPanels($('#profileMediaContent'));
 
