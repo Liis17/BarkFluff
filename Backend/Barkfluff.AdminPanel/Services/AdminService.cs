@@ -166,6 +166,22 @@ public class AdminService
         return _db.Admins.Update(record);
     }
 
+    /// <summary>
+    /// Stores or clears the BarkFluff user that receives this administrator's test notifications.
+    /// Roles and the Telegram identity are not changed.
+    /// </summary>
+    public bool SetBarkFluffUserId(long telegramUserId, long? barkFluffUserId, string updatedBy)
+    {
+        var record = _db.Admins.FindById(telegramUserId);
+        if (record == null)
+            return false;
+
+        record.BarkFluffUserId = barkFluffUserId;
+        record.UpdatedAt = DateTime.UtcNow;
+        record.UpdatedBy = updatedBy;
+        return _db.Admins.Update(record);
+    }
+
     public bool DeleteAdmin(long telegramUserId)
     {
         if (IsOwner(telegramUserId))
