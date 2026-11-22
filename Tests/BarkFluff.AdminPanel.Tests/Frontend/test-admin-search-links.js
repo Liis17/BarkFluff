@@ -28,6 +28,8 @@ function extractConst(html, name) {
 const logsHtml = readPage('logs.html');
 const logs = vm.runInNewContext([
     extractConst(logsHtml, 'LOG_CONTEXT_KINDS'),
+    extractConst(logsHtml, 'ISO_DATE_TIME_PATTERN'),
+    extractFunction(logsHtml, 'parseFromUtc'),
     extractFunction(logsHtml, 'buildFilterQuery'),
     extractFunction(logsHtml, 'parseFilterQuery'),
     '({ buildFilterQuery, parseFilterQuery })'
@@ -57,7 +59,8 @@ const logStates = [
     eventsState,
     { service: 'BarkFluff.Users', level: 'Error', search: '', context: null, viewMode: 'groups' },
     { service: '', level: 'Warning', search: '', context: { kind: 'userId', value: '42' }, viewMode: 'events' },
-    { service: '', level: '', search: 'a/b+c', context: { kind: 'requestId', value: 'req-1' }, viewMode: 'events' }
+    { service: '', level: '', search: 'a/b+c', context: { kind: 'requestId', value: 'req-1' }, viewMode: 'events' },
+    { service: 'BarkFluff.Files', level: 'Error', search: '', context: null, viewMode: 'events', fromUtc: '2026-11-23T13:03:21.000Z' }
 ];
 for (const state of logStates) {
     const restored = logs.parseFilterQuery(new URLSearchParams(logs.buildFilterQuery(state).toString()));
@@ -66,10 +69,11 @@ for (const state of logStates) {
         level: state.viewMode === 'groups' ? 'Error' : state.level,
         search: state.search,
         context: state.context,
-        viewMode: state.viewMode
+        viewMode: state.viewMode,
+        fromUtc: state.fromUtc || ''
     });
 }
-console.log('PASS: link query restores the same service, level, search, context and mode');
+console.log('PASS: link query restores the same service, level, search, context, mode and period');
 
 // Копирование: без navigator.clipboard (http) и при отказе writeText работает fallback через execCommand.
 function runCopyText(navigatorStub, execResult) {
