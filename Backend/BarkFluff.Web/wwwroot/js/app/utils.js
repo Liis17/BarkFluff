@@ -711,7 +711,54 @@
         return true;
     }
 
+    // Скелетон ленты при открытии чата: пузыри разной ширины, входящие и исходящие чередуются.
+    // Декоративный и без .msg-group, поэтому клавиатурная навигация по ленте его не видит.
+    var FEED_SKELETON_WIDTHS = [34, 48, 26, 40, 56, 30, 44, 36];
+    var FEED_SKELETON_DELAY_MS = 150;
+
+    function feedSkeletonHtml() {
+        var html =
+            '<div class="messages-skeleton-wrap"><span class="sr-only">' +
+            escapeHtml(BF.i18n.t('common.loading')) +
+            '</span><div class="messages-skeleton" aria-hidden="true">';
+        FEED_SKELETON_WIDTHS.forEach(function (width, i) {
+            html +=
+                '<div class="messages-skeleton-row ' +
+                (i % 2 ? 'outgoing' : 'incoming') +
+                '"><span class="skeleton messages-skeleton-bubble" style="width:' +
+                width +
+                '%"></span></div>';
+        });
+        return html + '</div></div>';
+    }
+
+    // Скелетон появляется с задержкой: ответ, пришедший раньше, на экране не мигает.
+    // schedule(isCurrent) заново взводит таймер; clear() отменяет таймер и убирает скелетон.
+    function createFeedSkeleton(container) {
+        var timer = 0;
+
+        function clear() {
+            if (timer) clearTimeout(timer);
+            timer = 0;
+            var wrap = container.querySelector('.messages-skeleton-wrap');
+            if (wrap) wrap.remove();
+        }
+
+        return {
+            schedule: function (isCurrent) {
+                clear();
+                timer = setTimeout(function () {
+                    timer = 0;
+                    if (!isCurrent() || container.childElementCount) return;
+                    container.innerHTML = feedSkeletonHtml();
+                }, FEED_SKELETON_DELAY_MS);
+            },
+            clear: clear
+        };
+    }
+
     window.BF.utils = {
+        createFeedSkeleton: createFeedSkeleton,
         formatTime: formatTime,
         formatChatListTime: formatChatListTime,
         formatDate: formatDate,

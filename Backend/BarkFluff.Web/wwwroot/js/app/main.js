@@ -50,6 +50,7 @@
     var messagesArea = $('#messagesArea');
     var messagesInner = $('#messagesInner');
     var loadingMessages = $('#loadingMessages');
+    var feedSkeleton = u.createFeedSkeleton(messagesInner);
     var inputBar = $('#inputBar');
     var soonToastEl = $('#soonToast');
     var chatReadOnlyBanner = $('#chatReadOnlyBanner');
@@ -186,6 +187,7 @@
         clearPendingEdit();
         closeContextMenu();
 
+        feedSkeleton.clear();
         messagesInner.innerHTML = '';
         loadingMessages.classList.remove('visible');
         chatHeader.classList.remove('visible');
@@ -240,7 +242,9 @@
         messagesInner.innerHTML = '';
         inputBar.classList.add('visible');
         inputBar.classList.remove('private-chat');
-        loadingMessages.classList.add('visible');
+        feedSkeleton.schedule(function () {
+            return chatId === currentChatId;
+        });
         chatHeaderStatus.hidden = false;
         chatHeaderStatus.textContent = '';
         chatHeaderStatus.classList.remove('online');
@@ -261,7 +265,7 @@
 
         BF.api.getChatInfo(chatId).then(function (info) {
             if (chatId !== currentChatId) return null;
-            if (!info || info.error) { loadingMessages.classList.remove('visible'); return; }
+            if (!info || info.error) { feedSkeleton.clear(); return; }
             currentChatInfo = info;
 
             chatHeaderName.textContent = info.title || BF.i18n.t('common.chat');
@@ -312,7 +316,7 @@
             return BF.api.listMessages(chatId, fromId, 30, 10);
         }).then(function (data) {
             if (chatId !== currentChatId) return;
-            loadingMessages.classList.remove('visible');
+            feedSkeleton.clear();
             if (data && data.messages) {
                 messages = data.messages;
                 BF.sendQueue.mergePendingUploadsIntoMessages(chatId);
@@ -326,7 +330,7 @@
                 restoreChatDraft(chatId);
             }
         }).catch(function () {
-            if (chatId === currentChatId) loadingMessages.classList.remove('visible');
+            if (chatId === currentChatId) feedSkeleton.clear();
         });
     }
 

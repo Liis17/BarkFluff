@@ -77,8 +77,8 @@ function createHarness(options) {
     var BF = {
         api: {
             listCallHistory: function (missedOnly, before, limit) {
-                return new Promise(function (resolve) {
-                    requests.push({ missedOnly: missedOnly, before: before, limit: limit, resolve: resolve });
+                return new Promise(function (resolve, reject) {
+                    requests.push({ missedOnly: missedOnly, before: before, limit: limit, resolve: resolve, reject: reject });
                 });
             },
             getPersonChatId: function (userId) {
@@ -219,6 +219,27 @@ async function main() {
         h.requests[0].resolve({ items: [call()], hasMore: true });
         await settle();
         assert.equal(h.list.children.length, 1, 'only the empty state');
+        assert.equal(h.list.children[0].className, 'call-history-empty');
+    });
+
+    await test('the first page shows skeleton rows until it arrives, then they are replaced by the calls', async function () {
+        var h = createHarness();
+        h.BF.callHistory.open();
+        assert.match(h.list.innerHTML, /call-history-skeleton/);
+        assert.equal(h.list.children.length, 0);
+        h.requests[0].resolve({ items: [call({ peerUserId: 5 })], hasMore: false });
+        await settle();
+        assert.doesNotMatch(h.list.innerHTML, /skeleton/);
+        assert.equal(h.list.children.length, 1);
+    });
+
+    await test('a failed first page removes the skeleton instead of leaving it on screen', async function () {
+        var h = createHarness();
+        h.BF.callHistory.open();
+        h.requests[0].reject(new Error('network'));
+        await settle();
+        assert.doesNotMatch(h.list.innerHTML, /skeleton/);
+        assert.equal(h.list.children.length, 1);
         assert.equal(h.list.children[0].className, 'call-history-empty');
     });
 

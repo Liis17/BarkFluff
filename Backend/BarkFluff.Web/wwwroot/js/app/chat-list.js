@@ -29,6 +29,8 @@
     var chatListLoading = false;
     var chatListRequest = null;
     var chatListPageRequest = null;
+    var chatListSettled = false; // был ли первый ответ listChats; до него показываем заглушки
+    var chatListSkeleton = null;
     var refreshAfterCurrentRequest = false;
     var loadAfterCurrentRequest = false;
     var resetAfterCurrentRequest = false;
@@ -42,6 +44,7 @@
     // Оконная виртуализация: в DOM только строки видимой области ± OVERSCAN (высота строки фиксирована).
     var OVERSCAN = 8;
     var ROW = 75; // --chat-row-height
+    var CHAT_SKELETON_ROWS = 8;
     var NAV = 0; // нижний padding списка под плавающую навигацию
     var spacer;
     var visibleChats = []; // после фильтра папок и дедупа по id
@@ -89,7 +92,35 @@
         });
     }
 
+    // До первого ответа список пуст: строки-заглушки лежат после spacer и вне option-строк (aria-hidden).
+    function showChatListSkeleton() {
+        if (chatListSkeleton) return;
+        var rows = '';
+        for (var i = 0; i < CHAT_SKELETON_ROWS; i++) {
+            rows +=
+                '<div class="chat-skeleton-row"><span class="skeleton chat-skeleton-avatar"></span>' +
+                '<span class="chat-skeleton-info"><span class="skeleton chat-skeleton-name"></span>' +
+                '<span class="skeleton chat-skeleton-text"></span></span></div>';
+        }
+        chatListSkeleton = document.createElement('div');
+        chatListSkeleton.className = 'chat-list-skeleton';
+        chatListSkeleton.setAttribute('aria-hidden', 'true');
+        chatListSkeleton.innerHTML = rows;
+        chatListEl.appendChild(chatListSkeleton);
+        chatListEl.setAttribute('aria-busy', 'true');
+    }
+
+    function hideChatListSkeleton() {
+        if (chatListSkeleton) chatListSkeleton.remove();
+        chatListSkeleton = null;
+        chatListEl.removeAttribute('aria-busy');
+    }
+
     function completeListRequest(request, result) {
+        if (!chatListSettled) {
+            chatListSettled = true;
+            hideChatListSkeleton();
+        }
         var shouldRefresh = false;
         var shouldLoad = false;
         var shouldReset = false;
@@ -139,6 +170,7 @@
         chatListLoading = true;
         var removedIdsAtRequest = new Set(removedChatIds);
         var totalKnownAtRequest = chatListTotalKnown;
+        if (!chatListSettled) showChatListSkeleton();
         var pageRequest = !reset && chatListOffset > 0 ? { invalidated: false } : null;
         chatListPageRequest = pageRequest;
         if (reset) {

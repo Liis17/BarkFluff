@@ -32,6 +32,7 @@
             --scrollbar: rgba(0,0,0,0.10);
             --separator-bg: rgba(255,255,255,0.82);
             --media-placeholder: rgba(0, 0, 0, 0.06);
+            --skeleton-shine: rgba(255, 255, 255, 0.6);
             --profile-bg: #faf8f5;
             --profile-info-bg: #eee4dd;
             --logo-gradient: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
@@ -76,6 +77,7 @@
             --scrollbar: rgba(255,255,255,0.07);
             --separator-bg: rgba(28,25,20,0.92);
             --media-placeholder: rgba(255, 255, 255, 0.08);
+            --skeleton-shine: rgba(255, 255, 255, 0.10);
             --profile-bg: #1c1916;
             --profile-info-bg: rgba(255, 255, 255, 0.045);
             --logo-gradient: linear-gradient(135deg, #f0e8e0 0%, #c0a080 100%);
@@ -117,6 +119,7 @@
             --scrollbar: rgba(255,255,255,0.06);
             --separator-bg: rgba(18,21,38,0.92);
             --media-placeholder: rgba(255, 255, 255, 0.08);
+            --skeleton-shine: rgba(255, 255, 255, 0.10);
             --profile-bg: #12152a;
             --profile-info-bg: rgba(255, 255, 255, 0.05);
             --logo-gradient: linear-gradient(135deg, #e8e4ff 0%, #a090ff 100%);
@@ -132,6 +135,33 @@
             padding: 0;
             box-sizing: border-box;
             font-family: 'Inter', sans-serif;
+        }
+
+        /* === SKELETON (заглушки загрузки) === */
+        /* Фон — токен темы; shimmer — псевдоэлемент, двигается только через transform. Декоративно: aria-hidden в разметке. */
+        .skeleton {
+            position: relative;
+            overflow: hidden;
+            background: var(--media-placeholder);
+            border-radius: 8px;
+        }
+
+        .skeleton::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, var(--skeleton-shine), transparent);
+            transform: translateX(-100%);
+            animation: skeleton-shimmer 1.4s linear infinite;
+        }
+
+        @keyframes skeleton-shimmer {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(100%); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .skeleton::after { animation: none; display: none; }
         }
 
         body {
@@ -427,6 +457,24 @@
             position: relative;
             width: 100%;
         }
+
+        /* Скелетон списка до первого ответа: строка той же высоты и отступов, что .chat-item */
+        .chat-skeleton-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            height: var(--chat-row-height);
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .chat-skeleton-avatar { width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0; }
+        .chat-skeleton-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+        .chat-skeleton-name { display: block; width: 45%; height: 12px; border-radius: 6px; }
+        .chat-skeleton-text { display: block; width: 75%; height: 10px; border-radius: 5px; }
+
+        html.sidebar-compact .chat-skeleton-row { justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
+        html.sidebar-compact .chat-skeleton-info { display: none; }
 
         .chat-list::-webkit-scrollbar { width: 4px; }
         .chat-list::-webkit-scrollbar-track { background: transparent; }
@@ -1967,6 +2015,25 @@
 
         .loading-messages.visible { opacity: 1; visibility: visible; }
 
+        /* Скелетон ленты при открытии чата: колонка как у .messages-inner, пузыри чередуются слева и справа */
+        .messages-skeleton {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-top: 6px;
+        }
+
+        .messages-skeleton-row { display: flex; }
+        .messages-skeleton-row.outgoing { justify-content: flex-end; }
+
+        .messages-skeleton-bubble {
+            display: block;
+            height: 44px;
+            border-radius: 16px 16px 16px 4px;
+        }
+
+        .messages-skeleton-row.outgoing .messages-skeleton-bubble { border-radius: 16px 16px 4px 16px; }
+
         /* === INPUT BAR === */
 
         .input-bar {
@@ -2431,6 +2498,7 @@
         }
 
         .sp-grid img:hover { background: rgba(0, 0, 0, 0.06); }
+        .sp-skeleton { display: block; width: 100%; aspect-ratio: 1; border-radius: 12px; }
 
         .sp-status {
             grid-column: 1 / -1;
@@ -3234,6 +3302,17 @@
         .sd-storage-bar { height: 6px; margin: 10px 0 16px; border-radius: 3px; background: var(--card-border); overflow: hidden; }
         .sd-storage-bar > div { height: 100%; background: var(--primary); }
 
+        /* Заглушки экранов настроек: повторяют строки бейджей, сессий и переключателей */
+        .sd-badge-skeleton { cursor: default; }
+        .sd-badge-skeleton-icon { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+        .sd-badge-skeleton-name { display: block; width: 45%; height: 13px; }
+        .sd-badge-skeleton-desc { display: block; width: 70%; height: 11px; }
+        .sd-skeleton-line { display: block; height: 13px; }
+        .sd-skeleton-line-title { width: 45%; }
+        .sd-skeleton-line-meta { width: 65%; height: 11px; margin-top: 8px; }
+        .sd-skeleton-switch { width: 40px; height: 22px; border-radius: 11px; flex-shrink: 0; }
+        .sd-skeleton-poster { display: block; height: 96px; border-radius: 0; }
+
         /* Подключение устройства по QR (fast-auth-link.js) */
         .fal-video { display: block; width: 100%; max-height: 320px; margin: 12px 0; border-radius: 12px; background: #000; object-fit: cover; }
         .fal-video[hidden] { display: none; }
@@ -3512,6 +3591,7 @@
             border: 1px solid var(--card-border);
         }
         .sd-bg-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .sd-bg-card > .skeleton { position: absolute; inset: 0; border-radius: 0; }
         .sd-bg-card-add {
             display: flex;
             align-items: center;
@@ -5592,6 +5672,9 @@
         .call-history-name { font-size: 15px; font-weight: 600; color: var(--text-main); }
         .call-history-meta { font-size: 13px; color: var(--text-sub); }
         .call-history-item.missed .call-history-meta { color: var(--error); }
+        .call-history-skeleton { display: flex; flex-direction: column; gap: 6px; padding: 10px 20px; }
+        .call-history-skeleton-name { display: block; width: 40%; height: 14px; }
+        .call-history-skeleton-meta { display: block; width: 65%; height: 12px; }
         .call-history-empty {
             text-align: center;
             color: var(--text-sub);

@@ -67,9 +67,16 @@
         });
     }
 
+    // Сетка стикеров: квадратные заглушки ячеек; текст загрузки виден только скринридеру.
+    function skeletonHtml() {
+        var html = '<span class="sr-only">' + BF.utils.escapeHtml(BF.i18n.t('common.loading')) + '</span>';
+        for (var i = 0; i < 8; i++) html += '<span class="skeleton sp-skeleton" aria-hidden="true"></span>';
+        return html;
+    }
+
     function openByFile(fileId) {
         if (!fileId) return;
-        grid.innerHTML = '<div class="sp-status">' + BF.utils.escapeHtml(BF.i18n.t('common.loadingShort')) + '</div>';
+        grid.innerHTML = skeletonHtml();
         cover.replaceChildren();
         name.textContent = '';
         desc.textContent = '';

@@ -1146,6 +1146,46 @@ async function runAsyncTests() {
         assert.equal(!!h.chats()[0].muted, false);
         assert.deepEqual(h.toastCalls, [['common.error', true]]);
     });
+
+    function skeletonCount(h) {
+        return h.list.children.filter(function (child) {
+            return child.className === 'chat-list-skeleton';
+        }).length;
+    }
+
+    await runAsyncTest('the first load shows skeleton rows outside the option rows until listChats answers', async function () {
+        var h = createHarness(0);
+        var answer;
+        h.setListChats(function () {
+            return new Promise(function (resolve) {
+                answer = resolve;
+            });
+        });
+        h.BF.chatList.load(true);
+        assert.equal(skeletonCount(h), 1);
+        var skeleton = h.list.children.find(function (child) {
+            return child.className === 'chat-list-skeleton';
+        });
+        assert.equal(skeleton.getAttribute('aria-hidden'), 'true');
+        assert.equal((skeleton.innerHTML.match(/chat-skeleton-row/g) || []).length, 8);
+        assert.equal(h.list.getAttribute('aria-busy'), 'true');
+        assert.deepEqual(h.rowIds(), []);
+        answer({ chats: [], totalCount: 0 });
+        await new Promise(function (resolve) { setImmediate(resolve); });
+        assert.equal(skeletonCount(h), 0);
+        assert.equal(h.list.getAttribute('aria-busy'), null);
+    });
+
+    await runAsyncTest('a failed first load also removes the skeleton', async function () {
+        var h = createHarness(0);
+        h.setListChats(function () {
+            return Promise.reject(new Error('offline'));
+        });
+        h.BF.chatList.load(true);
+        assert.equal(skeletonCount(h), 1);
+        await new Promise(function (resolve) { setImmediate(resolve); });
+        assert.equal(skeletonCount(h), 0);
+    });
 }
 
 runAsyncTests().catch(function (error) {

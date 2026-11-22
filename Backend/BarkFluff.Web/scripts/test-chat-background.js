@@ -106,13 +106,14 @@ async function test(name, fn) {
 }
 
 async function main() {
-    await test('opening shows a loading hint, opens the overlay and builds a global card plus one card per background', async function () {
+    await test('opening shows skeleton cards while loading, opens the overlay and builds a global card plus one card per background', async function () {
         var h = createHarness();
         h.BF.chatBackground.open(7, 'Team');
         assert.equal(h.log.opened.length, 1);
-        assert.match(h.grid.innerHTML, /common\.loadingShort/);
+        assert.equal((h.grid.innerHTML.match(/class="sd-bg-card" aria-hidden="true"><span class="skeleton">/g) || []).length, 6);
         assert.match(h.els['#chatBackgroundSelectorTitle'].textContent, /chat\.background\.for.*Team/);
         await settle();
+        assert.doesNotMatch(h.grid.innerHTML, /skeleton/);
         assert.equal(h.grid.children.length, 3);
         assert.match(h.grid.children[0].className, /none-card/);
         assert.equal(h.grid.children[0].textContent, 'chat.background.useGlobal');
@@ -174,6 +175,7 @@ async function main() {
         h.BF.chatBackground.open(7, 'Team');
         await settle();
         assert.match(h.grid.innerHTML, /sd-hint error.*chat\.background\.error/);
+        assert.doesNotMatch(h.grid.innerHTML, /skeleton/, 'the skeleton does not outlive a failed load');
     });
 
     await test('the close button and a click on the backdrop close the dialog; a click inside does not', async function () {

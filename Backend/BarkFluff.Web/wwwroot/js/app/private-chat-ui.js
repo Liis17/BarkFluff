@@ -26,6 +26,7 @@
     var messagesInner;
     var inputBar;
     var loadingMessages;
+    var feedSkeleton;
     var messageInput;
     var sendButton;
     var scrollToBottomButton;
@@ -166,6 +167,7 @@
         chatHeader.classList.add('visible');
         messagesArea.parentElement.classList.add('visible');
         messagesArea.classList.add('visible');
+        feedSkeleton.clear();
         messagesInner.innerHTML = '';
         inputBar.classList.remove('visible');
         inputBar.classList.add('private-chat');
@@ -314,6 +316,7 @@
         deps.setCurrentChatId(null);
         deps.setCurrentChatType(0);
         deps.setMessages([]);
+        feedSkeleton.clear();
         messagesInner.innerHTML = '';
         chatHeader.classList.remove('visible');
         messagesArea.classList.remove('visible');
@@ -326,7 +329,9 @@
     function loadMessages(chat) {
         var chatId = chat.id;
         messagesInner.innerHTML = '';
-        loadingMessages.classList.add('visible');
+        feedSkeleton.schedule(function () {
+            return chatId === deps.getCurrentChatId();
+        });
         return BF.api
             .listPrivateMessages(chatId, 0, 50, 0)
             .then(function (data) {
@@ -348,7 +353,7 @@
                 return false;
             })
             .finally(function () {
-                loadingMessages.classList.remove('visible');
+                if (chatId === deps.getCurrentChatId()) feedSkeleton.clear();
             });
     }
 
@@ -566,6 +571,7 @@
         messagesInner = $('#messagesInner');
         inputBar = $('#inputBar');
         loadingMessages = $('#loadingMessages');
+        feedSkeleton = BF.utils.createFeedSkeleton(messagesInner);
         messageInput = $('#messageInput');
         sendButton = $('#sendBtn');
         scrollToBottomButton = $('#scrollToBottomBtn');
