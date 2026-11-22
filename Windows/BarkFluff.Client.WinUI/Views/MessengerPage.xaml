@@ -525,6 +525,10 @@
                                    Visibility="{x:Bind ViewModel.IsPresenceLabelVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         <TextBlock Opacity=".7"
                                    Style="{StaticResource MutedText}"
+                                   Text="{x:Bind ViewModel.TypingLabel, Mode=OneWay}"
+                                   Visibility="{x:Bind ViewModel.IsTypingLabelVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <TextBlock Opacity=".7"
+                                   Style="{StaticResource MutedText}"
                                    Text="{x:Bind ViewModel.SelectedChat.RestrictionMessage, Mode=OneWay}"
                                    Visibility="{x:Bind ViewModel.SelectedChat.IsRestricted, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         <!--  Пока связь восстанавливается, статус собеседника устарел и показывать его нельзя.  -->

@@ -621,6 +621,12 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Onliner.TypingEvent>? stream)> SubscribeToTyping(List<string> chatIds, GlobalParam globalParam, CancellationToken ct = default)
             => await OnlinerManager.SubscribeToTyping(chatIds, globalParam, ct);
 
+        public IAsyncEnumerable<Proto.Onliner.TypingEvent> SubscribeToTypingWithStatus(string chatId, CancellationToken cancellationToken)
+            => OnlinerManager.SubscribeToTypingWithStatus(chatId, cancellationToken);
+
+        public Task SetTypingStatusOnceAsync(string chatId, Proto.Onliner.TypingAction action, CancellationToken cancellationToken)
+            => OnlinerManager.SetTypingStatusOnceAsync(chatId, action, cancellationToken);
+
         public async Task<ErrorReturner> ChangeChatsInTypingSubscription(List<string> chatIds, GlobalParam globalParam)
             => await OnlinerManager.ChangeChatsInTypingSubscription(chatIds, globalParam);
         #endregion

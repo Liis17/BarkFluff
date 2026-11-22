@@ -19,6 +19,8 @@ TokenInvalidated сообщает о непригодном refresh token. Token
 
 SubscribeToChatFoldersChanged передаёт пустые сигналы Updates и сохраняет gRPC-статус потока, чтобы WinUI мог остановить повторы при UNIMPLEMENTED. Перегрузки Add/Remove для папок принимают CancellationToken. Прежние сигнатуры сохранены.
 
+Для индикатора набора WinUI использует `SubscribeToTypingWithStatus` с сохранением gRPC-статуса потока и `SetTypingStatusOnceAsync` с двухсекундным дедлайном на отправку. Оба вызова поддерживают отмену и используют текущий клиент Onliner.
+
 `UserData.AccountStatus` заполняется из Users API и используется WinUI для локальных подписей ограниченных профилей и read-only личных чатов. Менеджеры токенов и FastAuth переводят `AccountBlockedException`/`AccountPendingDeletionException` в локализуемые ключи ошибки; отправка regular/private/secret сообщений, создание личных чатов/secret invite и вызов переводят `UserUnavailableException` в `Messenger_UserUnavailable`. WebApi не получает причину блокировки из legacy RPC.
 
 ## Модели и безопасность

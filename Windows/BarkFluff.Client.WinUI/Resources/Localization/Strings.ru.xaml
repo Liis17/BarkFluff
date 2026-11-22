@@ -155,6 +155,11 @@
     <x:String x:Key="Messenger_Empty">Выберите чат, чтобы начать переписку</x:String>
     <x:String x:Key="Messenger_StatusOffline">Не в сети</x:String>
     <x:String x:Key="Messenger_StatusOnline">В сети</x:String>
+    <x:String x:Key="Messenger_Typing">печатает…</x:String>
+    <x:String x:Key="Messenger_TypingSomeone">Кто-то</x:String>
+    <x:String x:Key="Messenger_TypingUnknownParticipant">кто-то</x:String>
+    <x:String x:Key="Messenger_TypingName">{0} печатает…</x:String>
+    <x:String x:Key="Messenger_TypingNames">{0} печатают…</x:String>
     <x:String x:Key="Messenger_StatusLastSeenAt">был(а) в {0}</x:String>
     <x:String x:Key="Messenger_StatusLastSeenOn">был(а) {0}</x:String>
     <x:String x:Key="Messenger_ReplyToMessage">Ответить</x:String>

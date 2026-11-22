@@ -155,6 +155,11 @@
     <x:String x:Key="Messenger_Empty">Select a chat to start messaging</x:String>
     <x:String x:Key="Messenger_StatusOffline">Offline</x:String>
     <x:String x:Key="Messenger_StatusOnline">Online</x:String>
+    <x:String x:Key="Messenger_Typing">typing…</x:String>
+    <x:String x:Key="Messenger_TypingSomeone">Someone</x:String>
+    <x:String x:Key="Messenger_TypingUnknownParticipant">someone</x:String>
+    <x:String x:Key="Messenger_TypingName">{0} is typing…</x:String>
+    <x:String x:Key="Messenger_TypingNames">{0} are typing…</x:String>
     <x:String x:Key="Messenger_StatusLastSeenAt">last seen at {0}</x:String>
     <x:String x:Key="Messenger_StatusLastSeenOn">last seen on {0}</x:String>
     <x:String x:Key="Messenger_ReplyToMessage">Reply</x:String>

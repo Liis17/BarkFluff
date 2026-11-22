@@ -113,6 +113,7 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
     /// </summary>
     public async Task<string?> LogoutAsync(CancellationToken cancellationToken = default)
     {
+        _messengerViewModel.Reset();
         await _realtimeMessenger.StopAsync();
         await _presence.StopAsync();
 
@@ -120,7 +121,6 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
 
         await _secureSessionStore.ClearAsync(cancellationToken);
         await _privateChatKeyStore.ForgetAllAsync(cancellationToken);
-        _messengerViewModel.Reset();
         _navigation.ShowLogin();
 
         return result.IsSuccess ? null : "Error_LogoutFailed";

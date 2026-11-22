@@ -25,11 +25,13 @@ internal static class MessengerTestDoubles
         FakePrivateChatKeyStore? keys = null,
         IUiDispatcher? dispatcher = null,
         TimeProvider? timeProvider = null,
-        IChatFoldersState? chatFolders = null)
+        IChatFoldersState? chatFolders = null,
+        IChatTypingService? typing = null,
+        ILocalizationService? localization = null)
     {
         var effectiveMessenger = messenger ?? new FakeMessengerService();
         var effectivePresence = presence ?? new FakeOnlinePresenceService();
-        var localization = new StubLocalizationService();
+        localization ??= new StubLocalizationService();
         return new(effectiveMessenger,
             keys ?? new FakePrivateChatKeyStore(),
             realtime ?? new FakeRealtimeMessengerService(),
@@ -37,7 +39,7 @@ internal static class MessengerTestDoubles
             localization,
             dispatcher ?? new InlineUiDispatcher(),
             new ProfileViewModel(effectiveMessenger, effectivePresence, localization),
-            timeProvider, chatFolders);
+            timeProvider, chatFolders, typing);
     }
 
     public static Chat CreateChat(string id, string title = "Chat", long peerUserId = 0, ChatType chatType = ChatType.Regular)

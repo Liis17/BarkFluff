@@ -42,7 +42,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         IUiDispatcher uiDispatcher,
         ProfileViewModel profile,
         TimeProvider? timeProvider = null,
-        IChatFoldersState? chatFolders = null)
+        IChatFoldersState? chatFolders = null,
+        IChatTypingService? typing = null)
     {
         _messenger = messenger;
         _privateChatKeyStore = privateChatKeyStore;
@@ -52,6 +53,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _uiDispatcher = uiDispatcher;
         _muteClock = timeProvider ?? TimeProvider.System;
         _chatFolders = chatFolders;
+        _typing = typing;
         Profile = profile;
         _presence.PresenceChanged += OnPresenceChanged;
         _presence.ConnectionChanged += OnPresenceConnectionChanged;
@@ -71,7 +73,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     public bool IsChatPlaceholderVisible => SelectedChat is null;
 
     /// <summary>Пока связь восстанавливается, статус собеседника устарел — шапка показывает вместо него индикатор.</summary>
-    public bool IsPresenceLabelVisible => !IsReconnecting && SelectedChat?.HasPresence == true;
+    public bool IsPresenceLabelVisible => !IsReconnecting && TypingLabel.Length == 0 && SelectedChat?.HasPresence == true;
 
     public bool IsChatHeaderReconnectingVisible => IsReconnecting && HasSelectedChat;
 
@@ -93,6 +95,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     [ObservableProperty] private MessageScrollRequest? _scrollRequest;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPresenceLabelVisible), nameof(IsChatHeaderReconnectingVisible), nameof(IsChatListReconnectingVisible))]
+    [NotifyPropertyChangedFor(nameof(IsTypingLabelVisible))]
     private bool _isReconnecting;
     [ObservableProperty] private bool _isPrivateUnlockVisible;
     [ObservableProperty] private string _privatePassphrase = string.Empty;
@@ -149,6 +152,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     /// </summary>
     public void Reset()
     {
+        ResetTyping();
         EndRealtimeSession();
         ActionError = null;
         IsLoading = false;
@@ -280,6 +284,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _feedLoaded = false;
         _feedIncludesTail = true;
         _chatVersion++;
+        WatchTyping(newValue);
         ResetHistoryWindow();
         _feedLoadCompletion?.TrySetResult();
         _feedLoadCompletion = null;
@@ -323,6 +328,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
+        _typing?.StopSending();
         var draft = DraftText;
         var reply = ReplyTarget;
         using var reading = session!.Journal.ReadHistory(chat.Id, chat.IsPrivate);

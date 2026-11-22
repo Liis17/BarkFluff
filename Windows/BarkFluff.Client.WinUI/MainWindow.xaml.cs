@@ -1,4 +1,5 @@
 using BarkFluff.Client.Core.Models;
+using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Client.WinUI.Views;
 
@@ -249,7 +250,8 @@ public sealed partial class MainWindow : Window
         {
             try
             {
-                await CleanupLoginForExitAsync().WaitAsync(TimeSpan.FromSeconds(3));
+                var typing = App.Services.GetRequiredService<IChatTypingService>();
+                await Task.WhenAll(typing.StopAsync(), CleanupLoginForExitAsync()).WaitAsync(TimeSpan.FromSeconds(3));
             }
             catch (TimeoutException)
             {
