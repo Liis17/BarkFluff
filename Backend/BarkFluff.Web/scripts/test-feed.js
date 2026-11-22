@@ -230,7 +230,7 @@ async function settle() {
     for (var i = 0; i < 20; i++) await new Promise((resolve) => setImmediate(resolve));
 }
 
-function createHarness(count) {
+function createHarness(count, dateFor) {
     var doc = new FakeElement('#document');
     doc.ownerDocument = doc;
     doc.body = new FakeElement('body', doc);
@@ -273,9 +273,12 @@ function createHarness(count) {
     });
     var olderPage = null;
     var timers = [];
+    var builds = [];
+    var resizeCallbacks = [];
     var BF = {
         messages: {
-            buildMessageElement: function (msg) {
+            buildMessageElement: function (msg, myId, getUser, showMedia, options) {
+                builds.push({ id: msg.id, options: options });
                 var group = doc.createElement('div');
                 group.className = 'msg-group ' + (msg.senderId === 1 ? 'outgoing' : 'incoming');
                 group.dataset.msgId = String(msg.id); // настоящий dataset хранит строки
@@ -308,8 +311,8 @@ function createHarness(count) {
             }
         },
         utils: {
-            formatDate: function () {
-                return 'today';
+            formatDate: function (ts) {
+                return dateFor ? dateFor(ts) : 'today';
             },
             formatTime: function (ts) {
                 return 't' + ts;
@@ -333,6 +336,12 @@ function createHarness(count) {
         setTimeout: function (callback) {
             timers.push(callback);
             return timers.length;
+        },
+        ResizeObserver: function (callback) {
+            resizeCallbacks.push(callback);
+            return {
+                observe: function () {}
+            };
         }
     });
     context.window = context;
@@ -399,6 +408,18 @@ function createHarness(count) {
             timers.splice(0).forEach(function (callback) {
                 callback();
             });
+        },
+        buildCount: function () {
+            return builds.length;
+        },
+        lastOptions: function (id) {
+            for (var i = builds.length - 1; i >= 0; i--) if (builds[i].id === id) return builds[i].options;
+            return null;
+        },
+        resize: function () {
+            resizeCallbacks.forEach(function (callback) {
+                callback();
+            });
         }
     };
 }
@@ -407,6 +428,12 @@ function createHarness(count) {
 function focusedId(h) {
     var el = h.doc.activeElement;
     return el && el.dataset ? el.dataset.msgId : undefined;
+}
+
+function dateSeparators(h) {
+    return h.inner.querySelectorAll('.msg-date-separator').map(function (el) {
+        return el.dataset.date;
+    });
 }
 
 async function test(name, fn) {
@@ -507,6 +534,85 @@ async function main() {
         await settle();
         h.runTimers();
         assert.equal(h.liveRegion.textContent, 'a11y.newMessages:2');
+    });
+
+    await test('deleting a message removes only its node: far messages keep their nodes and the scroll position', async function () {
+        var h = createHarness(5);
+        await h.BF.feed.render();
+        var first = h.article(1000);
+        var last = h.article(1004);
+        h.area.scrollTop = 1234;
+        h.messages().splice(2, 1);
+        await h.BF.feed.removeMessage(1002);
+        assert.equal(h.article(1002), null);
+        assert.equal(h.article(1000), first, 'a message away from the deleted one is not rebuilt');
+        assert.equal(h.article(1004), last);
+        assert.equal(h.area.scrollTop, 1234);
+    });
+
+    await test('a message that becomes next to its sender again is regrouped after the delete', async function () {
+        var h = createHarness(3);
+        await h.BF.feed.render();
+        assert.equal(h.lastOptions(1002).groupedWithPrevious, false);
+        h.messages().splice(1, 1); // чужое сообщение между двумя сообщениями одного отправителя
+        await h.BF.feed.removeMessage(1001);
+        assert.equal(h.lastOptions(1002).groupedWithPrevious, true);
+    });
+
+    await test('deleting the only message of a day also removes its date separator', async function () {
+        var h = createHarness(3, function (ts) {
+            return ts >= 1002000 ? 'day2' : 'day1';
+        });
+        await h.BF.feed.render();
+        assert.deepEqual(dateSeparators(h), ['day1', 'day2']);
+        h.messages().splice(2, 1);
+        await h.BF.feed.removeMessage(1002);
+        assert.deepEqual(dateSeparators(h), ['day1']);
+    });
+
+    await test('a repeated delete of a message that is already gone changes nothing', async function () {
+        var h = createHarness(3);
+        await h.BF.feed.render();
+        h.messages().splice(1, 1);
+        await h.BF.feed.removeMessage(1001);
+        var builds = h.buildCount();
+        var ids = h.articles().map(function (el) {
+            return el.dataset.msgId;
+        });
+        await h.BF.feed.removeMessage(1001);
+        assert.equal(h.buildCount(), builds, 'no neighbour is rebuilt');
+        assert.deepEqual(
+            h.articles().map(function (el) {
+                return el.dataset.msgId;
+            }),
+            ids
+        );
+    });
+
+    await test('deleting the focused message moves focus to the following message', async function () {
+        var h = createHarness(3);
+        await h.BF.feed.render();
+        h.article(1001).focus();
+        h.messages().splice(1, 1);
+        await h.BF.feed.removeMessage(1001);
+        assert.equal(focusedId(h), '1002');
+        assert.equal(h.rovers().length, 1);
+    });
+
+    await test('a feed at the bottom stays there when its size changes; scrolled up it keeps its position', async function () {
+        var h = createHarness(3);
+        await h.BF.feed.render();
+        h.area.scrollHeight = 2000;
+        h.area.scrollTop = 1500; // у низа: 2000 - 1500 - 500 = 0
+        h.area.dispatchEvent({ type: 'scroll' });
+        h.area.scrollHeight = 2600; // догрузилась картинка
+        h.resize();
+        assert.equal(h.area.scrollTop, 2600);
+        h.area.scrollTop = 800;
+        h.area.dispatchEvent({ type: 'scroll' });
+        h.area.scrollHeight = 3000;
+        h.resize();
+        assert.equal(h.area.scrollTop, 800, 'scrolled up: the position is left alone');
     });
 }
 

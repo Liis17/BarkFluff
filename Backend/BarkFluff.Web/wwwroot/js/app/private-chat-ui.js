@@ -497,7 +497,7 @@
         var index = findLoadedIndex(messageId);
         if (index < 0) return;
         deps.getMessages().splice(index, 1);
-        deps.renderMessages();
+        BF.feed.removeMessage(messageId);
     }
 
     function handleEdit(chatId, encryptedMessage) {
@@ -510,8 +510,14 @@
             if (chatId !== deps.getCurrentChatId()) return;
             var index = findLoadedIndex(encryptedMessage.id);
             if (index < 0) return;
-            deps.getMessages()[index] = toUiMessage(chatId, encryptedMessage, text);
-            deps.renderMessages();
+            var updated = toUiMessage(chatId, encryptedMessage, text);
+            deps.getMessages()[index] = updated;
+            var oldEl = BF.feed.findGroup(updated.id);
+            if (!oldEl) return;
+            BF.feed.buildElement(updated).then(function (newEl) {
+                newEl.dataset.date = oldEl.dataset.date;
+                BF.feed.replaceElement(oldEl, newEl);
+            });
         });
     }
 

@@ -22,12 +22,14 @@
     var liveRegion;
 
     var MAX_MESSAGES = 200; // скользящее окно ленты: сколько сообщений держим в DOM
+    var STICK_TO_BOTTOM_PX = 32; // расстояние до низа, при котором лента считается прилипшей
     var isLoadingOlder = false;
     var noMoreOlder = false;
     var isLoadingNewer = false;
     var hasNewerGap = false; // хвост буфера обрезан — окно не доходит до конца чата
     var isJumpingToTail = false;
     var isJumpingToMessage = false;
+    var stickToBottom = false; // пользователь у нижнего края (обновляет onScroll и scrollToBottom)
     var resyncSeparatorId = null; // id первого сообщения после resync-пропуска (разделитель «Новые сообщения»)
     var newMessagesBelowCount = 0;
     var roverId = null; // сообщение с tabindex=0 (roving tabindex)
@@ -45,6 +47,7 @@
         hasNewerGap = false;
         isLoadingNewer = false;
         isJumpingToTail = false;
+        stickToBottom = false;
         resyncSeparatorId = null;
         roverId = null;
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
@@ -316,6 +319,14 @@
             jumpToLiveTail();
             return;
         }
+        stickToBottom = true;
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+
+    // Пользователь был у нижнего края: картинки, баннеры и панели над полем ввода меняют высоту области —
+    // держим низ. Прыжки и подгрузка старых ведут позицию сами, поэтому здесь их пропускаем.
+    function keepStuckToBottom() {
+        if (!stickToBottom || isJumpingToMessage || isJumpingToTail || isLoadingOlder) return;
         messagesArea.scrollTop = messagesArea.scrollHeight;
     }
 
@@ -576,6 +587,37 @@
         el.remove();
         if (neighbor) focusArticle(neighbor, false);
         else syncRover();
+    }
+
+    // Перерисовка одного сообщения на месте: группировка и подпись отправителя зависят от соседей.
+    function rebuildInView(msg) {
+        return buildMessageViewElement(msg).then(function (replacement) {
+            var el = findMessageGroup(msg.id);
+            if (!el || !el.isConnected) return;
+            replacement.dataset.date = el.dataset.date;
+            replaceElement(el, replacement);
+        });
+    }
+
+    // Удаление одного сообщения без перерисовки ленты. Буфер (`messages`) вызывающий уже обновил.
+    // Узел уходит через removeElement, соседи перестраиваются, осиротевшие разделители убираются.
+    // Повторный вызов для отсутствующего узла — no-op. Анимация удаления встраивается здесь.
+    function removeMessage(messageId) {
+        var el = findMessageGroup(messageId);
+        if (!el) return Promise.resolve();
+        var prevEl = articleSibling(el, false);
+        var nextEl = articleSibling(el, true);
+        removeElement(el);
+        removeOrphanSeparators();
+        var messages = deps.getMessages();
+        return Promise.all(
+            [prevEl, nextEl].filter(Boolean).map(function (neighbor) {
+                var msg = messages.find(function (m) {
+                    return String(m.id) === String(neighbor.dataset.msgId);
+                });
+                return msg ? rebuildInView(msg) : Promise.resolve();
+            })
+        );
     }
 
     function trackBusy(promise) {
@@ -859,6 +901,7 @@
 
         // Показываем/скрываем кнопку прокрутки вниз
         var distFromBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight;
+        stickToBottom = distFromBottom <= STICK_TO_BOTTOM_PX;
         if (scrollToBottomBtn) scrollToBottomBtn.classList.toggle('visible', distFromBottom > 300);
         if (distFromBottom < 100) loadNewerMessages();
         if (distFromBottom <= 300 && newMessagesBelowCount > 0) {
@@ -889,6 +932,11 @@
 
         messagesArea.addEventListener('scroll', onScroll);
         messagesInner.addEventListener('keydown', onFeedKeydown);
+        if (typeof ResizeObserver === 'function') {
+            var resizeObserver = new ResizeObserver(keepStuckToBottom);
+            resizeObserver.observe(messagesArea);
+            resizeObserver.observe(messagesInner);
+        }
 
         if (scrollToBottomBtn) {
             scrollToBottomBtn.addEventListener('click', function () {
@@ -912,6 +960,7 @@
         buildElement: buildMessageViewElement,
         replaceElement: replaceElement,
         removeElement: removeElement,
+        removeMessage: removeMessage,
         announceIncoming: announceIncoming,
         clearNewerGap: function (resetLoading) {
             hasNewerGap = false;

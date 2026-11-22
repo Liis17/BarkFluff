@@ -107,6 +107,10 @@ function createHarness(options) {
             incrementNewBelow: function () {
                 calls.push(['newBelow']);
             },
+            removeMessage: function (id) {
+                calls.push(['removeMessage', id]);
+                return Promise.resolve();
+            },
             replaceElement: function (oldEl, newEl) {
                 state.replacedWith = newEl;
                 calls.push(['replaceElement', oldEl.id, newEl.built]);
@@ -491,7 +495,7 @@ async function main() {
         assert.equal(h.state.messages[0].editedAt, 1, 'but the loaded message is updated');
     });
 
-    await test('a delete removes the message, redraws the feed, tells the composer and the pinned panel', async function () {
+    await test('a delete removes the message from the buffer and its node from the feed, tells the composer and the pinned panel', async function () {
         var h = createHarness({ chats: [chat('chat-a', { lastMessage: msg(9, 2) })], messages: [msg(5, 2), msg(6, 2)] });
         h.emit('message_deleted', { chatId: 'chat-a', messageId: '5' });
         assert.deepEqual(
@@ -501,7 +505,16 @@ async function main() {
             [6],
             'the id is compared as a number, whatever its type'
         );
-        assert.deepEqual(h.calls(), [['composerDeleted', 5], ['renderMessages'], ['pinnedDeleted', 5]]);
+        assert.deepEqual(h.calls(), [['composerDeleted', 5], ['removeMessage', 5], ['pinnedDeleted', 5]]);
+    });
+
+    await test('a repeated delete event reaches the feed only for the first copy', async function () {
+        var h = createHarness({ chats: [chat('chat-a')], messages: [msg(5, 2)] });
+        h.emit('message_deleted', { chatId: 'chat-a', messageId: 5 });
+        h.clear();
+        h.emit('message_deleted', { chatId: 'chat-a', messageId: 5 });
+        assert.equal(h.has('removeMessage'), false);
+        assert.equal(h.has('renderMessages'), false);
     });
 
     await test('a delete of a message that is not loaded skips the redraw but still reaches the composer and pinned', async function () {
@@ -515,7 +528,7 @@ async function main() {
         var h = createHarness({ chats: [chat('chat-a')], messages: [msg(5, 2)] });
         h.emit('message_deleted', { chatId: 'CHAT-A', messageId: 5 });
         assert.equal(h.state.messages.length, 0);
-        assert.equal(h.has('renderMessages'), true);
+        assert.equal(h.has('removeMessage'), true);
     });
 
     await test('deleting the last message of a chat reloads the chat list once', async function () {

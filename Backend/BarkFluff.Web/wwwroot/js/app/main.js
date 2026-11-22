@@ -244,6 +244,10 @@
         chatHeaderStatus.hidden = false;
         chatHeaderStatus.textContent = '';
         chatHeaderStatus.classList.remove('online');
+        // Шапка сразу показывает чат из списка; getChatInfo уточнит название и аватар.
+        chatHeaderName.textContent = chatMeta ? chatMeta.title || BF.i18n.t('common.chat') : '';
+        if (chatMeta && chatMeta.picture) chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(chatMeta.picture) + '" alt="">';
+        else chatHeaderAvatar.textContent = chatMeta ? (chatMeta.title || '?')[0].toUpperCase() : '';
         setChatCallButtonsVisible(true);
 
         // Reset unread count for the opened chat

@@ -156,8 +156,10 @@
         var idx = messages.findIndex(function (m) {
             return Number(m.id) === msgIdNum;
         });
-        if (idx >= 0) messages.splice(idx, 1);
-        if (idx >= 0) deps.renderMessages();
+        if (idx >= 0) {
+            messages.splice(idx, 1);
+            BF.feed.removeMessage(msgIdNum);
+        }
 
         // Обновляем lastMessage чат-листа для всех чатов, где это сообщение последнее.
         var anyChatTouched = false;

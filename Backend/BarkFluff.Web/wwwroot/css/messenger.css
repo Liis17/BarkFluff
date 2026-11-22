@@ -744,7 +744,6 @@
         .chat-area > .chat-header,
         .chat-area > .pinned-bar,
         .chat-area > .chat-empty,
-        .chat-area > .loading-messages,
         .chat-area > .messages-area-wrap,
         .chat-area > .input-bar {
             position: relative;
@@ -1930,15 +1929,28 @@
             line-height: 1.35;
         }
 
+        /* Поверх верха ленты: не участвует в потоке, высоту области сообщений не меняет */
         .loading-messages {
-            text-align: center;
-            padding: 12px;
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            z-index: 2;
+            transform: translateX(-50%);
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: var(--separator-bg);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             color: var(--text-sub);
-            font-size: 13px;
-            display: none;
+            font-size: 12px;
+            line-height: 1.35;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s var(--ease-out), visibility 0.15s;
         }
 
-        .loading-messages.visible { display: block; }
+        .loading-messages.visible { opacity: 1; visibility: visible; }
 
         /* === INPUT BAR === */
 

@@ -76,7 +76,23 @@ function createUiHarness(options) {
             }
         },
         utils: { openOverlay: function () {}, closeOverlay: function () {} },
-        sound: { play: function () {} }
+        sound: { play: function () {} },
+        feed: {
+            removeMessage: function (id) {
+                calls.push(['removeMessage', id]);
+                return Promise.resolve();
+            },
+            findGroup: function (id) {
+                return (options.rendered || []).indexOf(id) >= 0 ? makeEl('group-' + id) : null;
+            },
+            buildElement: function (msg) {
+                calls.push(['build', msg.id]);
+                return Promise.resolve(makeEl('built-' + msg.id));
+            },
+            replaceElement: function () {
+                calls.push(['replaceElement']);
+            }
+        }
     };
     var els = {};
     var context = vm.createContext({
@@ -291,14 +307,22 @@ async function test(name, fn) {
 }
 
 async function main() {
-    await test('an edit replaces the decrypted message in the open private chat and re-renders', async function () {
-        var h = createUiHarness({ chats: [{ id: 'p1' }], messages: [uiMessage(5), uiMessage(6)] });
+    await test('an edit replaces the decrypted message and only its element in the open private chat', async function () {
+        var h = createUiHarness({ chats: [{ id: 'p1' }], messages: [uiMessage(5), uiMessage(6)], rendered: [5, 6] });
         h.emit('private_message_edited', { chatId: 'p1', message: encrypted(5) });
         await settle();
         assert.equal(h.state.messages[0].content.text, 'plain-5');
         assert.equal(h.state.messages[0].isEdited, true);
         assert.equal(h.state.messages[1].content.text, 'old-6');
-        assert.deepEqual(h.names(), ['renderMessages']);
+        assert.deepEqual(h.names(), ['build', 'replaceElement'], 'no full redraw of the feed');
+    });
+
+    await test('an edit of a private message without a rendered element only updates the buffer', async function () {
+        var h = createUiHarness({ chats: [{ id: 'p1' }], messages: [uiMessage(5)] });
+        h.emit('private_message_edited', { chatId: 'p1', message: encrypted(5) });
+        await settle();
+        assert.equal(h.state.messages[0].content.text, 'plain-5');
+        assert.deepEqual(h.names(), []);
     });
 
     await test('an edit for a closed chat or an unloaded message changes nothing', async function () {
@@ -330,7 +354,7 @@ async function main() {
             }),
             [6]
         );
-        assert.deepEqual(h.names(), ['renderMessages']);
+        assert.deepEqual(h.calls(), [['removeMessage', 5]], 'one node removed, no full redraw');
     });
 
     await test('an edit event carrying isDeleted removes the message', async function () {
