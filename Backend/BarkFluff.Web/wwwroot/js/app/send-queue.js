@@ -21,6 +21,8 @@
     var GENERIC_MESSAGE_TYPE = 1;
     var IMAGE_UPLOAD_TYPE = 2;
     var GIF_UPLOAD_TYPE = 4;
+    var IMAGE_PROBE_TIMEOUT_MS = 150;
+    var MEDIA_DECODE_TIMEOUT_MS = 3000;
 
     function newOperationId() {
         if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
@@ -166,6 +168,35 @@
         return found;
     }
 
+    // Серверные файлы без закешированной ссылки получают её до сборки: иначе картинка построится с пустым src.
+    function prefetchMessageFiles(msg) {
+        var fileIds = ((msg.content && msg.content.attachments) || [])
+            .filter(function (a) {
+                return a.fileId && !BF.files.getCachedFileUrl(a.fileId);
+            })
+            .map(function (a) {
+                return a.fileId;
+            });
+        if (fileIds.length === 0) return Promise.resolve();
+        return BF.files.getFileUrls(fileIds).catch(function () {});
+    }
+
+    // Новый элемент подменяет pending-элемент, когда его картинки декодированы, иначе на месте пустой кадр.
+    // Ожидание ограничено по времени; ошибка декодирования тоже не задерживает подмену.
+    function waitForDecodedMedia(el) {
+        var decodes = Array.prototype.map.call(el.querySelectorAll('img'), function (img) {
+            img.loading = 'eager';
+            return typeof img.decode === 'function' ? img.decode().catch(function () {}) : Promise.resolve();
+        });
+        var timer;
+        var timeout = new Promise(function (resolve) {
+            timer = setTimeout(resolve, MEDIA_DECODE_TIMEOUT_MS);
+        });
+        return Promise.race([Promise.all(decodes), timeout]).then(function () {
+            clearTimeout(timer);
+        });
+    }
+
     function replacePendingElement(entry, msg) {
         var oldEl = BF.feed.findGroup(entry.localId);
         if (!oldEl) {
@@ -173,12 +204,16 @@
             return;
         }
 
-        BF.feed
-            .buildElement(msg)
+        prefetchMessageFiles(msg)
+            .then(function () {
+                return BF.feed.buildElement(msg);
+            })
             .then(function (newEl) {
                 newEl.dataset.date = BF.utils.formatDate(msg.sentAt);
-                if (oldEl.isConnected) BF.feed.replaceElement(oldEl, newEl);
-                releasePendingPreviews(entry);
+                return waitForDecodedMedia(newEl).then(function () {
+                    if (oldEl.isConnected) BF.feed.replaceElement(oldEl, newEl);
+                    releasePendingPreviews(entry);
+                });
             })
             .catch(function () {
                 BF.feed.render().then(function () {
@@ -345,6 +380,65 @@
         pendingUploads.forEach(function (entry) {
             if (hasUploadWithoutFile(entry)) loadStoredFiles(entry);
         });
+    }
+
+    function imageSizeFromUrl(url) {
+        return new Promise(function (resolve) {
+            if (!url || !window.Image) {
+                resolve(null);
+                return;
+            }
+            var image = new window.Image();
+            image.onload = function () {
+                resolve(image.naturalWidth > 0 ? { width: image.naturalWidth, height: image.naturalHeight } : null);
+            };
+            image.onerror = function () {
+                resolve(null);
+            };
+            image.src = url;
+        });
+    }
+
+    // Размер картинки из файла (с учётом EXIF-поворота). Декодирование ограничено по времени (не тормозим показ отправки): без размеров
+    // сообщение всё равно уходит. Превью для запасного пути уже создано при подготовке отправки.
+    function probeImageSize(file, previewUrl) {
+        var decoded = window.createImageBitmap
+            ? Promise.resolve()
+                  .then(function () {
+                      return window.createImageBitmap(file, { imageOrientation: 'from-image' });
+                  })
+                  .then(function (bitmap) {
+                      var size = bitmap.width > 0 ? { width: bitmap.width, height: bitmap.height } : null;
+                      bitmap.close();
+                      return size;
+                  })
+            : imageSizeFromUrl(previewUrl);
+        var sized = decoded.catch(function () {
+            return imageSizeFromUrl(previewUrl);
+        });
+        var timer;
+        var timeout = new Promise(function (resolve) {
+            timer = setTimeout(function () {
+                resolve(null);
+            }, IMAGE_PROBE_TIMEOUT_MS);
+        });
+        return Promise.race([sized, timeout]).then(function (size) {
+            clearTimeout(timer);
+            return size;
+        });
+    }
+
+    function probeLocalImageSizes(entry, files) {
+        return Promise.all(
+            entry.localMessage.content.attachments.map(function (attachment, index) {
+                if (!attachment.localPreviewUrl) return null;
+                return probeImageSize(files[index], attachment.localPreviewUrl).then(function (size) {
+                    if (!size) return;
+                    attachment.imageWidth = size.width;
+                    attachment.imageHeight = size.height;
+                });
+            })
+        );
     }
 
     function createPendingSend(files, asDocuments, text, caption) {
@@ -674,8 +768,10 @@
         }
         if (BF.pendingFiles) BF.pendingFiles.put(entry.operationId, files);
         BF.composer.clearForSend();
-        showPendingSend(entry);
-        runPendingSend(entry, false);
+        probeLocalImageSizes(entry, files).then(function () {
+            showPendingSend(entry);
+            runPendingSend(entry, false);
+        });
     }
 
     function init(options) {

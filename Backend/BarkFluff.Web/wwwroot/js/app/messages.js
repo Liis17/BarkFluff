@@ -182,12 +182,11 @@
         if (visible === 1) {
             var w = images[0].imageWidth || 0;
             var h = images[0].imageHeight || 0;
-            if (w > 0 && h > 0) {
-                grid.style.width = Math.min(w, 400) + 'px';
-                grid.style.maxWidth = '100%';
-                grid.style.aspectRatio = w + ' / ' + h;
-                grid.style.maxHeight = '350px';
-            }
+            var sized = w > 0 && h > 0;
+            grid.style.width = (sized ? Math.min(w, 400) : 400) + 'px';
+            grid.style.maxWidth = '100%';
+            grid.style.aspectRatio = sized ? w + ' / ' + h : '4 / 3';
+            grid.style.maxHeight = '350px';
         } else {
             grid.style.width = '400px';
             grid.style.maxWidth = '100%';
@@ -215,11 +214,26 @@
                 im.loading = 'lazy';
                 im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
                 BF.files.bindResilientMedia(im, attachment.fileId, true);
+                markMediaPending(im);
                 im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, attachment.fileId));
                 grid.appendChild(im);
             }
         }
         container.appendChild(grid);
+    }
+
+    // Картинка, которая ещё грузится, прячется и плавно появляется над фоном контейнера. Готовая картинка
+    // (например, из кеша браузера) остаётся видимой сразу. Класс снимается по первому load или error.
+    function markMediaPending(img) {
+        if (!img.getAttribute('src') || img.complete) return;
+        img.classList.add('is-media-pending');
+        var reveal = function () {
+            img.classList.remove('is-media-pending');
+            img.removeEventListener('load', reveal);
+            img.removeEventListener('error', reveal);
+        };
+        img.addEventListener('load', reveal);
+        img.addEventListener('error', reveal);
     }
 
     function createCircularProgress(percent) {
@@ -248,6 +262,14 @@
 
             var wrap = document.createElement('div');
             wrap.className = 'attach-video-wrap';
+            // Размер резервируется до загрузки метаданных: ширина и пропорция из файла, иначе 16:9.
+            var vw = a.imageWidth || 0;
+            var vh = a.imageHeight || 0;
+            var vSized = vw > 0 && vh > 0;
+            wrap.style.width = (vSized ? Math.min(vw, 400) : 400) + 'px';
+            wrap.style.maxWidth = '100%';
+            wrap.style.aspectRatio = vSized ? vw + ' / ' + vh : '16 / 9';
+            wrap.style.maxHeight = '300px';
             var vid = document.createElement('video');
             vid.preload = 'metadata';
             if (prev) vid.poster = prev;
@@ -485,6 +507,7 @@
                     if (pic) {
                         var img = document.createElement('img');
                         img.src = pic; img.alt = '';
+                        markMediaPending(img);
                         avEl.appendChild(img);
                     } else {
                         avEl.textContent = (fullName || '?')[0].toUpperCase();
