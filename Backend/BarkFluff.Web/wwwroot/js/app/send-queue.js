@@ -513,7 +513,7 @@
         pendingUploads.set(entry.localId, entry);
         if (String(entry.chatId) === String(deps.getCurrentChatId())) {
             deps.getMessages().push(entry.localMessage);
-            BF.feed.append(entry.localMessage).then(BF.feed.scrollToBottom);
+            BF.feed.append(entry.localMessage, null, { animate: true }).then(BF.feed.scrollToBottom);
         }
     }
 

@@ -17,6 +17,7 @@ class FakeElement {
         this.className = '';
         this.textContent = '';
         this.offsetTop = 0;
+        this.offsetHeight = 40;
         var self = this;
         this.classList = {
             names: function () {
@@ -230,7 +231,15 @@ async function settle() {
     for (var i = 0; i < 20; i++) await new Promise((resolve) => setImmediate(resolve));
 }
 
-function createHarness(count, dateFor) {
+// Проигрывает удаление: окончание выхода (opacity), затем схлопывания (height) на узле сообщения.
+async function endLeave(h, id) {
+    h.endTransition(id, 'opacity');
+    await settle();
+    h.endTransition(id, 'height');
+    await settle();
+}
+
+function createHarness(count, dateFor, reduceMotion) {
     var doc = new FakeElement('#document');
     doc.ownerDocument = doc;
     doc.body = new FakeElement('body', doc);
@@ -342,6 +351,9 @@ function createHarness(count, dateFor) {
             return {
                 observe: function () {}
             };
+        },
+        matchMedia: function () {
+            return { matches: !!reduceMotion };
         }
     });
     context.window = context;
@@ -408,6 +420,19 @@ function createHarness(count, dateFor) {
             timers.splice(0).forEach(function (callback) {
                 callback();
             });
+        },
+        // Запасные таймеры переходов: пока есть запланированные, выполняем их волнами.
+        flushTimers: async function () {
+            for (var i = 0; i < 10 && timers.length > 0; i++) {
+                timers.splice(0).forEach(function (callback) {
+                    callback();
+                });
+                await settle();
+            }
+        },
+        endTransition: function (id, propertyName) {
+            var el = inner.querySelector('[data-msg-id="' + id + '"]');
+            if (el) el.dispatchEvent({ type: 'transitionend', target: el, propertyName: propertyName });
         },
         buildCount: function () {
             return builds.length;
@@ -543,7 +568,9 @@ async function main() {
         var last = h.article(1004);
         h.area.scrollTop = 1234;
         h.messages().splice(2, 1);
-        await h.BF.feed.removeMessage(1002);
+        var removal = h.BF.feed.removeMessage(1002);
+        await endLeave(h, 1002);
+        await removal;
         assert.equal(h.article(1002), null);
         assert.equal(h.article(1000), first, 'a message away from the deleted one is not rebuilt');
         assert.equal(h.article(1004), last);
@@ -555,7 +582,9 @@ async function main() {
         await h.BF.feed.render();
         assert.equal(h.lastOptions(1002).groupedWithPrevious, false);
         h.messages().splice(1, 1); // чужое сообщение между двумя сообщениями одного отправителя
-        await h.BF.feed.removeMessage(1001);
+        var removal = h.BF.feed.removeMessage(1001);
+        await endLeave(h, 1001);
+        await removal;
         assert.equal(h.lastOptions(1002).groupedWithPrevious, true);
     });
 
@@ -566,7 +595,9 @@ async function main() {
         await h.BF.feed.render();
         assert.deepEqual(dateSeparators(h), ['day1', 'day2']);
         h.messages().splice(2, 1);
-        await h.BF.feed.removeMessage(1002);
+        var removal = h.BF.feed.removeMessage(1002);
+        await endLeave(h, 1002);
+        await removal;
         assert.deepEqual(dateSeparators(h), ['day1']);
     });
 
@@ -574,7 +605,9 @@ async function main() {
         var h = createHarness(3);
         await h.BF.feed.render();
         h.messages().splice(1, 1);
-        await h.BF.feed.removeMessage(1001);
+        var removal = h.BF.feed.removeMessage(1001);
+        await endLeave(h, 1001);
+        await removal;
         var builds = h.buildCount();
         var ids = h.articles().map(function (el) {
             return el.dataset.msgId;
@@ -594,7 +627,10 @@ async function main() {
         await h.BF.feed.render();
         h.article(1001).focus();
         h.messages().splice(1, 1);
-        await h.BF.feed.removeMessage(1001);
+        var removal = h.BF.feed.removeMessage(1001);
+        assert.equal(focusedId(h), '1002', 'focus moves at once, before the animation ends');
+        await endLeave(h, 1001);
+        await removal;
         assert.equal(focusedId(h), '1002');
         assert.equal(h.rovers().length, 1);
     });
@@ -613,6 +649,155 @@ async function main() {
         h.area.scrollHeight = 3000;
         h.resize();
         assert.equal(h.area.scrollTop, 800, 'scrolled up: the position is left alone');
+    });
+
+    function liveMessage(id) {
+        return { id: id, senderId: 2, sentAt: id * 1000, type: 1, content: { text: 'm' + id } };
+    }
+
+    await test('only a live append with animate gets the enter class; render and an older page do not', async function () {
+        var h = createHarness(3);
+        await h.BF.feed.render();
+        var live = liveMessage(2000);
+        h.messages().push(live);
+        await h.BF.feed.append(live, null, { animate: true });
+        assert.equal(h.article(2000).classList.contains('msg-enter'), true);
+
+        var quiet = liveMessage(2001);
+        h.messages().push(quiet);
+        await h.BF.feed.append(quiet);
+        assert.equal(h.article(2001).classList.contains('msg-enter'), false, 'resync-style append has no animation');
+
+        await h.BF.feed.render();
+        assert.equal(
+            h.articles().some(function (el) {
+                return el.classList.contains('msg-enter');
+            }),
+            false,
+            'a full render does not animate'
+        );
+    });
+
+    await test('an older page loaded above the feed does not animate', async function () {
+        var h = createHarness(3);
+        await h.BF.feed.render();
+        h.setOlderPage(2);
+        h.area.scrollTop = 0;
+        h.area.dispatchEvent({ type: 'scroll' });
+        await settle();
+        assert.equal(h.articles().length, 5);
+        assert.equal(
+            h.articles().some(function (el) {
+                return el.classList.contains('msg-enter');
+            }),
+            false
+        );
+    });
+
+    await test('the enter class ends with the message own animationend, not with an animation of its bubble', async function () {
+        var h = createHarness(2);
+        await h.BF.feed.render();
+        var live = liveMessage(2000);
+        h.messages().push(live);
+        await h.BF.feed.append(live, null, { animate: true });
+        var el = h.article(2000);
+        el.dispatchEvent({ type: 'animationend', target: el.querySelector('.msg-bubble') });
+        assert.equal(el.classList.contains('msg-enter'), true);
+        el.dispatchEvent({ type: 'animationend', target: el });
+        assert.equal(el.classList.contains('msg-enter'), false);
+    });
+
+    await test('a pending message confirmed by the server is replaced without animation; an edit is flashed briefly', async function () {
+        var h = createHarness(2);
+        await h.BF.feed.render();
+        var confirmed = await h.BF.feed.buildElement(liveMessage(1001));
+        h.BF.feed.replaceElement(h.article(1001), confirmed);
+        assert.equal(confirmed.classList.contains('msg-enter'), false);
+        assert.equal(confirmed.classList.contains('edited-flash'), false);
+
+        var edited = await h.BF.feed.buildElement(liveMessage(1000));
+        h.BF.feed.replaceElement(h.article(1000), edited, { flash: true });
+        assert.equal(edited.classList.contains('edited-flash'), true);
+        assert.equal(h.article(1000), edited, 'an edit does not scroll or move the message');
+        h.runTimers();
+        assert.equal(edited.classList.contains('edited-flash'), false);
+    });
+
+    await test('a deleted message stays until its exit and collapse end, then it is removed', async function () {
+        var h = createHarness(3);
+        await h.BF.feed.render();
+        var el = h.article(1001);
+        h.messages().splice(1, 1);
+        var removal = h.BF.feed.removeMessage(1001);
+        assert.equal(el.classList.contains('msg-leaving'), true);
+        assert.equal(el.getAttribute('aria-hidden'), 'true');
+        assert.deepEqual(h.rovers().length, 1);
+
+        h.endTransition(1001, 'opacity');
+        await settle();
+        assert.equal(h.article(1001), el, 'the node collapses, it is not removed yet');
+        assert.equal(el.classList.contains('msg-collapsing'), true);
+        assert.equal(el.style.height, '0px');
+
+        h.endTransition(1001, 'height');
+        await settle();
+        await removal;
+        assert.equal(h.article(1001), null);
+    });
+
+    await test('a removal whose transitions never end is still completed by its fallback timers', async function () {
+        var h = createHarness(3);
+        await h.BF.feed.render();
+        h.messages().splice(1, 1);
+        var removal = h.BF.feed.removeMessage(1001);
+        await h.flushTimers();
+        await removal;
+        assert.equal(h.article(1001), null);
+        assert.equal(h.articles().length, 2);
+    });
+
+    await test('a repeated delete during the animation returns the same pending removal and rebuilds nothing', async function () {
+        var h = createHarness(3);
+        await h.BF.feed.render();
+        h.messages().splice(1, 1);
+        var first = h.BF.feed.removeMessage(1001);
+        var builds = h.buildCount();
+        var second = h.BF.feed.removeMessage(1001);
+        assert.equal(second, first);
+        assert.equal(h.buildCount(), builds);
+        await h.flushTimers();
+        await first;
+        assert.equal(h.article(1001), null);
+    });
+
+    await test('a re-render or a chat reset during the removal is safe and leaves the new nodes alone', async function () {
+        var h = createHarness(3);
+        await h.BF.feed.render();
+        h.messages().splice(1, 1);
+        var removal = h.BF.feed.removeMessage(1001);
+        h.BF.feed.reset();
+        await h.BF.feed.render();
+        var kept = h.articles().map(function (el) {
+            return el.dataset.msgId;
+        });
+        await h.flushTimers();
+        await removal;
+        assert.deepEqual(
+            h.articles().map(function (el) {
+                return el.dataset.msgId;
+            }),
+            kept,
+            'the rendered feed is untouched'
+        );
+    });
+
+    await test('with reduced motion a deleted message is removed at once, without a collapse', async function () {
+        var h = createHarness(3, null, true);
+        await h.BF.feed.render();
+        h.messages().splice(1, 1);
+        await h.BF.feed.removeMessage(1001);
+        assert.equal(h.article(1001), null);
+        assert.equal(h.articles().length, 2);
     });
 }
 

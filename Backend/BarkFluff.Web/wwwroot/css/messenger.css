@@ -5243,6 +5243,44 @@
         }
         .msg-group.swiping { transition: none; }
 
+        /* Появление живого сообщения, удаление (feed.js removeMessage) и подсветка правки.
+           Анимируются только opacity и transform; height — лишь у схлопывания удаляемого узла. */
+        @keyframes msgEnter {
+            from { opacity: 0; transform: translateY(8px); }
+        }
+        @keyframes msgEnterOutgoing {
+            from { opacity: 0; transform: translateY(8px) scale(0.98); }
+        }
+        @keyframes msgFadeIn {
+            from { opacity: 0; }
+        }
+        .msg-group.msg-enter { animation: msgEnter 200ms var(--ease-out); }
+        .msg-group.outgoing.msg-enter {
+            animation-name: msgEnterOutgoing;
+            transform-origin: right bottom;
+        }
+        .msg-group.msg-leaving {
+            opacity: 0;
+            transform: scale(0.98);
+            pointer-events: none;
+            transition: opacity 140ms var(--ease-out), transform 140ms var(--ease-out);
+        }
+        .msg-group.msg-collapsing {
+            overflow: hidden;
+            transition: height 160ms var(--ease-out), margin 160ms var(--ease-out);
+        }
+        .msg-group.edited-flash .msg-bubble { animation: msgHighlight 600ms ease-out; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .msg-group,
+            .msg-group.msg-leaving,
+            .msg-group.msg-collapsing { transition: none; }
+            .msg-group.msg-enter,
+            .msg-group.outgoing.msg-enter { animation: msgFadeIn 120ms var(--ease-out); }
+            .msg-group.highlight .msg-bubble,
+            .msg-group.edited-flash .msg-bubble { animation: none; background-color: var(--primary-alpha); }
+        }
+
         /* iOS callout suppression on bubbles (don't break document download) */
         .msg-bubble {
             -webkit-touch-callout: none;

@@ -401,7 +401,7 @@
                         })
                     ) {
                         messages.push(message);
-                        deps.appendMessageToView(message).then(deps.scrollToBottom);
+                        deps.appendMessageToView(message, null, { animate: true }).then(deps.scrollToBottom);
                     }
                     var chats = deps.getChats();
                     var chatIndex = chats.findIndex(function (item) {
@@ -477,7 +477,7 @@
             var message = toUiMessage(chatId, encryptedMessage, text);
             var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
             currentMessages.push(message);
-            deps.appendMessageToView(message).then(function () {
+            deps.appendMessageToView(message, null, { animate: true }).then(function () {
                 if (isAtBottom) deps.scrollToBottom();
                 else if (scrollToBottomButton) scrollToBottomButton.classList.add('visible');
             });
@@ -521,7 +521,7 @@
             if (!oldEl) return;
             BF.feed.buildElement(updated).then(function (newEl) {
                 newEl.dataset.date = oldEl.dataset.date;
-                BF.feed.replaceElement(oldEl, newEl);
+                BF.feed.replaceElement(oldEl, newEl, { flash: true });
             });
         });
     }

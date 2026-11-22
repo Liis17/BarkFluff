@@ -60,6 +60,7 @@ function createHarness(options) {
         messages: options.messages || [],
         storedEntries: options.storedEntries || [],
         putResult: options.putResult === undefined ? true : options.putResult,
+        appendOptions: [],
         sendResult:
             options.sendResult ||
             function () {
@@ -144,8 +145,9 @@ function createHarness(options) {
             removeElement: function (el) {
                 calls.push(['removeElement', el.id]);
             },
-            append: function (msg) {
+            append: function (msg, separatorKey, options) {
                 calls.push(['append', msg.id]);
+                state.appendOptions.push(options);
                 return Promise.resolve();
             },
             scrollToBottom: function () {
@@ -554,6 +556,11 @@ async function main() {
         assert.deepEqual(
             h.calls().filter((c) => c[0] === 'append'),
             [['append', localId]]
+        );
+        assert.deepEqual(
+            h.state.appendOptions.map((options) => !!(options && options.animate)),
+            [true],
+            'an own send enters the feed with animation'
         );
         assert.equal(h.els['#sendBtn'].disabled, true);
         await settle();
@@ -1786,6 +1793,11 @@ async function main() {
         assert.deepEqual(
             h.calls().filter((c) => c[0] === 'append'),
             [['append', 900]]
+        );
+        assert.deepEqual(
+            h.state.appendOptions.map((options) => !!(options && options.animate)),
+            [false],
+            'a confirmation that has no placeholder is not animated'
         );
         assert.deepEqual(
             h.calls().filter((c) => c[0] === 'scrollToBottom'),

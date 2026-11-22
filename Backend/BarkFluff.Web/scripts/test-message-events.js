@@ -68,7 +68,9 @@ function createHarness(options) {
         chats: options.chats || [],
         messages: options.messages || [],
         reconciled: options.reconciled || [],
-        deletePromise: Promise.resolve()
+        deletePromise: Promise.resolve(),
+        appendOptions: [],
+        replaceOptions: []
     };
     var BF = {
         api: {
@@ -111,8 +113,9 @@ function createHarness(options) {
                 calls.push(['removeMessage', id]);
                 return Promise.resolve();
             },
-            replaceElement: function (oldEl, newEl) {
+            replaceElement: function (oldEl, newEl, options) {
                 state.replacedWith = newEl;
+                state.replaceOptions.push(options);
                 calls.push(['replaceElement', oldEl.id, newEl.built]);
             }
         },
@@ -192,8 +195,9 @@ function createHarness(options) {
         isChatMuted: function (c) {
             return !!c.muted;
         },
-        appendMessageToView: function (msg) {
+        appendMessageToView: function (msg, separatorKey, options) {
             calls.push(['append', msg.id]);
+            state.appendOptions.push(options);
             return Promise.resolve();
         },
         scrollToBottom: function () {
@@ -253,6 +257,13 @@ function chat(id, extra) {
 
 function msg(id, senderId, extra) {
     return Object.assign({ id: id, senderId: senderId, content: { text: 't' + id } }, extra || {});
+}
+
+// Опции из модулей приходят из vm-контекста: сравниваем значения полей, а не прототипы объектов.
+function flags(optionsList, field) {
+    return optionsList.map(function (options) {
+        return !!(options && options[field]);
+    });
 }
 
 async function test(name, fn) {
@@ -318,6 +329,11 @@ async function main() {
             [1, 10]
         );
         assert.equal(h.state.chats[0].countUnread, 0, 'the open chat does not accumulate unread');
+        assert.deepEqual(
+            flags(h.state.appendOptions, 'animate'),
+            [true],
+            'a live message is appended with the enter animation'
+        );
         assert.deepEqual(h.calls(), [
             ['renderChatList'],
             ['sound', 'chime'],
@@ -336,6 +352,7 @@ async function main() {
         h.emit('new_message', { chatId: 'chat-a', message: msg(10, 1) });
         await settle();
         assert.deepEqual(h.calls(), [['renderChatList'], ['badge'], ['append', 10], ['scrollToBottom']]);
+        assert.deepEqual(flags(h.state.appendOptions, 'animate'), [true]);
     });
 
     await test('scrolled up by 300px or more: the button shows, the counter grows, no scroll and no mark-read', async function () {
@@ -457,6 +474,7 @@ async function main() {
             ['build', 6],
             ['replaceElement', 'old-6', 6]
         ]);
+        assert.deepEqual(flags(h.state.replaceOptions, 'flash'), [true], 'the edited bubble is flashed');
         assert.equal(h.state.replacedWith.dataset.date, '2026-09-27', 'the day separator logic still finds the group');
     });
 

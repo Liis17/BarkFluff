@@ -569,7 +569,7 @@
     function onStickerSent(sentChatId, msg) {
         if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
             messages.push(msg);
-            appendMessageToView(msg).then(scrollToBottom);
+            appendMessageToView(msg, null, { animate: true }).then(scrollToBottom);
         }
         var chatIdx = chats.findIndex(function (c) { return c.id === sentChatId; });
         if (chatIdx >= 0) {

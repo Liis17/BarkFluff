@@ -64,7 +64,7 @@
             var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
             if (msg.senderId !== myUserId) BF.feed.announceIncoming(msg);
             messages.push(msg);
-            deps.appendMessageToView(msg).then(function () {
+            deps.appendMessageToView(msg, null, { animate: true }).then(function () {
                 if (isAtBottom) {
                     deps.scrollToBottom();
                     if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
@@ -136,7 +136,7 @@
         if (!oldEl) return;
         deps.buildMessageViewElement(updatedMsg).then(function (newEl) {
             newEl.dataset.date = oldEl.dataset.date;
-            BF.feed.replaceElement(oldEl, newEl);
+            BF.feed.replaceElement(oldEl, newEl, { flash: true });
         });
     }
 
