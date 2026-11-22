@@ -47,7 +47,7 @@
             android:minWidth="48dp"
             android:minHeight="48dp"
             android:contentDescription="@string/cd_close"
-            app:icon="@drawable/ic_close"
+            app:icon="@drawable/icon_close"
             app:iconTint="#FFFFFFFF" />
 
         <Space
@@ -90,7 +90,7 @@
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:layout_gravity="center"
-                    android:src="@drawable/ic_check"
+                    android:src="@drawable/icon_check"
                     android:visibility="gone"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no" />
@@ -125,7 +125,7 @@
         android:layout_marginEnd="16dp"
         android:layout_marginTop="8dp"
         android:contentDescription="@string/cd_apply"
-        android:src="@drawable/ic_check"
+        android:src="@drawable/icon_check"
         android:visibility="gone"
         app:tint="#FFFFFFFF"
         app:layout_constraintTop_toBottomOf="@id/topBar"
@@ -182,7 +182,7 @@
                 android:minHeight="48dp"
                 android:layout_margin="2dp"
                 android:contentDescription="@string/cd_crop"
-                app:icon="@drawable/ic_crop"
+                app:icon="@drawable/icon_crop"
                 app:iconTint="#FFFFFFFF" />
 
             <com.google.android.material.button.MaterialButton
@@ -194,7 +194,7 @@
                 android:minHeight="48dp"
                 android:layout_margin="2dp"
                 android:contentDescription="@string/cd_rotate"
-                app:icon="@drawable/ic_rotate"
+                app:icon="@drawable/icon_rotate"
                 app:iconTint="#FFFFFFFF" />
 
             <com.google.android.material.button.MaterialButton
@@ -206,7 +206,7 @@
                 android:minHeight="48dp"
                 android:layout_margin="2dp"
                 android:contentDescription="@string/cd_flip"
-                app:icon="@drawable/ic_flip"
+                app:icon="@drawable/icon_flip"
                 app:iconTint="#FFFFFFFF" />
 
             <com.google.android.material.button.MaterialButton
@@ -218,7 +218,7 @@
                 android:minHeight="48dp"
                 android:layout_margin="2dp"
                 android:contentDescription="@string/cd_draw"
-                app:icon="@drawable/ic_brush"
+                app:icon="@drawable/icon_brush"
                 app:iconTint="#FFFFFFFF" />
 
             <com.google.android.material.button.MaterialButton
@@ -231,7 +231,7 @@
                 android:layout_margin="2dp"
                 android:contentDescription="@string/cd_undo"
                 android:visibility="gone"
-                app:icon="@drawable/ic_undo"
+                app:icon="@drawable/icon_undo"
                 app:iconTint="#FFFFFFFF" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
@@ -273,7 +273,7 @@
             android:minHeight="48dp"
             android:layout_marginStart="8dp"
             android:contentDescription="@string/cd_send"
-            app:icon="@drawable/ic_send_filled"
+            app:icon="@drawable/icon_send"
             app:iconTint="#FFFFFFFF" />
     </LinearLayout>
 

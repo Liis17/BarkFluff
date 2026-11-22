@@ -31,7 +31,7 @@
                 android:layout_height="32dp"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_camera"
+                android:src="@drawable/icon_photography"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <TextView

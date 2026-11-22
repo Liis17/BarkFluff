@@ -206,7 +206,7 @@ internal fun SearchHeader(
                         }
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_arrow_back),
+                        painter = painterResource(R.drawable.icon_back),
                         contentDescription = null,
                         modifier = Modifier.size(24.dp)
                     )
@@ -224,7 +224,7 @@ internal fun SearchHeader(
                             }
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_close),
+                            painter = painterResource(R.drawable.icon_close),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
@@ -257,7 +257,7 @@ private fun SearchPhaseContent(
 ) {
     when (phase) {
         SearchPhase.Idle -> SearchMessageState(
-            icon = R.drawable.ic_search,
+            icon = R.drawable.icon_search,
             title = if (isPrivateMode) {
                 stringResourceCompat(R.string.search_private_title)
             } else {
@@ -271,7 +271,7 @@ private fun SearchPhaseContent(
         )
 
         SearchPhase.TooShort -> SearchMessageState(
-            icon = R.drawable.ic_search,
+            icon = R.drawable.icon_search,
             title = stringResourceCompat(R.string.search_users_title),
             description = stringResourceCompat(R.string.search_too_short)
         )
@@ -286,7 +286,7 @@ private fun SearchPhaseContent(
         )
 
         SearchPhase.Empty -> SearchMessageState(
-            icon = R.drawable.ic_search,
+            icon = R.drawable.icon_search,
             title = stringResourceCompat(R.string.search_nothing_found),
             description = stringResourceCompat(R.string.search_try_different)
         )
@@ -595,7 +595,7 @@ internal fun SearchErrorState(onRetry: () -> Unit) {
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_info),
+                        painter = painterResource(R.drawable.icon_info),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.size(32.dp)

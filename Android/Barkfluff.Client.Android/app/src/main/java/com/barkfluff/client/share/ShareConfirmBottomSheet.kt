@@ -161,7 +161,7 @@ class ShareConfirmBottomSheet : BottomSheetDialogFragment() {
             target.setImageBitmap(bmp)
         } catch (e: Exception) {
             Log.w(TAG, "loadThumbnail failed", e)
-            target.setImageResource(android.R.drawable.ic_menu_gallery)
+            target.setImageResource(R.drawable.icon_image)
         }
     }
 
@@ -279,7 +279,7 @@ class ShareConfirmBottomSheet : BottomSheetDialogFragment() {
             when {
                 item.mime.startsWith("image/") -> holder.image.load(item.uri)
                 item.mime.startsWith("video/") -> loadVideoThumb(item.uri, holder.image)
-                else -> holder.image.setImageResource(android.R.drawable.ic_menu_save)
+                else -> holder.image.setImageResource(R.drawable.icon_document)
             }
         }
 

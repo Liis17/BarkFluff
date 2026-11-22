@@ -145,7 +145,7 @@
                 android:layout_height="18dp"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_arrow_down"
+                android:src="@drawable/icon_arrow_down"
                 app:tint="?attr/colorPrimary" />
 
             <TextView

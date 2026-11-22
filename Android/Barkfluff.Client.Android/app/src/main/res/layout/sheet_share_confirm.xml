@@ -74,7 +74,7 @@
                     android:layout_height="24dp"
                     android:layout_gravity="center"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_file"
+                    android:src="@drawable/icon_document"
                     app:tint="?attr/colorOnPrimaryContainer" />
             </com.google.android.material.card.MaterialCardView>
 
@@ -146,7 +146,7 @@
         android:layout_marginTop="20dp"
         android:text="@string/share_btn_send"
         app:cornerRadius="28dp"
-        app:icon="@drawable/ic_send"
+        app:icon="@drawable/icon_send"
         app:iconGravity="textStart" />
 
 </LinearLayout>

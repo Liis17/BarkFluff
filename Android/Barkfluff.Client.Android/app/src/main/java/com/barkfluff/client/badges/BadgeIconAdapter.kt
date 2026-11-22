@@ -33,7 +33,7 @@ internal class BadgeIconAdapter(
         val image = ImageView(context).apply {
             layoutParams = FrameLayout.LayoutParams(imageSize, imageSize, Gravity.CENTER)
             scaleType = ImageView.ScaleType.FIT_CENTER
-            setImageResource(R.drawable.ic_verified)
+            setImageResource(R.drawable.icon_verified)
         }
         container.addView(image)
         return Holder(container, image)

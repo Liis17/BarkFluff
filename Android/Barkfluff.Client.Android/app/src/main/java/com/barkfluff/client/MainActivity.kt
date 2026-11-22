@@ -693,21 +693,21 @@ class MainActivity : AppCompatActivity() {
             button = findViewById(R.id.chatNavButton),
             tabIndex = TAB_CHATS,
             label = getString(R.string.nav_chats),
-            iconRes = if (currentTabIndex == TAB_CHATS) R.drawable.ic_chat_bubble_filled else R.drawable.ic_chat_bubble,
+            iconRes = R.drawable.icon_messages,
             selected = currentTabIndex == TAB_CHATS
         )
         renderFloatingTab(
             button = findViewById(R.id.callsNavButton),
             tabIndex = TAB_CALLS,
             label = getString(R.string.nav_calls),
-            iconRes = R.drawable.ic_phone,
+            iconRes = R.drawable.icon_calls,
             selected = currentTabIndex == TAB_CALLS
         )
         renderFloatingTab(
             button = findViewById(R.id.profileNavButton),
             tabIndex = TAB_PROFILE,
             label = getString(R.string.nav_profile),
-            iconRes = R.drawable.ic_account,
+            iconRes = R.drawable.icon_personal,
             selected = currentTabIndex == TAB_PROFILE
         )
 

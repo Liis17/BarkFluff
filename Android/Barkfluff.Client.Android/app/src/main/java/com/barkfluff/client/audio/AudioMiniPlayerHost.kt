@@ -168,7 +168,7 @@ class AudioMiniPlayerHost(private val playback: AudioPlayback) : Application.Act
             binding.miniSource.isEnabled = track.chatId.isNotBlank() && track.messageId > 0L
             binding.miniPosition.text = if (state.hasError) activity.getString(R.string.voice_player_error) else
                 activity.getString(R.string.audio_position, time(state.positionMillis), time(state.durationMillis))
-            binding.miniPlay.setImageResource(if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow)
+            binding.miniPlay.setImageResource(if (state.isPlaying) R.drawable.icon_pause else R.drawable.icon_play)
             binding.miniPlay.contentDescription = activity.getString(if (state.isPlaying) R.string.cd_pause else R.string.cd_play)
             binding.miniSpeed.visibility = if (track.isVoice) View.VISIBLE else View.GONE
             val speed = VoicePlaybackSpeed.label(activity, state.speed)

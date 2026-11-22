@@ -43,7 +43,7 @@ object MediaSendNotification {
         cancelOperationId: String? = null
     ): android.app.Notification {
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_send_filled)
+            .setSmallIcon(R.drawable.icon_send)
             .setContentTitle(title)
             .setContentText(text)
             .setProgress(100, progress.coerceIn(0, 100), indeterminate)
@@ -63,7 +63,7 @@ object MediaSendNotification {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            builder.addAction(R.drawable.ic_close, context.getString(R.string.btn_cancel), pendingIntent)
+            builder.addAction(R.drawable.icon_close, context.getString(R.string.btn_cancel), pendingIntent)
         }
 
         return builder.build()

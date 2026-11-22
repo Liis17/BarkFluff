@@ -83,7 +83,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/group_remove_member"
         android:padding="8dp"
-        android:src="@drawable/ic_more_vert"
+        android:src="@drawable/icon_more"
         app:tint="@color/profile_text_dim" />
 
 </LinearLayout>

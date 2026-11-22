@@ -324,8 +324,8 @@ class ResetPasswordActivity : AppCompatActivity() {
         binding.stepNumberText.text = String.format("%02d", step)
         binding.headerIcon.setImageResource(
             when (step) {
-                1 -> R.drawable.ic_lock
-                else -> R.drawable.ic_password_dots
+                1 -> R.drawable.icon_lock
+                else -> R.drawable.icon_password
             }
         )
         binding.headerIcon.imageTintList = ColorStateList.valueOf(

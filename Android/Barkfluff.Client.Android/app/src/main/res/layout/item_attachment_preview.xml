@@ -52,7 +52,7 @@
                     android:layout_height="32dp"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_attachment"
+                    android:src="@drawable/icon_attach_file"
                     app:tint="?attr/colorOnSurfaceVariant" />
 
                 <TextView
@@ -76,7 +76,7 @@
                 android:layout_height="48dp"
                 android:layout_gravity="center"
                 android:padding="12dp"
-                android:src="@drawable/ic_download"
+                android:src="@drawable/icon_download"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no" />
 
@@ -95,7 +95,7 @@
                 android:importantForAccessibility="no"
                 android:layout_gravity="bottom|end"
                 android:layout_margin="6dp"
-                android:src="@drawable/ic_video"
+                android:src="@drawable/icon_video"
                 android:background="#80000000"
                 android:padding="4dp"
                 android:visibility="gone"

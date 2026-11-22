@@ -141,7 +141,7 @@ class MediaViewerActivity : AppCompatActivity() {
                         startProgressUpdates()
                     }
                     if (state == Player.STATE_ENDED) {
-                        binding.playPauseButton.setIconResource(R.drawable.ic_play_arrow_rounded)
+                        binding.playPauseButton.setIconResource(R.drawable.icon_play)
                         binding.videoSeekBar.progress = 0
                         binding.timeText.text = getString(R.string.media_time_position, formatTime(0), formatTime(exo.duration))
                         exo.seekTo(0)
@@ -159,7 +159,7 @@ class MediaViewerActivity : AppCompatActivity() {
     private fun updatePlayPauseIcon() {
         val isPlaying = player?.isPlaying == true
         binding.playPauseButton.setIconResource(
-            if (isPlaying) R.drawable.ic_pause_rounded else R.drawable.ic_play_arrow_rounded
+            if (isPlaying) R.drawable.icon_pause else R.drawable.icon_play
         )
         binding.playPauseButton.contentDescription = getString(
             if (isPlaying) R.string.cd_pause else R.string.cd_play
@@ -263,7 +263,7 @@ class MediaViewerActivity : AppCompatActivity() {
             items = listOf(M3ContextMenu.Item(
                 id = 1,
                 title = getString(R.string.file_remove_from_cache),
-                icon = R.drawable.ic_action_delete,
+                icon = R.drawable.icon_delete,
                 danger = true,
             )),
             alignEnd = true,

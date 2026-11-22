@@ -49,7 +49,7 @@
                 android:layout_height="22dp"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_mail"
+                android:src="@drawable/icon_mail"
                 app:tint="?attr/colorPrimary" />
 
             <EditText
@@ -121,7 +121,7 @@
                     android:layout_height="22dp"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_two_factor"
+                    android:src="@drawable/icon_two_factor"
                     app:tint="?attr/colorPrimary" />
 
                 <TextView
@@ -148,7 +148,7 @@
                     android:layout_height="22dp"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_lock"
+                    android:src="@drawable/icon_lock"
                     app:tint="?attr/colorPrimary" />
 
                 <TextView

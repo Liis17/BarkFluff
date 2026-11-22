@@ -60,7 +60,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/options"
                 android:padding="8dp"
-                android:src="@drawable/ic_more_vert"
+                android:src="@drawable/icon_more"
                 android:visibility="gone"
                 app:tint="?attr/colorOnSurfaceVariant"
                 tools:visibility="visible" />
@@ -82,7 +82,7 @@
                 android:layout_height="64dp"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_storage"
+                android:src="@drawable/icon_storage_data"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <TextView
@@ -136,7 +136,7 @@
                 android:layout_height="64dp"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_image_placeholder"
+                android:src="@drawable/icon_image"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <TextView
@@ -205,7 +205,7 @@
                 android:background="@drawable/bg_send_button_circle"
                 android:contentDescription="@string/send"
                 android:padding="12dp"
-                android:src="@drawable/ic_send_filled"
+                android:src="@drawable/icon_send"
                 android:enabled="false"
                 android:alpha="0.5"
                 app:tint="?attr/colorOnPrimary" />

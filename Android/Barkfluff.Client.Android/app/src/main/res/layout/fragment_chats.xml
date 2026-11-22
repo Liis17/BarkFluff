@@ -65,7 +65,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/bft_proxy_title"
                 android:padding="12dp"
-                android:src="@drawable/ic_storage"
+                android:src="@drawable/icon_server"
                 android:visibility="gone"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -143,7 +143,7 @@
                     android:layout_width="21dp"
                     android:layout_height="21dp"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_search"
+                    android:src="@drawable/icon_search"
                     app:tint="?attr/colorOnSurfaceVariant" />
 
                 <TextView
@@ -164,7 +164,7 @@
                 android:layout_marginStart="4dp"
                 android:contentDescription="@string/chats_sync_retry"
                 android:visibility="gone"
-                app:icon="@drawable/ic_refresh"
+                app:icon="@drawable/icon_refresh"
                 app:iconTint="?attr/colorPrimary"
                 tools:visibility="visible" />
 
@@ -227,7 +227,7 @@
                 android:layout_height="64dp"
                 android:layout_gravity="center"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_chat_bubble_md3"
+                android:src="@drawable/icon_messages"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </com.google.android.material.card.MaterialCardView>

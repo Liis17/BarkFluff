@@ -2,14 +2,14 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/navigation_chats"
-        android:icon="@drawable/ic_chat_bubble"
+        android:icon="@drawable/icon_messages"
         android:title="@string/nav_chats" />
     <item
         android:id="@+id/navigation_calls"
-        android:icon="@drawable/ic_phone"
+        android:icon="@drawable/icon_calls"
         android:title="@string/nav_calls" />
     <item
         android:id="@+id/navigation_profile"
-        android:icon="@drawable/ic_info"
+        android:icon="@drawable/icon_info"
         android:title="@string/nav_profile" />
 </menu>

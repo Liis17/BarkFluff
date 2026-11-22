@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
-        android:src="@drawable/ic_image_placeholder"
+        android:src="@drawable/icon_image"
         android:contentDescription="@null" />
 
     <!-- Затемнение -->
@@ -27,7 +27,7 @@
         android:layout_height="56dp"
         android:layout_gravity="center"
         android:background="@drawable/background_color_indicator"
-        android:src="@drawable/ic_play_arrow"
+        android:src="@drawable/icon_play"
         android:contentDescription="@string/cd_play_video"
         android:scaleType="center"
         android:padding="12dp"
@@ -44,7 +44,7 @@
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:background="@drawable/background_color_indicator"
-            android:src="@drawable/ic_download"
+            android:src="@drawable/icon_download"
             android:contentDescription="@string/cd_download_video"
             android:scaleType="center"
             android:padding="12dp"

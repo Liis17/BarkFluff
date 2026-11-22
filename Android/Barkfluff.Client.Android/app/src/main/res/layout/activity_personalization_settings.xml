@@ -20,7 +20,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="64dp"
-            app:navigationIcon="@drawable/ic_back"
+            app:navigationIcon="@drawable/icon_back"
             app:navigationIconTint="?attr/colorOnSurface"
             app:title="@string/personalization_settings_title"
             app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
@@ -165,7 +165,7 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:text="@string/personalization_set_new_poster"
-                        app:icon="@drawable/ic_palette" />
+                        app:icon="@drawable/icon_personalization" />
 
                 </LinearLayout>
 
@@ -1047,7 +1047,7 @@
                     android:layout_height="48dp"
                     android:text="@string/personalization_add_background"
                     android:textAllCaps="false"
-                    app:icon="@drawable/ic_add"
+                    app:icon="@drawable/icon_add"
                     app:iconGravity="textStart"
                     app:cornerRadius="@dimen/shape_corner_full" />
 

@@ -15,7 +15,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="64dp"
-            app:navigationIcon="@drawable/ic_back"
+            app:navigationIcon="@drawable/icon_back"
             app:title="@string/testing_settings_title"
             app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
             app:titleTextColor="@color/profile_settings_on_surface" />
@@ -47,7 +47,7 @@
                     android:layout_width="22dp"
                     android:layout_height="22dp"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_science"
+                    android:src="@drawable/icon_science"
                     app:tint="@color/profile_settings_on_tonal_container" />
                 <TextView
                     android:layout_width="0dp"
@@ -88,7 +88,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_info"
+                        android:src="@drawable/icon_info"
                         app:tint="@color/profile_settings_icon" />
 
                     <LinearLayout
@@ -140,7 +140,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_hood"
+                        android:src="@drawable/icon_private"
                         app:tint="@color/profile_settings_icon" />
 
                     <LinearLayout
@@ -192,7 +192,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_lock"
+                        android:src="@drawable/icon_lock"
                         app:tint="@color/profile_settings_icon" />
 
                     <LinearLayout
@@ -244,7 +244,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_link"
+                        android:src="@drawable/icon_link"
                         app:tint="@color/profile_settings_icon" />
 
                     <LinearLayout

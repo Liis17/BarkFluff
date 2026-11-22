@@ -17,16 +17,16 @@
         android:orientation="horizontal" android:gravity="center_vertical">
         <ImageButton android:id="@+id/voicePreviewPlay" android:layout_width="48dp" android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
-            android:contentDescription="@string/cd_play" android:src="@drawable/ic_play_arrow" app:tint="?attr/colorPrimary" />
+            android:contentDescription="@string/cd_play" android:src="@drawable/icon_play" app:tint="?attr/colorPrimary" />
         <com.barkfluff.client.view.VoiceWaveformView android:id="@+id/voicePreviewWaveform"
             android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:minWidth="48dp" />
         <Button android:id="@+id/voicePreviewSpeed" android:layout_width="48dp" android:layout_height="48dp"
             android:minWidth="48dp" android:padding="0dp" android:background="?attr/selectableItemBackgroundBorderless" android:textColor="?attr/colorPrimary" />
         <ImageButton android:id="@+id/voicePreviewDelete" android:layout_width="48dp" android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
-            android:contentDescription="@string/cd_voice_discard" android:src="@drawable/ic_delete" app:tint="?attr/colorOnSurfaceVariant" />
+            android:contentDescription="@string/cd_voice_discard" android:src="@drawable/icon_delete" app:tint="?attr/colorOnSurfaceVariant" />
         <ImageButton android:id="@+id/voicePreviewSend" android:layout_width="48dp" android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
-            android:contentDescription="@string/cd_send" android:src="@drawable/ic_send_filled" app:tint="?attr/colorPrimary" />
+            android:contentDescription="@string/cd_send" android:src="@drawable/icon_send" app:tint="?attr/colorPrimary" />
     </LinearLayout>
 </LinearLayout>

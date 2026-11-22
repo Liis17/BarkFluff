@@ -152,7 +152,7 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:text="@string/device_rename"
-        app:icon="@drawable/ic_edit"
+        app:icon="@drawable/icon_edit"
         app:iconGravity="textStart"
         app:iconPadding="8dp"
         style="@style/Widget.Material3.Button.OutlinedButton" />
@@ -168,7 +168,7 @@
         android:layout_height="56dp"
         android:text="@string/device_terminate_session"
         android:textColor="?attr/colorError"
-        app:icon="@drawable/ic_logout"
+        app:icon="@drawable/icon_logout"
         app:iconGravity="textStart"
         app:iconPadding="8dp"
         app:iconTint="?attr/colorError"

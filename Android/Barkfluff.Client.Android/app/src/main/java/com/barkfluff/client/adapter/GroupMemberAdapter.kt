@@ -64,7 +64,7 @@ class GroupMemberAdapter(
                     items = listOf(M3ContextMenu.Item(
                         id = 1,
                         title = anchor.context.getString(R.string.group_remove_member),
-                        icon = R.drawable.ic_action_delete,
+                        icon = R.drawable.icon_delete,
                         danger = true,
                     )),
                     alignEnd = true,
