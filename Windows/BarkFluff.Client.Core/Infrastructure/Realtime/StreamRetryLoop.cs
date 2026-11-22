@@ -47,9 +47,13 @@ internal static class StreamRetryLoop
         Action<T> onItem,
         Action<bool>? onConnectedChanged,
         Func<int, TimeSpan> backoff,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action? onStreamOpened = null,
+        Func<TimeSpan, CancellationToken, Task>? delay = null)
     {
+        delay ??= Task.Delay;
         var attempt = 0;
+        var openedOnce = false;
         while (!cancellationToken.IsCancellationRequested)
         {
             var startedAt = Environment.TickCount64;
@@ -61,9 +65,45 @@ internal static class StreamRetryLoop
                 {
                     wasConnected = true;
                     onConnectedChanged?.Invoke(true);
-                    await foreach (var item in stream.WithCancellation(cancellationToken))
+                    await using var reader = stream.GetAsyncEnumerator(cancellationToken);
+                    var hasMore = true;
+                    if (onStreamOpened is not null)
                     {
-                        onItem(item);
+                        if (!openedOnce)
+                        {
+                            openedOnce = true;
+                            onStreamOpened();
+                        }
+                        else
+                        {
+                            // ReadStream может сразу завершиться на ноде без этого RPC.
+                            // Повторное открытие учитываем после первого элемента или короткого ожидания.
+                            var first = reader.MoveNextAsync().AsTask();
+                            using var grace = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                            var wait = delay(TimeSpan.FromMilliseconds(750), grace.Token);
+                            await Task.WhenAny(first, wait);
+                            grace.Cancel();
+                            var announced = !first.IsCompleted && !cancellationToken.IsCancellationRequested;
+                            if (announced)
+                            {
+                                onStreamOpened();
+                            }
+
+                            hasMore = await first;
+                            if (hasMore && !cancellationToken.IsCancellationRequested)
+                            {
+                                if (!announced)
+                                {
+                                    onStreamOpened();
+                                }
+                                onItem(reader.Current);
+                            }
+                        }
+                    }
+
+                    while (hasMore && await reader.MoveNextAsync())
+                    {
+                        onItem(reader.Current);
                     }
                 }
             }
@@ -92,7 +132,7 @@ internal static class StreamRetryLoop
             attempt = NextAttempt(attempt, Environment.TickCount64 - startedAt);
             try
             {
-                await Task.Delay(backoff(attempt), cancellationToken);
+                await delay(backoff(attempt), cancellationToken);
             }
             catch (OperationCanceledException)
             {

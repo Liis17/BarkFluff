@@ -1,5 +1,6 @@
 using BarkFluff.Client.Core.Markdown;
 using BarkFluff.Client.Core.Models;
+using BarkFluff.Client.Core.Services;
 using BarkFluff.WebApi.Core;
 
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -114,16 +115,31 @@ public sealed partial class MessengerViewModel
             return;
         }
 
+        var session = _realtimeSession;
+        var version = _messageLoadVersion;
+        var revision = _pinnedRevision;
         ActionError = null;
         if (message.IsPinned)
         {
             var unpinError = await _messenger.UnpinMessageAsync(chat.Id, message.Id);
+            if (!IsOpen(session, chat, version))
+            {
+                return;
+            }
+
+            if (revision != _pinnedRevision)
+            {
+                session!.PinRefresh.RequestConfirmation();
+                return;
+            }
+
             if (!unpinError.IsSuccess)
             {
                 ActionError = DescribeError(unpinError);
                 return;
             }
 
+            _pinnedRevision++;
             _pinnedMessages.RemoveAll(info => info.Message?.Id == message.Id);
             message.IsPinned = false;
             _pinnedBarIndex = 0;
@@ -132,12 +148,24 @@ public sealed partial class MessengerViewModel
         }
 
         var (pinError, pinned) = await _messenger.PinMessageAsync(chat.Id, message.Id);
+        if (!IsOpen(session, chat, version))
+        {
+            return;
+        }
+
+        if (revision != _pinnedRevision)
+        {
+            session!.PinRefresh.RequestConfirmation();
+            return;
+        }
+
         if (!pinError.IsSuccess || pinned is null)
         {
             ActionError = DescribeError(pinError);
             return;
         }
 
+        _pinnedRevision++;
         // Новый закреп показываем первым — как это делает веб-клиент.
         _pinnedMessages.RemoveAll(info => info.Message?.Id == message.Id);
         _pinnedMessages.Insert(0, pinned);
@@ -180,22 +208,27 @@ public sealed partial class MessengerViewModel
             return;
         }
 
+        var session = _realtimeSession;
+        var version = _messageLoadVersion;
+        var revision = _pinnedRevision;
         var error = await _messenger.UnpinMessageAsync(chat.Id, preview.MessageId);
+        if (!IsOpen(session, chat, version))
+        {
+            return;
+        }
+
+        if (revision != _pinnedRevision)
+        {
+            session!.PinRefresh.RequestConfirmation();
+            return;
+        }
         if (!error.IsSuccess)
         {
             ActionError = DescribeError(error);
             return;
         }
 
-        _pinnedMessages.RemoveAll(info => info.Message?.Id == preview.MessageId);
-        var message = Messages.FirstOrDefault(item => item.Id == preview.MessageId);
-        if (message is not null)
-        {
-            message.IsPinned = false;
-        }
-
-        _pinnedBarIndex = 0;
-        RefreshPinnedBar();
+        ApplyPinUpdate(session!, new(chat.Id, false, preview.MessageId, MessageUpdateKind.Unpin));
     }
 
     private void RefreshPinnedBar()
@@ -358,9 +391,10 @@ public sealed partial class MessengerViewModel
     [RelayCommand]
     private async Task SubmitForwardAsync()
     {
-        var currentUserId = _messenger.CurrentUserId;
+        var session = _realtimeSession;
         var targetChatIds = ForwardTargets.Where(target => target.IsSelected).Select(target => target.ChatId).ToArray();
-        if (currentUserId is null || targetChatIds.Length == 0 || _forwardSourceMessageIds.Count == 0)
+        var sourceIds = _forwardSourceMessageIds;
+        if (!IsCurrent(session) || targetChatIds.Length == 0 || sourceIds.Count == 0)
         {
             return;
         }
@@ -369,17 +403,34 @@ public sealed partial class MessengerViewModel
         IsForwardVisible = false;
         foreach (var chatId in targetChatIds)
         {
-            var (error, message) = await _messenger.SendMessageAsync(chatId, comment, forwardedMessageIds: _forwardSourceMessageIds);
+            var chat = SelectedChat;
+            var version = _messageLoadVersion;
+            var revision = session!.Journal.Revision;
+            using var reading = session.Journal.ReadHistory(chatId, isPrivate: false);
+            var (error, message) = await _messenger.SendMessageAsync(chatId, comment, forwardedMessageIds: sourceIds);
+            if (!IsCurrent(session))
+            {
+                return;
+            }
+
             if (!error.IsSuccess)
             {
                 ActionError = DescribeError(error);
                 continue;
             }
 
-            if (message is not null && SelectedChat?.Id == chatId)
+            if (message is not null && chat?.Id == chatId && IsOpen(session, chat, version))
             {
-                InsertMessageInOrder(await CreateMessageItemAsync(message, currentUserId.Value));
-                RequestScroll(MessageScrollTarget.Bottom);
+                await MergeHistoryRowAsync(session, chat, version,
+                    new(message.MessageId, message.SentAt.ToDateTimeOffset(), message, null), revision, markRead: false);
+                if (IsOpen(session, chat, version))
+                {
+                    RequestScroll(MessageScrollTarget.Bottom);
+                }
+            }
+            if (!IsCurrent(session))
+            {
+                return;
             }
         }
 
@@ -409,33 +460,31 @@ public sealed partial class MessengerViewModel
     private async Task ConfirmDeleteMessageAsync()
     {
         var message = MessagePendingDelete;
-        if (message is null)
+        var chat = SelectedChat;
+        var session = _realtimeSession;
+        var version = _messageLoadVersion;
+        if (message is null || chat is null)
         {
             return;
         }
 
         MessagePendingDelete = null;
         var error = await _messenger.DeleteMessageAsync(message.Id);
-        if (!error.IsSuccess)
+        if (!IsCurrent(session))
         {
-            ActionError = DescribeError(error);
             return;
         }
 
-        Messages.Remove(message);
-        // Сервер сам снимает закреп с удалённого сообщения, локальный кеш чистим сразу.
-        _pinnedMessages.RemoveAll(info => info.Message?.Id == message.Id);
-        _pinnedBarIndex = 0;
-        RefreshPinnedBar();
-        if (EditingMessage == message)
+        if (!error.IsSuccess)
         {
-            CancelEdit();
+            if (IsOpen(session, chat, version))
+            {
+                ActionError = DescribeError(error);
+            }
+            return;
         }
 
-        if (ReplyTarget == message)
-        {
-            ReplyTarget = null;
-        }
+        await ApplyMessageUpdateAsync(session!, new(chat.Id, false, message.Id, MessageUpdateKind.Delete));
     }
 
     /// <summary>
@@ -450,38 +499,76 @@ public sealed partial class MessengerViewModel
             return;
         }
 
-        var (error, edited) = await _messenger.EditMessageAsync(chat.Id, message.Id, DraftText.Trim());
+        var session = _realtimeSession;
+        var version = _messageLoadVersion;
+        var draft = DraftText;
+        var (error, edited) = await _messenger.EditMessageAsync(chat.Id, message.Id, draft.Trim());
+        if (!IsOpen(session, chat, version))
+        {
+            return;
+        }
         if (!error.IsSuccess || edited is null)
         {
+            // Черновик остаётся в композере, чтобы пользователь мог повторить правку.
             ActionError = DescribeError(error);
             return;
         }
 
-        message.Text = edited.Text;
-        message.IsEdited = true;
-        EditingMessage = null;
-        DraftText = string.Empty;
+        if (EditingMessage == message && DraftText == draft)
+        {
+            EditingMessage = null;
+            DraftText = string.Empty;
+        }
+
+        await ApplyMessageUpdateAsync(session!, new(chat.Id, false, message.Id, MessageUpdateKind.Edit, Message: edited));
     }
 
-    private async Task LoadPinnedMessagesAsync(ChatItemViewModel chat, int loadVersion)
+    private async Task<bool> RefreshPinsAsync(ChatItemViewModel chat, int loadVersion, bool reportError)
     {
-        var (error, pinned) = await _messenger.GetPinnedMessagesAsync(chat.Id);
-        if (SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion)
+        var session = _realtimeSession;
+        var revision = _pinnedRevision;
+        if (!IsOpen(session, chat, loadVersion))
         {
-            return;
+            return true;
+        }
+
+        var token = session!.Lifetime.Token;
+        var (error, pinned) = await _messenger.GetPinnedMessagesAsync(chat.Id, token).WaitAsync(token);
+        if (!IsOpen(session, chat, loadVersion))
+        {
+            return true;
         }
 
         if (!error.IsSuccess || pinned is null)
         {
-            ReportBackgroundError(error);
-            return;
+            if (reportError)
+            {
+                ReportBackgroundError(error);
+            }
+            return false;
         }
 
-        _pinnedMessages.Clear();
-        _pinnedMessages.AddRange(pinned.OrderByDescending(info => info.PinnedAt?.ToDateTimeOffset()));
-        _pinnedBarIndex = 0;
+        if (revision != _pinnedRevision)
+        {
+            session!.PinRefresh.RequestConfirmation();
+            return true;
+        }
+
+        var next = pinned
+            .Where(pin => pin.Message is not null &&
+                session!.Journal.Find(chat.Id, false, pin.Message.Id)?.Kind != MessageUpdateKind.Delete)
+            .OrderByDescending(pin => pin.PinnedAt)
+            .ToArray();
+        if (!_pinnedMessages.SequenceEqual(next))
+        {
+            var shown = PinnedPreview?.MessageId;
+            _pinnedMessages.Clear();
+            _pinnedMessages.AddRange(next);
+            _pinnedBarIndex = Math.Max(0, _pinnedMessages.FindIndex(pin => pin.Message.Id == shown));
+            RefreshPinnedBar();
+        }
         ApplyPinnedState();
-        RefreshPinnedBar();
+        return true;
     }
 
     private void ApplyPinnedState()

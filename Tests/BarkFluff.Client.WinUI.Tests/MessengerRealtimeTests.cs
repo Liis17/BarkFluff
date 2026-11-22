@@ -89,7 +89,7 @@ public sealed class MessengerRealtimeTests
     }
 
     [Fact]
-    public async Task IncomingMessage_ForPrivateChat_UpdatesNothingButUnread()
+    public async Task RegularIncomingMessage_ForPrivateChat_IsIgnored()
     {
         var messenger = new FakeMessengerService();
         messenger.Chats.Add(MessengerTestDoubles.CreateChat("p", "Private", peerUserId: 4, chatType: ChatType.Private));
@@ -102,7 +102,7 @@ public sealed class MessengerRealtimeTests
 
         Assert.Empty(viewModel.Messages);
         Assert.Equal(string.Empty, viewModel.Chats[0].Preview);
-        Assert.Equal(1, viewModel.Chats[0].UnreadCount);
+        Assert.Equal(0, viewModel.Chats[0].UnreadCount);
     }
 
     [Fact]

@@ -21,17 +21,19 @@ internal static class MessengerTestDoubles
     public static MessengerViewModel CreateViewModel(
         FakeMessengerService? messenger = null,
         FakeRealtimeMessengerService? realtime = null,
-        FakeOnlinePresenceService? presence = null)
+        FakeOnlinePresenceService? presence = null,
+        FakePrivateChatKeyStore? keys = null,
+        IUiDispatcher? dispatcher = null)
     {
         var effectiveMessenger = messenger ?? new FakeMessengerService();
         var effectivePresence = presence ?? new FakeOnlinePresenceService();
         var localization = new StubLocalizationService();
         return new(effectiveMessenger,
-            new FakePrivateChatKeyStore(),
+            keys ?? new FakePrivateChatKeyStore(),
             realtime ?? new FakeRealtimeMessengerService(),
             effectivePresence,
             localization,
-            new InlineUiDispatcher(),
+            dispatcher ?? new InlineUiDispatcher(),
             new ProfileViewModel(effectiveMessenger, effectivePresence, localization));
     }
 
@@ -93,8 +95,9 @@ internal sealed class StubLocalizationService : ILocalizationService
 internal sealed class FakePrivateChatKeyStore : IPrivateChatKeyStore
 {
     public Action? OnForgetAll { get; set; }
+    public byte[]? Key { get; set; }
     public Task<byte[]?> TryGetAsync(string nodeAddress, long userId, string chatId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<byte[]?>(null);
+        Task.FromResult(Key);
 
     public Task SaveAsync(string nodeAddress, long userId, string chatId, byte[] key, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
@@ -118,9 +121,15 @@ internal sealed class FakeRealtimeMessengerService : IRealtimeMessengerService
     public event EventHandler<IncomingMessage>? MessageReceived;
     public event EventHandler<MessageReadReceipt>? MessageRead;
     public event EventHandler<PrivateMessageReadReceipt>? PrivateMessageRead;
+    public event EventHandler<MessageUpdate>? MessageChanged;
+    public event EventHandler<bool>? ResyncRequested;
     public event EventHandler<bool>? ConnectionChanged;
 
     public void Raise(IncomingMessage message) => MessageReceived?.Invoke(this, message);
+
+    public void Raise(MessageUpdate update) => MessageChanged?.Invoke(this, update);
+
+    public void Resync(bool immediate = true) => ResyncRequested?.Invoke(this, immediate);
 
     public void Raise(MessageReadReceipt receipt) => MessageRead?.Invoke(this, receipt);
 
@@ -186,7 +195,14 @@ internal sealed class FakeMessengerService : IMessengerService
     public List<Chat> Chats { get; } = [];
 
     public List<MessageModel> Messages { get; } = [];
+    public List<PrivateMessageModel> PrivateMessages { get; } = [];
+    public List<PinnedMessageInfo> Pins { get; } = [];
+    public Func<string, long, Task<(ErrorReturner, List<MessageModel>?)>>? History { get; set; }
+    public Func<string, Task<string>>? FileUrl { get; set; }
+    public Func<Task<(ErrorReturner, List<PinnedMessageInfo>?)>>? PinnedHistory { get; set; }
+    public Func<Task<(ErrorReturner, List<Chat>?)>>? ChatSnapshot { get; set; }
 
+    public Func<long, Task<(ErrorReturner, UserData?)>>? UserProfile { get; set; }
     public UserData? UserData { get; set; }
 
     public List<UserData> SearchUsers { get; } = [];
@@ -202,14 +218,16 @@ internal sealed class FakeMessengerService : IMessengerService
     public bool MessagesFail { get; set; }
 
     public bool SendFails { get; set; }
+    public Func<Task<(ErrorReturner, MessageModel?)>>? SendResponse { get; set; }
+    public Func<Task<ErrorReturner>>? DeleteResponse { get; set; }
 
     public Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, List<Chat>?)>(ChatsFail
+        ChatSnapshot?.Invoke() ?? Task.FromResult<(ErrorReturner, List<Chat>?)>(ChatsFail
             ? (new ErrorReturner(false, "чаты недоступны"), null)
             : (new ErrorReturner(true), [.. Chats]));
 
     public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, long replyToMessageId = 0, IReadOnlyList<long>? forwardedMessageIds = null, CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, MessageModel?)>(SendFails
+        SendResponse?.Invoke() ?? Task.FromResult<(ErrorReturner, MessageModel?)>(SendFails
             ? (new ErrorReturner(false, "сообщение не отправлено"), null)
             : (new ErrorReturner(true), null));
 
@@ -220,7 +238,7 @@ internal sealed class FakeMessengerService : IMessengerService
         Task.FromResult<(ErrorReturner, MessageModel?)>((new ErrorReturner(true), null));
 
     public Task<ErrorReturner> DeleteMessageAsync(long messageId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new ErrorReturner(true));
+        DeleteResponse?.Invoke() ?? Task.FromResult(new ErrorReturner(true));
 
     public Task<(ErrorReturner error, PinnedMessageInfo? pinned)> PinMessageAsync(string chatId, long messageId, CancellationToken cancellationToken = default) =>
         Task.FromResult<(ErrorReturner, PinnedMessageInfo?)>((new ErrorReturner(true), null));
@@ -229,15 +247,15 @@ internal sealed class FakeMessengerService : IMessengerService
         Task.FromResult(new ErrorReturner(true));
 
     public Task<(ErrorReturner error, List<PinnedMessageInfo>? pinned)> GetPinnedMessagesAsync(string chatId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, List<PinnedMessageInfo>?)>((new ErrorReturner(true), []));
+        PinnedHistory?.Invoke() ?? Task.FromResult<(ErrorReturner, List<PinnedMessageInfo>?)>((new ErrorReturner(true), [.. Pins]));
 
     public Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessagesAsync(string chatId, long fromMessageId, int offsetBefore, int offsetAfter, CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, List<MessageModel>?)>(MessagesFail
+        History?.Invoke(chatId, fromMessageId) ?? Task.FromResult<(ErrorReturner, List<MessageModel>?)>(MessagesFail
             ? (new ErrorReturner(false, "история недоступна"), null)
             : (new ErrorReturner(true), [.. Messages.Where(message => message.ChatId == chatId)]));
 
     public Task<(ErrorReturner error, List<PrivateMessageModel>? messages)> GetPrivateMessagesAsync(string chatId, byte[] key, long fromMessageId, int offsetBefore, int offsetAfter, CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, List<PrivateMessageModel>?)>((new ErrorReturner(true), []));
+        Task.FromResult<(ErrorReturner, List<PrivateMessageModel>?)>((new ErrorReturner(true), [.. PrivateMessages.Where(message => message.ChatId == chatId)]));
 
     public Task<ErrorReturner> MarkMessagesReadAsync(IReadOnlyCollection<long> messageIds, CancellationToken cancellationToken = default) =>
         Task.FromResult(new ErrorReturner(true));
@@ -246,7 +264,7 @@ internal sealed class FakeMessengerService : IMessengerService
         Task.FromResult(new ErrorReturner(true));
 
     public Task<(ErrorReturner Error, UserData? Data)> GetUserDataAsync(long userId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, UserData?)>(UserDataFails
+        UserProfile?.Invoke(userId) ?? Task.FromResult<(ErrorReturner, UserData?)>(UserDataFails
             ? (new ErrorReturner(false, "failed"), null)
             : (new ErrorReturner(true), UserData));
 
@@ -259,7 +277,7 @@ internal sealed class FakeMessengerService : IMessengerService
     }
 
     public Task<string> ResolveFileUrlAsync(string fileId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(string.Empty);
+        FileUrl?.Invoke(fileId) ?? Task.FromResult(string.Empty);
 
     public byte[]? UnlockPrivateChat(Chat chat, string passphrase) => null;
 

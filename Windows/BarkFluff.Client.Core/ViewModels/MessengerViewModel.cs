@@ -49,10 +49,6 @@ public sealed partial class MessengerViewModel : ObservableObject
         _localization = localization;
         _uiDispatcher = uiDispatcher;
         Profile = profile;
-        _realtimeMessenger.MessageReceived += OnMessageReceived;
-        _realtimeMessenger.MessageRead += OnMessageRead;
-        _realtimeMessenger.PrivateMessageRead += OnPrivateMessageRead;
-        _realtimeMessenger.ConnectionChanged += OnRealtimeConnectionChanged;
         _presence.PresenceChanged += OnPresenceChanged;
         _presence.ConnectionChanged += OnPresenceConnectionChanged;
     }
@@ -110,33 +106,33 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
+        if (_realtimeSession is not null && !IsCurrent(_realtimeSession))
+        {
+            Reset();
+        }
+
+        StartRealtimeSession(currentUserId.Value);
+        var session = _realtimeSession!;
+        var token = session.Lifetime.Token;
         IsLoading = true;
         ActionError = null;
         try
         {
-            await _realtimeMessenger.StartAsync();
-            var result = await _messenger.GetChatsAsync();
-            if (!result.error.IsSuccess || result.chats is null)
+            await _realtimeMessenger.StartAsync(token);
+            if (IsCurrent(session))
             {
-                ActionError = DescribeError(result.error);
-                return;
+                await RefreshChatsAsync(session, reportError: true, token);
             }
-
-            var chats = result.chats.OrderByDescending(chat => chat.LastActivityAt?.ToDateTimeOffset());
-            var items = await Task.WhenAll(chats.Select(chat => CreateChatItemAsync(chat, currentUserId.Value)));
-
-            Chats.Clear();
-            foreach (var item in items)
-            {
-                Chats.Add(item);
-            }
-
-            ApplyChatFilter();
-            await TrackPresenceForChatsAsync();
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
         }
         finally
         {
-            IsLoading = false;
+            if (IsCurrent(session))
+            {
+                IsLoading = false;
+            }
         }
     }
 
@@ -148,6 +144,8 @@ public sealed partial class MessengerViewModel : ObservableObject
     /// </summary>
     public void Reset()
     {
+        EndRealtimeSession();
+        IsLoading = false;
         CancelPendingReadBatch();
         _messageLoadVersion++;
         SelectedChat = null;
@@ -231,18 +229,55 @@ public sealed partial class MessengerViewModel : ObservableObject
             query.Length == 0
             || chat == SelectedChat
             || chat.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase)
-            || chat.Username.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+            || chat.Username.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToArray();
 
-        VisibleChats.Clear();
-        foreach (var chat in filtered)
+        var wanted = filtered.ToHashSet();
+        for (var index = VisibleChats.Count - 1; index >= 0; index--)
         {
-            VisibleChats.Add(chat);
+            if (!wanted.Contains(VisibleChats[index]))
+            {
+                VisibleChats.RemoveAt(index);
+            }
+        }
+
+        for (var index = 0; index < filtered.Length; index++)
+        {
+            var item = filtered[index];
+            if (index < VisibleChats.Count && VisibleChats[index] == item)
+            {
+                continue;
+            }
+
+            // WinUI 2.5 превращает Move в Reset. Удаляем и вставляем только соседей
+            // выбранного элемента, чтобы привязка SelectedItem не потеряла выбор.
+            if (item == SelectedChat && VisibleChats.Contains(item))
+            {
+                while (VisibleChats[index] != item)
+                {
+                    VisibleChats.RemoveAt(index);
+                }
+                continue;
+            }
+
+            VisibleChats.Remove(item);
+            VisibleChats.Insert(index, item);
         }
     }
 
-    partial void OnSelectedChatChanged(ChatItemViewModel? value)
+    partial void OnSelectedChatChanged(ChatItemViewModel? oldValue, ChatItemViewModel? newValue)
     {
+        if (oldValue is not null)
+        {
+            _realtimeSession?.Journal.LeaveChat(oldValue.Id, oldValue.IsPrivate);
+        }
+
+        _feedLoaded = false;
+        _feedIncludesTail = true;
         _messageLoadVersion++;
+        _feedLoadCompletion?.TrySetResult();
+        _feedLoadCompletion = null;
+        _reconnectFeed?.TrySetResult();
+        _reconnectFeed = null;
         CancelPendingReadBatch();
         ResetMessageActionState();
         Messages.Clear();
@@ -252,9 +287,9 @@ public sealed partial class MessengerViewModel : ObservableObject
         IsPrivateUnlockVisible = false;
         PrivateUnlockError = null;
         PrivatePassphrase = string.Empty;
-        if (value is not null)
+        if (newValue is not null)
         {
-            _ = LoadMessagesAsync(value, _messageLoadVersion);
+            _ = LoadMessagesAsync(newValue, _messageLoadVersion);
         }
     }
 
@@ -273,48 +308,81 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
-        ActionError = null;
-        if (SelectedChat.IsPrivate)
+        var chat = SelectedChat;
+        var session = _realtimeSession;
+        var version = _messageLoadVersion;
+        if (!IsOpen(session, chat, version))
         {
-            var key = await GetPrivateChatKeyAsync(SelectedChat);
+            return;
+        }
+
+        var draft = DraftText;
+        var reply = ReplyTarget;
+        var revision = session!.Journal.Revision;
+        ActionError = null;
+        if (chat.IsPrivate)
+        {
+            var key = await GetPrivateChatKeyAsync(chat);
+            if (!IsOpen(session, chat, version))
+            {
+                return;
+            }
+
             if (key is null)
             {
-                ShowPrivateUnlock(SelectedChat);
+                ShowPrivateUnlock(chat);
                 return;
             }
 
-            var privateResult = await _messenger.SendPrivateMessageAsync(SelectedChat.Id, DraftText.Trim(), key);
-            if (privateResult.error.IsSuccess && privateResult.message is not null)
+            var result = await _messenger.SendPrivateMessageAsync(chat.Id, draft.Trim(), key);
+            if (!IsOpen(session, chat, version))
             {
-                InsertMessageInOrder(CreatePrivateMessageItem(privateResult.message, currentUserId.Value));
-                DraftText = string.Empty;
-                RequestScroll(MessageScrollTarget.Bottom);
                 return;
             }
 
-            // Черновик остаётся в композере: отправлять заново пользователю нечего было бы.
-            ActionError = DescribeError(privateResult.error);
-            return;
-        }
+            if (!result.error.IsSuccess || result.message is not { } message)
+            {
+                ActionError = DescribeError(result.error);
+                return;
+            }
 
-        var result = await _messenger.SendMessageAsync(SelectedChat.Id, DraftText.Trim(), ReplyTarget?.Id ?? 0);
-        if (result.error.IsSuccess && result.message is not null)
+            await MergeHistoryRowAsync(session, chat, version,
+                new(message.MessageId, message.SentAt.ToDateTimeOffset(), null, message), revision, markRead: false);
+        }
+        else
         {
-            InsertMessageInOrder(await CreateMessageItemAsync(result.message, currentUserId.Value));
-            DraftText = string.Empty;
-            ReplyTarget = null;
-            RequestScroll(MessageScrollTarget.Bottom);
-            return;
+            var result = await _messenger.SendMessageAsync(chat.Id, draft.Trim(), reply?.Id ?? 0);
+            if (!IsOpen(session, chat, version))
+            {
+                return;
+            }
+
+            if (!result.error.IsSuccess || result.message is not { } message)
+            {
+                ActionError = DescribeError(result.error);
+                return;
+            }
+
+            await MergeHistoryRowAsync(session, chat, version,
+                new(message.MessageId, message.SentAt.ToDateTimeOffset(), message, null), revision, markRead: false);
         }
 
-        ActionError = DescribeError(result.error);
+        if (IsOpen(session, chat, version))
+        {
+            if (DraftText == draft && ReplyTarget == reply)
+            {
+                DraftText = string.Empty;
+                ReplyTarget = null;
+            }
+            RequestScroll(MessageScrollTarget.Bottom);
+        }
     }
 
     [RelayCommand]
     private void MessageBecameVisible(MessageItemViewModel message)
     {
         var chat = SelectedChat;
-        if (chat is null || message.IsMine || message.IsReadByCurrentUser)
+        if (chat is null || message.IsMine || message.IsReadByCurrentUser || !Messages.Contains(message))
         {
             return;
         }
@@ -327,53 +395,73 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     private async Task LoadMessagesAsync(ChatItemViewModel chat, int loadVersion)
     {
-        var currentUserId = _messenger.CurrentUserId;
-        if (currentUserId is null)
-        {
-            return;
-        }
-
         if (chat.IsPrivate)
         {
             await LoadPrivateMessagesAsync(chat, loadVersion);
             return;
         }
 
-        var hasUnreadMessages = chat.UnreadCount > 0 && chat.FirstUnreadMessageId > 0;
-        var result = await _messenger.GetMessagesAsync(
-            chat.Id,
-            hasUnreadMessages ? chat.FirstUnreadMessageId : 0,
-            50,
-            hasUnreadMessages ? 50 : 0);
-        // Устаревание проверяется первым: об ошибке уже покинутого чата сообщать нельзя,
-        // иначе баннер вылезал бы поверх открытого следующим.
-        if (SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion)
+        await LoadFeedSnapshotAsync(chat, loadVersion, null);
+    }
+
+    private async Task LoadFeedSnapshotAsync(ChatItemViewModel chat, int loadVersion, byte[]? key)
+    {
+        var session = _realtimeSession;
+        if (!IsOpen(session, chat, loadVersion))
         {
             return;
         }
 
-        if (!result.error.IsSuccess || result.messages is null)
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _feedLoadCompletion = completion;
+        try
         {
-            ActionError = DescribeError(result.error);
-            return;
-        }
+            using var reading = session!.Journal.ReadHistory(chat.Id, chat.IsPrivate);
+            var revision = session.Journal.Revision;
+            var firstUnread = chat.UnreadCount > 0 ? chat.FirstUnreadMessageId : 0;
+            var token = session.Lifetime.Token;
+            var (error, rows) = await GetHistoryPageAsync(chat, key, firstUnread, SnapshotPageSize,
+                firstUnread > 0 ? SnapshotPageSize : 0, token);
+            if (!IsOpen(session, chat, loadVersion))
+            {
+                return;
+            }
 
-        Messages.Clear();
-        foreach (var message in result.messages.OrderBy(message => message.MessageId))
-        {
-            Messages.Add(await CreateMessageItemAsync(message, currentUserId.Value));
-        }
+            // Устаревший запрос мог завершиться ошибкой после смены чата.
+            if (!error.IsSuccess && error.ErrorCode != 1)
+            {
+                ActionError = DescribeError(error);
+                return;
+            }
 
-        if (hasUnreadMessages)
-        {
-            RequestScroll(MessageScrollTarget.Message, chat.FirstUnreadMessageId);
-        }
-        else
-        {
-            RequestScroll(MessageScrollTarget.Bottom);
-        }
+            foreach (var row in rows.OrderBy(row => row.Id))
+            {
+                await MergeHistoryRowAsync(session, chat, loadVersion, row, revision,
+                    markRead: chat.IsPrivate && (firstUnread == 0 || row.Id < firstUnread));
+            }
 
-        await LoadPinnedMessagesAsync(chat, loadVersion);
+            if (IsOpen(session, chat, loadVersion))
+            {
+                _feedIncludesTail = firstUnread == 0 || rows.Count(row => row.Id > firstUnread) < SnapshotPageSize;
+                CompleteFeedLoad(firstUnread);
+
+                if (!chat.IsPrivate)
+                {
+                    await RefreshPinsAsync(chat, loadVersion, reportError: true);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (!IsOpen(session, chat, loadVersion))
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_feedLoadCompletion, completion))
+            {
+                _feedLoadCompletion = null;
+            }
+            completion.TrySetResult();
+        }
     }
 
     [RelayCommand]
@@ -399,11 +487,18 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
+        var session = _realtimeSession;
+        var version = _messageLoadVersion;
         await _privateChatKeyStore.SaveAsync(_messenger.CurrentNodeAddress, currentUserId.Value, chat.Id, key);
+        if (!IsOpen(session, chat, version))
+        {
+            return;
+        }
+
         PrivatePassphrase = string.Empty;
         PrivateUnlockError = null;
         IsPrivateUnlockVisible = false;
-        await LoadPrivateMessagesAsync(chat, _messageLoadVersion, key);
+        await LoadPrivateMessagesAsync(chat, version, key);
     }
 
     [RelayCommand]
@@ -499,51 +594,20 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
+        var session = _realtimeSession;
         var key = knownKey ?? await GetPrivateChatKeyAsync(chat);
+        if (!IsOpen(session, chat, loadVersion))
+        {
+            return;
+        }
+
         if (key is null)
         {
             ShowPrivateUnlock(chat);
             return;
         }
 
-        var hasUnreadMessages = chat.UnreadCount > 0 && chat.FirstUnreadMessageId > 0;
-        var result = await _messenger.GetPrivateMessagesAsync(
-            chat.Id,
-            key,
-            hasUnreadMessages ? chat.FirstUnreadMessageId : 0,
-            50,
-            hasUnreadMessages ? 50 : 0);
-        if (SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion)
-        {
-            return;
-        }
-
-        if (!result.error.IsSuccess || result.messages is null)
-        {
-            ActionError = DescribeError(result.error);
-            return;
-        }
-
-        Messages.Clear();
-        foreach (var message in result.messages.OrderBy(message => message.MessageId))
-        {
-            var item = CreatePrivateMessageItem(message, _messenger.CurrentUserId!.Value);
-            if (!hasUnreadMessages || item.Id < chat.FirstUnreadMessageId)
-            {
-                item.MarkReadByCurrentUser();
-            }
-
-            Messages.Add(item);
-        }
-
-        if (hasUnreadMessages)
-        {
-            RequestScroll(MessageScrollTarget.Message, chat.FirstUnreadMessageId);
-        }
-        else
-        {
-            RequestScroll(MessageScrollTarget.Bottom);
-        }
+        await LoadFeedSnapshotAsync(chat, loadVersion, key);
     }
 
     private async Task<byte[]?> GetPrivateChatKeyAsync(ChatItemViewModel chat)
@@ -588,14 +652,15 @@ public sealed partial class MessengerViewModel : ObservableObject
             var result = chat.IsPrivate
                 ? await _messenger.MarkPrivateMessagesReadAsync(chat.Id, messageIds.Max())
                 : await _messenger.MarkMessagesReadAsync(messageIds);
-            if (!result.IsSuccess || SelectedChat?.Id != chat.Id)
+            if (cancellationToken.IsCancellationRequested || !ReferenceEquals(SelectedChat, chat))
+            {
+                return;
+            }
+
+            if (!result.IsSuccess)
             {
                 _pendingReadMessageIds.ExceptWith(messageIds);
-                if (!result.IsSuccess)
-                {
-                    ReportBackgroundError(result);
-                }
-
+                ReportBackgroundError(result);
                 return;
             }
 
@@ -610,6 +675,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             }
 
             _pendingReadMessageIds.ExceptWith(messageIds);
+            _realtimeSession?.Journal.TouchUnread(chat.Id, chat.IsPrivate);
             UpdateUnreadState(chat, messagesToMark.Length);
             await RefreshUnreadStateAsync(chat);
         }
@@ -726,15 +792,15 @@ public sealed partial class MessengerViewModel : ObservableObject
         return new ReplyContentViewModel(reply.MessageId, reply.SenderName, preview, false);
     }
 
-    private MessageItemViewModel CreatePrivateMessageItem(PrivateMessageModel message, long currentUserId)
-    {
-        var text = message.IsDeleted
-            ? _localization.GetString("Messenger_PrivateDeleted")
-            : message.DecryptionFailed
-                ? _localization.GetString("Messenger_PrivateDecryptionFailed")
-                : message.Text;
-        return new MessageItemViewModel(this, message, text, message.SenderId == currentUserId, currentUserId);
-    }
+    private MessageItemViewModel CreatePrivateMessageItem(PrivateMessageModel message, long currentUserId) =>
+        new(this, message, PrivateMessageText(message), message.SenderId == currentUserId, currentUserId);
+
+    private string PrivateMessageText(PrivateMessageModel message) => message.IsDeleted
+        ? _localization.GetString("Messenger_PrivateDeleted")
+        : message.DecryptionFailed
+            ? _localization.GetString("Messenger_PrivateDecryptionFailed")
+            : message.Text;
+
 
     private async Task<MessageAttachmentItemViewModel> CreateAttachmentItemAsync(AttachmentsModel attachment)
     {
@@ -806,81 +872,8 @@ public sealed partial class MessengerViewModel : ObservableObject
     [RelayCommand]
     private void FeedPositionChanged(bool isAtBottom) => _isFeedAtBottom = isAtBottom;
 
-    private void OnMessageReceived(object? sender, IncomingMessage incoming) =>
-        _uiDispatcher.Post(() => ApplyIncomingMessage(incoming));
-
-    private void ApplyIncomingMessage(IncomingMessage incoming)
-    {
-        if (_messenger.CurrentUserId is not { } currentUserId)
-        {
-            return;
-        }
-
-        var chat = Chats.FirstOrDefault(item => item.Id == incoming.ChatId);
-        if (chat is null)
-        {
-            _ = AppendUnknownChatAsync(incoming, currentUserId);
-            return;
-        }
-
-        chat.ApplyIncomingMessage(
-            incoming.Message.MessageId,
-            incoming.Message.Text,
-            incoming.Message.SentAt.ToDateTimeOffset(),
-            countAsUnread: incoming.Message.SenderId != currentUserId);
-        MoveChatToTop(chat);
-
-        // Приватные чаты обслуживает отдельный шифрованный стрим, в этот их сообщения не попадают.
-        if (SelectedChat?.Id != incoming.ChatId || SelectedChat.IsPrivate)
-        {
-            return;
-        }
-
-        _ = AppendIncomingMessageAsync(SelectedChat, incoming.Message, currentUserId, _messageLoadVersion);
-    }
-
-    private async Task AppendIncomingMessageAsync(ChatItemViewModel chat, MessageModel message, long currentUserId, int loadVersion)
-    {
-        // Ссылки на вложения разрешаются отдельными вызовами — за это время чат мог смениться.
-        var item = await CreateMessageItemAsync(message, currentUserId);
-        if (SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion || !InsertMessageInOrder(item))
-        {
-            return;
-        }
-
-        if (_isFeedAtBottom)
-        {
-            RequestScroll(MessageScrollTarget.Bottom);
-        }
-    }
-
     /// <summary>
-    /// Чат мог появиться уже после загрузки списка. Подтягивается только он: <c>Clear</c> на
-    /// привязанной коллекции обнулил бы <see cref="SelectedChat"/> и закрыл открытую переписку.
-    /// </summary>
-    private async Task AppendUnknownChatAsync(IncomingMessage incoming, long currentUserId)
-    {
-        var (error, chats) = await _messenger.GetChatsAsync();
-        if (!error.IsSuccess)
-        {
-            ReportBackgroundError(error);
-            return;
-        }
-
-        var definition = chats?.FirstOrDefault(item => item.Id == incoming.ChatId);
-        if (definition is null || Chats.Any(item => item.Id == incoming.ChatId))
-        {
-            return;
-        }
-
-        Chats.Insert(0, await CreateChatItemAsync(definition, currentUserId));
-        ApplyChatFilter();
-        await TrackPresenceForChatsAsync();
-    }
-
-    /// <summary>
-    /// Чат с новым сообщением поднимается наверх. <c>Move</c> вместо пересборки коллекции:
-    /// он не пересоздаёт элементы и сохраняет выбор в списке.
+    /// Чат с новым сообщением поднимается наверх с сохранением выбора в привязанном списке.
     /// </summary>
     private void MoveChatToTop(ChatItemViewModel chat)
     {
@@ -890,11 +883,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             Chats.Move(index, 0);
         }
 
-        var visibleIndex = VisibleChats.IndexOf(chat);
-        if (visibleIndex > 0)
-        {
-            VisibleChats.Move(visibleIndex, 0);
-        }
+        ApplyChatFilter();
     }
 
     /// <summary>
@@ -913,10 +902,14 @@ public sealed partial class MessengerViewModel : ObservableObject
             }
         });
 
-    private void OnRealtimeConnectionChanged(object? sender, bool isConnected) =>
-        _uiDispatcher.Post(() =>
+    private void OnRealtimeConnectionChanged(RealtimeSession scope, bool isConnected) =>
+        PostSession(scope, session =>
         {
+            BeginFeedCatchUp();
             _isRealtimeConnected = isConnected;
+            session.Resync.SetOnline(isConnected);
+            session.ChatRefresh.SetOnline(isConnected);
+            session.PinRefresh.SetOnline(isConnected);
             IsReconnecting = !_isRealtimeConnected || !_isPresenceConnected;
         });
 
@@ -927,9 +920,9 @@ public sealed partial class MessengerViewModel : ObservableObject
             IsReconnecting = !_isRealtimeConnected || !_isPresenceConnected;
         });
 
-    private void OnMessageRead(object? sender, MessageReadReceipt receipt)
+    private void OnMessageRead(RealtimeSession scope, MessageReadReceipt receipt)
     {
-        _uiDispatcher.Post(() =>
+        PostSession(scope, session =>
         {
             if (SelectedChat?.Id != receipt.ChatId || SelectedChat.IsPrivate)
             {
@@ -942,6 +935,7 @@ public sealed partial class MessengerViewModel : ObservableObject
                 return;
             }
 
+            session.Journal.TouchUnread(receipt.ChatId, false);
             var wasUnread = !message.IsReadByCurrentUser;
             foreach (var userId in receipt.ReadBy)
             {
@@ -955,9 +949,9 @@ public sealed partial class MessengerViewModel : ObservableObject
         });
     }
 
-    private void OnPrivateMessageRead(object? sender, PrivateMessageReadReceipt receipt)
+    private void OnPrivateMessageRead(RealtimeSession scope, PrivateMessageReadReceipt receipt)
     {
-        _uiDispatcher.Post(() =>
+        PostSession(scope, session =>
         {
             if (SelectedChat?.Id != receipt.ChatId || !SelectedChat.IsPrivate)
             {
@@ -970,6 +964,7 @@ public sealed partial class MessengerViewModel : ObservableObject
                 return;
             }
 
+            session.Journal.TouchUnread(receipt.ChatId, true);
             if (receipt.UserId == currentUserId)
             {
                 var newlyRead = Messages.Where(message => !message.IsMine && message.Id <= receipt.LastReadMessageId && !message.IsReadByCurrentUser).ToArray();
@@ -1006,7 +1001,13 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     private async Task RefreshUnreadStateAsync(ChatItemViewModel chat)
     {
+        var session = _realtimeSession;
+        var revision = session?.Journal.UnreadRevision(chat.Id, chat.IsPrivate);
         var result = await _messenger.GetChatsAsync();
+        if (!IsCurrent(session) || revision != session!.Journal.UnreadRevision(chat.Id, chat.IsPrivate))
+        {
+            return;
+        }
         if (!result.error.IsSuccess || result.chats is null)
         {
             ReportBackgroundError(result.error);
@@ -1086,10 +1087,37 @@ public sealed partial class ChatItemViewModel : ObservableObject
         PeerUserId = peerUserId;
         AccountStatus = accountStatus;
         IsPrivate = chat.ChatType == ChatType.Private;
-        Preview = IsPrivate ? string.Empty : CreatePreview(chat.LastMessage?.Content?.Text ?? string.Empty, 20);
-        UnreadCount = chat.CountUnread;
-        FirstUnreadMessageId = chat.FirstUnreadMessageId;
-        LastMessageAt = chat.LastActivityAt?.ToDateTimeOffset();
+        ApplySnapshot(chat);
+    }
+
+    internal long LastMessageId { get; private set; }
+    internal DateTimeOffset? LastMessageEditedAt { get; private set; }
+    internal long SnapshotLastMessageId { get; private set; }
+    internal DateTimeOffset? SnapshotLastActivity { get; private set; }
+
+    internal void ApplySnapshot(Chat chat, bool applyPreview = true, bool applyUnread = true)
+    {
+        if (applyPreview)
+        {
+            SnapshotLastMessageId = chat.LastMessage?.Id ?? 0;
+            SnapshotLastActivity = chat.LastActivityAt?.ToDateTimeOffset();
+            SetLastMessage(SnapshotLastMessageId, chat.LastMessage?.Content?.Text ?? string.Empty,
+                SnapshotLastActivity, chat.LastMessage?.EditedAt?.ToDateTimeOffset());
+        }
+
+        if (applyUnread)
+        {
+            UnreadCount = chat.CountUnread;
+            FirstUnreadMessageId = chat.FirstUnreadMessageId;
+        }
+    }
+
+    internal void SetLastMessage(long id, string text, DateTimeOffset? sentAt, DateTimeOffset? editedAt = null)
+    {
+        LastMessageId = id;
+        Preview = IsPrivate ? string.Empty : CreatePreview(text, 20);
+        LastMessageAt = sentAt;
+        LastMessageEditedAt = editedAt;
     }
 
     public string Id { get; }
@@ -1145,18 +1173,10 @@ public sealed partial class ChatItemViewModel : ObservableObject
         : Title[..1].ToUpperInvariant();
 
     /// <summary>
-    /// Превью приватного чата остаётся пустым: расшифровать текст здесь нечем,
-    /// а показывать шифртекст нельзя.
+    /// Учитывает новое непрочитанное сообщение и запоминает границу непрочитанного.
     /// </summary>
-    internal void ApplyIncomingMessage(long messageId, string text, DateTimeOffset sentAt, bool countAsUnread)
+    internal void CountIncomingUnread(long messageId)
     {
-        Preview = IsPrivate ? string.Empty : CreatePreview(text, 20);
-        LastMessageAt = sentAt;
-        if (!countAsUnread)
-        {
-            return;
-        }
-
         UnreadCount++;
         if (FirstUnreadMessageId == 0)
         {
@@ -1196,6 +1216,7 @@ public sealed partial class MessageItemViewModel : ObservableObject
         FileAttachments = attachments.Where(attachment => attachment.IsFile).ToArray();
         _currentUserId = currentUserId;
         IsEdited = message.IsEdited;
+        EditedAt = message.EditedAt?.ToDateTimeOffset();
         IsReadByCurrentUser = message.ReadBy.Contains(currentUserId);
         IsReadBySomeoneElse = isMine && message.ReadBy.Any(userId => userId != currentUserId);
     }
@@ -1207,6 +1228,8 @@ public sealed partial class MessageItemViewModel : ObservableObject
         Text = text;
         IsMine = isMine;
         IsPrivateMessage = true;
+        IsEdited = message.IsEdited;
+        EditedAt = message.EditedAt?.ToDateTimeOffset();
         SentAt = message.SentAt.ToDateTimeOffset();
         Attachments = Array.Empty<MessageAttachmentItemViewModel>();
         MediaAttachments = Array.Empty<MessageAttachmentItemViewModel>();
@@ -1216,19 +1239,46 @@ public sealed partial class MessageItemViewModel : ObservableObject
 
     public MessengerViewModel Owner { get; }
     /// <summary>Пересланные сообщения в порядке отправителя. Пусто, если пересылки нет.</summary>
-    public IReadOnlyCollection<ForwardedContentViewModel> Forwards { get; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasForwards), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia))]
+    private IReadOnlyCollection<ForwardedContentViewModel> _forwards = [];
 
     /// <summary>Цитата ответа. Заполнена => это ответ. Резолвится сервером, не снапшот.</summary>
-    public ReplyContentViewModel? Reply { get; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasReply), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia))]
+    private ReplyContentViewModel? _reply;
 
     public long Id { get; }
     public bool IsMine { get; }
     public bool IsSystem { get; }
     public bool IsPrivateMessage { get; }
     public DateTimeOffset SentAt { get; }
-    public IReadOnlyCollection<MessageAttachmentItemViewModel> Attachments { get; }
-    public IReadOnlyCollection<MessageAttachmentItemViewModel> MediaAttachments { get; }
-    public IReadOnlyCollection<MessageAttachmentItemViewModel> FileAttachments { get; }
+    [ObservableProperty] private IReadOnlyCollection<MessageAttachmentItemViewModel> _attachments = [];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMedia), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia), nameof(IsSingleMedia),
+        nameof(MediaColumns), nameof(MediaPanelWidth), nameof(MediaTileHeight), nameof(CanCopyImage))]
+    private IReadOnlyCollection<MessageAttachmentItemViewModel> _mediaAttachments = [];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasFiles), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia))]
+    private IReadOnlyCollection<MessageAttachmentItemViewModel> _fileAttachments = [];
+
+    internal DateTimeOffset? EditedAt { get; private set; }
+    internal long AppliedUpdateRevision { get; set; }
+
+    internal void ApplyContent(MessageItemViewModel item)
+    {
+        Text = item.Text;
+        IsEdited = item.IsEdited;
+        EditedAt = item.EditedAt;
+        AppliedUpdateRevision = item.AppliedUpdateRevision;
+        Reply = item.Reply;
+        Forwards = item.Forwards;
+        Attachments = item.Attachments;
+        MediaAttachments = item.MediaAttachments;
+        FileAttachments = item.FileAttachments;
+        IsReadByCurrentUser |= item.IsReadByCurrentUser;
+        IsReadBySomeoneElse |= item.IsReadBySomeoneElse;
+    }
     /// <summary>В WinUI нет <c>StringFormat</c>, поэтому время приходит в разметку готовой строкой.</summary>
     public string SentAtLabel => SentAt.ToLocalTime().ToString("HH:mm");
     public bool HasText => !string.IsNullOrWhiteSpace(Text);

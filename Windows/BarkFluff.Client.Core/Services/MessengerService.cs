@@ -52,8 +52,27 @@ public sealed class MessengerService : IMessengerService
 
     public async Task<(ErrorReturner error, List<PinnedMessageInfo>? pinned)> GetPinnedMessagesAsync(string chatId, CancellationToken cancellationToken = default)
     {
-        var result = await WithParametersAsync(parameters => _webApi.ListPinnedMessages(parameters, chatId));
-        return (result.error, result.pinned);
+        return await WithParametersAsync<(ErrorReturner error, List<PinnedMessageInfo>? pinned)>(async parameters =>
+        {
+            List<PinnedMessageInfo> pinned = [];
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var result = await _webApi.ListPinnedMessages(parameters, chatId, pinned.Count);
+                if (!result.error.IsSuccess || result.pinned is null)
+                {
+                    return (result.error, null);
+                }
+
+                pinned.AddRange(result.pinned);
+                if (pinned.Count >= result.totalCount || result.pinned.Count == 0)
+                {
+                    return (result.error, pinned.DistinctBy(pin => pin.Message?.Id).ToList());
+                }
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return (new ErrorReturner(false), null);
+        });
     }
 
     public Task<(ErrorReturner error, PrivateMessageModel? message)> SendPrivateMessageAsync(string chatId, string text, byte[] key, CancellationToken cancellationToken = default) =>

@@ -187,7 +187,7 @@
         <DataTemplate x:Key="MessageBubbleTemplate" x:DataType="vm:MessageItemViewModel">
             <Grid Margin="12,4" HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource MessageAlignmentConverter}}">
                 <Border MaxWidth="520"
-                        Padding="{x:Bind HasOnlyMedia, Converter={StaticResource MessageBubblePaddingConverter}}"
+                        Padding="{x:Bind HasOnlyMedia, Mode=OneWay, Converter={StaticResource MessageBubblePaddingConverter}}"
                         Background="{x:Bind IsMine, Converter={StaticResource MessageBubbleBrushConverter}}"
                         ContextRequested="OnBubbleContextRequested"
                         CornerRadius="12">
@@ -219,7 +219,7 @@
                             <MenuFlyoutItem Command="{x:Bind Owner.CopyMessageImageCommand}"
                                             CommandParameter="{x:Bind}"
                                             Text="{StaticResource Messenger_CopyImage}"
-                                            Visibility="{x:Bind CanCopyImage, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            Visibility="{x:Bind CanCopyImage, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <MenuFlyoutItem.Icon>
                                     <FontIcon Glyph="&#xEB9F;" />
                                 </MenuFlyoutItem.Icon>
@@ -262,7 +262,7 @@
                                     Command="{x:Bind Owner.ScrollToOriginalCommand}"
                                     CommandParameter="{x:Bind}"
                                     CornerRadius="6"
-                                    Visibility="{x:Bind HasReply, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    Visibility="{x:Bind HasReply, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -275,11 +275,11 @@
                                     <StackPanel Grid.Column="1">
                                         <TextBlock FontSize="12"
                                                    FontWeight="SemiBold"
-                                                   Text="{x:Bind Reply.SenderName}"
+                                                   Text="{x:Bind Reply.SenderName, Mode=OneWay}"
                                                    TextTrimming="CharacterEllipsis" />
                                         <TextBlock FontSize="12"
                                                    Opacity=".8"
-                                                   Text="{x:Bind Reply.Preview}"
+                                                   Text="{x:Bind Reply.Preview, Mode=OneWay}"
                                                    TextTrimming="CharacterEllipsis"
                                                    TextWrapping="NoWrap" />
                                     </StackPanel>
@@ -287,8 +287,8 @@
                             </Button>
 
                             <!--  Пересылок может быть несколько — каждая своим блоком.  -->
-                            <ItemsRepeater ItemsSource="{x:Bind Forwards}"
-                                           Visibility="{x:Bind HasForwards, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <ItemsRepeater ItemsSource="{x:Bind Forwards, Mode=OneWay}"
+                                           Visibility="{x:Bind HasForwards, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <ItemsRepeater.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ForwardedContentViewModel">
                                         <Border Margin="0,0,0,6"
@@ -325,23 +325,23 @@
                                                         TextForeground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
                                                         Visibility="{x:Bind HasText, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                            <ItemsRepeater Width="{x:Bind MediaPanelWidth}"
+                            <ItemsRepeater Width="{x:Bind MediaPanelWidth, Mode=OneWay}"
                                            Margin="0,8,0,0"
                                            ItemTemplate="{StaticResource MediaAttachmentTemplate}"
-                                           ItemsSource="{x:Bind MediaAttachments}"
-                                           Visibility="{x:Bind HasMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                           ItemsSource="{x:Bind MediaAttachments, Mode=OneWay}"
+                                           Visibility="{x:Bind HasMedia, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <ItemsRepeater.Layout>
                                     <UniformGridLayout ItemsStretch="Fill"
-                                                       MaximumRowsOrColumns="{x:Bind MediaColumns}"
-                                                       MinItemHeight="{x:Bind MediaTileHeight}"
+                                                       MaximumRowsOrColumns="{x:Bind MediaColumns, Mode=OneWay}"
+                                                       MinItemHeight="{x:Bind MediaTileHeight, Mode=OneWay}"
                                                        Orientation="Horizontal" />
                                 </ItemsRepeater.Layout>
                             </ItemsRepeater>
 
                             <ItemsControl Margin="0,8,0,0"
                                           ItemTemplate="{StaticResource FileAttachmentTemplate}"
-                                          ItemsSource="{x:Bind FileAttachments}"
-                                          Visibility="{x:Bind HasFiles, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                          ItemsSource="{x:Bind FileAttachments, Mode=OneWay}"
+                                          Visibility="{x:Bind HasFiles, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                             <StackPanel HorizontalAlignment="Right"
                                         Orientation="Horizontal"
