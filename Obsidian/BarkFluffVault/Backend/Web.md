@@ -16,6 +16,10 @@ YARP перенаправляет gRPC-Web к внутренним gRPC-серв
 
 `wwwroot/messenger.html` загружает модули из `wwwroot/js/app/`; основные области — авторизация, API и соединение, сообщения и realtime, файлы, presence и звонки, папки и закреплённые сообщения, профиль, настройки, поиск и PWA. Proto-бандл браузера находится в `wwwroot/js/proto/`; после изменений proto его генерируют `scripts/generate-proto.*`. Контракты задаёт `Shared/BarkFluff.Proto`.
 
+## Кэш PWA
+
+`wwwroot/service-worker.js` отдаёт `/icons/` сначала из кэша. Поэтому `scripts/build-shell-version.js` при сборке и публикации считает `CACHE_NAME` и по файлам `APP_SHELL`, и по общему паку `Icons/` в корне репозитория: после изменения иконки новый service worker при активации удаляет старый кэш. Скрипту нужен каталог `Icons/`.
+
 ## Развёртывание
 
 `Dockerfile.slim` собирает образ Web. Внешний Proxy-режим задаётся в `Docker/nightly/proxy/docker-compose.yml`, а его ingress — в `Docker/nightly/proxy/nginx/sites/proxy.conf`; основной Node ingress для Web находится в `Docker/nightly/nginx/sites/10-subdomains.conf`. Shell — режим того же Web-хоста; сервисные адреса, CORS и публичная конфигурация берутся из appsettings, переменных среды и Settings там, где он подключён. См. также [[Backend/Navigator]], [[Backend/Files]], [[Backend/Calls]], [[Backend/Updates]].

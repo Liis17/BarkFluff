@@ -13,6 +13,7 @@ ASP.NET Core-хост браузерного клиента с режимами 
 
 - `wwwroot/index.html`, `wwwroot/messenger.html`, `wwwroot/legal/` и `wwwroot/offline.html` — страницы и оболочка приложения; `wwwroot/css/`, `wwwroot/icons/`, `wwwroot/js/proto/` — стили, ресурсы и сгенерированный proto-бандл.
 - `wwwroot/js/app/` разделён по областям: авторизация, API и соединение, сообщения и realtime, файлы, presence и звонки, папки и закреплённые сообщения, профиль, настройки и поиск.
+- `scripts/build-shell-version.js` задаёт версию кэша service worker, см. [[Backend/Web#Кэш PWA]].
 - `scripts/build-app.js` собирает клиент; `scripts/generate-proto.*` обновляют proto-бандл из `Shared/BarkFluff.Proto`.
 
 ← [[Backend/Web]]
