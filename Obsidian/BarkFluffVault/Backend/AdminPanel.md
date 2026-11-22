@@ -16,6 +16,12 @@
 
 GET `/api/users` передаёт Users фильтр `status=all|blocked|pending_deletion`; Users выполняет фильтрацию до пагинации и считает общий total. Список и карточка пользователя показывают статус, причину, время ограничения и дату окончательного удаления. Tombstone со статусом Deleted отображается без действий. UI и JSON-маршруты находятся в `Pages/v2/users.html` и `Endpoints/UsersEndpoints.cs`.
 
+## Тестовая отправка push
+
+Администратор один раз привязывает BarkFluff user ID к своей записи (`AdminRecord.BarkFluffUserId` в LiteDB; поле необязательное, старые записи читаются без привязки). Привязка проверяется через Users: пользователь должен существовать, ответ содержит его имя и устройства с признаком включённых push. Bootstrap Owner сохраняет запись целиком, поэтому привязку не затирает. Логика — в `Services/NotificationTestService.cs`, маршруты `/api/notifications/test-recipient` и `/api/notifications/test` — в `Endpoints/NotificationsEndpoints.cs`; права — `notifications.manage`, step-up не требуется.
+
+Тестовая отправка берёт устройства привязанного пользователя из Users и публикует `AdminBroadcastNotificationEvent` с их `TargetDeviceIds`. Пустой список в этом событии означает рассылку на все устройства, поэтому панель отказывает до публикации, если устройств нет. Недоступность Users возвращает 503. Ответ «принято к отправке» означает постановку в очередь, а не доставку: см. [[Backend/CloudMessaging]]. Тестовая отправка и привязка не пишутся в аудит — как и остальные рассылки, аудит панели покрывает действия над администраторами.
+
 ## Управление сервисом
 
 При запуске `Program.cs` вызывает `LoadConfiguration(ServiceId.Unknown, requireValidSettings: false)`.
