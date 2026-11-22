@@ -1,6 +1,7 @@
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.WebApi.Core;
+using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 namespace BarkFluff.Client.Core.ViewModels;
@@ -43,7 +44,8 @@ public sealed partial class MessengerViewModel
         }
 
         var chat = SelectedChat;
-        var version = _messageLoadVersion;
+        var version = _chatVersion;
+        var window = _historyWindowLifetime.Token;
         var reconnectFeed = _reconnectFeed;
         if (_feedLoadCompletion is { } loading)
         {
@@ -63,7 +65,8 @@ public sealed partial class MessengerViewModel
             return chatsOk;
         }
 
-        var historyTask = ResyncHistoryAsync(session, chat, version, revision, reconnectFeed, token);
+        var historyTask = window.IsCancellationRequested ? Task.FromResult(true) :
+            ResyncHistoryAsync(session, chat, version, window, revision, reconnectFeed, token);
         var pinsTask = chat.IsPrivate ? Task.FromResult(true) : RefreshPinsAsync(chat, version, reportError: false);
         var results = await Task.WhenAll(historyTask, pinsTask);
         return chatsOk && results.All(success => success);
@@ -137,31 +140,59 @@ public sealed partial class MessengerViewModel
         return true;
     }
 
-    private async Task<bool> ResyncHistoryAsync(RealtimeSession session, ChatItemViewModel chat, int version,
+    private async Task<bool> ResyncHistoryAsync(RealtimeSession session, ChatItemViewModel chat, int version, CancellationToken window,
         long revision, TaskCompletionSource? reconnectFeed, CancellationToken token)
     {
-        var loaded = Messages.OrderBy(item => (item.SentAt, item.Id)).ToArray();
+        _isHistoryResyncing = true;
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(token, window);
+        bool IsCurrentWindow() => IsOpenWindow(session, chat, version, window);
+        try
+        {
+            return await ReconcileHistoryAsync(session, chat, revision, reconnectFeed, IsCurrentWindow, lifetime.Token);
+        }
+        catch (OperationCanceledException) when (window.IsCancellationRequested)
+        {
+            return true;
+        }
+        finally
+        {
+            if (IsCurrentWindow())
+            {
+                _isHistoryResyncing = false;
+            }
+        }
+    }
+
+    private async Task<bool> ReconcileHistoryAsync(RealtimeSession session, ChatItemViewModel chat,
+        long revision, TaskCompletionSource? reconnectFeed, Func<bool> isCurrent, CancellationToken token)
+    {
+        if (_feedLoaded && Messages.Count == 0 && !_feedIncludesTail)
+        {
+            return true;
+        }
+
+        var loaded = Messages.ToArray();
         var hasWindow = _feedLoaded && loaded.Length != 0;
-        var floor = hasWindow ? (loaded[0].SentAt, loaded[0].Id) : (DateTimeOffset.MinValue, 0L);
+        var floor = hasWindow && _olderHistory.HasMore ? Position(loaded[0]) : (DateTimeOffset.MinValue, 0L);
         var ceiling = hasWindow ? (loaded[^1].SentAt, loaded[^1].Id) : (DateTimeOffset.MaxValue, long.MaxValue);
         var followTail = _feedIncludesTail;
         var firstUnread = !_feedLoaded && chat.UnreadCount > 0 ? chat.FirstUnreadMessageId : 0;
-        var key = chat.IsPrivate ? await GetPrivateChatKeyAsync(chat) : null;
-        if (!IsOpen(session, chat, version) || (chat.IsPrivate && key is null))
+        var key = chat.IsPrivate ? await GetPrivateChatKeyAsync(chat).WaitAsync(token) : null;
+        if (!isCurrent() || (chat.IsPrivate && key is null))
         {
             return true;
         }
 
         var (error, page) = await GetHistoryPageAsync(chat, key, firstUnread, SnapshotPageSize,
             firstUnread > 0 ? SnapshotPageSize : 0, token);
-        if (firstUnread > 0 && !error.IsSuccess && IsOpen(session, chat, version))
+        if (firstUnread > 0 && IsMissingAnchor(error) && isCurrent())
         {
             // Сохранённая граница непрочитанного могла исчезнуть вместе с сообщением.
             (error, page) = await GetHistoryPageAsync(chat, key, 0, SnapshotPageSize, 0, token);
             firstUnread = 0;
         }
 
-        if (!IsOpen(session, chat, version))
+        if (!isCurrent())
         {
             return true;
         }
@@ -181,8 +212,6 @@ public sealed partial class MessengerViewModel
         var tailConnected = coversAll || loaded.Length == 0 || lower.CompareTo(ceiling) <= 0;
 
         var tailStart = page.Count == 0 ? ceiling : page.Min(Position);
-        var failedAnchors = 0;
-        var checkedTail = false;
         // Проверяем ближайшие к краям якоря и несколько соседей на страницу.
         var anchors = loaded.Reverse().Where((_, index) =>
             index % SnapshotPageSize < AnchorProbesPerPage || index >= loaded.Length - AnchorProbesPerPage);
@@ -194,28 +223,21 @@ public sealed partial class MessengerViewModel
             }
 
             var (windowError, window) = await GetHistoryPageAsync(chat, key, anchor.Id, SnapshotPageSize, SnapshotPageSize, token);
-            if (!IsOpen(session, chat, version))
+            if (!isCurrent())
             {
                 return true;
             }
 
-            // Ошибка якоря может означать удаление или потерю связи.
+            if (!windowError.IsSuccess && !IsMissingAnchor(windowError))
+            {
+                return false;
+            }
             var reference = window.Find(row => row.Id == anchor.Id);
             if (!windowError.IsSuccess || reference is null)
             {
-                if (++failedAnchors == AnchorProbesPerPage && !checkedTail)
-                {
-                    var reachable = await TailReachableAsync();
-                    if (!IsOpen(session, chat, version) || !reachable)
-                    {
-                        return !IsOpen(session, chat, version);
-                    }
-                    checkedTail = true;
-                }
                 continue;
             }
 
-            failedAnchors = 0;
             var position = Position(reference);
             var start = window.Count(row => Position(row).CompareTo(position) < 0) < SnapshotPageSize
                 ? (DateTimeOffset.MinValue, 0L) : window.Min(Position);
@@ -240,11 +262,15 @@ public sealed partial class MessengerViewModel
         if (hasWindow && covered.Count == 0 && followTail && page.MinBy(Position) is { } boundary)
         {
             var (bridgeError, bridge) = await GetHistoryPageAsync(chat, key, boundary.Id, SnapshotPageSize, 0, token);
-            if (!IsOpen(session, chat, version))
+            if (!isCurrent())
             {
                 return true;
             }
 
+            if (!bridgeError.IsSuccess && !IsMissingAnchor(bridgeError))
+            {
+                return false;
+            }
             if (bridgeError.IsSuccess && bridge.Count <= SnapshotPageSize && bridge.Any(row => row.Id == boundary.Id))
             {
                 tailConnected = true;
@@ -254,81 +280,68 @@ public sealed partial class MessengerViewModel
                 }
                 covered.UnionWith(loaded.Select(item => item.Id));
             }
-            failedAnchors = bridgeError.IsSuccess ? 0 : 1;
         }
 
-        if (failedAnchors > 0)
+        var visible = snapshot.Values.Where(row => Position(row).CompareTo(floor) >= 0 &&
+            (Position(row).CompareTo(ceiling) <= 0 || followTail && tailConnected));
+        await PrepareHistoryAsync(session, chat, visible, revision, isCurrent, token, prepared =>
         {
-            var reachable = await TailReachableAsync();
-            if (!IsOpen(session, chat, version) || !reachable)
+            IsHistoryUpdating = true;
+            try
             {
-                return !IsOpen(session, chat, version);
-            }
-        }
-
-        var chatUnchanged = session.Journal.ChatRevision(chat.Id, chat.IsPrivate) <= revision;
-        foreach (var existing in loaded.Where(item => covered.Contains(item.Id) && !snapshot.ContainsKey(item.Id)))
-        {
-            if ((session.Journal.Find(chat.Id, chat.IsPrivate, existing.Id)?.Revision ?? 0) <= revision)
-            {
-                // The chat list carries the authoritative unread count.
-                RemoveMessage(chat, existing.Id, adjustUnread: false);
-                session.Journal.Record(new(chat.Id, chat.IsPrivate, existing.Id, MessageUpdateKind.Delete));
-            }
-        }
-
-        if (!chat.IsPrivate && chatUnchanged)
-        {
-            if (latest?.Regular is { } message)
-            {
-                chat.SetLastMessage(latest.Id, message.Text, latest.SentAt, message.EditedAt?.ToDateTimeOffset());
-            }
-            else if (coversAll && Messages.Count == 0)
-            {
-                chat.SetLastMessage(0, string.Empty, null);
-                if (session.Journal.UnreadRevision(chat.Id, chat.IsPrivate) <= revision)
+                var chatUnchanged = session.Journal.ChatRevision(chat.Id, chat.IsPrivate) <= revision;
+                foreach (var existing in loaded.Where(item => covered.Contains(item.Id) && !snapshot.ContainsKey(item.Id)))
                 {
-                    chat.UnreadCount = 0;
-                    chat.FirstUnreadMessageId = 0;
+                    if ((session.Journal.Find(chat.Id, chat.IsPrivate, existing.Id)?.Revision ?? 0) <= revision)
+                    {
+                        // The chat list carries the authoritative unread count.
+                        RemoveMessage(chat, existing.Id, adjustUnread: false);
+                        session.Journal.Record(new(chat.Id, chat.IsPrivate, existing.Id, MessageUpdateKind.Delete));
+                    }
+                }
+
+                if (!chat.IsPrivate && chatUnchanged)
+                {
+                    if (latest?.Regular is { } message)
+                    {
+                        chat.SetLastMessage(latest.Id, message.Text, latest.SentAt, message.EditedAt?.ToDateTimeOffset());
+                    }
+                    else if (coversAll && Messages.Count == 0)
+                    {
+                        chat.SetLastMessage(0, string.Empty, null);
+                        if (session.Journal.UnreadRevision(chat.Id, chat.IsPrivate) <= revision)
+                        {
+                            chat.UnreadCount = 0;
+                            chat.FirstUnreadMessageId = 0;
+                        }
+                    }
+                }
+
+                ApplyHistoryRows(session, chat, prepared, id => WasPrivateHistoryRead(chat, id));
+                if (!_feedLoaded)
+                {
+                    SetHistoryEdges(page, firstUnread);
+                    CompleteFeedLoad(firstUnread);
+                }
+                else if (followTail)
+                {
+                    _feedIncludesTail = tailConnected;
+                }
+
+                if (reconnectFeed is not null && ReferenceEquals(_reconnectFeed, reconnectFeed))
+                {
+                    _reconnectFeed = null;
+                    reconnectFeed.TrySetResult();
                 }
             }
-        }
-
-        foreach (var row in snapshot.Values.OrderBy(row => row.Id))
-        {
-            if (Position(row).CompareTo(floor) >= 0 &&
-                (Position(row).CompareTo(ceiling) <= 0 || followTail && tailConnected))
+            finally
             {
-                await MergeHistoryRowAsync(session, chat, version, row, revision,
-                    markRead: chat.IsPrivate && (chat.UnreadCount == 0 || row.Id < chat.FirstUnreadMessageId));
+                IsHistoryUpdating = false;
             }
-        }
-
-        if (IsOpen(session, chat, version))
-        {
-            _feedIncludesTail = firstUnread == 0
-                ? followTail && tailConnected
-                : page.Count(row => row.Id > firstUnread) < SnapshotPageSize;
-            if (!_feedLoaded)
-            {
-                CompleteFeedLoad(firstUnread);
-            }
-
-            if (reconnectFeed is not null && ReferenceEquals(_reconnectFeed, reconnectFeed))
-            {
-                _reconnectFeed = null;
-                reconnectFeed.TrySetResult();
-            }
-        }
+        });
 
         // Неподтверждённые строки остаются до следующего повода для сверки.
         return true;
-
-        async Task<bool> TailReachableAsync()
-        {
-            var (tailError, _) = await GetHistoryPageAsync(chat, key, 0, SnapshotPageSize, 0, token);
-            return tailError.IsSuccess || tailError.ErrorCode == 1;
-        }
     }
 
     private static (DateTimeOffset, long) Position(HistoryRow row) => (row.SentAt, row.Id);
@@ -351,99 +364,166 @@ public sealed partial class MessengerViewModel
         return (result, regular?.Select(message => new HistoryRow(message.MessageId, message.SentAt.ToDateTimeOffset(), message, null)).ToList() ?? []);
     }
 
-    private async Task MergeHistoryRowAsync(RealtimeSession session, ChatItemViewModel chat, int version,
-        HistoryRow row, long revision, bool markRead)
+    private sealed record PreparedHistoryRow(HistoryRow Row, MessageItemViewModel? Item, bool Deleted,
+        Infrastructure.Realtime.MessageUpdateJournal.Change? Change, bool RefreshQuote = false);
+
+    private async Task PrepareHistoryAsync(RealtimeSession session, ChatItemViewModel chat,
+        IEnumerable<HistoryRow> rows, long revision, Func<bool> isCurrent, CancellationToken token,
+        Action<PreparedHistoryRow[]> apply, byte[]? key = null,
+        ((DateTimeOffset, long) Start, (DateTimeOffset, long) End)? updateRange = null)
     {
-        while (IsOpen(session, chat, version))
+        const int parallelRows = 8;
+        var candidates = rows.ToDictionary(row => row.Id);
+        var prepared = new Dictionary<long, PreparedHistoryRow>();
+        while (isCurrent())
         {
-            var change = session.Journal.Find(chat.Id, chat.IsPrivate, row.Id);
-            if (change?.Kind == MessageUpdateKind.Delete)
+            if (updateRange is { } range)
             {
+                foreach (var update in session.Journal.NewMessagesSince(chat.Id, chat.IsPrivate, revision))
+                {
+                    var sentAt = (update.Message?.SentAt ?? update.Encrypted!.SentAt).ToDateTimeOffset();
+                    var position = (sentAt, update.MessageId);
+                    if (position.CompareTo(range.Start) >= 0 && position.CompareTo(range.End) <= 0 &&
+                        !candidates.ContainsKey(update.MessageId))
+                    {
+                        candidates.Add(update.MessageId, new(update.MessageId, sentAt, update.Message,
+                            key is null ? null : WebApiClient.DecryptPrivateMessage(update.Encrypted!, key)));
+                    }
+                }
+            }
+
+            var pending = candidates.Values.Where(row => !prepared.TryGetValue(row.Id, out var result) ||
+                result.Change != session.Journal.Find(chat.Id, chat.IsPrivate, row.Id)).ToArray();
+            if (pending.Length == 0)
+            {
+                apply(prepared.Values.OrderBy(result => Position(result.Row)).ToArray());
                 return;
             }
 
-            if (row.IsDeleted && (change is null || change.Revision <= revision))
+            foreach (var batch in pending.Chunk(parallelRows))
             {
-                RemoveMessage(chat, row.Id, adjustUnread: false);
-                session.Journal.Record(new(chat.Id, chat.IsPrivate, row.Id, MessageUpdateKind.Delete));
-                return;
+                var items = await Task.WhenAll(batch.Select(PrepareRowAsync)).WaitAsync(token);
+                if (!isCurrent())
+                {
+                    return;
+                }
+                foreach (var item in items)
+                {
+                    prepared[item.Row.Id] = item;
+                }
+            }
+        }
+
+        async Task<PreparedHistoryRow> PrepareRowAsync(HistoryRow row)
+        {
+            var change = session.Journal.Find(chat.Id, chat.IsPrivate, row.Id);
+            if (change?.Kind == MessageUpdateKind.Delete || row.IsDeleted && (change?.Revision ?? 0) <= revision)
+            {
+                return new(row, null, true, change);
             }
 
             var editTime = row.Regular?.EditedAt ?? row.Private?.EditedAt;
-            var current = Messages.FirstOrDefault(message => message.Id == row.Id);
             var preferUpdate = change?.Payload is not null && (change.Revision > revision ||
                 change.EditTime is { } editedAt && editedAt.CompareTo(editTime) > 0);
-            var useUpdate = preferUpdate && current?.AppliedUpdateRevision != change!.Revision;
-            if (!useUpdate && current is not null)
+            var current = Messages.FirstOrDefault(message => message.Id == row.Id);
+            var isEdited = row.Regular?.IsEdited ?? row.Private!.IsEdited;
+            if (current is not null)
             {
-                if (row.Regular is { } data)
+                if (preferUpdate && current.AppliedUpdateRevision == change!.Revision ||
+                    !preferUpdate && (current.EditedAt > editTime?.ToDateTimeOffset() || current.IsEdited && !isEdited))
                 {
-                    foreach (var reader in data.ReadBy)
-                    {
-                        current.RegisterReader(reader);
-                    }
+                    return new(row, current, false, change);
                 }
-                if (markRead)
-                {
-                    current.MarkReadByCurrentUser();
-                }
-
-                var isEdited = row.Regular?.IsEdited ?? row.Private!.IsEdited;
-                if (preferUpdate || current.EditedAt > editTime?.ToDateTimeOffset() || current.IsEdited && !isEdited)
-                {
-                    return;
-                }
-
-                // Вложения меняются вместе с версией сообщения. Цитата резолвится сервером
-                // независимо от версии ответа, поэтому её сравниваем отдельно.
-                if (current.EditedAt == editTime?.ToDateTimeOffset() && current.IsEdited == isEdited &&
+                if (!preferUpdate && current.EditedAt == editTime?.ToDateTimeOffset() && current.IsEdited == isEdited &&
                     current.Text == (row.Regular?.Text ?? PrivateMessageText(row.Private!)))
                 {
-                    if (row.Regular is { } regularRow)
-                    {
-                        UpdateSnapshotQuote(current, CreateReplyContent(regularRow.ReplyTo));
-                    }
-                    return;
+                    return new(row, current, false, change, RefreshQuote: true);
                 }
             }
-            var item = useUpdate
+
+            var item = preferUpdate
                 ? await BuildUpdatedItemAsync(session, chat, change!.Payload!)
                 : row.Regular is { } regular
                     ? await CreateMessageItemAsync(regular, session.UserId)
                     : CreatePrivateMessageItem(row.Private!, session.UserId);
-            if (!IsOpen(session, chat, version))
+            if (item is not null && preferUpdate)
             {
-                return;
+                item.AppliedUpdateRevision = change!.Revision;
             }
+            return new(row, item, false, change);
+        }
+    }
 
-            if (change != session.Journal.Find(chat.Id, chat.IsPrivate, row.Id))
+    private void ApplyHistoryRows(RealtimeSession session, ChatItemViewModel chat, PreparedHistoryRow[] rows,
+        Func<long, bool> markRead)
+    {
+        foreach (var (row, item, deleted, change, refreshQuote) in rows)
+        {
+            if (deleted)
+            {
+                if (change?.Kind != MessageUpdateKind.Delete)
+                {
+                    RemoveMessage(chat, row.Id, adjustUnread: false);
+                    session.Journal.Record(new(chat.Id, chat.IsPrivate, row.Id, MessageUpdateKind.Delete));
+                }
+                continue;
+            }
+            if (item is null)
             {
                 continue;
             }
 
-            if (item is not null)
+            var existing = Messages.FirstOrDefault(message => message.Id == row.Id);
+            if (!ReferenceEquals(item, existing))
             {
-                if (markRead)
-                {
-                    item.MarkReadByCurrentUser();
-                }
-
-                if (useUpdate)
-                {
-                    item.AppliedUpdateRevision = change!.Revision;
-                }
                 UpsertMessage(item, allowInsert: true);
-                if (change is not null)
+            }
+            var visible = existing ?? item;
+            if (row.Regular is { } regular)
+            {
+                foreach (var reader in regular.ReadBy)
                 {
-                    change.WaitingForNew = false;
+                    visible.RegisterReader(reader);
                 }
-                if (item.IsEdited)
+                if (refreshQuote && ReferenceEquals(item, existing))
                 {
-                    var original = Messages.First(message => message.Id == item.Id);
-                    UpdateQuotes(item.Id, original.Text);
+                    UpdateSnapshotQuote(item, CreateReplyContent(regular.ReplyTo));
                 }
             }
-            return;
+            if (markRead(row.Id))
+            {
+                visible.MarkReadByCurrentUser();
+            }
+            if (change is not null)
+            {
+                change.WaitingForNew = false;
+            }
+            if (item.IsEdited)
+            {
+                UpdateQuotes(item.Id, visible.Text);
+            }
+        }
+    }
+
+    private async Task MergeSentRowAsync(RealtimeSession session, ChatItemViewModel chat, int version,
+        HistoryRow row, long revision)
+    {
+        while (IsOpen(session, chat, version) && _feedIncludesTail)
+        {
+            var window = _historyWindowLifetime.Token;
+            try
+            {
+                await PrepareHistoryAsync(session, chat, [row], revision,
+                    () => IsOpenWindow(session, chat, version, window) && _feedIncludesTail,
+                    window, rows => ApplyHistoryRows(session, chat, rows, _ => false));
+            }
+            catch (OperationCanceledException) when (window.IsCancellationRequested)
+            {
+            }
+            if (!window.IsCancellationRequested)
+            {
+                return;
+            }
         }
     }
 }

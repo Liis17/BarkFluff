@@ -26,7 +26,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     private readonly IUiDispatcher _uiDispatcher;
     private readonly HashSet<long> _pendingReadMessageIds = [];
     private CancellationTokenSource? _readBatchCancellationTokenSource;
-    private int _messageLoadVersion;
+    private int _chatVersion;
     private bool _isFeedAtBottom = true;
     // До первого подключения индикатор не показываем: у стримов ещё не было повода упасть.
     private bool _isRealtimeConnected = true;
@@ -147,7 +147,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         EndRealtimeSession();
         IsLoading = false;
         CancelPendingReadBatch();
-        _messageLoadVersion++;
+        _chatVersion++;
         SelectedChat = null;
         IsProfileVisible = false;
         Profile.Reset();
@@ -273,7 +273,8 @@ public sealed partial class MessengerViewModel : ObservableObject
 
         _feedLoaded = false;
         _feedIncludesTail = true;
-        _messageLoadVersion++;
+        _chatVersion++;
+        ResetHistoryWindow();
         _feedLoadCompletion?.TrySetResult();
         _feedLoadCompletion = null;
         _reconnectFeed?.TrySetResult();
@@ -289,7 +290,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         PrivatePassphrase = string.Empty;
         if (newValue is not null)
         {
-            _ = LoadMessagesAsync(newValue, _messageLoadVersion);
+            _ = LoadMessagesAsync(newValue, _chatVersion);
         }
     }
 
@@ -310,7 +311,7 @@ public sealed partial class MessengerViewModel : ObservableObject
 
         var chat = SelectedChat;
         var session = _realtimeSession;
-        var version = _messageLoadVersion;
+        var version = _chatVersion;
         if (!IsOpen(session, chat, version))
         {
             return;
@@ -318,7 +319,8 @@ public sealed partial class MessengerViewModel : ObservableObject
 
         var draft = DraftText;
         var reply = ReplyTarget;
-        var revision = session!.Journal.Revision;
+        using var reading = session!.Journal.ReadHistory(chat.Id, chat.IsPrivate);
+        var revision = session.Journal.Revision;
         ActionError = null;
         if (chat.IsPrivate)
         {
@@ -346,8 +348,11 @@ public sealed partial class MessengerViewModel : ObservableObject
                 return;
             }
 
-            await MergeHistoryRowAsync(session, chat, version,
-                new(message.MessageId, message.SentAt.ToDateTimeOffset(), null, message), revision, markRead: false);
+            if (_feedIncludesTail)
+            {
+                await MergeSentRowAsync(session, chat, version,
+                    new(message.MessageId, message.SentAt.ToDateTimeOffset(), null, message), revision);
+            }
         }
         else
         {
@@ -363,8 +368,11 @@ public sealed partial class MessengerViewModel : ObservableObject
                 return;
             }
 
-            await MergeHistoryRowAsync(session, chat, version,
-                new(message.MessageId, message.SentAt.ToDateTimeOffset(), message, null), revision, markRead: false);
+            if (_feedIncludesTail)
+            {
+                await MergeSentRowAsync(session, chat, version,
+                    new(message.MessageId, message.SentAt.ToDateTimeOffset(), message, null), revision);
+            }
         }
 
         if (IsOpen(session, chat, version))
@@ -374,7 +382,14 @@ public sealed partial class MessengerViewModel : ObservableObject
                 DraftText = string.Empty;
                 ReplyTarget = null;
             }
-            RequestScroll(MessageScrollTarget.Bottom);
+            if (_feedIncludesTail)
+            {
+                RequestScroll(MessageScrollTarget.Bottom);
+            }
+            else
+            {
+                await ReloadHistoryTailAsync();
+            }
         }
     }
 
@@ -382,7 +397,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     private void MessageBecameVisible(MessageItemViewModel message)
     {
         var chat = SelectedChat;
-        if (chat is null || message.IsMine || message.IsReadByCurrentUser || !Messages.Contains(message))
+        if (!_feedLoaded || IsHistoryUpdating || chat is null || message.IsMine || message.IsReadByCurrentUser || !Messages.Contains(message))
         {
             return;
         }
@@ -412,6 +427,8 @@ public sealed partial class MessengerViewModel : ObservableObject
             return;
         }
 
+        var window = _historyWindowLifetime.Token;
+        bool IsCurrentWindow() => IsOpenWindow(session, chat, loadVersion, window);
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _feedLoadCompletion = completion;
         try
@@ -419,12 +436,24 @@ public sealed partial class MessengerViewModel : ObservableObject
             using var reading = session!.Journal.ReadHistory(chat.Id, chat.IsPrivate);
             var revision = session.Journal.Revision;
             var firstUnread = chat.UnreadCount > 0 ? chat.FirstUnreadMessageId : 0;
-            var token = session.Lifetime.Token;
+            _feedIncludesTail = firstUnread == 0;
+            using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(session.Lifetime.Token, window);
+            var token = lifetime.Token;
             var (error, rows) = await GetHistoryPageAsync(chat, key, firstUnread, SnapshotPageSize,
                 firstUnread > 0 ? SnapshotPageSize : 0, token);
-            if (!IsOpen(session, chat, loadVersion))
+            if (!IsCurrentWindow())
             {
                 return;
+            }
+
+            if (firstUnread > 0 && IsMissingAnchor(error))
+            {
+                (error, rows) = await GetHistoryPageAsync(chat, key, 0, SnapshotPageSize, 0, token);
+                if (!IsCurrentWindow())
+                {
+                    return;
+                }
+                firstUnread = 0;
             }
 
             // Устаревший запрос мог завершиться ошибкой после смены чата.
@@ -434,24 +463,27 @@ public sealed partial class MessengerViewModel : ObservableObject
                 return;
             }
 
-            foreach (var row in rows.OrderBy(row => row.Id))
+            await PrepareHistoryAsync(session, chat, rows, revision, IsCurrentWindow, token, prepared =>
             {
-                await MergeHistoryRowAsync(session, chat, loadVersion, row, revision,
-                    markRead: chat.IsPrivate && (firstUnread == 0 || row.Id < firstUnread));
-            }
-
-            if (IsOpen(session, chat, loadVersion))
-            {
-                _feedIncludesTail = firstUnread == 0 || rows.Count(row => row.Id > firstUnread) < SnapshotPageSize;
-                CompleteFeedLoad(firstUnread);
-
-                if (!chat.IsPrivate)
+                IsHistoryUpdating = true;
+                try
                 {
-                    await RefreshPinsAsync(chat, loadVersion, reportError: true);
+                    SetHistoryEdges(rows, firstUnread);
+                    ApplyHistoryRows(session, chat, prepared, id => chat.IsPrivate && (firstUnread == 0 || id < firstUnread));
+                    CompleteFeedLoad(firstUnread);
                 }
+                finally
+                {
+                    IsHistoryUpdating = false;
+                }
+            }, key, HistoryRange(rows, firstUnread));
+
+            if (IsCurrentWindow() && !chat.IsPrivate)
+            {
+                await RefreshPinsAsync(chat, loadVersion, reportError: true);
             }
         }
-        catch (OperationCanceledException) when (!IsOpen(session, chat, loadVersion))
+        catch (OperationCanceledException) when (!IsCurrentWindow())
         {
         }
         finally
@@ -488,7 +520,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
 
         var session = _realtimeSession;
-        var version = _messageLoadVersion;
+        var version = _chatVersion;
         await _privateChatKeyStore.SaveAsync(_messenger.CurrentNodeAddress, currentUserId.Value, chat.Id, key);
         if (!IsOpen(session, chat, version))
         {
@@ -844,7 +876,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Лента отсортирована по возрастанию идентификатора. Сообщение из стрима может обогнать ответ
+    /// Лента отсортирована по времени отправки и идентификатору, как история обычного чата. Сообщение из стрима может обогнать ответ
     /// на собственную отправку, поэтому позиция ищется, а уже показанный идентификатор молча
     /// пропускается: сервер рассылает новое сообщение и самому отправителю тоже.
     /// </summary>
@@ -856,7 +888,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
 
         var index = Messages.Count;
-        while (index > 0 && Messages[index - 1].Id > message.Id)
+        while (index > 0 && Position(Messages[index - 1]).CompareTo(Position(message)) > 0)
         {
             index--;
         }

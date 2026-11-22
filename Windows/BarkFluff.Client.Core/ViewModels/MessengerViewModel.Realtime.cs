@@ -32,7 +32,7 @@ public sealed partial class MessengerViewModel
         session.Node == _messenger.CurrentNodeAddress;
 
     private bool IsOpen(RealtimeSession? session, ChatItemViewModel chat, int version) =>
-        IsCurrent(session) && ReferenceEquals(SelectedChat, chat) && version == _messageLoadVersion;
+        IsCurrent(session) && ReferenceEquals(SelectedChat, chat) && version == _chatVersion;
 
     private void StartRealtimeSession(long userId)
     {
@@ -47,7 +47,7 @@ public sealed partial class MessengerViewModel
         session.ChatRefresh = new ResyncLoop(token => RefreshChatsAsync(session, reportError: false, token),
             session.Lifetime.Token) { Delay = ResyncDelay };
         session.PinRefresh = new ResyncLoop(_ => SelectedChat is { IsPrivate: false } chat && IsCurrent(session)
-            ? RefreshPinsAsync(chat, _messageLoadVersion, reportError: false)
+            ? RefreshPinsAsync(chat, _chatVersion, reportError: false)
             : Task.FromResult(true), session.Lifetime.Token) { Delay = ResyncDelay };
         _realtimeSession = session;
         EventHandler<IncomingMessage> received = (_, incoming) => OnMessageChanged(session,
@@ -181,7 +181,8 @@ public sealed partial class MessengerViewModel
 
         var isOpen = chat == SelectedChat;
         change.WaitingForNew = isOpen && existing is null && !change.SawNew && update.Kind == MessageUpdateKind.Edit;
-        var version = _messageLoadVersion;
+        var version = _chatVersion;
+        var window = _historyWindowLifetime.Token;
         var effective = change.Payload;
         if (change.Kind == MessageUpdateKind.Delete)
         {
@@ -262,11 +263,12 @@ public sealed partial class MessengerViewModel
             return;
         }
 
-        if (existing is null && change.SawNew && _reconnectFeed is { } recovering)
+        if (existing is null && change.SawNew && _reconnectFeed is { } recovering &&
+            !IsInsideLoadedWindow(effective))
         {
             // До сверки неизвестно, прилегает ли вновь полученное сообщение к открытому окну.
             await recovering.Task;
-            if (!IsOpen(session, chat, version) || !_feedIncludesTail ||
+            if (!IsOpenWindow(session, chat, version, window) || !_feedIncludesTail ||
                 session.Journal.Find(chat.Id, chat.IsPrivate, update.MessageId) != change ||
                 Messages.Any(message => message.Id == update.MessageId && message.AppliedUpdateRevision == change.Revision))
             {
@@ -276,15 +278,15 @@ public sealed partial class MessengerViewModel
 
         // Ссылки на вложения разрешаются отдельными вызовами. За это время чат мог смениться.
         var item = await BuildUpdatedItemAsync(session, chat, effective);
-        if (item is null || !IsOpen(session, chat, version) ||
+        if (item is null || !IsOpenWindow(session, chat, version, window) ||
             session.Journal.Find(chat.Id, chat.IsPrivate, item.Id) != change)
         {
             return;
         }
 
         item.AppliedUpdateRevision = change.Revision;
-        var inserted = UpsertMessage(item, change.SawNew);
-        if (inserted && _isFeedAtBottom)
+        var inserted = UpsertMessage(item, change.SawNew && _feedIncludesTail);
+        if (inserted && _isFeedAtBottom && !IsHistoryUpdating)
         {
             RequestScroll(MessageScrollTarget.Bottom);
         }

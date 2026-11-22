@@ -193,10 +193,12 @@ public sealed class MessengerResyncTests
     public async Task Resync_ChecksLoadedAnchorBeforeInferringDeletionAtWindowEdge(bool secondDeleted)
     {
         var api = CreateApi();
+        // Якорь 1 находится на краю окна по времени, а якорь 2 остаётся доступен.
+        api.Messages[0].SentAt = new Timestamp { Seconds = 3 };
         if (secondDeleted)
         {
             var edge = MakeMessage(3, "deleted edge");
-            edge.SentAt = new Timestamp { Nanos = 2 };
+            edge.SentAt = new Timestamp { Seconds = 2, Nanos = 100 };
             api.Messages.Add(edge);
         }
         var updates = new FakeRealtimeMessengerService();
@@ -217,7 +219,7 @@ public sealed class MessengerResyncTests
             {
                 0 => firstPage,
                 2 => secondPage,
-                _ => (new ErrorReturner(false), null)
+                _ => (new ErrorReturner(false, errorCode: ErrorReturner.HistoryAnchorNotFound), null)
             });
         };
 
@@ -646,6 +648,7 @@ public sealed class MessengerResyncTests
                 _ when recovered => (new(false, errorCode: 1), null),
                 0 when !networkFailure || requests.Count == 1 => (new(true), tail),
                 151 when !networkFailure => (new(true), bridge),
+                _ when !networkFailure => (new(false, errorCode: ErrorReturner.HistoryAnchorNotFound), null),
                 _ => (new(false), null)
             });
         };
@@ -732,6 +735,8 @@ public sealed class MessengerResyncTests
     public async Task Delete_UpdatesOriginalChatAfterSwitchAndSuppressesItsError(bool success)
     {
         var (vm, api, updates) = await OpenAsync((_, token) => Task.Delay(Timeout.Infinite, token));
+        var tail = api.Messages.MaxBy(message => message.SentAt)!;
+        api.Chats[0].LastMessage = new Message { Id = tail.MessageId, Content = new MessageContent { Text = tail.Text } };
         api.Chats.Add(MessengerTestDoubles.CreateChat("b"));
         updates.Resync();
         var original = vm.SelectedChat!;
@@ -849,7 +854,6 @@ public sealed class MessengerResyncTests
         api.Chats.Add(chat);
         api.Messages.Add(MakeMessage(1, "before"));
         var reply = MakeMessage(2, "reply");
-        reply.SentAt = new Timestamp { Nanos = 1 };
         reply.ReplyTo = new ReplyPreviewModel { MessageId = 1, TextPreview = "before", SenderName = "Sender" };
         api.Messages.Add(reply);
         return api;

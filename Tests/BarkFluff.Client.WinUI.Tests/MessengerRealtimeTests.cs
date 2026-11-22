@@ -9,15 +9,22 @@ namespace BarkFluff.Client.WinUI.Tests;
 public sealed class MessengerRealtimeTests
 {
     [Fact]
-    public async Task IncomingMessage_ForSelectedChat_InsertsInIdOrder()
+    public async Task IncomingMessage_ForSelectedChat_InsertsInTimestampThenIdOrder()
     {
         var (viewModel, messenger, realtime) = await CreateLoadedAsync();
         viewModel.SelectedChat = viewModel.Chats.Single(chat => chat.Id == "a");
 
-        realtime.Raise(new IncomingMessage("a", MessengerTestDoubles.CreateMessage(20, "a", 2)));
-        realtime.Raise(new IncomingMessage("a", MessengerTestDoubles.CreateMessage(10, "a", 2)));
+        var later = MessengerTestDoubles.CreateMessage(10, "a", 2);
+        later.SentAt = new() { Seconds = 2 };
+        var earlier = MessengerTestDoubles.CreateMessage(20, "a", 2);
+        earlier.SentAt = new() { Seconds = 1 };
+        var sameTime = MessengerTestDoubles.CreateMessage(15, "a", 2);
+        sameTime.SentAt = earlier.SentAt.Clone();
+        realtime.Raise(new IncomingMessage("a", later));
+        realtime.Raise(new IncomingMessage("a", earlier));
+        realtime.Raise(new IncomingMessage("a", sameTime));
 
-        Assert.Equal([10, 20], viewModel.Messages.Select(message => message.Id));
+        Assert.Equal([15, 20, 10], viewModel.Messages.Select(message => message.Id));
         Assert.Empty(messenger.Messages);
     }
 

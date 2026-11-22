@@ -84,6 +84,12 @@ internal sealed class MessageUpdateJournal
         public void Dispose() => end();
     }
 
+    internal MessageUpdate[] NewMessagesSince(string chatId, bool isPrivate, long revision) =>
+        _payloads.TryGetValue((chatId, isPrivate), out var changes)
+            ? changes.Where(change => change.SawNew && change.Revision > revision && change.Payload is not null)
+                .Select(change => change.Payload!).ToArray()
+            : [];
+
     internal long Revision { get; private set; }
 
     internal long ChatRevision(string chatId, bool isPrivate) => _chatRevisions.GetValueOrDefault((chatId, isPrivate));

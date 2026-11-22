@@ -190,7 +190,7 @@ internal sealed class FakeMessengerService : IMessengerService
 {
     public long? CurrentUserId { get; set; } = 1;
 
-    public string CurrentNodeAddress => string.Empty;
+    public string CurrentNodeAddress { get; set; } = string.Empty;
 
     public List<Chat> Chats { get; } = [];
 
@@ -198,6 +198,8 @@ internal sealed class FakeMessengerService : IMessengerService
     public List<PrivateMessageModel> PrivateMessages { get; } = [];
     public List<PinnedMessageInfo> Pins { get; } = [];
     public Func<string, long, Task<(ErrorReturner, List<MessageModel>?)>>? History { get; set; }
+    public Func<string, long, int, int, Task<(ErrorReturner, List<MessageModel>?)>>? HistoryPage { get; set; }
+    public Func<string, long, int, int, Task<(ErrorReturner, List<PrivateMessageModel>?)>>? PrivateHistoryPage { get; set; }
     public Func<string, Task<string>>? FileUrl { get; set; }
     public Func<Task<(ErrorReturner, List<PinnedMessageInfo>?)>>? PinnedHistory { get; set; }
     public Func<Task<(ErrorReturner, List<Chat>?)>>? ChatSnapshot { get; set; }
@@ -231,17 +233,21 @@ internal sealed class FakeMessengerService : IMessengerService
             ? (new ErrorReturner(false, "сообщение не отправлено"), null)
             : (new ErrorReturner(true), null));
 
+    public Func<Task<(ErrorReturner, PrivateMessageModel?)>>? PrivateSendResponse { get; set; }
+    public Func<Task<(ErrorReturner, MessageModel?)>>? EditResponse { get; set; }
+    public Func<Task<(ErrorReturner, PinnedMessageInfo?)>>? PinResponse { get; set; }
+
     public Task<(ErrorReturner error, PrivateMessageModel? message)> SendPrivateMessageAsync(string chatId, string text, byte[] key, CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, PrivateMessageModel?)>((new ErrorReturner(true), null));
+        PrivateSendResponse?.Invoke() ?? Task.FromResult<(ErrorReturner, PrivateMessageModel?)>((new ErrorReturner(true), null));
 
     public Task<(ErrorReturner error, MessageModel? message)> EditMessageAsync(string chatId, long messageId, string text, CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, MessageModel?)>((new ErrorReturner(true), null));
+        EditResponse?.Invoke() ?? Task.FromResult<(ErrorReturner, MessageModel?)>((new ErrorReturner(true), null));
 
     public Task<ErrorReturner> DeleteMessageAsync(long messageId, CancellationToken cancellationToken = default) =>
         DeleteResponse?.Invoke() ?? Task.FromResult(new ErrorReturner(true));
 
     public Task<(ErrorReturner error, PinnedMessageInfo? pinned)> PinMessageAsync(string chatId, long messageId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<(ErrorReturner, PinnedMessageInfo?)>((new ErrorReturner(true), null));
+        PinResponse?.Invoke() ?? Task.FromResult<(ErrorReturner, PinnedMessageInfo?)>((new ErrorReturner(true), null));
 
     public Task<ErrorReturner> UnpinMessageAsync(string chatId, long messageId, CancellationToken cancellationToken = default) =>
         Task.FromResult(new ErrorReturner(true));
@@ -250,15 +256,18 @@ internal sealed class FakeMessengerService : IMessengerService
         PinnedHistory?.Invoke() ?? Task.FromResult<(ErrorReturner, List<PinnedMessageInfo>?)>((new ErrorReturner(true), [.. Pins]));
 
     public Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessagesAsync(string chatId, long fromMessageId, int offsetBefore, int offsetAfter, CancellationToken cancellationToken = default) =>
-        History?.Invoke(chatId, fromMessageId) ?? Task.FromResult<(ErrorReturner, List<MessageModel>?)>(MessagesFail
+        HistoryPage?.Invoke(chatId, fromMessageId, offsetBefore, offsetAfter) ?? History?.Invoke(chatId, fromMessageId) ?? Task.FromResult<(ErrorReturner, List<MessageModel>?)>(MessagesFail
             ? (new ErrorReturner(false, "история недоступна"), null)
             : (new ErrorReturner(true), [.. Messages.Where(message => message.ChatId == chatId)]));
 
     public Task<(ErrorReturner error, List<PrivateMessageModel>? messages)> GetPrivateMessagesAsync(string chatId, byte[] key, long fromMessageId, int offsetBefore, int offsetAfter, CancellationToken cancellationToken = default) =>
+        PrivateHistoryPage?.Invoke(chatId, fromMessageId, offsetBefore, offsetAfter) ??
         Task.FromResult<(ErrorReturner, List<PrivateMessageModel>?)>((new ErrorReturner(true), [.. PrivateMessages.Where(message => message.ChatId == chatId)]));
 
+    public Func<IReadOnlyCollection<long>, Task<ErrorReturner>>? MarkReadResponse { get; set; }
+
     public Task<ErrorReturner> MarkMessagesReadAsync(IReadOnlyCollection<long> messageIds, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new ErrorReturner(true));
+        MarkReadResponse?.Invoke(messageIds) ?? Task.FromResult(new ErrorReturner(true));
 
     public Task<ErrorReturner> MarkPrivateMessagesReadAsync(string chatId, long lastReadMessageId, CancellationToken cancellationToken = default) =>
         Task.FromResult(new ErrorReturner(true));

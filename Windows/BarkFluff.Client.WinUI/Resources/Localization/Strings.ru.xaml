@@ -179,6 +179,9 @@
     <x:String x:Key="Messenger_EditingMessage">Редактирование сообщения</x:String>
     <x:String x:Key="Messenger_DeleteConfirmTitle">Удалить сообщение?</x:String>
     <x:String x:Key="Messenger_DeleteConfirmText">Сообщение будет удалено у всех участников чата. Отменить это действие нельзя.</x:String>
+    <x:String x:Key="Messenger_HistoryLoadFailed">Не удалось загрузить историю чата.</x:String>
+    <x:String x:Key="Messenger_HistoryRetry">Повторить</x:String>
+    <x:String x:Key="Messenger_HistoryMessageUnavailable">Сообщение недоступно. Возможно, оно было удалено.</x:String>
     <x:String x:Key="Messenger_ActionFailed">Не удалось выполнить действие.</x:String>
     <x:String x:Key="Messenger_ClipboardFailed">Не удалось обратиться к буферу обмена.</x:String>
     <x:String x:Key="Messenger_Delivered">Доставлено</x:String>

@@ -223,6 +223,10 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Нет доступа к чату"), null);
             }
+            catch (BarkFluff.Shared.Exceptions.Messages.MessageNotFoundException) when (fromMessageId != 0)
+            {
+                return (new ErrorReturner(false, "Ошибка получения сообщений", ErrorReturner.HistoryAnchorNotFound), null);
+            }
             catch (Exception)
             {
                 return (new ErrorReturner(false, "Ошибка получения сообщений"), null);

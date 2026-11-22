@@ -557,7 +557,13 @@
                           Grid.Row="2"
                           HorizontalScrollBarVisibility="Disabled"
                           SizeChanged="OnFeedScrollerSizeChanged"
+                          VerticalAnchorRatio="0.01"
                           VerticalScrollBarVisibility="Auto">
+                <!--
+                    ScrollViewer и ItemsRepeater сохраняют положение ближайшего контейнера
+                    при изменении коллекции и размеров строк. Ненулевой якорь у верхней
+                    кромки позволяет удерживать контейнер даже при вставке в позиции 0.
+                -->
                 <!--
                     Контент не ниже вьюпорта: только тогда у VerticalAlignment появляется запас
                     и короткая переписка прижимается к нижней кромке, как в WPF-версии.
@@ -570,6 +576,9 @@
                                    ItemTemplate="{StaticResource MessageBubbleTemplate}"
                                    ItemsSource="{x:Bind ViewModel.Messages}"
                                    behaviors:MessageFeedBehavior.FeedPositionCommand="{x:Bind ViewModel.FeedPositionChangedCommand}"
+                                   behaviors:MessageFeedBehavior.HistoryUpdating="{x:Bind ViewModel.IsHistoryUpdating, Mode=OneWay}"
+                                   behaviors:MessageFeedBehavior.OlderHistoryCommand="{x:Bind ViewModel.LoadOlderHistoryCommand}"
+                                   behaviors:MessageFeedBehavior.NewerHistoryCommand="{x:Bind ViewModel.LoadNewerHistoryCommand}"
                                    behaviors:MessageFeedBehavior.ScrollRequest="{x:Bind ViewModel.ScrollRequest, Mode=OneWay}"
                                    behaviors:MessageFeedBehavior.Scroller="{x:Bind FeedScroller}"
                                    behaviors:MessageFeedBehavior.VisibleMessageCommand="{x:Bind ViewModel.MessageBecameVisibleCommand}" />
@@ -618,12 +627,19 @@
                 </Grid>
             </Border>
 
-            <TextBlock Grid.Row="4"
-                       Margin="12,6,12,0"
-                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                       Text="{x:Bind ViewModel.ActionError, Mode=OneWay}"
-                       TextWrapping="Wrap"
-                       Visibility="{x:Bind ViewModel.ActionError, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+            <StackPanel Grid.Row="4" Margin="12,6,12,0">
+                <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                           Text="{x:Bind ViewModel.ActionError, Mode=OneWay}"
+                           TextWrapping="Wrap"
+                           Visibility="{x:Bind ViewModel.ActionError, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                <StackPanel Orientation="Horizontal"
+                            Spacing="8"
+                            Visibility="{x:Bind ViewModel.HasHistoryError, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock VerticalAlignment="Center" Text="{StaticResource Messenger_HistoryLoadFailed}" />
+                    <Button Command="{x:Bind ViewModel.RetryHistoryCommand}"
+                            Content="{StaticResource Messenger_HistoryRetry}" />
+                </StackPanel>
+            </StackPanel>
 
             <Grid Grid.Row="5"
                   Margin="12,8,12,0"

@@ -116,7 +116,7 @@ public sealed partial class MessengerViewModel
         }
 
         var session = _realtimeSession;
-        var version = _messageLoadVersion;
+        var version = _chatVersion;
         var revision = _pinnedRevision;
         ActionError = null;
         if (message.IsPinned)
@@ -141,7 +141,10 @@ public sealed partial class MessengerViewModel
 
             _pinnedRevision++;
             _pinnedMessages.RemoveAll(info => info.Message?.Id == message.Id);
-            message.IsPinned = false;
+            if (Messages.FirstOrDefault(item => item.Id == message.Id) is { } visible)
+            {
+                visible.IsPinned = false;
+            }
             _pinnedBarIndex = 0;
             RefreshPinnedBar();
             return;
@@ -169,7 +172,10 @@ public sealed partial class MessengerViewModel
         // Новый закреп показываем первым — как это делает веб-клиент.
         _pinnedMessages.RemoveAll(info => info.Message?.Id == message.Id);
         _pinnedMessages.Insert(0, pinned);
-        message.IsPinned = true;
+        if (Messages.FirstOrDefault(item => item.Id == message.Id) is { } visiblePin)
+        {
+            visiblePin.IsPinned = true;
+        }
         _pinnedBarIndex = 0;
         RefreshPinnedBar();
     }
@@ -178,7 +184,7 @@ public sealed partial class MessengerViewModel
     /// Клик по плашке: переход к текущему закрепу и перелистывание на следующий по кругу.
     /// </summary>
     [RelayCommand]
-    private void CyclePinnedMessage()
+    private async Task CyclePinnedMessageAsync()
     {
         if (_pinnedMessages.Count == 0)
         {
@@ -186,16 +192,13 @@ public sealed partial class MessengerViewModel
         }
 
         var messageId = _pinnedMessages[_pinnedBarIndex].Message?.Id ?? 0;
-        if (messageId > 0)
-        {
-            RequestScroll(MessageScrollTarget.Message, messageId);
-        }
-
         if (_pinnedMessages.Count > 1)
         {
             _pinnedBarIndex = (_pinnedBarIndex + 1) % _pinnedMessages.Count;
             RefreshPinnedBar();
         }
+
+        await NavigateToMessageAsync(messageId);
     }
 
     [RelayCommand]
@@ -209,7 +212,7 @@ public sealed partial class MessengerViewModel
         }
 
         var session = _realtimeSession;
-        var version = _messageLoadVersion;
+        var version = _chatVersion;
         var revision = _pinnedRevision;
         var error = await _messenger.UnpinMessageAsync(chat.Id, preview.MessageId);
         if (!IsOpen(session, chat, version))
@@ -334,14 +337,10 @@ public sealed partial class MessengerViewModel
     }
 
     [RelayCommand]
-    private void ScrollToOriginal(MessageItemViewModel message)
-    {
-        // Оригинал удалённого сообщения не показывается, поэтому и прыгать некуда.
-        if (message.Reply is { IsDeleted: false, MessageId: > 0 } reply)
-        {
-            RequestScroll(MessageScrollTarget.Message, reply.MessageId);
-        }
-    }
+    private Task ScrollToOriginalAsync(MessageItemViewModel message) =>
+        message.Reply is { } reply
+            ? NavigateToMessageAsync(reply.IsDeleted ? 0 : reply.MessageId)
+            : Task.CompletedTask;
 
     [RelayCommand]
     private void StartForwardMessage(MessageItemViewModel message)
@@ -401,10 +400,12 @@ public sealed partial class MessengerViewModel
 
         var comment = ForwardComment.Trim();
         IsForwardVisible = false;
+        ChatItemViewModel? tailChat = null;
+        var tailChatVersion = 0;
         foreach (var chatId in targetChatIds)
         {
             var chat = SelectedChat;
-            var version = _messageLoadVersion;
+            var version = _chatVersion;
             var revision = session!.Journal.Revision;
             using var reading = session.Journal.ReadHistory(chatId, isPrivate: false);
             var (error, message) = await _messenger.SendMessageAsync(chatId, comment, forwardedMessageIds: sourceIds);
@@ -421,8 +422,15 @@ public sealed partial class MessengerViewModel
 
             if (message is not null && chat?.Id == chatId && IsOpen(session, chat, version))
             {
-                await MergeHistoryRowAsync(session, chat, version,
-                    new(message.MessageId, message.SentAt.ToDateTimeOffset(), message, null), revision, markRead: false);
+                if (!_feedIncludesTail)
+                {
+                    tailChat = chat;
+                    tailChatVersion = version;
+                    continue;
+                }
+
+                await MergeSentRowAsync(session, chat, version,
+                    new(message.MessageId, message.SentAt.ToDateTimeOffset(), message, null), revision);
                 if (IsOpen(session, chat, version))
                 {
                     RequestScroll(MessageScrollTarget.Bottom);
@@ -434,6 +442,15 @@ public sealed partial class MessengerViewModel
             }
         }
 
+
+        if (tailChat is not null && IsOpen(session, tailChat, tailChatVersion) && !_feedIncludesTail)
+        {
+            await ReloadHistoryTailAsync();
+        }
+        if (!IsCurrent(session))
+        {
+            return;
+        }
         CancelForward();
     }
 
@@ -462,7 +479,7 @@ public sealed partial class MessengerViewModel
         var message = MessagePendingDelete;
         var chat = SelectedChat;
         var session = _realtimeSession;
-        var version = _messageLoadVersion;
+        var version = _chatVersion;
         if (message is null || chat is null)
         {
             return;
@@ -500,7 +517,7 @@ public sealed partial class MessengerViewModel
         }
 
         var session = _realtimeSession;
-        var version = _messageLoadVersion;
+        var version = _chatVersion;
         var draft = DraftText;
         var (error, edited) = await _messenger.EditMessageAsync(chat.Id, message.Id, draft.Trim());
         if (!IsOpen(session, chat, version))
@@ -534,6 +551,7 @@ public sealed partial class MessengerViewModel
 
         var token = session!.Lifetime.Token;
         var (error, pinned) = await _messenger.GetPinnedMessagesAsync(chat.Id, token).WaitAsync(token);
+        // Закрепы относятся ко всему чату и переживают замену окна истории.
         if (!IsOpen(session, chat, loadVersion))
         {
             return true;
