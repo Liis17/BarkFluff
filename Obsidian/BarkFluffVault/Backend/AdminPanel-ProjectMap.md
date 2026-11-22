@@ -5,7 +5,7 @@
 ## Основные части
 
 - Program.cs поднимает ASP.NET Minimal API на 51888, подключает TokenAuthMiddleware и маппит endpoint-группы.
-- Data/: TokenDbContext хранит токены, администраторов и приглашения; отдельные контексты обслуживают аудит, кэш метрик и удалённый Docker.
+- Data/: TokenDbContext хранит токены, администраторов и приглашения; отдельные контексты обслуживают аудит, кэш метрик, удалённый Docker и историю задач деплоя.
 - Models/: AdminRole/AdminPermissions задают RBAC; PendingAuthRequest и PendingStepUp — временные процессы входа и подтверждения.
 - Services/: AuthService, TokenService, AdminService, AdminInvitationService, TelegramBotService и StepUpService реализуют доступ; прочие сервисы интегрируют Users, Identity, Files, Messages, Bots, Federation, Seq, S3, Docker и SMTP.
 - Pages/v2/: веб-страницы текущей панели.
