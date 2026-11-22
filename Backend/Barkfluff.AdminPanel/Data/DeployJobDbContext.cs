@@ -10,18 +10,43 @@ namespace Barkfluff.AdminPanel.Data;
 /// </summary>
 public class DeployJobDbContext : IDisposable
 {
-    private readonly LiteDatabase _db;
+    private readonly string _dbPath;
+    private readonly object _sync = new();
+    private LiteDatabase? _db;
 
     public DeployJobDbContext(string? dbPath = null)
     {
-        dbPath ??= Path.Combine(AppContext.BaseDirectory, "db", "deploy_jobs.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-
-        _db = new LiteDatabase(dbPath);
-        Jobs = _db.GetCollection<DeployJobRecord>("deploy_jobs");
+        _dbPath = dbPath ?? Path.Combine(AppContext.BaseDirectory, "db", "deploy_jobs.db");
     }
 
-    public ILiteCollection<DeployJobRecord> Jobs { get; }
+    /// <summary>
+    /// Коллекция истории. Файл открывается при первом обращении, а не в конструкторе:
+    /// ошибка открытия не должна мешать запуску панели, а сервис логирует её как предупреждение.
+    /// </summary>
+    public ILiteCollection<DeployJobRecord> Jobs
+    {
+        get
+        {
+            lock (_sync)
+            {
+                _db ??= Open();
+                return _db.GetCollection<DeployJobRecord>("deploy_jobs");
+            }
+        }
+    }
 
-    public void Dispose() => _db.Dispose();
+    public void Dispose()
+    {
+        lock (_sync)
+        {
+            _db?.Dispose();
+            _db = null;
+        }
+    }
+
+    private LiteDatabase Open()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_dbPath)!);
+        return new LiteDatabase(_dbPath);
+    }
 }

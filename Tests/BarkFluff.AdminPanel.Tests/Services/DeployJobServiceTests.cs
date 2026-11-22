@@ -229,6 +229,23 @@ public class DeployJobServiceTests
     }
 
     [Fact]
+    public async Task Update_WhenHistoryFileCannotBeOpened_StillCompletesJob()
+    {
+        // Каталог истории не создать: путь проходит через обычный файл
+        using var blocker = new TempHistory();
+        File.WriteAllText(blocker.Path, "not a directory");
+        using var history = new TempHistory(Path.Combine(blocker.Path, "deploy_jobs.db"));
+        var runner = CreateOperationalRunner("running|healthy");
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var docker = CreateDockerService(runner, cache);
+
+        var job = await RunJobAsync(runner, docker, CreateComposeImageService(), history, jobs => jobs.EnqueueUpdate(["messages"]));
+
+        Assert.Equal(DeployJobState.Completed, job.State);
+        Assert.Equal(DeployStepState.Completed, Assert.Single(job.Steps).State);
+    }
+
+    [Fact]
     public async Task Start_KeepsOnlyTwentyNewestFinishedJobsInHistory()
     {
         using var history = new TempHistory();
@@ -421,9 +438,9 @@ public class DeployJobServiceTests
         }
     }
 
-    private sealed class TempHistory : IDisposable
+    private sealed class TempHistory(string? path = null) : IDisposable
     {
-        public string Path { get; } = System.IO.Path.Combine(
+        public string Path { get; } = path ?? System.IO.Path.Combine(
             System.IO.Path.GetTempPath(), $"adminpanel-deploy-history-{Guid.NewGuid():N}.db");
 
         public void Dispose()
