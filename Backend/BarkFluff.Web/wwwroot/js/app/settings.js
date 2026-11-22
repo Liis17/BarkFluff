@@ -61,6 +61,9 @@
 
         document.querySelector('#sdClose').addEventListener('click', close);
         backBtn.addEventListener('click', goBack);
+        body.addEventListener('animationend', function (e) {
+            if (e.target === body) clearSlide();
+        });
         overlay.addEventListener('click', function (e) {
             if (e.target === overlay) close();
         });
@@ -97,6 +100,8 @@
         var target = view || 'main';
         viewStack = target === 'main' ? [] : ['main'];
         currentUser = null;
+        // Первое открытие без перехода: остаток класса от прерванного перехода (оверлей закрыт) не должен сработать.
+        clearSlide();
         showView(target);
         BF.utils.openOverlay(overlay);
     }
@@ -108,8 +113,21 @@
         viewStack = [];
     }
 
+    // Направление перехода содержимого #sdBody: класс перезапускает keyframes (reflow), снимается по animationend.
+    var SLIDE_FORWARD = 'sd-slide-forward';
+    var SLIDE_BACK = 'sd-slide-back';
+    function clearSlide() {
+        body.classList.remove(SLIDE_FORWARD, SLIDE_BACK);
+    }
+    function playSlide(cls) {
+        clearSlide();
+        void body.offsetWidth;
+        body.classList.add(cls);
+    }
+
     function goBack() {
         viewStack.pop();
+        playSlide(SLIDE_BACK);
         if (viewStack.length === 0) {
             showView('main');
         } else {
@@ -119,6 +137,7 @@
 
     function navigate(name) {
         viewStack.push(name);
+        playSlide(SLIDE_FORWARD);
         showView(name);
     }
 

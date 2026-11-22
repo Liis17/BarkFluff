@@ -705,6 +705,12 @@
         .search-more:hover:not(:disabled) { background: rgba(0, 0, 0, 0.04); }
         .search-more:disabled { color: var(--text-sub); cursor: default; }
         .search-section-note { padding: 4px 16px 12px; font-size: 13px; color: var(--text-sub); }
+        /* Строки, дописанные «Показать ещё» (класс ставит search.js), плавно проявляются; первая страница и перерисовки — без анимации */
+        .search-hit-enter { animation: searchHitIn 150ms var(--ease-out); }
+        @keyframes searchHitIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
 
         .search-filters { padding: 0 16px 8px; }
         .search-filters[hidden],
@@ -746,6 +752,20 @@
             background: var(--input-bg);
             max-height: 320px;
             overflow-y: auto;
+        }
+        /* Фильтры поиска: вход opacity + сдвиг через @starting-style (как баннеры), скрытие мгновенное по [hidden] */
+        :root { --search-enter-from: translateY(-4px); }
+        .search-filters,
+        .search-filter-panel { transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out); }
+        @starting-style {
+            .search-filters:not([hidden]),
+            .search-filter-panel:not([hidden]) { opacity: 0; transform: var(--search-enter-from); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            :root { --search-enter-from: none; }
+            .search-filters,
+            .search-filter-panel { transition: opacity 120ms var(--ease-out); }
+            .search-hit-enter { animation-duration: 120ms; }
         }
         .search-filter-option {
             padding: 8px 10px;
@@ -3137,7 +3157,7 @@
             display: none;
         }
 
-        .sd-back.visible { display: block; }
+        .sd-back.visible { display: block; animation: sdBackIn 150ms var(--ease-out); }
         .sd-back:hover { background: rgba(0, 0, 0, 0.06); }
 
         .sd-title {
@@ -3173,6 +3193,32 @@
         .sd-body {
             flex: 1;
             overflow-y: auto;
+        }
+
+        /* Переход между экранами настроек: направление ставит settings.js (navigate — вперёд, goBack — назад).
+           Первое открытие класса не получает. Высота диалога по содержимому не анимируется. */
+        @keyframes sdSlideForward {
+            from { opacity: 0; transform: translateX(16px); }
+            to   { opacity: 1; transform: none; }
+        }
+        @keyframes sdSlideBack {
+            from { opacity: 0; transform: translateX(-16px); }
+            to   { opacity: 1; transform: none; }
+        }
+        @keyframes sdBackIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to   { opacity: 1; transform: none; }
+        }
+        @keyframes sdFadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        .sd-body.sd-slide-forward { animation: sdSlideForward 200ms var(--ease-out); }
+        .sd-body.sd-slide-back { animation: sdSlideBack 200ms var(--ease-out); }
+        @media (prefers-reduced-motion: reduce) {
+            .sd-body.sd-slide-forward,
+            .sd-body.sd-slide-back,
+            .sd-back.visible { animation: sdFadeIn 120ms var(--ease-out); }
         }
 
         /* Profile block (avatar + name) at top of main menu */
