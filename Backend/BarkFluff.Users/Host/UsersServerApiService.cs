@@ -403,6 +403,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
             Offset = request.Offset,
             Size = request.Size,
             StatusFilter = request.HasStatusFilter ? request.StatusFilter : null,
+            StatusFilters = request.StatusFilters,
         };
 
         return _mediator.Send(query);

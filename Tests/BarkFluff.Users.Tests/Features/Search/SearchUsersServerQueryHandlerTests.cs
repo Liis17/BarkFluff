@@ -140,5 +140,115 @@ public class SearchUsersServerQueryHandlerTests : IAsyncDisposable
         result.Results.Single().User.Badges.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Handle_StatusFilters_ExcludeDeletedBeforePagination()
+    {
+        var active1 = await _h.SeedUser(username: "active1");
+        var active2 = await _h.SeedUser(username: "active2");
+        var active3 = await _h.SeedUser(username: "active3");
+        // Удалённые созданы позже: в выборке по убыванию ID они идут первыми и занимали бы страницу.
+        for (var i = 1; i <= 5; i++)
+        {
+            var deleted = await _h.SeedUser(username: $"deleted{i}");
+            deleted.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Deleted;
+        }
+        await _h.DbContext.SaveChangesAsync();
+        var handler = new SearchUsersServerQueryHandler(_h.UsersStorage, TestHelper.CreateLogger<SearchUsersServerQueryHandler>());
+        var statuses = new[] { BarkFluff.Proto.Users.AccountStatus.Active, BarkFluff.Proto.Users.AccountStatus.Blocked };
+
+        var firstPage = await handler.Handle(new SearchUsersServerQuery
+        {
+            Query = "", Offset = 0, Size = 2, StatusFilters = statuses,
+        }, CancellationToken.None);
+        var secondPage = await handler.Handle(new SearchUsersServerQuery
+        {
+            Query = "", Offset = 2, Size = 2, StatusFilters = statuses,
+        }, CancellationToken.None);
+
+        firstPage.Users.Select(u => u.Id).Should().Equal(active3.Id, active2.Id);
+        firstPage.TotalCount.Should().Be(3);
+        secondPage.Users.Select(u => u.Id).Should().Equal(active1.Id);
+        secondPage.TotalCount.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Handle_StatusFilters_SelectOnlyListedStatuses()
+    {
+        var blocked = await _h.SeedUser(username: "blocked");
+        blocked.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Blocked;
+        var pending = await _h.SeedUser(username: "pending");
+        pending.AccountStatus = BarkFluff.Users.Domain.AccountStatus.PendingDeletion;
+        var deleted = await _h.SeedUser(username: "deleted");
+        deleted.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Deleted;
+        await _h.SeedUser(username: "active");
+        await _h.DbContext.SaveChangesAsync();
+        var handler = new SearchUsersServerQueryHandler(_h.UsersStorage, TestHelper.CreateLogger<SearchUsersServerQueryHandler>());
+
+        var result = await handler.Handle(new SearchUsersServerQuery
+        {
+            Query = "",
+            Offset = 0,
+            Size = 10,
+            StatusFilters = [BarkFluff.Proto.Users.AccountStatus.Blocked, BarkFluff.Proto.Users.AccountStatus.PendingDeletion],
+        }, CancellationToken.None);
+
+        result.TotalCount.Should().Be(2);
+        result.Users.Select(u => u.Id).Should().BeEquivalentTo(new[] { blocked.Id, pending.Id });
+    }
+
+    [Fact]
+    public async Task Handle_StatusFilters_TakePriorityOverLegacyStatusFilter()
+    {
+        var deleted = await _h.SeedUser(username: "deleted");
+        deleted.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Deleted;
+        await _h.DbContext.SaveChangesAsync();
+        var handler = new SearchUsersServerQueryHandler(_h.UsersStorage, TestHelper.CreateLogger<SearchUsersServerQueryHandler>());
+
+        var result = await handler.Handle(new SearchUsersServerQuery
+        {
+            Query = "",
+            Offset = 0,
+            Size = 10,
+            StatusFilter = BarkFluff.Proto.Users.AccountStatus.Blocked,
+            StatusFilters = [BarkFluff.Proto.Users.AccountStatus.Deleted],
+        }, CancellationToken.None);
+
+        result.Users.Select(u => u.Id).Should().Equal(deleted.Id);
+        result.TotalCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_QueryAsIdOutsideStatusFilters_ReturnsEmpty()
+    {
+        var deleted = await _h.SeedUser(username: "deleted");
+        deleted.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Deleted;
+        await _h.DbContext.SaveChangesAsync();
+        var handler = new SearchUsersServerQueryHandler(_h.UsersStorage, TestHelper.CreateLogger<SearchUsersServerQueryHandler>());
+
+        var result = await handler.Handle(new SearchUsersServerQuery
+        {
+            Query = deleted.Id.ToString(),
+            Offset = 0,
+            Size = 10,
+            StatusFilters = [BarkFluff.Proto.Users.AccountStatus.Active, BarkFluff.Proto.Users.AccountStatus.Blocked],
+        }, CancellationToken.None);
+
+        result.Users.Should().BeEmpty();
+        result.TotalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_QueryAsIdWithoutStatusFilters_ReturnsDeletedAccount()
+    {
+        var deleted = await _h.SeedUser(username: "deleted");
+        deleted.AccountStatus = BarkFluff.Users.Domain.AccountStatus.Deleted;
+        await _h.DbContext.SaveChangesAsync();
+        var handler = new SearchUsersServerQueryHandler(_h.UsersStorage, TestHelper.CreateLogger<SearchUsersServerQueryHandler>());
+
+        var result = await handler.Handle(new SearchUsersServerQuery { Query = deleted.Id.ToString(), Offset = 0, Size = 10 }, CancellationToken.None);
+
+        result.Users.Should().ContainSingle(u => u.Id == deleted.Id);
+    }
+
     public ValueTask DisposeAsync() => _h.DbContext.DisposeAsync();
 }

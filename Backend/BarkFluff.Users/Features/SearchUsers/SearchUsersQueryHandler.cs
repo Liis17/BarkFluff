@@ -52,7 +52,8 @@ public class SearchUsersQueryHandler : IRequestHandler<SearchUsersQuery, SearchU
             request.Skip,
             request.Size,
             currentUserId: _userContext.UserId,
-            respectSearchVisibility: true);
+            respectSearchVisibility: true,
+            statusFilters: [BarkFluff.Users.Domain.AccountStatus.Active]);
 
         if (usersResult.TotalCount < 0)
         {
