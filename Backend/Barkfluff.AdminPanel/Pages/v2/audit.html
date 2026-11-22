@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Аудит</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .audit-table { width: 100%; border-collapse: collapse; }
         .audit-table th {
@@ -50,8 +51,8 @@
                 <span class="md-status md-status-info"><span class="dot"></span>Критические действия</span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
-                <button id="refresh-btn" class="md-icon-btn" title="Обновить"><span class="msr">refresh</span></button>
-                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+                <button id="refresh-btn" class="md-icon-btn" title="Обновить"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/refresh.svg);" aria-hidden="true"></span></button>
+                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span></button>
             </div>
         </header>
 
@@ -84,7 +85,7 @@
 
             <div style="display:flex;justify-content:center;margin-top:16px;">
                 <button id="load-more-btn" class="md-btn md-btn-text" style="display:none;" onclick="loadMore()">
-                    <span class="msr size-18">expand_more</span> Загрузить ещё
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/chevron-down.svg);" aria-hidden="true"></span> Загрузить ещё
                 </button>
             </div>
         </div>
@@ -92,9 +93,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     let entries = [];
     let oldestAt = null;

@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Браузер S3</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .breadcrumbs {
             display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
@@ -114,11 +115,11 @@
             <div style="display:flex;align-items:center;gap:12px;">
                 <h1>Браузер S3</h1>
                 <span id="bucket-badge" class="md-status md-status-info">
-                    <span class="msr size-18">cloud</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/cloud.svg);" aria-hidden="true"></span>
                     <span id="bucket-name-badge">—</span>
                 </span>
             </div>
-            <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+            <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span></button>
         </header>
 
         <div class="md-page">
@@ -135,7 +136,7 @@
                 <div id="files-table-body"></div>
 
                 <div id="empty-state" class="md-empty" style="display:none;padding:48px 24px;">
-                    <span class="msr size-48">folder_open</span>
+                    <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/folder.svg);" aria-hidden="true"></span>
                     <h3>Папка пуста</h3>
                     <p>В этой директории нет файлов</p>
                 </div>
@@ -149,11 +150,11 @@
             </div>
 
             <div id="error-state" class="md-empty" style="display:none;color:var(--md-error);margin-top:16px;">
-                <span class="msr size-48">error</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/error.svg);" aria-hidden="true"></span>
                 <h3 style="color:var(--md-error);">Ошибка загрузки</h3>
                 <p id="error-message"></p>
                 <button class="md-btn md-btn-filled md-btn-square-press" onclick="loadObjects()">
-                    <span class="msr size-18">refresh</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/refresh.svg);" aria-hidden="true"></span>
                     Попробовать снова
                 </button>
             </div>
@@ -166,16 +167,16 @@
     <div class="md-dialog md-dialog-xl media-modal-content">
         <div class="md-dialog-header">
             <h3 id="media-title">Файл</h3>
-            <button class="md-icon-btn" onclick="closeMediaModal()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeMediaModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body" id="media-content" style="display:flex;align-items:center;justify-content:center;min-height:200px;"></div>
     </div>
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     let currentBucket = '';
     let currentPrefix = '';
@@ -208,9 +209,9 @@
         if (isFolder) return 'folder';
         const t = getFileType(name);
         if (t === 'image') return 'image';
-        if (t === 'video') return 'movie';
-        if (t === 'audio') return 'audiotrack';
-        return 'description';
+        if (t === 'video') return 'video';
+        if (t === 'audio') return 'audio';
+        return 'document';
     }
     function getFileIconCls(name, isFolder) {
         if (isFolder) return '';
@@ -227,7 +228,7 @@
     function renderBreadcrumbs() {
         const el = document.getElementById('breadcrumbs');
         const parts = (currentPrefix || '').split('/').filter(Boolean);
-        let html = `<a onclick="navigateTo('')" style="cursor:pointer;"><span class="msr size-18" style="vertical-align:middle;margin-right:4px;">home</span>${escapeHtml(currentBucket)}</a>`;
+        let html = `<a onclick="navigateTo('')" style="cursor:pointer;"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/home.svg);vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>${escapeHtml(currentBucket)}</a>`;
         let acc = '';
         for (let i = 0; i < parts.length; i++) {
             acc += parts[i] + '/';
@@ -296,13 +297,13 @@
             const action = obj.isFolder ? `navigateTo('${escapeHtml(fullKey)}')` : `openFile('${escapeHtml(fullKey)}', '${escapeHtml(name)}')`;
             return `
                 <div class="file-row ${obj.isFolder ? 'folder' : 'file'}" onclick="${action}">
-                    <div class="icon ${cls}"><span class="msr">${icon}</span></div>
+                    <div class="icon ${cls}">${bfIcon(icon)}</div>
                     <div class="name">${escapeHtml(name || '/')}</div>
                     <div class="size">${obj.isFolder ? '—' : formatSize(obj.size)}</div>
                     <div class="date">${formatDate(obj.lastModified)}</div>
                     <div class="actions">
                         ${obj.isFolder ? '' : `
-                            <button class="md-icon-btn" title="Скачать" onclick="event.stopPropagation();downloadFile('${escapeHtml(fullKey)}', '${escapeHtml(name)}')"><span class="msr size-20">download</span></button>
+                            <button class="md-icon-btn" title="Скачать" onclick="event.stopPropagation();downloadFile('${escapeHtml(fullKey)}', '${escapeHtml(name)}')"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/download.svg);" aria-hidden="true"></span></button>
                         `}
                     </div>
                 </div>
@@ -328,10 +329,10 @@
             else if (type === 'audio') content.innerHTML = `<audio src="${url}" controls autoplay style="width:100%;"></audio>`;
             else content.innerHTML = `
                 <div style="text-align:center;padding:24px;">
-                    <span class="msr size-48" style="color:var(--md-on-surface-variant);">description</span>
+                    <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/document.svg);color:var(--md-on-surface-variant);" aria-hidden="true"></span>
                     <p style="margin-top:12px;">Предпросмотр недоступен.</p>
                     <a class="md-btn md-btn-filled md-btn-square-press" href="${url}" target="_blank" rel="noopener" style="margin-top:12px;">
-                        <span class="msr size-18">download</span>
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/download.svg);" aria-hidden="true"></span>
                         Скачать
                     </a>
                 </div>`;

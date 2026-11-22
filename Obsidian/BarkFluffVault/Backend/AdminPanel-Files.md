@@ -11,5 +11,6 @@
 - Services/ — Telegram login и подтверждения, LiteDB доступ, внешние gRPC-клиенты, Docker/Compose, конфигурация, Seq, S3, почта и метрики.
 - Data/ — отдельные LiteDB контексты для токенов и администраторов, метрик, удалённого Docker и аудита.
 - Pages/v2/ — текущий веб-интерфейс; Login.html реализует вход и установку cookie, assets/ содержит общий JS/CSS.
+- Иконки интерфейса, включая favicon, берутся из корневого пакета Icons/ и публикуются по /assets/icons/. Статические SVG подключаются через CSS-маску, динамические — через bfIcon и bfSetIcon из assets/icons.js.
 - appsettings.json — значения по умолчанию; секреты и адреса служб обычно передаются окружением.
 - Dockerfile.slim — runtime image. В nightly compose к нему смонтированы Docker socket, compose-файл и данные панели.

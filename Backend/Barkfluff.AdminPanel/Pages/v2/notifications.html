@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Уведомления</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .notif-layout {
             display: grid;
@@ -71,7 +72,7 @@
                 <h1>Уведомления</h1>
                 <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:2px;">Рассылка push на Android через Firebase</div>
             </div>
-            <button id="logoutBtn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+            <button id="logoutBtn" class="md-icon-btn" title="Выйти"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span></button>
         </header>
 
         <div class="md-page">
@@ -95,7 +96,7 @@
                     <div class="section">
                         <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--md-on-surface-variant);margin-bottom:12px;">Рассылка всем</label>
                         <button id="btnSendAll" class="md-btn md-btn-filled md-btn-square-press" onclick="sendAll()">
-                            <span class="msr size-18">campaign</span>
+                            <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/notifications.svg);" aria-hidden="true"></span>
                             Отправить на все устройства
                         </button>
                         <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:8px;">Уведомление получат все пользователи с включёнными push.</p>
@@ -108,7 +109,7 @@
                             <textarea id="deviceIds" rows="3" placeholder="00000000-0000-0000-0000-000000000000, ..." class="md-input-outlined" style="width:100%;height:auto;padding:12px 14px;font-family:'Roboto Mono',monospace;font-size:12px;resize:vertical;"></textarea>
                         </div>
                         <button id="btnSendDevices" class="md-btn md-btn-tonal md-btn-square-press" onclick="sendDevices()">
-                            <span class="msr size-18">send</span>
+                            <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/send.svg);" aria-hidden="true"></span>
                             Отправить на устройства
                         </button>
                     </div>
@@ -152,9 +153,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     function checkAuth() { return BF.requireAuth(); }
     function formatDate(s) { if (!s) return ''; return new Date(s).toLocaleDateString('ru-RU'); }

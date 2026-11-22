@@ -264,13 +264,13 @@ public class Program
         app.UseHttpsRedirection();
         app.UseWebSockets();
 
-        // Serve favicon.ico before auth middleware (always accessible)
+        // Keep the legacy favicon URL backed by the shared icon pack.
         app.MapGet("/favicon.ico", async context =>
         {
-            var filePath = Path.Combine(AppContext.BaseDirectory, "Pages", "favicon.ico");
+            var filePath = Path.Combine(AppContext.BaseDirectory, "Pages", "v2", "assets", "icons", "adminpanel.svg");
             if (File.Exists(filePath))
             {
-                context.Response.ContentType = "image/x-icon";
+                context.Response.ContentType = "image/svg+xml";
                 await context.Response.SendFileAsync(filePath);
             }
             else

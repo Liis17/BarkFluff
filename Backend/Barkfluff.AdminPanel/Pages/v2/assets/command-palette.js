@@ -14,7 +14,7 @@
       padding: 16px 20px;
       border-bottom: 1px solid var(--md-outline-variant);
     }
-    .cmdk-input-row .msr { color: var(--md-on-surface-variant); font-size: 22px; }
+    .cmdk-input-row .bf-icon { color: var(--md-on-surface-variant); font-size: 22px; }
     .cmdk-input-row input {
       flex: 1; border: none; outline: none; background: transparent;
       font-size: 16px; color: var(--md-on-surface); font-family: inherit;
@@ -32,7 +32,7 @@
       cursor: pointer;
     }
     .cmdk-item.selected, .cmdk-item:hover { background: var(--md-surface-container); }
-    .cmdk-item .msr, .cmdk-item .bf-icon { color: var(--md-on-surface-variant); font-size: 20px; flex-shrink: 0; }
+    .cmdk-item .bf-icon { color: var(--md-on-surface-variant); font-size: 20px; flex-shrink: 0; }
     .cmdk-item .cmdk-label { flex: 1; color: var(--md-on-surface); font-size: 14px; min-width: 0; }
     .cmdk-avatar {
       width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
@@ -93,7 +93,7 @@
     scrim.innerHTML = `
       <div class="md-dialog cmdk-dialog" style="padding:0;">
         <div class="cmdk-input-row">
-          <span class="msr">search</span>
+          <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/search.svg);" aria-hidden="true"></span>
           <input id="cmdkInput" type="text" placeholder="Юзернейм, ID пользователя, ID файла, ID чата..." autocomplete="off">
           <span class="cmdk-hint">Esc</span>
         </div>
@@ -258,7 +258,7 @@
     return `
       <div class="cmdk-result-card">
         <div class="cmdk-avatar" style="border-radius:${isImage ? 'var(--md-shape-sm)' : '50%'};">
-          ${isImage ? `<img src="${escapeHtml(f.previewUrl)}" alt="">` : `<span class="msr">description</span>`}
+          ${isImage ? `<img src="${escapeHtml(f.previewUrl)}" alt="">` : `<span class="bf-icon" style="--bf-icon-url:url(/assets/icons/document.svg);" aria-hidden="true"></span>`}
         </div>
         <div style="min-width:0;flex:1;">
           <div class="cmdk-name">${escapeHtml(f.fileName || f.fileId)}</div>

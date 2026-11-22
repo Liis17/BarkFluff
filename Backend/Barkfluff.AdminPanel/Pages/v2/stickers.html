@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Стикеры</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
     <style>
         .packs-grid {
@@ -29,7 +30,7 @@
             color: var(--md-on-primary-container);
         }
         .pack-cover img { width: 100%; height: 100%; object-fit: contain; padding: 16px; }
-        .pack-cover .placeholder .msr { font-size: 56px; }
+        .pack-cover .placeholder .bf-icon { font-size: 56px; }
         .pack-meta { padding: 14px 16px; }
         .pack-meta .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
         .pack-meta .name { font-weight: 600; font-size: 15px; color: var(--md-on-surface); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -64,7 +65,7 @@
             transition: opacity .2s;
         }
         .sticker:hover .delete-btn { opacity: 1; }
-        .sticker .delete-btn .msr { font-size: 16px; }
+        .sticker .delete-btn .bf-icon { font-size: 16px; }
         .add-sticker {
             aspect-ratio: 1;
             background: var(--md-surface-container);
@@ -128,21 +129,21 @@
             <h1>Стикеры</h1>
             <div style="display:flex;gap:8px;">
                 <button class="md-btn md-btn-filled md-btn-square-press" onclick="openCreatePackModal()">
-                    <span class="msr size-18">add</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/add.svg);" aria-hidden="true"></span>
                     Добавить пак
                 </button>
-                <button id="logoutBtn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+                <button id="logoutBtn" class="md-icon-btn" title="Выйти"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span></button>
             </div>
         </header>
 
         <div class="md-page">
             <div id="packsGrid" class="packs-grid"></div>
             <div id="emptyState" class="md-empty" style="display:none;">
-                <span class="msr size-48">mood</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/sticker.svg);" aria-hidden="true"></span>
                 <h3>Стикерпаков пока нет</h3>
                 <p>Создайте первый стикерпак, чтобы пользователи могли его установить.</p>
                 <button class="md-btn md-btn-filled md-btn-square-press" onclick="openCreatePackModal()" style="margin-top:8px;">
-                    <span class="msr size-18">add</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/add.svg);" aria-hidden="true"></span>
                     Создать пак
                 </button>
             </div>
@@ -155,7 +156,7 @@
     <div class="md-dialog">
         <div class="md-dialog-header">
             <h3>Новый стикерпак</h3>
-            <button class="md-icon-btn" onclick="closeCreatePackModal()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeCreatePackModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <form id="createPackForm" onsubmit="submitCreatePack(event)">
             <div class="md-dialog-body">
@@ -164,11 +165,11 @@
                     <div style="display:flex;gap:16px;align-items:center;">
                         <div id="createCoverPreviewWrapper" style="width:96px;height:96px;border-radius:var(--md-shape-md);border:2px dashed var(--md-outline);background:var(--md-surface-container);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
                             <img id="createCoverPreview" src="" style="display:none;width:100%;height:100%;object-fit:contain;">
-                            <span class="msr size-40" id="createCoverIcon" style="color:var(--md-outline);">image</span>
+                            <span class="bf-icon size-40" id="createCoverIcon" style="--bf-icon-url:url(/assets/icons/image.svg);color:var(--md-outline);" aria-hidden="true"></span>
                         </div>
                         <div style="flex:1;">
                             <label class="md-btn md-btn-tonal md-btn-square-press" style="cursor:pointer;">
-                                <span class="msr size-18">upload</span>
+                                <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/import.svg);" aria-hidden="true"></span>
                                 Выбрать файл
                                 <input type="file" id="createCoverInput" accept="image/*" onchange="previewCreateCover(this)" style="display:none;">
                             </label>
@@ -184,7 +185,7 @@
             <div class="md-dialog-actions">
                 <button type="button" class="md-btn md-btn-text" onclick="closeCreatePackModal()">Отмена</button>
                 <button type="submit" id="createPackBtn" class="md-btn md-btn-filled md-btn-square-press">
-                    <span class="msr size-18">save</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/save.svg);" aria-hidden="true"></span>
                     Создать
                 </button>
             </div>
@@ -198,8 +199,8 @@
         <div class="md-dialog-header">
             <h3 id="detailPackTitle">Стикерпак</h3>
             <div style="display:flex;gap:4px;">
-                <button class="md-icon-btn danger" onclick="deleteCurrentPack()" title="Удалить пак"><span class="msr">delete</span></button>
-                <button class="md-icon-btn" onclick="closePackDetailModal()"><span class="msr">close</span></button>
+                <button class="md-icon-btn danger" onclick="deleteCurrentPack()" title="Удалить пак"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/delete.svg);" aria-hidden="true"></span></button>
+                <button class="md-icon-btn" onclick="closePackDetailModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
             </div>
         </div>
         <div class="md-dialog-body">
@@ -207,14 +208,14 @@
                 <div style="position:relative;cursor:pointer;" onclick="document.getElementById('coverChangeInput').click()">
                     <div style="width:96px;height:96px;border-radius:var(--md-shape-md);border:1px solid var(--md-outline-variant);background:var(--md-surface-container);display:flex;align-items:center;justify-content:center;overflow:hidden;">
                         <img id="detailCoverImg" src="" style="display:none;width:100%;height:100%;object-fit:contain;">
-                        <span class="msr size-40" id="detailCoverIcon" style="color:var(--md-outline);">image</span>
+                        <span class="bf-icon size-40" id="detailCoverIcon" style="--bf-icon-url:url(/assets/icons/image.svg);color:var(--md-outline);" aria-hidden="true"></span>
                     </div>
                     <input type="file" id="coverChangeInput" accept="image/*" style="display:none;" onchange="handleCoverChange(this)">
                 </div>
                 <div style="flex:1;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <input type="text" id="detailPackNameInput" maxlength="100" class="md-input-outlined" style="font-size:18px;font-weight:500;flex:1;background:transparent;border-color:transparent;">
-                        <button class="md-icon-btn" id="saveNameBtn" onclick="savePackName()" style="display:none;color:var(--md-primary);"><span class="msr">check</span></button>
+                        <button class="md-icon-btn" id="saveNameBtn" onclick="savePackName()" style="display:none;color:var(--md-primary);" aria-label="Сохранить название"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/check.svg);" aria-hidden="true"></span></button>
                     </div>
                     <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;" id="detailPackInfo"></p>
                 </div>
@@ -229,7 +230,7 @@
     <div class="md-dialog">
         <div class="md-dialog-header">
             <h3>Новый стикер</h3>
-            <button class="md-icon-btn" onclick="closeAddStickerModal()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeAddStickerModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <form id="addStickerForm" onsubmit="submitAddSticker(event)">
             <div class="md-dialog-body">
@@ -238,10 +239,10 @@
                     <div style="display:flex;gap:16px;align-items:center;">
                         <div style="width:96px;height:96px;border-radius:var(--md-shape-md);border:2px dashed var(--md-outline);background:var(--md-surface-container);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
                             <img id="stickerPreview" src="" style="display:none;width:100%;height:100%;object-fit:contain;">
-                            <span class="msr size-40" id="stickerPreviewIcon" style="color:var(--md-outline);">image</span>
+                            <span class="bf-icon size-40" id="stickerPreviewIcon" style="--bf-icon-url:url(/assets/icons/image.svg);color:var(--md-outline);" aria-hidden="true"></span>
                         </div>
                         <label class="md-btn md-btn-tonal md-btn-square-press" style="cursor:pointer;">
-                            <span class="msr size-18">upload</span>
+                            <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/import.svg);" aria-hidden="true"></span>
                             Выбрать файл
                             <input type="file" id="stickerImageInput" accept="image/*" required onchange="previewStickerImage(this)" style="display:none;">
                         </label>
@@ -255,7 +256,7 @@
             <div class="md-dialog-actions">
                 <button type="button" class="md-btn md-btn-text" onclick="closeAddStickerModal()">Отмена</button>
                 <button type="submit" id="addStickerBtn" class="md-btn md-btn-filled md-btn-square-press">
-                    <span class="msr size-18">add</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/add.svg);" aria-hidden="true"></span>
                     Добавить
                 </button>
             </div>
@@ -268,7 +269,7 @@
     <div class="md-dialog md-dialog-lg">
         <div class="md-dialog-header">
             <h3 id="editorTitle">Редактор стикера</h3>
-            <button class="md-icon-btn" onclick="requestCloseEditor()" title="Закрыть"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="requestCloseEditor()" title="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body">
             <div class="editor-layout">
@@ -284,9 +285,9 @@
                         <div class="row"><span class="label">Поворот</span><span class="value" id="editorRotateValue">0°</span></div>
                         <input type="range" id="editorRotate" min="-180" max="180" step="1" value="0">
                         <div class="editor-btn-row">
-                            <button type="button" class="md-btn md-btn-tonal md-btn-square-press" onclick="editorRotateBy(-15)"><span class="msr size-18">rotate_left</span>−15°</button>
-                            <button type="button" class="md-btn md-btn-tonal md-btn-square-press" onclick="editorRotateBy(15)"><span class="msr size-18">rotate_right</span>+15°</button>
-                            <button type="button" class="md-btn md-btn-text" onclick="editorResetTransform()"><span class="msr size-18">restart_alt</span>Сброс</button>
+                            <button type="button" class="md-btn md-btn-tonal md-btn-square-press" onclick="editorRotateBy(-15)"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/rotate-left.svg);" aria-hidden="true"></span>−15°</button>
+                            <button type="button" class="md-btn md-btn-tonal md-btn-square-press" onclick="editorRotateBy(15)"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/rotate-right.svg);" aria-hidden="true"></span>+15°</button>
+                            <button type="button" class="md-btn md-btn-text" onclick="editorResetTransform()"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/restart.svg);" aria-hidden="true"></span>Сброс</button>
                         </div>
                     </div>
                     <div class="editor-ctrl-group">
@@ -307,7 +308,7 @@
         <div class="md-dialog-actions">
             <button type="button" class="md-btn md-btn-text" onclick="closeStickerEditor()">Отмена</button>
             <button type="button" id="editorApplyBtn" class="md-btn md-btn-filled md-btn-square-press" onclick="applyEditor()">
-                <span class="msr size-18">check</span>Применить
+                <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/check.svg);" aria-hidden="true"></span>Применить
             </button>
         </div>
     </div>
@@ -315,9 +316,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     let packs = [];
     let currentPackId = null;
@@ -562,14 +563,14 @@
                 <div class="pack-cover">
                     ${p.coverUrl
                         ? `<img src="${p.coverUrl}" alt="${escapeHtml(p.name)}">`
-                        : `<div class="placeholder"><span class="msr">sentiment_satisfied</span></div>`}
+                        : `<div class="placeholder"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/reaction.svg);" aria-hidden="true"></span></div>`}
                 </div>
                 <div class="pack-meta">
                     <div class="top">
                         <div class="name">${escapeHtml(p.name)}</div>
                     </div>
                     <div class="info">
-                        <span class="item"><span class="msr size-18">grid_view</span>${p.stickerCount || 0} стикеров</span>
+                        <span class="item"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/dashboard.svg);" aria-hidden="true"></span>${p.stickerCount || 0} стикеров</span>
                     </div>
                 </div>
             </div>
@@ -634,11 +635,11 @@
             <div class="sticker" data-sid="${s.id}">
                 ${(s.fileUrl || s.previewUrl)
                     ? `<img src="${s.fileUrl || s.previewUrl}">`
-                    : `<span class="emoji">${escapeHtml(s.emoji || '🐱')}</span>`}
-                <button class="delete-btn" onclick="deleteSticker('${s.id}')"><span class="msr">close</span></button>
+                    : `<span class="emoji">${s.emoji ? escapeHtml(s.emoji) : bfIcon('sticker', 'size-40')}</span>`}
+                <button class="delete-btn" onclick="deleteSticker('${s.id}')" aria-label="Удалить стикер"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
             </div>
         `).join('');
-        grid.innerHTML = stickersHtml + `<div class="add-sticker" onclick="openAddStickerModal()"><span class="msr size-40">add</span></div>`;
+        grid.innerHTML = stickersHtml + `<div class="add-sticker" onclick="openAddStickerModal()"><span class="bf-icon size-40" style="--bf-icon-url:url(/assets/icons/add.svg);" aria-hidden="true"></span></div>`;
     }
 
     document.getElementById('detailPackNameInput').addEventListener('input', () => {
