@@ -619,11 +619,48 @@
         return inerted;
     }
 
+    // Выход оверлея: .visible снимается сразу, поэтому логика видимости не ждёт анимацию.
+    // На время выхода оверлей получает .is-closing (display сохраняется, клики отключены, inert),
+    // а завершает выход transitionend по opacity самого оверлея или запасной таймер.
+    var OVERLAY_EXIT_FALLBACK_MS = 250;
+    var exitingOverlays = [];
+
+    function isHeldByStack(el) {
+        return overlayStack.some(function (entry) { return entry.inerted.indexOf(el) >= 0; });
+    }
+
+    // Снимает .is-closing и отменяет ожидание выхода; вызывается и при повторном открытии.
+    function endOverlayExit(overlayEl) {
+        for (var i = exitingOverlays.length - 1; i >= 0; i--) {
+            if (exitingOverlays[i].overlay !== overlayEl) continue;
+            var exit = exitingOverlays.splice(i, 1)[0];
+            clearTimeout(exit.timer);
+            overlayEl.removeEventListener('transitionend', exit.onEnd);
+        }
+        overlayEl.classList.remove('is-closing');
+        overlayEl.inert = isHeldByStack(overlayEl);
+    }
+
+    function startOverlayExit(overlayEl) {
+        endOverlayExit(overlayEl);
+        var exit = { overlay: overlayEl };
+        exit.onEnd = function (e) {
+            if (e.target === overlayEl && e.propertyName === 'opacity') endOverlayExit(overlayEl);
+        };
+        exit.timer = setTimeout(function () { endOverlayExit(overlayEl); }, OVERLAY_EXIT_FALLBACK_MS);
+        exitingOverlays.push(exit);
+        overlayEl.addEventListener('transitionend', exit.onEnd);
+        overlayEl.classList.add('is-closing');
+        overlayEl.inert = true;
+    }
+
     function openOverlay(overlayEl, opts) {
         opts = opts || {};
         for (var i = 0; i < overlayStack.length; i++) {
             if (overlayStack[i].overlay === overlayEl) return;
         }
+        // Повторное открытие во время выхода отменяет скрытие.
+        endOverlayExit(overlayEl);
         var entry = {
             overlay: overlayEl,
             inerted: inertBackground(overlayEl),
@@ -653,7 +690,9 @@
     }
 
     function closeOverlay(overlayEl) {
+        var wasVisible = overlayEl.classList.contains('visible');
         overlayEl.classList.remove('visible');
+        if (wasVisible) startOverlayExit(overlayEl);
         var idx = -1;
         for (var i = overlayStack.length - 1; i >= 0; i--) {
             if (overlayStack[i].overlay === overlayEl) { idx = i; break; }
@@ -662,7 +701,8 @@
         var entry = overlayStack.splice(idx, 1)[0];
         entry.inerted.forEach(function (el) {
             var stillHeld = overlayStack.some(function (other) { return other.inerted.indexOf(el) >= 0; });
-            if (!stillHeld) el.inert = false;
+            // Оверлей, который сейчас выходит, остаётся inert до конца анимации.
+            if (!stillHeld && !el.classList.contains('is-closing')) el.inert = false;
         });
         if (entry.prevRole === null) overlayEl.removeAttribute('role');
         else overlayEl.setAttribute('role', entry.prevRole);

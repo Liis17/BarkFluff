@@ -10,6 +10,8 @@
 
 Модули публикуют клиентские интерфейсы в `window.BF`: `BF.node` выбирает сервер; `BF.clients` содержит callback-style gRPC-Web клиенты; `BF.api` преобразует protobuf в объекты JavaScript; `BF.realtime.on/off` раздаёт события, включая `connection_status` и `resync`, а `BF.connection` выполняет catch-up; `BF.files`, `BF.sendQueue`, `BF.pendingSends`, `BF.pendingFiles` и `BF.drafts` управляют файлами, отправкой и черновиками; `BF.privateChat` отвечает за E2E личных чатов; `BF.calls` — за звонки; `BF.i18n` и `BF.push` — за локализацию и уведомления.
 
+Модальные оверлеи открываются и закрываются через `BF.utils.openOverlay/closeOverlay` (фокус-ловушка, `inert` фона, стек). Закрытие синхронно снимает `.visible` и запись в стеке, а на время анимации оверлей держит `.is-closing`: вход и выход задаются CSS-переходами в `messenger.css` и в inline-стилях `index.html` (модалки регистрации и юридических текстов), конец выхода — `transitionend` или запасной таймер в `utils.js`. `#imageOverlay` открывается через `openOverlay`, но анимирует себя сам (visibility), поэтому CSS-переходов выхода для него нет; `.call-ring-overlay` и `.call-permission-overlay` переключаются классом `.visible` напрямую и без анимации выхода.
+
 ## Нода, авторизация и состояние
 
 `/node-config.js` определяет режим: закреплённая нода направляет запросы на свой origin, Shell позволяет выбрать ноду через Navigator, а Proxy закрепляет браузер за зеркалом ноды. `BF.node.origin()` задаёт адрес для gRPC и upload через шлюз; при наличии `files_media_endpoint` загрузка идёт на отдельный файловый адрес. `node.js` загружается до создания клиентов. Shell показывает каталог, историю и ручной ввод, затем проверяет адрес через Beacon. Navigator остаётся на origin страницы.

@@ -2159,7 +2159,7 @@
         .attach-dialog {
             background: var(--dialog-bg); border-radius: 18px; width: 540px; max-width: 95vw;
             max-height: 88vh; display: flex; flex-direction: column; overflow: hidden;
-            box-shadow: 0 12px 48px rgba(0,0,0,0.25); animation: fadeScaleIn 0.2s ease-out;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.25);
             border: 1px solid var(--card-border);
         }
         .attach-dialog-header {
@@ -2365,7 +2365,6 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            animation: fadeScaleIn 0.2s ease-out;
         }
 
         .profile-close {
@@ -3079,7 +3078,6 @@
             display: flex;
             flex-direction: column;
             box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
-            animation: fadeScaleIn 0.2s ease-out;
         }
 
         @keyframes fadeScaleIn {
@@ -4467,6 +4465,7 @@
         .cmdpalette-overlay { align-items: flex-start; padding-top: 12vh; }
 
         .cmdpalette-dialog {
+            transform-origin: top center;
             width: 92%;
             max-width: 560px;
             max-height: 70vh;
@@ -5093,7 +5092,6 @@
             flex-direction: column;
             overflow: hidden;
             box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
-            animation: fadeScaleIn 0.2s ease-out;
         }
         .forward-modal-header {
             display: flex;
@@ -5469,7 +5467,78 @@
             flex-direction: column;
             overflow: hidden;
             box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
-            animation: fadeScaleIn 0.2s ease-out;
+        }
+
+        /* ===== Вход и выход оверлеев (BF.utils.openOverlay/closeOverlay) =====
+           .visible включает вход и снимается при закрытии сразу; .is-closing держит оверлей
+           на время выхода (display, без кликов). Конец выхода — utils.js: transitionend или таймер.
+           Новые оверлеи, открываемые через openOverlay, добавляются сюда по своему классу. */
+        :root {
+            --overlay-enter: 180ms;
+            --overlay-exit: 140ms;
+            --overlay-panel-enter: 200ms;
+            --overlay-panel-exit: 140ms;
+            --overlay-panel-from: scale(0.96) translateY(4px);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --overlay-enter: 120ms;
+                --overlay-exit: 120ms;
+                --overlay-panel-enter: 120ms;
+                --overlay-panel-exit: 120ms;
+                --overlay-panel-from: none;
+            }
+        }
+
+        .confirm-overlay, .settings-overlay, .profile-overlay, .overlay, .forward-modal-overlay,
+        .attach-overlay, .ie-overlay, .sd-crop-overlay {
+            transition: opacity var(--overlay-exit) var(--ease-out);
+        }
+        .confirm-overlay.visible, .settings-overlay.visible, .profile-overlay.visible, .overlay.visible,
+        .forward-modal-overlay.visible, .attach-overlay.visible, .ie-overlay.visible, .sd-crop-overlay.visible {
+            opacity: 1;
+            transition: opacity var(--overlay-enter) var(--ease-out);
+        }
+        .confirm-overlay.is-closing, .settings-overlay.is-closing, .profile-overlay.is-closing, .overlay.is-closing,
+        .forward-modal-overlay.is-closing, .attach-overlay.is-closing, .ie-overlay.is-closing, .sd-crop-overlay.is-closing {
+            display: flex;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .confirm-dialog, .settings-dialog, .profile-panel, .dialog, .forward-modal, .attach-dialog,
+        .ie-dialog, .sd-crop-dialog {
+            transition: opacity var(--overlay-panel-exit) var(--ease-out), transform var(--overlay-panel-exit) var(--ease-out);
+        }
+        .confirm-overlay.visible > .confirm-dialog, .settings-overlay.visible > .settings-dialog,
+        .profile-overlay.visible > .profile-panel, .overlay.visible > .dialog,
+        .forward-modal-overlay.visible > .forward-modal, .attach-overlay.visible > .attach-dialog,
+        .ie-overlay.visible > .ie-dialog, .sd-crop-overlay.visible > .sd-crop-dialog {
+            opacity: 1;
+            transform: none;
+            transition: opacity var(--overlay-panel-enter) var(--ease-out), transform var(--overlay-panel-enter) var(--ease-out);
+        }
+        .confirm-overlay.is-closing > .confirm-dialog, .settings-overlay.is-closing > .settings-dialog,
+        .profile-overlay.is-closing > .profile-panel, .overlay.is-closing > .dialog,
+        .forward-modal-overlay.is-closing > .forward-modal, .attach-overlay.is-closing > .attach-dialog,
+        .ie-overlay.is-closing > .ie-dialog, .sd-crop-overlay.is-closing > .sd-crop-dialog {
+            opacity: 0;
+            transform: var(--overlay-panel-from);
+        }
+
+        @starting-style {
+            .confirm-overlay.visible, .settings-overlay.visible, .profile-overlay.visible, .overlay.visible,
+            .forward-modal-overlay.visible, .attach-overlay.visible, .ie-overlay.visible, .sd-crop-overlay.visible {
+                opacity: 0;
+            }
+            .confirm-overlay.visible > .confirm-dialog, .settings-overlay.visible > .settings-dialog,
+            .profile-overlay.visible > .profile-panel, .overlay.visible > .dialog,
+            .forward-modal-overlay.visible > .forward-modal, .attach-overlay.visible > .attach-dialog,
+            .ie-overlay.visible > .ie-dialog, .sd-crop-overlay.visible > .sd-crop-dialog {
+                opacity: 0;
+                transform: var(--overlay-panel-from);
+            }
         }
 
         /* === FOLDER EDIT MODAL === */
