@@ -23,6 +23,8 @@ public sealed partial class MessengerPage : Page
             ViewModel = viewModel;
             Bindings.Update();
         }
+        if (ViewModel is not null)
+            _ = ViewModel.LoadStickerPreferencesAsync();
     }
 
     /// <summary>

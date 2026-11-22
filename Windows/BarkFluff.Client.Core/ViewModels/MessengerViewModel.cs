@@ -25,6 +25,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     private readonly IOnlinePresenceService _presence;
     private readonly ILocalizationService _localization;
     private readonly IUiDispatcher _uiDispatcher;
+    private readonly ISettingsPreferences? _stickerPreferences;
     private readonly HashSet<long> _pendingReadMessageIds = [];
     private CancellationTokenSource? _readBatchCancellationTokenSource;
     private int _chatVersion;
@@ -46,7 +47,10 @@ public sealed partial class MessengerViewModel : ObservableObject
         IChatFoldersState? chatFolders = null,
         IChatTypingService? typing = null,
         MessageNotificationService? notifications = null,
-        SettingsNotificationsViewModel? notificationSettings = null)
+        SettingsNotificationsViewModel? notificationSettings = null,
+        StickerPickerViewModel? stickerPicker = null,
+        ISettingsPreferences? stickerPreferences = null,
+        StickerFrameCache? stickerFrames = null)
     {
         _messenger = messenger;
         _privateChatKeyStore = privateChatKeyStore;
@@ -55,6 +59,9 @@ public sealed partial class MessengerViewModel : ObservableObject
         _localization = localization;
         _uiDispatcher = uiDispatcher;
         AttachmentComposer = new(messenger, localization, uiDispatcher);
+        StickerPicker = stickerPicker;
+        _stickerPreferences = stickerPreferences;
+        _stickerFrames = stickerFrames;
         _muteClock = timeProvider ?? TimeProvider.System;
         _chatFolders = chatFolders;
         _typing = typing;
@@ -290,6 +297,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _feedLoaded = false;
         _feedIncludesTail = true;
         _chatVersion++;
+        StickerPicker?.Close();
         WatchTyping(newValue);
         _ = CancelAttachmentsAsync();
         OnPropertyChanged(nameof(CanAttach));
@@ -893,7 +901,8 @@ public sealed partial class MessengerViewModel : ObservableObject
             // Серверное превью GIF — JPEG. Для анимации ленте нужен оригинал.
             previewUrl = fileUrl;
         }
-        else if (attachment.Type is MessageAttachmentType.Image or MessageAttachmentType.Video or MessageAttachmentType.Gif or MessageAttachmentType.Sticker
+        else if ((attachment.Type is MessageAttachmentType.Image or MessageAttachmentType.Video or MessageAttachmentType.Gif ||
+                  attachment.Type == MessageAttachmentType.Sticker && string.IsNullOrWhiteSpace(fileUrl))
             && string.IsNullOrWhiteSpace(previewUrl))
         {
             previewUrl = await ResolveFileUrlAsync(attachment.PreviewFileId);
@@ -1311,7 +1320,7 @@ public sealed partial class MessageItemViewModel : ObservableObject
         IsSystem = message.Type == MessageContentType.System;
         SentAt = message.SentAt.ToDateTimeOffset();
         Attachments = attachments;
-        MediaAttachments = attachments.Where(attachment => attachment.IsMedia).ToArray();
+        MediaAttachments = attachments.Where(attachment => attachment.IsMedia && !attachment.IsSticker).ToArray();
         FileAttachments = attachments.Where(attachment => attachment.IsFile).ToArray();
         _currentUserId = currentUserId;
         IsEdited = message.IsEdited;
@@ -1339,12 +1348,13 @@ public sealed partial class MessageItemViewModel : ObservableObject
     public MessengerViewModel Owner { get; }
     /// <summary>Пересланные сообщения в порядке отправителя. Пусто, если пересылки нет.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasForwards), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia))]
+    [NotifyPropertyChangedFor(nameof(HasForwards), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia), nameof(IsStickerOnly), nameof(UseCompactBubblePadding), nameof(UseOwnBubbleText))]
     private IReadOnlyCollection<ForwardedContentViewModel> _forwards = [];
 
     /// <summary>Цитата ответа. Заполнена => это ответ. Резолвится сервером, не снапшот.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasReply), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia))]
+    [NotifyPropertyChangedFor(nameof(HasReply), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia),
+        nameof(IsStickerOnly), nameof(UseCompactBubblePadding), nameof(UseOwnBubbleText))]
     private ReplyContentViewModel? _reply;
 
     public long Id { get; }
@@ -1352,13 +1362,16 @@ public sealed partial class MessageItemViewModel : ObservableObject
     public bool IsSystem { get; }
     public bool IsPrivateMessage { get; }
     public DateTimeOffset SentAt { get; }
-    [ObservableProperty] private IReadOnlyCollection<MessageAttachmentItemViewModel> _attachments = [];
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasMedia), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia), nameof(IsSingleMedia),
+    [NotifyPropertyChangedFor(nameof(StickerAttachments), nameof(HasStickers), nameof(IsStickerOnly), nameof(UseCompactBubblePadding),
+        nameof(UseOwnBubbleText), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia), nameof(CanCopyImage))]
+    private IReadOnlyCollection<MessageAttachmentItemViewModel> _attachments = [];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMedia), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia), nameof(UseCompactBubblePadding), nameof(IsSingleMedia),
         nameof(MediaColumns), nameof(MediaPanelWidth), nameof(MediaTileHeight), nameof(CanCopyImage))]
     private IReadOnlyCollection<MessageAttachmentItemViewModel> _mediaAttachments = [];
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasFiles), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia))]
+    [NotifyPropertyChangedFor(nameof(HasFiles), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia), nameof(UseCompactBubblePadding))]
     private IReadOnlyCollection<MessageAttachmentItemViewModel> _fileAttachments = [];
 
     internal DateTimeOffset? EditedAt { get; private set; }
@@ -1383,7 +1396,13 @@ public sealed partial class MessageItemViewModel : ObservableObject
     public bool HasText => !string.IsNullOrWhiteSpace(Text);
     public bool HasMedia => MediaAttachments.Count > 0;
     public bool HasFiles => FileAttachments.Count > 0;
-    public bool HasOnlyMedia => !HasText && HasMedia && !HasFiles && !HasForwards && !HasReply;
+    public IReadOnlyCollection<MessageAttachmentItemViewModel> StickerAttachments => Attachments.Where(attachment => attachment.IsSticker).ToArray();
+    public bool HasStickers => Attachments.Any(attachment => attachment.IsSticker);
+    public bool IsStickerOnly => !HasText && !HasReply && !HasForwards &&
+        Attachments.Count == 1 && Attachments.First().IsSticker;
+    public bool UseCompactBubblePadding => IsStickerOnly || HasOnlyMedia;
+    public bool UseOwnBubbleText => IsMine && !IsStickerOnly;
+    public bool HasOnlyMedia => !HasText && HasMedia && !HasFiles && !HasForwards && !HasReply && !HasStickers;
     public bool HasMetadataBelowMedia => !HasOnlyMedia;
     public bool IsSingleMedia => MediaAttachments.Count == 1;
     public int MediaColumns => IsSingleMedia ? 1 : 2;
@@ -1394,13 +1413,14 @@ public sealed partial class MessageItemViewModel : ObservableObject
     public bool CanUseActions => !IsSystem && !IsPrivateMessage;
     public bool CanModify => CanUseActions && IsMine;
     public bool CanCopyText => CanUseActions && HasText;
-    public bool CanCopyImage => CanUseActions && IsSingleMedia && MediaAttachments.First().IsImageOrGif;
+    public bool CanCopyImage => CanUseActions && !HasStickers && IsSingleMedia && MediaAttachments.First().IsImageOrGif;
     public string PinMenuHeader => Owner.Localization.GetString(IsPinned ? "Messenger_Unpin" : "Messenger_Pin");
     public bool HasReply => Reply is not null;
     public bool HasForwards => Forwards.Count > 0;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasText), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia), nameof(CanCopyText))]
+    [NotifyPropertyChangedFor(nameof(HasText), nameof(HasOnlyMedia), nameof(HasMetadataBelowMedia), nameof(CanCopyText),
+        nameof(IsStickerOnly), nameof(UseCompactBubblePadding), nameof(UseOwnBubbleText))]
     private string _text = string.Empty;
     [ObservableProperty] private bool _isEdited;
     [ObservableProperty]
@@ -1462,6 +1482,8 @@ public sealed class MessageAttachmentItemViewModel(
     public long Size { get; } = size;
     public int ImageWidth { get; } = imageWidth;
     public int ImageHeight { get; } = imageHeight;
+    public bool IsSticker => type == MessageAttachmentType.Sticker;
+    public string StickerUrl => FileUrl.Length > 0 ? FileUrl : PreviewUrl;
     public bool IsVideo { get; } = type == MessageAttachmentType.Video;
     public bool IsVoice { get; } = type is MessageAttachmentType.Voice or MessageAttachmentType.Audio;
     public bool IsImageOrGif { get; } = type is MessageAttachmentType.Image or MessageAttachmentType.Gif;

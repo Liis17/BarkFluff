@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:behaviors="using:BarkFluff.Client.WinUI.Infrastructure.Behaviors"
     xmlns:controls="using:BarkFluff.Client.WinUI.Controls"
+    xmlns:local="using:BarkFluff.Client.WinUI.Views"
     xmlns:vm="using:BarkFluff.Client.Core.ViewModels"
     NavigationCacheMode="Required">
 
@@ -134,6 +135,10 @@
             </Grid>
         </DataTemplate>
 
+        <DataTemplate x:Key="FeedStickerTemplate" x:DataType="vm:MessageAttachmentItemViewModel">
+            <controls:StickerImage SourceUrl="{x:Bind StickerUrl}" />
+        </DataTemplate>
+
         <DataTemplate x:Key="FileAttachmentTemplate" x:DataType="vm:MessageAttachmentItemViewModel">
             <Border Margin="0,0,0,4"
                     Padding="8"
@@ -208,8 +213,8 @@
         <DataTemplate x:Key="MessageBubbleTemplate" x:DataType="vm:MessageItemViewModel">
             <Grid Margin="12,4" HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource MessageAlignmentConverter}}">
                 <Border MaxWidth="520"
-                        Padding="{x:Bind HasOnlyMedia, Mode=OneWay, Converter={StaticResource MessageBubblePaddingConverter}}"
-                        Background="{x:Bind IsMine, Converter={StaticResource MessageBubbleBrushConverter}}"
+                        Padding="{x:Bind UseCompactBubblePadding, Mode=OneWay, Converter={StaticResource MessageBubblePaddingConverter}}"
+                        Background="{x:Bind local:MessengerPage.MessageBackground(IsMine, IsStickerOnly), Mode=OneWay}"
                         ContextRequested="OnBubbleContextRequested"
                         CornerRadius="12">
                     <!--  Flyout наследует DataContext шаблона, поэтому хак WPF с PlacementTarget не нужен.  -->
@@ -343,7 +348,7 @@
                             </ItemsRepeater>
 
                             <controls:MarkdownTextBlock Text="{x:Bind Text, Mode=OneWay}"
-                                                        TextForeground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
+                                                        TextForeground="{x:Bind UseOwnBubbleText, Mode=OneWay, Converter={StaticResource MessageBubbleTextConverter}}"
                                                         Visibility="{x:Bind HasText, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                             <ItemsRepeater Width="{x:Bind MediaPanelWidth, Mode=OneWay}"
@@ -359,6 +364,18 @@
                                 </ItemsRepeater.Layout>
                             </ItemsRepeater>
 
+                            <ItemsRepeater Width="{x:Bind Owner.StickerSize, Mode=OneWay}"
+                                           HorizontalAlignment="Left"
+                                           ItemTemplate="{StaticResource FeedStickerTemplate}"
+                                           ItemsSource="{x:Bind StickerAttachments, Mode=OneWay}"
+                                           Visibility="{x:Bind HasStickers, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <ItemsRepeater.Layout>
+                                    <UniformGridLayout MinItemWidth="{x:Bind Owner.StickerSize, Mode=OneWay}"
+                                                       MinItemHeight="{x:Bind Owner.StickerSize, Mode=OneWay}"
+                                                       MaximumRowsOrColumns="1" />
+                                </ItemsRepeater.Layout>
+                            </ItemsRepeater>
+
                             <ItemsControl Margin="0,8,0,0"
                                           ItemTemplate="{StaticResource FileAttachmentTemplate}"
                                           ItemsSource="{x:Bind FileAttachments, Mode=OneWay}"
@@ -369,13 +386,13 @@
                                         Visibility="{x:Bind HasMetadataBelowMedia, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <TextBlock Margin="0,5,6,0"
                                            FontSize="11"
-                                           Foreground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
+                                           Foreground="{x:Bind UseOwnBubbleText, Mode=OneWay, Converter={StaticResource MessageBubbleTextConverter}}"
                                            Opacity=".7"
                                            Text="{StaticResource Messenger_Edited}"
                                            Visibility="{x:Bind IsEdited, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 <TextBlock Margin="0,5,0,0"
                                            FontSize="11"
-                                           Foreground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
+                                           Foreground="{x:Bind UseOwnBubbleText, Mode=OneWay, Converter={StaticResource MessageBubbleTextConverter}}"
                                            Opacity=".7"
                                            Text="{x:Bind SentAtLabel}" />
                                 <!--  Одна галочка — доставлено, вторая появляется при прочтении.  -->
@@ -383,12 +400,12 @@
                                             Orientation="Horizontal"
                                             Visibility="{x:Bind IsMine, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <FontIcon FontSize="12"
-                                              Foreground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
+                                              Foreground="{x:Bind UseOwnBubbleText, Mode=OneWay, Converter={StaticResource MessageBubbleTextConverter}}"
                                               Glyph="&#xE73E;"
                                               ToolTipService.ToolTip="{StaticResource Messenger_Delivered}" />
                                     <FontIcon Margin="-6,0,0,0"
                                               FontSize="12"
-                                              Foreground="{x:Bind IsMine, Converter={StaticResource MessageBubbleTextConverter}}"
+                                              Foreground="{x:Bind UseOwnBubbleText, Mode=OneWay, Converter={StaticResource MessageBubbleTextConverter}}"
                                               Glyph="&#xE73E;"
                                               ToolTipService.ToolTip="{StaticResource Messenger_Read}"
                                               Visibility="{x:Bind IsReadBySomeoneElse, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -774,13 +791,87 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Button Margin="0,0,8,0" VerticalAlignment="Bottom"
-                        Click="OnAttachClick"
-                        IsEnabled="{x:Bind CanBeginAttachmentInput(ViewModel.CanAttach, ViewModel.AttachmentComposer.IsSending), Mode=OneWay}"
-                        AutomationProperties.Name="{StaticResource Messenger_AttachmentAdd}"
-                        ToolTipService.ToolTip="{StaticResource Messenger_AttachmentAdd}">
-                    <FontIcon Glyph="&#xE723;" />
-                </Button>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
+                    <Button Margin="0,0,8,0" VerticalAlignment="Bottom"
+                            Click="OnAttachClick"
+                            IsEnabled="{x:Bind CanBeginAttachmentInput(ViewModel.CanAttach, ViewModel.AttachmentComposer.IsSending), Mode=OneWay}"
+                            AutomationProperties.Name="{StaticResource Messenger_AttachmentAdd}"
+                            ToolTipService.ToolTip="{StaticResource Messenger_AttachmentAdd}">
+                        <FontIcon Glyph="&#xE723;" />
+                    </Button>
+                    <Button Margin="0,0,8,0"
+                            IsEnabled="{x:Bind CanPickSticker(ViewModel.CanAttach, ViewModel.AttachmentComposer.IsSending, ViewModel.StickerPicker.IsSending), Mode=OneWay}"
+                            AutomationProperties.Name="{StaticResource Messenger_Stickers}"
+                            ToolTipService.ToolTip="{StaticResource Messenger_Stickers}">
+                        <FontIcon Glyph="&#xE899;" />
+                        <Button.Flyout>
+                            <Flyout x:Name="StickerFlyout" Placement="Top"
+                                    Opened="OnStickerFlyoutOpened" Closed="OnStickerFlyoutClosed">
+                                <Grid Width="320" RowSpacing="8">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="220" />
+                                    </Grid.RowDefinitions>
+                                    <ListView MaxWidth="320"
+                                              AutomationProperties.Name="{StaticResource Messenger_Stickers}"
+                                              ItemsSource="{x:Bind ViewModel.StickerPicker.Tabs, Mode=OneWay}"
+                                              SelectedItem="{x:Bind ViewModel.StickerPicker.SelectedTab, Mode=TwoWay}"
+                                              ScrollViewer.HorizontalScrollMode="Enabled"
+                                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                              ScrollViewer.VerticalScrollMode="Disabled"
+                                              ScrollViewer.VerticalScrollBarVisibility="Hidden">
+                                        <ListView.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <ItemsStackPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ListView.ItemsPanel>
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:StickerTab">
+                                                <StackPanel Orientation="Horizontal" Spacing="4" Loaded="OnStickerCoverLoaded">
+                                                    <controls:StickerImage Width="24" Height="24" SourceUrl="{x:Bind CoverUrl, Mode=OneWay}"
+                                                        Visibility="{x:Bind CoverUrl, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                                                    <TextBlock Text="{x:Bind Name}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                    <TextBox Grid.Row="1"
+                                             PlaceholderText="{StaticResource Messenger_StickerSearch}"
+                                             AutomationProperties.Name="{StaticResource Messenger_StickerSearch}"
+                                             Text="{x:Bind ViewModel.StickerPicker.Search, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <GridView Grid.Row="2" IsItemClickEnabled="True" SelectionMode="None"
+                                              ItemClick="OnStickerClick"
+                                              AutomationProperties.Name="{StaticResource Messenger_Stickers}"
+                                              ItemsSource="{x:Bind ViewModel.StickerPicker.Stickers, Mode=OneWay}">
+                                        <GridView.ItemContainerStyle>
+                                            <Style TargetType="GridViewItem">
+                                                <Setter Property="AutomationProperties.Name" Value="{Binding Emoji}" />
+                                                <Setter Property="ToolTipService.ToolTip" Value="{Binding Emoji}" />
+                                            </Style>
+                                        </GridView.ItemContainerStyle>
+                                        <GridView.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:PickerSticker">
+                                                <controls:StickerImage Width="64" Height="64"
+                                                                       SourceUrl="{x:Bind PreviewUrl}" />
+                                            </DataTemplate>
+                                        </GridView.ItemTemplate>
+                                    </GridView>
+                                    <ProgressRing Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  IsActive="{x:Bind ViewModel.StickerPicker.IsLoading, Mode=OneWay}" />
+                                    <TextBlock Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Text="{StaticResource Messenger_StickerEmpty}"
+                                               Visibility="{x:Bind ViewModel.StickerPicker.IsEmpty, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8"
+                                                Visibility="{x:Bind ViewModel.StickerPicker.HasError, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <TextBlock Text="{StaticResource Messenger_StickerError}" />
+                                        <Button Content="{StaticResource Messenger_AttachmentRetry}" Click="OnStickerRetryClick" />
+                                    </StackPanel>
+                                </Grid>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
                 <TextBox Grid.Column="1" MinHeight="42"
                          MaxHeight="120"
                          AcceptsReturn="True"

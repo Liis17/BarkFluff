@@ -25,6 +25,9 @@ public sealed partial class SettingsPersonalizationViewModel(ISettingsPreference
     private bool _relativeOnlineTime;
 
     [ObservableProperty]
+    private int _chatStickerSizeDp = 160;
+
+    [ObservableProperty]
     private bool _isLoaded;
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
@@ -36,6 +39,7 @@ public sealed partial class SettingsPersonalizationViewModel(ISettingsPreference
         ChatBackgroundBlurRadius = _preferences.ChatBackgroundBlurRadius;
         ChatBackgroundDim = _preferences.ChatBackgroundDim;
         RelativeOnlineTime = _preferences.RelativeOnlineTime;
+        ChatStickerSizeDp = _preferences.ChatStickerSizeDp;
         IsLoaded = true;
     }
 
@@ -53,6 +57,15 @@ public sealed partial class SettingsPersonalizationViewModel(ISettingsPreference
 
     public Task SetRelativeOnlineTimeAsync(bool value, CancellationToken cancellationToken = default) =>
         SaveAsync(_preferences with { RelativeOnlineTime = value }, cancellationToken);
+
+    public Task SetChatStickerSizeAsync(int value, CancellationToken cancellationToken = default)
+    {
+        if (!IsLoaded)
+            return Task.CompletedTask;
+
+        ChatStickerSizeDp = Math.Clamp(value, InterfacePreferences.MinChatStickerSizeDp, InterfacePreferences.MaxChatStickerSizeDp);
+        return SaveAsync(_preferences with { ChatStickerSizeDp = ChatStickerSizeDp }, cancellationToken);
+    }
 
     private async Task SaveAsync(InterfacePreferences preferences, CancellationToken cancellationToken)
     {

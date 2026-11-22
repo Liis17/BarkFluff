@@ -471,6 +471,11 @@
     <x:String x:Key="Messenger_ChatMuted">Notifications muted</x:String>
     <x:String x:Key="Messenger_ChatOptions">Chat actions</x:String>
     <x:String x:Key="Messenger_ChatMuteFailed">Couldn't change chat notifications.</x:String>
+    <x:String x:Key="Messenger_Stickers">Stickers</x:String>
+    <x:String x:Key="Messenger_StickerRecent">Recent</x:String>
+    <x:String x:Key="Messenger_StickerSearch">Search by emoji</x:String>
+    <x:String x:Key="Messenger_StickerEmpty">No stickers</x:String>
+    <x:String x:Key="Messenger_StickerError">Could not load stickers</x:String>
     <x:String x:Key="Messenger_AttachmentAdd">Attach files</x:String>
     <x:String x:Key="Messenger_AttachmentRemove">Remove attachment</x:String>
     <x:String x:Key="Messenger_AttachmentAsFile">Send as file</x:String>

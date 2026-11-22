@@ -57,6 +57,8 @@ public sealed partial class MessengerViewModel
             ? RefreshPinsAsync(chat, _chatVersion, reportError: false)
             : Task.FromResult(true), session.Lifetime.Token) { Delay = ResyncDelay };
         _realtimeSession = session;
+        _stickerFrames?.StartSession();
+        StickerPicker?.StartSession(session.Node, session.UserId, session.Lifetime.Token, () => IsCurrent(session));
         _notificationSettings?.StartSession(() => IsCurrent(session), session.Lifetime.Token);
         EventHandler foldersChanged = (_, _) => PostSession(session, _ => _chatFolders?.Invalidate());
         _realtimeMessenger.ChatFoldersChanged += foldersChanged;
@@ -89,6 +91,8 @@ public sealed partial class MessengerViewModel
     {
         var session = _realtimeSession;
         _ = CancelAttachmentsAsync();
+        _stickerFrames?.EndSession();
+        StickerPicker?.Reset();
         if (session is null)
         {
             return;

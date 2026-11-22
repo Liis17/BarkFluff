@@ -54,7 +54,8 @@ public sealed class SettingsPreferences(IApplicationDataStore dataStore) : ISett
         ChatCornerRadius = Math.Clamp(preferences.ChatCornerRadius, 0, 30),
         ChatBackgroundBlurRadius = Math.Clamp(preferences.ChatBackgroundBlurRadius, 1, 25),
         ChatBackgroundDim = Math.Clamp(preferences.ChatBackgroundDim, 0, 100),
-        ChatStickerSizeDp = Math.Clamp(preferences.ChatStickerSizeDp, 96, 240)
+        ChatStickerSizeDp = Math.Clamp(preferences.ChatStickerSizeDp,
+            InterfacePreferences.MinChatStickerSizeDp, InterfacePreferences.MaxChatStickerSizeDp)
     };
 
     private static WindowPreferences Normalize(WindowPreferences preferences) => preferences with

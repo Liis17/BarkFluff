@@ -271,6 +271,9 @@ public partial class App : Application
         builder.Services.AddSingleton<INodeAddressParser, NodeAddressParser>();
         builder.Services.AddSingleton<IClientSession, ClientSession>();
         builder.Services.AddSingleton<IMessengerService, MessengerService>();
+        builder.Services.AddSingleton<IStickerCatalog, StickerCatalog>();
+        builder.Services.AddSingleton(_ => Controls.StickerImage.CreateCache());
+        builder.Services.AddSingleton<StickerPickerViewModel>();
         builder.Services.AddSingleton<INodeConnectionService, NodeConnectionService>();
         builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
         builder.Services.AddSingleton<IOnboardingNavigationService, OnboardingNavigationService>();

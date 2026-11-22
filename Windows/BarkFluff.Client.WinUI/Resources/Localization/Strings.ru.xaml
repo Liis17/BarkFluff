@@ -471,6 +471,11 @@
     <x:String x:Key="Messenger_ChatMuted">Уведомления отключены</x:String>
     <x:String x:Key="Messenger_ChatOptions">Действия чата</x:String>
     <x:String x:Key="Messenger_ChatMuteFailed">Не удалось изменить уведомления чата.</x:String>
+    <x:String x:Key="Messenger_Stickers">Стикеры</x:String>
+    <x:String x:Key="Messenger_StickerRecent">Недавние</x:String>
+    <x:String x:Key="Messenger_StickerSearch">Поиск по эмодзи</x:String>
+    <x:String x:Key="Messenger_StickerEmpty">Стикеров нет</x:String>
+    <x:String x:Key="Messenger_StickerError">Не удалось загрузить стикеры</x:String>
     <x:String x:Key="Messenger_AttachmentAdd">Прикрепить файлы</x:String>
     <x:String x:Key="Messenger_AttachmentRemove">Удалить вложение</x:String>
     <x:String x:Key="Messenger_AttachmentAsFile">Отправить как файл</x:String>
