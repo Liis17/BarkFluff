@@ -332,16 +332,6 @@
 
     // --- Устойчивая загрузка медиа (рефреш протухших ссылок + плейсхолдер) ---
 
-    // Векторная заглушка «не удалось загрузить» (data-URI, нейтральный серый — читается на любой теме).
-    var BROKEN_MEDIA_SVG = (function () {
-        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
-            '<rect x="3" y="3" width="18" height="18" rx="2.5"/>' +
-            '<circle cx="8.5" cy="8.5" r="1.5"/>' +
-            '<path d="M21 15l-5-5L5 21"/>' +
-            '</svg>';
-        return 'data:image/svg+xml,' + encodeURIComponent(svg);
-    })();
-
     function pickUrl(fd, preferPreview) {
         if (!fd) return '';
         return preferPreview ? (fd.previewUrl || fd.url || '') : (fd.url || fd.previewUrl || '');
@@ -374,12 +364,12 @@
         el.classList.add('bf-load-failed');
         var tag = el.tagName;
         if (tag === 'IMG') {
-            el.src = BROKEN_MEDIA_SVG;
+            el.src = BF.icons.url('broken-media');
         } else if (tag === 'VIDEO') {
             try { el.pause(); } catch (e) {}
             el.removeAttribute('src');
             try { el.load(); } catch (e) {}
-            el.setAttribute('poster', BROKEN_MEDIA_SVG);
+            el.setAttribute('poster', BF.icons.url('broken-media'));
         } else if (tag === 'AUDIO') {
             el.removeAttribute('src');
             try { el.load(); } catch (e) {}
@@ -434,7 +424,7 @@
 
         function showPlaceholder() {
             if (!isCurrent()) return;
-            el.style.backgroundImage = 'url("' + BROKEN_MEDIA_SVG + '")';
+            el.style.backgroundImage = 'url("' + BF.icons.url('broken-media') + '")';
             el.classList.add('visible', 'bf-load-failed');
             notifyResolved('');
         }

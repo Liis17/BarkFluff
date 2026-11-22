@@ -209,14 +209,14 @@
                             <label class="label">Access Key</label>
                             <div class="password-wrap">
                                 <input type="password" value="" autocomplete="new-password" placeholder="${params.accessKeyConfigured ? `Задан (${escapeHtml(params.accessKeyMasked || 'скрыт')}) — введите новый для замены` : 'Не задан — введите ключ'}" data-bucket="${bucketId}" data-key="accessKey" oninput="onFieldChange('${bucketId}')" id="access-${safeId}" class="md-input-outlined">
-                                <button type="button" class="md-icon-btn toggle" onclick="togglePassword('access-${safeId}')" aria-label="Показать значение"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/visibility.svg);" aria-hidden="true"></span></button>
+                                <button type="button" class="md-icon-btn toggle" onclick="togglePassword('access-${safeId}')" aria-label="Показать значение"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/password-visible.svg);" aria-hidden="true"></span></button>
                             </div>
                         </div>
                         <div class="field-row">
                             <label class="label">Secret Key</label>
                             <div class="password-wrap">
                                 <input type="password" value="" autocomplete="new-password" placeholder="${params.secretKeyConfigured ? 'Задан — введите новый для замены' : 'Не задан — введите секретный ключ'}" data-bucket="${bucketId}" data-key="secretKey" oninput="onFieldChange('${bucketId}')" id="secret-${safeId}" class="md-input-outlined">
-                                <button type="button" class="md-icon-btn toggle" onclick="togglePassword('secret-${safeId}')" aria-label="Показать значение"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/visibility.svg);" aria-hidden="true"></span></button>
+                                <button type="button" class="md-icon-btn toggle" onclick="togglePassword('secret-${safeId}')" aria-label="Показать значение"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/password-visible.svg);" aria-hidden="true"></span></button>
                             </div>
                         </div>
                         <div class="field-row">
@@ -243,7 +243,7 @@
         const icon = btn.querySelector('.bf-icon');
         const isHidden = input.type === 'password';
         input.type = isHidden ? 'text' : 'password';
-        bfSetIcon(icon, isHidden ? 'visibility-off' : 'visibility');
+        bfSetIcon(icon, isHidden ? 'password-hidden' : 'password-visible');
         btn.setAttribute('aria-label', isHidden ? 'Скрыть значение' : 'Показать значение');
     };
 

@@ -238,12 +238,12 @@
         }
 
         var msg = info.message || {};
-        var text = (msg.content && msg.content.text) || '';
-        if (!text) {
-            var atts = (msg.content && msg.content.attachments) || [];
-            if (atts.length > 0) text = u.attachmentEmoji(atts[0].type) + ' ' + BF.i18n.t('attachment.generic');
+        var content = msg.content || {};
+        var attachment = (content.attachments || [])[0];
+        if (pinnedBarText) {
+            if (content.text || !attachment) pinnedBarText.textContent = u.truncate(content.text || '', 80);
+            else pinnedBarText.innerHTML = u.attachmentPreviewHtml(attachment.type);
         }
-        if (pinnedBarText) pinnedBarText.textContent = u.truncate(text, 80);
 
         if (pinnedBarAuthor) {
             pinnedBarAuthor.textContent = BF.i18n.t('pinned.bar.author');
