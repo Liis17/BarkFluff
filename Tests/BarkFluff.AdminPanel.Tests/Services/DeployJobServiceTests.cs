@@ -250,7 +250,7 @@ public class DeployJobServiceTests
     {
         using var history = new TempHistory();
         var baseTime = DateTime.UtcNow.AddDays(-1);
-        SeedHistory(history, Enumerable.Range(0, 22).Select(i => new DeployJobRecord
+        var records = Enumerable.Range(0, 22).Select(i => new DeployJobRecord
         {
             Id = Guid.NewGuid(),
             Kind = "Restart",
@@ -258,7 +258,8 @@ public class DeployJobServiceTests
             CreatedAtUtc = baseTime.AddMinutes(i),
             FinishedAtUtc = baseTime.AddMinutes(i),
             Steps = []
-        }).ToArray());
+        }).ToArray();
+        SeedHistory(history, records);
 
         await RestartPanelAsync(history, CreateOperationalRunner("running|healthy"), service =>
         {
@@ -266,8 +267,10 @@ public class DeployJobServiceTests
         });
 
         var stored = ReadHistory(history);
-        Assert.Equal(20, stored.Count);
-        Assert.DoesNotContain(stored, record => record.CreatedAtUtc < baseTime.AddMinutes(2));
+        // Сравнение по Id: LiteDB хранит время с точностью до миллисекунд, поэтому сравнение по времени нестабильно
+        Assert.Equal(
+            records.Skip(2).Select(record => record.Id).OrderBy(id => id),
+            stored.Select(record => record.Id).OrderBy(id => id));
     }
 
     private const string InterruptedReason = "Прервано перезапуском панели";
