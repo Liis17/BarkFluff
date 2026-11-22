@@ -49,6 +49,14 @@
         .deployment-comparison.open { display: flex; }
         .deployment-comparison.is-worse { background: var(--md-error-container); color: var(--md-on-error-container); }
         .deployment-comparison.is-better { background: var(--md-success-container); color: var(--md-on-success-container); }
+        .period-filter {
+            display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+            margin: -8px 0 12px; padding: 8px 12px;
+            border-radius: var(--md-shape-md);
+            background: var(--md-secondary-container); color: var(--md-on-secondary-container);
+            font-size: 13px;
+        }
+        .period-filter.open { display: flex; }
 
         .logs-card {
             background: var(--md-surface-container-lowest);
@@ -178,6 +186,9 @@
                     <button id="deleteFilterBtn" class="md-icon-btn" type="button" title="Удалить выбранный фильтр" disabled>
                         <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/delete.svg);" aria-hidden="true"></span>
                     </button>
+                    <button id="copyFilterLinkBtn" class="md-btn md-btn-tonal" type="button" title="Скопировать ссылку на текущие фильтры">
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/link.svg);" aria-hidden="true"></span> Скопировать ссылку
+                    </button>
 
                     <div class="view-buttons" aria-label="Режим отображения">
                         <button data-view="events" class="md-chip selected" type="button">События</button>
@@ -190,6 +201,8 @@
                     <button id="compareDeploymentBtn" class="md-btn md-btn-tonal" type="button" disabled>Сравнить ±30 мин</button>
                 </div>
             </div>
+
+            <div id="periodFilter" class="period-filter" role="status"></div>
 
             <div id="deploymentComparison" class="deployment-comparison" role="status"></div>
 
@@ -328,6 +341,7 @@
     let activeService = '';
     let searchQuery = '';
     let activeContext = null;
+    let activeFromUtc = '';
     let viewMode = 'events';
     let groupMetadata = null;
     let deployments = [];
@@ -483,7 +497,30 @@
             button.classList.toggle('selected', button.dataset.level === activeLevel));
         document.querySelectorAll('.view-buttons .md-chip').forEach(button =>
             button.classList.toggle('selected', button.dataset.view === viewMode));
+        renderPeriodFilter();
     }
+
+    // Период из URL (?from=ISO UTC): значение без часового пояса или с невалидной датой игнорируется.
+    const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+    function parseFromUtc(value) {
+        if (!value || !ISO_DATE_TIME_PATTERN.test(value)) return '';
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? '' : date.toISOString();
+    }
+    function renderPeriodFilter() {
+        const box = document.getElementById('periodFilter');
+        box.classList.toggle('open', Boolean(activeFromUtc));
+        if (!activeFromUtc) { box.innerHTML = ''; return; }
+        const note = viewMode === 'groups' ? ' · в группах ошибок период не применяется' : '';
+        box.innerHTML = `${bfIcon('history', 'size-18')}<span>Период: с ${escapeHtml(formatDate(activeFromUtc))}${escapeHtml(note)}</span>
+            <button type="button" class="md-btn md-btn-text" onclick="resetPeriodFilter()">Сбросить период</button>`;
+    }
+    window.resetPeriodFilter = async function () {
+        activeFromUtc = '';
+        markFilterDirty();
+        syncFilterControls();
+        await reload();
+    };
 
     async function applySavedFilter(id) {
         const filter = readSavedFilters().find(item => item.id === id);
@@ -550,6 +587,7 @@
             if (activeLevel && viewMode === 'events') params.set('level', activeLevel);
             if (searchQuery) params.set('search', searchQuery);
             if (activeContext) params.set(activeContext.kind, activeContext.value);
+            if (activeFromUtc && viewMode === 'events') params.set('fromUtc', activeFromUtc);
 
             if (viewMode === 'groups') {
                 params.delete('count');
@@ -736,6 +774,7 @@
         localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(filters));
         renderSavedFilters();
     });
+    document.getElementById('copyFilterLinkBtn').addEventListener('click', copyFilterLink);
     document.getElementById('deploymentSelect').addEventListener('change', event => {
         document.getElementById('compareDeploymentBtn').disabled = event.target.value === '';
         document.getElementById('deploymentComparison').className = 'deployment-comparison';
@@ -867,16 +906,66 @@
         await BF.logout();
     });
 
+    // Ссылка на фильтры и восстановление из URL используют одни и те же параметры.
+    const LOG_CONTEXT_KINDS = ['correlationId', 'requestId', 'userId'];
+
+    function buildFilterQuery(state = { service: activeService, level: activeLevel, search: searchQuery, context: activeContext, viewMode, fromUtc: activeFromUtc }) {
+        const params = new URLSearchParams();
+        if (state.service) params.set('service', state.service);
+        if (state.viewMode === 'groups') params.set('view', 'groups');
+        else if (state.level) params.set('level', state.level);
+        if (state.search) params.set('search', state.search);
+        if (state.context?.kind && state.context?.value) params.set(state.context.kind, state.context.value);
+        if (state.fromUtc) params.set('from', state.fromUtc);
+        return params;
+    }
+
+    function parseFilterQuery(params) {
+        const contextKind = LOG_CONTEXT_KINDS.find(kind => params.get(kind));
+        const viewMode = params.get('view') === 'groups' ? 'groups' : 'events';
+        return {
+            service: params.get('service') || '',
+            level: viewMode === 'groups' ? 'Error' : (params.get('level') || ''),
+            search: params.get('search') || '',
+            context: contextKind ? { kind:contextKind, value:params.get(contextKind) } : null,
+            viewMode,
+            fromUtc: parseFromUtc(params.get('from'))
+        };
+    }
+
     function applyUrlFilters() {
-        const params = new URLSearchParams(window.location.search);
-        activeService = params.get('service') || '';
-        searchQuery = params.get('search') || '';
-        const contextKinds = ['correlationId', 'requestId', 'userId'];
-        const contextKind = contextKinds.find(kind => params.get(kind));
-        activeContext = contextKind ? { kind:contextKind, value:params.get(contextKind) } : null;
-        viewMode = params.get('view') === 'groups' ? 'groups' : 'events';
-        activeLevel = viewMode === 'groups' ? 'Error' : (params.get('level') || '');
+        const state = parseFilterQuery(new URLSearchParams(window.location.search));
+        activeService = state.service;
+        activeLevel = state.level;
+        searchQuery = state.search;
+        activeContext = state.context;
+        viewMode = state.viewMode;
+        activeFromUtc = state.fromUtc;
         syncFilterControls();
+    }
+
+    async function copyText(text) {
+        if (navigator.clipboard?.writeText) {
+            try { await navigator.clipboard.writeText(text); return true; } catch {}
+        }
+        // Контекст без secure context (http) не даёт navigator.clipboard — копируем через выделенный textarea.
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+        document.body.appendChild(area);
+        area.select();
+        let copied = false;
+        try { copied = document.execCommand('copy'); } catch {}
+        area.remove();
+        return copied;
+    }
+
+    async function copyFilterLink() {
+        const query = buildFilterQuery().toString();
+        const link = `${window.location.origin}/logs${query ? `?${query}` : ''}`;
+        if (await copyText(link)) BF.toast('Ссылка на фильтры скопирована', 'success');
+        else window.prompt('Скопируйте ссылку на фильтры', link);
     }
 
     (async function () {

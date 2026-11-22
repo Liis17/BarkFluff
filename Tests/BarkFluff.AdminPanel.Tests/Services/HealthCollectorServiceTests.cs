@@ -95,6 +95,7 @@ public class HealthCollectorServiceTests
         await (Task)collectMethod!.Invoke(collector, [CancellationToken.None])!;
 
         var snapshot = Assert.IsType<Barkfluff.AdminPanel.Models.Dtos.HealthSnapshot>(collector.GetSnapshot());
+        Assert.False(snapshot.SeqEnabled);
         var worker = Assert.Single(snapshot.Services, service => service.Name == "BarkFluff.CloudMessaging");
         Assert.Equal("cloud-messaging", worker.Container);
         Assert.Equal("running", worker.DockerState);
