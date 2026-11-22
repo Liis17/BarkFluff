@@ -65,6 +65,7 @@ public class Program
         builder.Services.AddSingleton<MetricsCacheDbContext>();
         builder.Services.AddSingleton<RemoteDockerDbContext>();
         builder.Services.AddSingleton<AuditDbContext>();
+        builder.Services.AddSingleton<DeployJobDbContext>();
 
         // Register Services
         builder.Services.AddSingleton<PendingAuthService>();
