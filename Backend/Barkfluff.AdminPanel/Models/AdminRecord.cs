@@ -22,6 +22,11 @@ public class AdminRecord
     [BsonField("updated_by")]
     public string? UpdatedBy { get; set; }
 
+    // BarkFluff-пользователь, на устройства которого уходит тестовая отправка push.
+    // Необязательное поле: записи, созданные до его появления, читаются как null.
+    [BsonField("barkfluff_user_id")]
+    public long? BarkFluffUserId { get; set; }
+
     public AdminRecord()
     {
         CreatedAt = DateTime.UtcNow;
