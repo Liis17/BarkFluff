@@ -462,6 +462,36 @@
     let sessionsExpanded = false;
     let badgeAddUserId = null;
     const PAGE_SIZE = 50;
+    const USER_STATUSES = ['all', 'blocked', 'pending_deletion', 'deleted'];
+    const MAX_RESTORED_PAGES = 20;
+    let openedUserId = null;
+
+    // URL выборки: q, status (all не пишется), page — число подгруженных порций, userId — открытая карточка.
+    function buildUsersUrlQuery({ query = '', status = 'all', pages = 1, userId = null } = {}) {
+        const params = new URLSearchParams();
+        if (query) params.set('q', query);
+        if (status !== 'all') params.set('status', status);
+        if (pages > 1) params.set('page', String(pages));
+        if (userId) params.set('userId', String(userId));
+        return params.toString();
+    }
+
+    function readUsersUrlState(search) {
+        const params = new URLSearchParams(search);
+        const linkedUserId = /^\d+$/.test(params.get('userId') || '') ? params.get('userId') : null;
+        const status = USER_STATUSES.includes(params.get('status')) ? params.get('status') : 'all';
+        const rawPage = params.get('page') || '';
+        const page = /^[1-9]\d*$/.test(rawPage) ? Math.min(Number(rawPage), MAX_RESTORED_PAGES) : 1;
+        // Ссылка /users?userId=N без q — поиск по id с открытием карточки, как раньше.
+        const query = (params.get('q') || '').trim() || linkedUserId || '';
+        return { query, status, page, userId: linkedUserId };
+    }
+
+    function syncUsersUrl() {
+        const pages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+        const search = buildUsersUrlQuery({ query: currentQuery, status: currentStatusFilter, pages, userId: openedUserId });
+        history.replaceState(null, '', `${window.location.pathname}${search ? `?${search}` : ''}`);
+    }
 
     function checkAuth() { return BF.requireAuth(); }
 
@@ -492,6 +522,7 @@
             users = reset ? data.users : users.concat(data.users);
             currentOffset += data.users.length;
             renderUsers();
+            syncUsersUrl();
         } catch (e) { /* ignore */ }
         finally { isLoading = false; document.getElementById('loadingMore').style.display = 'none'; }
     }
@@ -518,12 +549,16 @@
         `).join('');
     }
 
-    window.setUserStatusFilter = function (status) {
-        if (!['all', 'blocked', 'pending_deletion', 'deleted'].includes(status)) return;
-        currentStatusFilter = status;
+    function syncStatusChips() {
         document.querySelectorAll('#userStatusFilters [data-status]').forEach(button => {
-            button.classList.toggle('selected', button.dataset.status === status);
+            button.classList.toggle('selected', button.dataset.status === currentStatusFilter);
         });
+    }
+
+    window.setUserStatusFilter = function (status) {
+        if (!USER_STATUSES.includes(status)) return;
+        currentStatusFilter = status;
+        syncStatusChips();
         loadUsers(true);
     };
 
@@ -540,6 +575,8 @@
     window.openUserModal = async function (userId) {
         sessionsExpanded = false;
         closeBadgeAddModal();
+        openedUserId = String(userId);
+        syncUsersUrl();
         document.getElementById('userScrim').classList.add('open');
         document.getElementById('modalContent').innerHTML = '<div style="padding:48px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         try {
@@ -552,6 +589,8 @@
     window.closeUserModal = function () {
         document.getElementById('userScrim').classList.remove('open');
         currentUserData = null;
+        openedUserId = null;
+        syncUsersUrl();
     };
 
     function renderUserModal(data) {
@@ -1112,14 +1151,19 @@
         const auth = await checkAuth();
         if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
-        const linkedUserIdParam = new URLSearchParams(window.location.search).get('userId');
-        const linkedUserId = /^\d+$/.test(linkedUserIdParam || '') ? linkedUserIdParam : null;
-        if (linkedUserId) {
-            currentQuery = linkedUserId;
-            document.getElementById('searchInput').value = linkedUserId;
-        }
+        const initial = readUsersUrlState(window.location.search);
+        currentQuery = initial.query;
+        currentStatusFilter = initial.status;
+        document.getElementById('searchInput').value = initial.query;
+        syncStatusChips();
         await loadUsers(true);
-        if (linkedUserId) await openUserModal(linkedUserId);
+        // GET /api/users ограничивает size 50, поэтому восстанавливаем порции последовательно.
+        for (let loaded = 1; loaded < initial.page; loaded++) {
+            const before = users.length;
+            await loadUsers();
+            if (users.length === before) break;
+        }
+        if (initial.userId) await openUserModal(initial.userId);
         observer.observe(document.getElementById('sentinel'));
         BF.pageReady();
     })();

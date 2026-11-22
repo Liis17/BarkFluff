@@ -15,13 +15,26 @@ public static class AuditEndpoints
             .WithTags("Audit")
             .RequirePermission(AdminPermissions.AuditRead);
 
-        // GET /api/audit?limit=100&beforeUtc=... — последние записи (новые сверху)
+        // GET /api/audit?limit=100&beforeUtc=...&admin=&action=&outcome=&fromUtc=&toUtc= — записи новые сверху.
+        // Фильтры в AuditService применяются до limit; beforeUtc — курсор «Загрузить ещё» внутри той же выборки.
         group.MapGet("/", (
             AuditService auditService,
             int? limit,
-            DateTime? beforeUtc) =>
+            DateTime? beforeUtc,
+            string? admin,
+            string? action,
+            string? outcome,
+            DateTime? fromUtc,
+            DateTime? toUtc) =>
         {
-            var entries = auditService.GetEntries(Math.Clamp(limit ?? 100, 1, 500), beforeUtc);
+            var filter = new AuditEntryFilter(admin, action, outcome, fromUtc, toUtc);
+            var validationError = AuditService.ValidateFilter(filter);
+            if (validationError is not null)
+            {
+                return Results.BadRequest(new { error = validationError });
+            }
+
+            var entries = auditService.GetEntries(Math.Clamp(limit ?? 100, 1, 500), beforeUtc, filter);
 
             return Results.Ok(entries.Select(e => new
             {
@@ -37,5 +50,13 @@ public static class AuditEndpoints
             }));
         })
         .WithName("ListAuditEntries");
+
+        // GET /api/audit/facets — подсказки для фильтров: администраторы и действия из сохранённой истории
+        group.MapGet("/facets", (AuditService auditService) =>
+        {
+            var (admins, actions) = auditService.GetFacets();
+            return Results.Ok(new { admins, actions });
+        })
+        .WithName("GetAuditFacets");
     }
 }
