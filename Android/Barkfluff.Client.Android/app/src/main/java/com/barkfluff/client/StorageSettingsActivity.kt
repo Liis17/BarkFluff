@@ -70,12 +70,12 @@ class StorageSettingsActivity : AppCompatActivity() {
     )
 
     private val categories = listOf(
-        StorageCategory(R.string.storage_category_images, Color.parseColor("#3AA655"), setOf("MESSAGE_ATTACHMENT_IMAGE", "MESSAGE_ATTACHMENT_GIF"), R.drawable.ic_image_placeholder),
-        StorageCategory(R.string.storage_category_videos, Color.parseColor("#2F7DE1"), setOf("MESSAGE_ATTACHMENT_VIDEO"), R.drawable.ic_video),
-        StorageCategory(R.string.storage_category_audio, Color.parseColor("#F39C12"), setOf("MESSAGE_ATTACHMENT_AUDIO", "MESSAGE_ATTACHMENT_VOICE"), R.drawable.ic_file),
-        StorageCategory(R.string.storage_category_documents, Color.parseColor("#9B30C9"), setOf("MESSAGE_ATTACHMENT_DOCUMENT"), R.drawable.ic_file),
-        StorageCategory(R.string.storage_category_stickers, Color.parseColor("#16B8C4"), setOf("MESSAGE_ATTACHMENT_STICKER"), R.drawable.ic_sticker),
-        StorageCategory(R.string.storage_category_avatars, Color.parseColor("#5F7D8C"), setOf("USER_AVATAR", "CHAT_PICTURE"), R.drawable.ic_account)
+        StorageCategory(R.string.storage_category_images, Color.parseColor("#3AA655"), setOf("MESSAGE_ATTACHMENT_IMAGE", "MESSAGE_ATTACHMENT_GIF"), R.drawable.icon_image),
+        StorageCategory(R.string.storage_category_videos, Color.parseColor("#2F7DE1"), setOf("MESSAGE_ATTACHMENT_VIDEO"), R.drawable.icon_video),
+        StorageCategory(R.string.storage_category_audio, Color.parseColor("#F39C12"), setOf("MESSAGE_ATTACHMENT_AUDIO", "MESSAGE_ATTACHMENT_VOICE"), R.drawable.icon_document),
+        StorageCategory(R.string.storage_category_documents, Color.parseColor("#9B30C9"), setOf("MESSAGE_ATTACHMENT_DOCUMENT"), R.drawable.icon_document),
+        StorageCategory(R.string.storage_category_stickers, Color.parseColor("#16B8C4"), setOf("MESSAGE_ATTACHMENT_STICKER"), R.drawable.icon_sticker),
+        StorageCategory(R.string.storage_category_avatars, Color.parseColor("#5F7D8C"), setOf("USER_AVATAR", "CHAT_PICTURE"), R.drawable.icon_personal)
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {

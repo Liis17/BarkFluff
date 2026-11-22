@@ -15,7 +15,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="64dp"
-            app:navigationIcon="@drawable/ic_back"
+            app:navigationIcon="@drawable/icon_back"
             app:title="@string/language_settings_title"
             app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
             app:titleTextColor="@color/profile_settings_on_surface" />

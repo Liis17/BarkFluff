@@ -15,7 +15,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="64dp"
-            app:navigationIcon="@drawable/ic_back"
+            app:navigationIcon="@drawable/icon_back"
             app:title="@string/privacy_settings_title"
             app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
             app:titleTextColor="@color/profile_settings_on_surface" />
@@ -65,7 +65,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_web"
+                        android:src="@drawable/icon_web"
                         app:tint="@color/profile_settings_icon" />
 
                     <LinearLayout
@@ -117,7 +117,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_account"
+                        android:src="@drawable/icon_personal"
                         app:tint="@color/profile_settings_icon" />
 
                     <TextView
@@ -163,7 +163,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_edit"
+                        android:src="@drawable/icon_edit"
                         app:tint="@color/profile_settings_icon" />
 
                     <TextView
@@ -209,7 +209,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_mail"
+                        android:src="@drawable/icon_mail"
                         app:tint="@color/profile_settings_icon" />
 
                     <TextView
@@ -268,7 +268,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_search"
+                        android:src="@drawable/icon_search"
                         app:tint="@color/profile_settings_icon" />
 
                     <TextView
@@ -306,7 +306,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_check_circle"
+                        android:src="@drawable/icon_check_circle"
                         app:tint="@color/profile_settings_icon" />
 
                     <TextView

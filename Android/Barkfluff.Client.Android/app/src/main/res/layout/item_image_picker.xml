@@ -42,7 +42,7 @@
                 android:layout_gravity="center"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_play_arrow"
+                android:src="@drawable/icon_play"
                 android:visibility="gone"
                 app:tint="@android:color/white" />
 
@@ -114,7 +114,7 @@
                         android:layout_gravity="center"
                         android:contentDescription="@null"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_check"
+                        android:src="@drawable/icon_check"
                         android:visibility="gone"
                         app:tint="@android:color/white" />
 

@@ -77,12 +77,12 @@ fun MessageSearchContent(
         val attachmentsSelected = state.filters.attachmentPresence != SearchAttachmentPresence.Any || state.filters.attachmentTypes.isNotEmpty()
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            SearchFilterChip(state.filters.author != null, R.drawable.ic_person,
+            SearchFilterChip(state.filters.author != null, R.drawable.icon_personal,
                 state.filters.author?.name?.ifBlank { null } ?: stringResource(R.string.search_filter_author), onAuthorFilter)
-            SearchFilterChip(datesSelected, R.drawable.ic_calendar_month,
+            SearchFilterChip(datesSelected, R.drawable.icon_events,
                 if (datesSelected) stringResource(R.string.search_date_range, dates[0], dates[1]) else stringResource(R.string.search_filter_date),
                 onDateFilter)
-            SearchFilterChip(attachmentsSelected, R.drawable.ic_attachment, stringResource(R.string.search_filter_attachments), onAttachmentFilter)
+            SearchFilterChip(attachmentsSelected, R.drawable.icon_attach_file, stringResource(R.string.search_filter_attachments), onAttachmentFilter)
             if (state.filters.isActive) AssistChip(
                 onClick = onClearFilters,
                 modifier = Modifier.heightIn(min = 48.dp),
@@ -93,12 +93,12 @@ fun MessageSearchContent(
         Box(Modifier.fillMaxSize()) {
             SearchPhaseTransition(state.phase) { phase ->
                 when (phase) {
-                    SearchPhase.Idle, SearchPhase.TooShort -> SearchMessageState(R.drawable.ic_search,
+                    SearchPhase.Idle, SearchPhase.TooShort -> SearchMessageState(R.drawable.icon_search,
                         stringResource(R.string.search_messages_prompt), stringResource(R.string.search_messages_description))
                     SearchPhase.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { MorphLoadingIndicator(size = 56.dp) }
-                    SearchPhase.Error -> if (state.isUnavailable) SearchMessageState(R.drawable.ic_search,
+                    SearchPhase.Error -> if (state.isUnavailable) SearchMessageState(R.drawable.icon_search,
                         stringResource(R.string.search_messages_unavailable), stringResource(R.string.search_messages_unavailable_description)) else SearchErrorState(onRetry)
-                    SearchPhase.Empty -> SearchMessageState(R.drawable.ic_search,
+                    SearchPhase.Empty -> SearchMessageState(R.drawable.icon_search,
                         stringResource(R.string.search_nothing_found), stringResource(R.string.search_try_different))
                     SearchPhase.Results -> LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -129,7 +129,7 @@ private fun SearchFilterChip(selected: Boolean, icon: Int, label: String, onClic
         modifier = Modifier.heightIn(min = 48.dp),
         label = { Text(label) },
         leadingIcon = {
-            Icon(painterResource(if (selected) R.drawable.ic_check else icon), contentDescription = null,
+            Icon(painterResource(if (selected) R.drawable.icon_check else icon), contentDescription = null,
                 modifier = Modifier.size(FilterChipDefaults.IconSize))
         },
     )

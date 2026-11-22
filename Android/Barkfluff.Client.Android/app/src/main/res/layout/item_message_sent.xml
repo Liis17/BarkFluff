@@ -22,7 +22,7 @@
         android:layout_marginStart="-64dp"
         android:contentDescription="@string/cd_select_message"
         android:visibility="gone"
-        tools:src="@drawable/ic_action_select"
+        tools:src="@drawable/icon_select"
         tools:visibility="visible" />
 
     <LinearLayout

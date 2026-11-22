@@ -106,7 +106,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/welcome_chip_private"
-                    app:chipIcon="@drawable/ic_lock" />
+                    app:chipIcon="@drawable/icon_lock" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipOwnPack"
@@ -114,7 +114,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/welcome_chip_own_pack"
-                    app:chipIcon="@drawable/ic_pets" />
+                    app:chipIcon="@drawable/icon_pets" />
 
             </com.google.android.material.chip.ChipGroup>
 

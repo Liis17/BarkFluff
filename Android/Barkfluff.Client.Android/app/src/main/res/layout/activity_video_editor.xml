@@ -90,7 +90,7 @@
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:layout_gravity="center"
-                    android:src="@drawable/ic_check"
+                    android:src="@drawable/icon_check"
                     android:visibility="gone"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no" />
@@ -199,7 +199,7 @@
             android:minHeight="48dp"
             android:layout_marginStart="8dp"
             android:contentDescription="@string/cd_send"
-            app:icon="@drawable/ic_send_filled"
+            app:icon="@drawable/icon_send"
             app:iconTint="#FFFFFFFF" />
     </LinearLayout>
 

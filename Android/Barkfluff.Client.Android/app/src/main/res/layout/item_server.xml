@@ -39,7 +39,7 @@
                     android:layout_height="match_parent"
                     android:contentDescription="@null"
                     android:padding="12dp"
-                    android:src="@drawable/ic_storage"
+                    android:src="@drawable/icon_server"
                     app:tint="?attr/colorOnPrimaryContainer" />
 
             </com.google.android.material.card.MaterialCardView>
@@ -130,7 +130,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:visibility="gone"
-                app:chipIcon="@drawable/ic_location" />
+                app:chipIcon="@drawable/icon_location" />
 
         </com.google.android.material.chip.ChipGroup>
 
@@ -146,7 +146,7 @@
             android:textColor="?attr/colorOnPrimary"
             app:backgroundTint="?attr/colorPrimary"
             app:cornerRadius="@dimen/shape_corner_large_increased"
-            app:icon="@drawable/ic_arrow_forward"
+            app:icon="@drawable/icon_arrow_right"
             app:iconGravity="textEnd"
             app:iconPadding="10dp"
             app:iconTint="?attr/colorOnPrimary" />

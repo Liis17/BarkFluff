@@ -107,13 +107,13 @@ fun ChatSearchScreen(
                 SearchPhaseTransition(state.phase) { phase ->
                     when (phase) {
                         SearchPhase.Idle, SearchPhase.TooShort -> SearchMessageState(
-                            R.drawable.ic_search, stringResource(R.string.search_chats_prompt), stringResource(R.string.search_chats_description),
+                            R.drawable.icon_search, stringResource(R.string.search_chats_prompt), stringResource(R.string.search_chats_description),
                         )
                         SearchPhase.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             MorphLoadingIndicator(size = 56.dp)
                         }
                         SearchPhase.Empty -> SearchMessageState(
-                            R.drawable.ic_search, stringResource(R.string.search_nothing_found), stringResource(R.string.search_try_different),
+                            R.drawable.icon_search, stringResource(R.string.search_nothing_found), stringResource(R.string.search_try_different),
                         )
                         SearchPhase.Error -> SearchErrorState(onRetry)
                         SearchPhase.Results -> LazyColumn(
@@ -143,10 +143,10 @@ private fun ChatSearchResult(
 ) {
     val title = chat.title.ifBlank { stringResource(R.string.chat_title_default) }
     val (kind, kindIcon) = when (chat.chat.chatType) {
-        Shared.ChatType.CHAT_TYPE_PRIVATE -> R.string.search_chat_private to R.drawable.ic_lock
-        Shared.ChatType.CHAT_TYPE_SECRET -> R.string.search_chat_secret to R.drawable.ic_lock
-        else -> if (chat.chat.isGroupChat) R.string.search_chat_group to R.drawable.ic_group
-        else R.string.search_chat_direct to R.drawable.ic_person
+        Shared.ChatType.CHAT_TYPE_PRIVATE -> R.string.search_chat_private to R.drawable.icon_lock
+        Shared.ChatType.CHAT_TYPE_SECRET -> R.string.search_chat_secret to R.drawable.icon_lock
+        else -> if (chat.chat.isGroupChat) R.string.search_chat_group to R.drawable.icon_groups
+        else R.string.search_chat_direct to R.drawable.icon_personal
     }
     SearchGroupedItem(index = index, count = count, onClick = onClick, modifier = modifier) {
         ListItem(

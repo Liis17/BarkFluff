@@ -20,7 +20,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:navigationIcon="@drawable/ic_back"
+            app:navigationIcon="@drawable/icon_back"
             app:navigationIconTint="?attr/colorOnSurface"
             app:title="@string/search_title"
             app:titleTextAppearance="?attr/textAppearanceTitleLarge"
@@ -110,7 +110,7 @@
                 android:layout_height="64dp"
                 android:layout_gravity="center"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_search"
+                android:src="@drawable/icon_search"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </com.google.android.material.card.MaterialCardView>
@@ -161,7 +161,7 @@
                 android:layout_height="64dp"
                 android:layout_gravity="center"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_search"
+                android:src="@drawable/icon_search"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </com.google.android.material.card.MaterialCardView>

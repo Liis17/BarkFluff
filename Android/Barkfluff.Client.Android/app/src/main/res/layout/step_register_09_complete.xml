@@ -52,7 +52,7 @@
         android:paddingVertical="8dp"
         android:textAppearance="?attr/textAppearanceLabelMedium"
         android:textColor="@color/on_success_container"
-        app:drawableStartCompat="@drawable/ic_verified"
+        app:drawableStartCompat="@drawable/icon_verified"
         app:drawableTint="@color/on_success_container" />
 
     <!-- Loading indicator (shown during final setup) -->
@@ -71,6 +71,6 @@
         android:layout_height="@dimen/register_cta_height"
         android:layout_marginTop="32dp"
         android:text="@string/register_start_messaging"
-        app:icon="@drawable/ic_arrow_forward" />
+        app:icon="@drawable/icon_arrow_right" />
 
 </LinearLayout>

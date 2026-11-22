@@ -130,20 +130,20 @@ class DeviceAdapter(
                 isSamsungUltra(originalName) -> R.drawable.ic_samsung_ultra
 
                 // iPhone
-                originalName.contains("iphone") -> R.drawable.ic_iphone
+                originalName.contains("iphone") -> R.drawable.icon_default_iphone
 
                 // Tablet / iPad
                 os.contains("ipad") || os.contains("tablet") -> R.drawable.ic_tablet
                 combinedName.contains("tablet") || combinedName.contains("ipad") || combinedName.contains("планшет") -> R.drawable.ic_tablet
 
                 // Web-клиент
-                appName.contains("web") -> R.drawable.ic_web
+                appName.contains("web") -> R.drawable.icon_web
 
                 // Desktop / PC (ноутбук)
-                isDesktop(os, combinedName) -> R.drawable.ic_desktop
+                isDesktop(os, combinedName) -> R.drawable.icon_default_laptop
 
                 // Smartphone (по умолчанию)
-                else -> R.drawable.ic_smartphone
+                else -> R.drawable.icon_default_phone
             }
         }
 

@@ -99,7 +99,7 @@ class LegalConsentBottomSheet : BottomSheetDialogFragment() {
 
     private fun showDoc(position: Int) {
         binding.sheetTitle.setText(if (position == TAB_PRIVACY) R.string.legal_privacy_title else R.string.legal_sheet_title)
-        binding.documentIcon.setImageResource(if (position == TAB_PRIVACY) R.drawable.ic_security else R.drawable.ic_file)
+        binding.documentIcon.setImageResource(if (position == TAB_PRIVACY) R.drawable.icon_security else R.drawable.icon_document)
         val doc = if (position == TAB_PRIVACY) LegalDocsRepository.DOC_PRIVACY else LegalDocsRepository.DOC_TERMS
         val text = runCatching { LegalDocsRepository.load(requireContext(), doc) }
             .getOrElse { getString(R.string.legal_load_error) }

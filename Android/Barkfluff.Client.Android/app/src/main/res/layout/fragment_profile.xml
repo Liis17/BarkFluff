@@ -87,7 +87,7 @@
                             android:layout_height="40dp"
                             android:layout_gravity="center"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_person"
+                            android:src="@drawable/icon_personal"
                             app:tint="@color/profile_settings_on_primary_container" />
 
                     </FrameLayout>
@@ -159,7 +159,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_account"
+                            android:src="@drawable/icon_personal"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -207,7 +207,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_verified"
+                            android:src="@drawable/icon_verified"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -255,7 +255,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_security"
+                            android:src="@drawable/icon_security"
                             android:translationX="-2dp"
                             app:tint="@color/profile_settings_icon" />
 
@@ -304,7 +304,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_key"
+                            android:src="@drawable/icon_privacy"
                             android:translationX="1dp"
                             app:tint="@color/profile_settings_icon" />
 
@@ -353,7 +353,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_devices"
+                            android:src="@drawable/icon_active_sessions"
                             android:translationX="2dp"
                             app:tint="@color/profile_settings_icon" />
 
@@ -418,7 +418,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_palette"
+                            android:src="@drawable/icon_personalization"
                             android:translationX="-1dp"
                             app:tint="@color/profile_settings_icon" />
 
@@ -516,7 +516,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_folder_copy"
+                            android:src="@drawable/icon_chat_folders"
                             android:translationX="-1dp"
                             app:tint="@color/profile_settings_icon" />
 
@@ -581,7 +581,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_notifications"
+                            android:src="@drawable/icon_notifications"
                             android:translationX="-2dp"
                             app:tint="@color/profile_settings_icon" />
 
@@ -630,7 +630,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_language"
+                            android:src="@drawable/icon_language"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -686,7 +686,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_storage"
+                            android:src="@drawable/icon_storage_data"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -796,7 +796,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_system_update"
+                            android:src="@drawable/icon_update_available"
                             android:translationX="-3dp"
                             app:tint="@color/profile_settings_icon" />
 
@@ -869,7 +869,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_about"
+                            android:src="@drawable/icon_about_app"
                             app:tint="@color/profile_settings_icon" />
 
                         <TextView
@@ -917,7 +917,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_science"
+                            android:src="@drawable/icon_science"
                             android:translationX="-2dp"
                             app:tint="@color/profile_settings_icon" />
 
@@ -960,7 +960,7 @@
                 android:textStyle="bold"
                 app:backgroundTint="@color/profile_settings_error_container"
                 app:cornerRadius="28dp"
-                app:icon="@drawable/ic_logout"
+                app:icon="@drawable/icon_logout"
                 app:iconGravity="textStart"
                 app:iconPadding="16dp"
                 app:iconTint="@color/profile_settings_on_error_container"

@@ -92,7 +92,7 @@
                         android:textAllCaps="false"
                         android:textStyle="bold"
                         app:cornerRadius="26dp"
-                        app:icon="@drawable/ic_chat_bubble"
+                        app:icon="@drawable/icon_messages"
                         app:iconGravity="textStart"
                         app:iconPadding="8dp"
                         app:iconSize="24dp"
@@ -135,7 +135,7 @@
                         android:textAllCaps="false"
                         android:textStyle="bold"
                         app:cornerRadius="26dp"
-                        app:icon="@drawable/ic_phone"
+                        app:icon="@drawable/icon_calls"
                         app:iconGravity="textStart"
                         app:iconPadding="0dp"
                         app:iconSize="24dp"
@@ -161,7 +161,7 @@
                         android:textAllCaps="false"
                         android:textStyle="bold"
                         app:cornerRadius="26dp"
-                        app:icon="@drawable/ic_account"
+                        app:icon="@drawable/icon_personal"
                         app:iconGravity="textStart"
                         app:iconPadding="0dp"
                         app:iconSize="24dp"
@@ -195,7 +195,7 @@
             app:maxImageSize="26dp"
             app:rippleColor="?attr/colorPrimary"
             app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Barkfluff.FloatingNavFab"
-            app:srcCompat="@drawable/ic_edit_square"
+            app:srcCompat="@drawable/icon_edit"
             app:tint="?attr/colorOnPrimaryContainer" />
 
     </LinearLayout>

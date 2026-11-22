@@ -127,7 +127,7 @@ class VoiceDraftPreview(
         val position = player.currentPosition.coerceAtLeast(0L)
         val duration = player.duration.coerceAtLeast(0L)
         binding.voicePreviewPlay.setImageResource(
-            if (player.isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow,
+            if (player.isPlaying) R.drawable.icon_pause else R.drawable.icon_play,
         )
         binding.voicePreviewPlay.contentDescription = context.getString(if (player.isPlaying) R.string.cd_pause else R.string.cd_play)
         binding.voicePreviewDuration.text = context.getString(R.string.audio_position, time(position), time(duration))

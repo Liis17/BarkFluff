@@ -228,7 +228,7 @@ class CallTileView(context: Context) : FrameLayout(context) {
 
         // Чип микрофона
         val micOff = !spec.participant.micEnabled
-        micChip.setImageResource(if (micOff) R.drawable.ic_mic_off else R.drawable.ic_mic)
+        micChip.setImageResource(if (micOff) R.drawable.ic_mic_off else R.drawable.icon_voice)
         val chipTint = when {
             micOff -> mutedColor
             speaking -> speakingColor

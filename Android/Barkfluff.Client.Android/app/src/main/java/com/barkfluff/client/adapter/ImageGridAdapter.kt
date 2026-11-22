@@ -69,7 +69,7 @@ class ImageGridAdapter(
                 imageView = thumbnail,
                 fileId = previewFileId,
                 getUrlCallback = getUrl,
-                onError = { thumbnail.setImageResource(R.drawable.ic_image_placeholder) }
+                onError = { thumbnail.setImageResource(R.drawable.icon_image) }
             )
 
             // Обработка клика

@@ -3,4 +3,4 @@
     xmlns:tools="http://schemas.android.com/tools"
     style="@style/MessageActionItem"
     tools:text="Ответить"
-    tools:drawableStart="@drawable/ic_action_reply" />
+    tools:drawableStart="@drawable/icon_reply" />

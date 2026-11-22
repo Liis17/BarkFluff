@@ -58,7 +58,7 @@ class CallHistoryAdapter(
             )
 
             binding.callActionButton.setImageResource(
-                if (row.isVideo) R.drawable.ic_video else R.drawable.ic_phone
+                if (row.isVideo) R.drawable.icon_video else R.drawable.icon_calls
             )
             binding.callActionButton.contentDescription = binding.root.context.getString(
                 if (row.isVideo) R.string.cd_call_again_video else R.string.cd_call_again_audio

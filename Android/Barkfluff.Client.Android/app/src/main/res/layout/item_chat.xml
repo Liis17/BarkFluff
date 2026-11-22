@@ -69,7 +69,7 @@
                 android:background="@drawable/bg_private_lock_badge"
                 android:contentDescription="@string/private_chat_lock_description"
                 android:padding="3dp"
-                android:src="@drawable/ic_lock"
+                android:src="@drawable/icon_lock"
                 android:visibility="gone"
                 app:tint="?attr/colorOnPrimaryContainer" />
 

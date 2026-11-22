@@ -494,13 +494,13 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
                 M3ContextMenu.Item(
                     id = R.id.action_send_as_file,
                     title = getString(R.string.send_as_file),
-                    icon = R.drawable.ic_action_save,
+                    icon = R.drawable.icon_save,
                     checked = sendAsFile,
                 ),
                 M3ContextMenu.Item(
                     id = R.id.action_send_separately,
                     title = getString(R.string.send_separately),
-                    icon = R.drawable.ic_action_forward,
+                    icon = R.drawable.icon_forward,
                     checked = sendSeparately,
                 ),
             ),

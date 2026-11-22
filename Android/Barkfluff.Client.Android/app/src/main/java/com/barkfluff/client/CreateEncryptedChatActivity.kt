@@ -77,7 +77,7 @@ class CreateEncryptedChatActivity : AppCompatActivity() {
                 binding.initialMessageLayout.visibility = View.VISIBLE
                 binding.peerDeviceLabel.visibility = View.VISIBLE
                 binding.peerDeviceCard.visibility = View.VISIBLE
-                binding.modeIcon.setImageResource(R.drawable.ic_security)
+                binding.modeIcon.setImageResource(R.drawable.icon_security)
                 binding.modeTitle.text = getString(R.string.encrypted_chat_type_secret)
                 binding.modeDescription.text = getString(R.string.secret_chat_description)
             }

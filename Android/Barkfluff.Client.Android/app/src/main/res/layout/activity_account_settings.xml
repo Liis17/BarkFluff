@@ -16,7 +16,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:navigationIcon="@drawable/ic_back"
+            app:navigationIcon="@drawable/icon_back"
             app:title="@string/account_settings_title"
             app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
             app:titleTextColor="@color/profile_settings_on_surface" />
@@ -75,7 +75,7 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/account_change_photo"
                 android:textColor="@color/profile_settings_primary"
-                app:icon="@drawable/ic_camera"
+                app:icon="@drawable/icon_photography"
                 app:iconTint="@color/profile_settings_primary" />
 
             </LinearLayout>
@@ -243,7 +243,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/profile_btn_logout"
                 android:textColor="@color/profile_settings_on_error_container"
-                app:icon="@drawable/ic_logout"
+                app:icon="@drawable/icon_logout"
                 app:iconTint="@color/profile_settings_on_error_container"
                 app:backgroundTint="@color/profile_settings_error_container"
                 app:cornerRadius="28dp" />

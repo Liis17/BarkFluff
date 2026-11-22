@@ -20,7 +20,7 @@
         android:background="@drawable/bg_settings_tonal_circle"
         android:importantForAccessibility="no"
         android:padding="10dp"
-        android:src="@drawable/ic_smartphone"
+        android:src="@drawable/icon_default_phone"
         app:tint="@color/profile_settings_on_tonal_container" />
 
     <LinearLayout

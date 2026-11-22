@@ -36,7 +36,7 @@
                 android:layout_height="match_parent"
                 android:padding="12dp"
                 android:importantForAccessibility="no"
-                app:srcCompat="@drawable/ic_file"
+                app:srcCompat="@drawable/icon_document"
                 app:tint="?attr/colorOnPrimaryContainer" />
         </com.google.android.material.card.MaterialCardView>
 
@@ -171,7 +171,7 @@
                 android:textAppearance="?attr/textAppearanceTitleSmall"
                 android:visibility="gone"
                 app:cornerRadius="@dimen/shape_corner_full"
-                app:icon="@drawable/ic_arrow_forward"
+                app:icon="@drawable/icon_arrow_right"
                 app:iconGravity="textEnd" />
 
         </LinearLayout>

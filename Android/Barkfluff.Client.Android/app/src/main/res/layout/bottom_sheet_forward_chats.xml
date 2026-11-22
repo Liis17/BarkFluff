@@ -89,7 +89,7 @@
         android:enabled="false"
         android:text="@string/forward_btn"
         app:cornerRadius="24dp"
-        app:icon="@drawable/ic_send"
+        app:icon="@drawable/icon_send"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

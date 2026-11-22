@@ -1878,7 +1878,7 @@ class ChatActivity : AppCompatActivity() {
         binding.sendButton.isEnabled = !composer.isVoiceStaging && !composer.isSending && !composer.isRestoring && !composer.isRestoringAttachments
         sendButtonVoiceMode = shouldShowVoiceButton()
         binding.sendButton.setImageResource(
-            if (sendButtonVoiceMode) R.drawable.ic_mic else R.drawable.ic_send_filled
+            if (sendButtonVoiceMode) R.drawable.icon_voice else R.drawable.icon_send
         )
         binding.sendButton.contentDescription = getString(
             if (sendButtonVoiceMode) R.string.cd_record_voice else R.string.cd_send
@@ -2076,14 +2076,14 @@ class ChatActivity : AppCompatActivity() {
             state.durationMillis / 60_000L, state.durationMillis / 1_000L % 60)
         binding.voiceRecordHint.setText(if (state.cancelPending) R.string.voice_record_release_to_cancel else R.string.voice_record_gesture_hint)
         binding.voiceRecordPause.setImageResource(if (state.mode == VoiceRecordingMode.PAUSED)
-            R.drawable.ic_play_arrow else R.drawable.ic_pause)
+            R.drawable.icon_play else R.drawable.icon_pause)
         binding.voiceRecordPause.contentDescription = getString(if (state.mode == VoiceRecordingMode.PAUSED)
             R.string.voice_record_resume else R.string.voice_record_pause)
         ViewCompat.setStateDescription(binding.voiceRecordBar, getString(if (state.mode == VoiceRecordingMode.PAUSED)
             R.string.voice_record_paused else if (locked) R.string.voice_record_locked else R.string.cd_record_voice))
         binding.clearReplyButton.isEnabled = !state.isActive
         if (state.isActive) {
-            binding.sendButton.setImageResource(if (locked) R.drawable.ic_voice_lock else R.drawable.ic_mic)
+            binding.sendButton.setImageResource(if (locked) R.drawable.ic_voice_lock else R.drawable.icon_voice)
             tintSendButton(if (state.cancelPending) androidx.appcompat.R.attr.colorError else com.google.android.material.R.attr.colorOnPrimaryContainer)
         } else {
             voiceTimerJob?.cancel()
@@ -2683,7 +2683,7 @@ class ChatActivity : AppCompatActivity() {
                 if (outgoingState == com.barkfluff.client.cache.OutgoingMessageState.FAILED) {
                     add(MessageActionsOverlay.Action(
                         MessageActionId.OUTGOING_RETRY,
-                        R.drawable.ic_refresh,
+                        R.drawable.icon_refresh,
                         getString(R.string.search_retry)
                     ))
                 }
@@ -2729,21 +2729,21 @@ class ChatActivity : AppCompatActivity() {
 
         // Частые действия — иконками на панели под списком, остальные — списком.
         val barActions = buildList {
-            add(MessageActionsOverlay.Action(MessageActionId.REPLY, R.drawable.ic_action_reply, getString(R.string.msg_action_reply)))
+            add(MessageActionsOverlay.Action(MessageActionId.REPLY, R.drawable.icon_reply, getString(R.string.msg_action_reply)))
             if (hasText) {
-                add(MessageActionsOverlay.Action(MessageActionId.COPY_TEXT, R.drawable.ic_action_copy_text, getString(R.string.msg_action_copy_text)))
+                add(MessageActionsOverlay.Action(MessageActionId.COPY_TEXT, R.drawable.icon_copy_plain, getString(R.string.msg_action_copy_text)))
             }
             if (imageAtts.size == 1) {
-                add(MessageActionsOverlay.Action(MessageActionId.COPY_IMAGE, R.drawable.ic_action_copy_image, getString(R.string.msg_action_copy_image)))
+                add(MessageActionsOverlay.Action(MessageActionId.COPY_IMAGE, R.drawable.icon_copy_image, getString(R.string.msg_action_copy_image)))
             }
             if (isOwnMessage) {
-                add(MessageActionsOverlay.Action(MessageActionId.EDIT, R.drawable.ic_action_edit, getString(R.string.msg_action_edit)))
+                add(MessageActionsOverlay.Action(MessageActionId.EDIT, R.drawable.icon_edit, getString(R.string.msg_action_edit)))
             }
-            add(MessageActionsOverlay.Action(MessageActionId.PROPERTIES, R.drawable.ic_action_properties, getString(R.string.msg_action_properties)))
+            add(MessageActionsOverlay.Action(MessageActionId.PROPERTIES, R.drawable.icon_properties, getString(R.string.msg_action_properties)))
         }
         val actions = buildList {
             if (hasText) {
-                add(MessageActionsOverlay.Action(MessageActionId.COPY_MARKDOWN, R.drawable.ic_action_copy_markdown, getString(R.string.msg_action_copy_markdown)))
+                add(MessageActionsOverlay.Action(MessageActionId.COPY_MARKDOWN, R.drawable.icon_copy_markdown, getString(R.string.msg_action_copy_markdown)))
             }
             if (imageAtts.isNotEmpty()) {
                 add(MessageActionsOverlay.Action(
@@ -2752,25 +2752,25 @@ class ChatActivity : AppCompatActivity() {
                 ))
             }
             if (docAtts.isNotEmpty()) {
-                add(MessageActionsOverlay.Action(MessageActionId.SAVE_DOCS, R.drawable.ic_action_download, getString(R.string.msg_action_save_to_downloads)))
+                add(MessageActionsOverlay.Action(MessageActionId.SAVE_DOCS, R.drawable.icon_download, getString(R.string.msg_action_save_to_downloads)))
             }
             if (audioAtts.isNotEmpty()) {
-                add(MessageActionsOverlay.Action(MessageActionId.SAVE_AUDIO, R.drawable.ic_action_save, getString(R.string.audio_save)))
+                add(MessageActionsOverlay.Action(MessageActionId.SAVE_AUDIO, R.drawable.icon_save, getString(R.string.audio_save)))
             }
             if (cachedAudioAtts.isNotEmpty()) {
                 add(MessageActionsOverlay.Action(
-                    MessageActionId.REMOVE_AUDIO_CACHE, R.drawable.ic_action_delete, getString(R.string.file_remove_from_cache),
+                    MessageActionId.REMOVE_AUDIO_CACHE, R.drawable.icon_delete, getString(R.string.file_remove_from_cache),
                 ))
             }
-            add(MessageActionsOverlay.Action(MessageActionId.FORWARD, R.drawable.ic_action_forward, getString(R.string.msg_action_forward)))
+            add(MessageActionsOverlay.Action(MessageActionId.FORWARD, R.drawable.icon_forward, getString(R.string.msg_action_forward)))
             add(MessageActionsOverlay.Action(
                 MessageActionId.PIN,
-                if (isPinned) R.drawable.ic_action_unpin else R.drawable.ic_action_pin,
+                if (isPinned) R.drawable.icon_unpin else R.drawable.icon_pin,
                 getString(if (isPinned) R.string.message_unpin else R.string.message_pin)
             ))
-            add(MessageActionsOverlay.Action(MessageActionId.SELECT, R.drawable.ic_action_select, getString(R.string.msg_action_select)))
+            add(MessageActionsOverlay.Action(MessageActionId.SELECT, R.drawable.icon_select, getString(R.string.msg_action_select)))
             if (isOwnMessage) {
-                add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.ic_action_delete, getString(R.string.msg_action_delete), danger = true))
+                add(MessageActionsOverlay.Action(MessageActionId.DELETE, R.drawable.icon_delete, getString(R.string.msg_action_delete), danger = true))
             }
         }
 
@@ -3420,7 +3420,7 @@ class ChatActivity : AppCompatActivity() {
             items = listOf(M3ContextMenu.Item(
                 id = 1,
                 title = muteTitle,
-                icon = if (isChatMuted) R.drawable.ic_notifications else R.drawable.ic_notifications_off,
+                icon = if (isChatMuted) R.drawable.icon_notifications else R.drawable.icon_mute_chat,
             )),
             alignEnd = true,
             onItemSelected = { toggleChatMute() },

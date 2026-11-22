@@ -30,7 +30,7 @@ class ReplySwipeCallback(
     private val triggerDistancePx: Float = 64f * context.resources.displayMetrics.density
     private val maxDragPx: Float = 96f * context.resources.displayMetrics.density
 
-    private val replyIcon: Drawable? = ContextCompat.getDrawable(context, R.drawable.ic_reply)?.mutate()?.apply {
+    private val replyIcon: Drawable? = ContextCompat.getDrawable(context, R.drawable.icon_reply)?.mutate()?.apply {
         val tv = android.util.TypedValue()
         context.theme.resolveAttribute(androidx.appcompat.R.attr.colorPrimary, tv, true)
         colorFilter = PorterDuffColorFilter(tv.data, PorterDuff.Mode.SRC_IN)

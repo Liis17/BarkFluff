@@ -186,7 +186,7 @@
                     android:textSize="15sp"
                     app:backgroundTint="@color/profile_accent"
                     app:cornerRadius="16dp"
-                    app:icon="@drawable/ic_chat_bubble"
+                    app:icon="@drawable/icon_messages"
                     app:iconGravity="textStart"
                     app:iconTint="@color/profile_on_accent" />
 
@@ -205,7 +205,7 @@
                         android:layout_gravity="center"
                         android:contentDescription="@null"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_phone"
+                        android:src="@drawable/icon_calls"
                         app:tint="@color/profile_accent" />
                 </FrameLayout>
 
@@ -229,7 +229,7 @@
                 android:layout_marginStart="12dp"
                 android:background="@drawable/bg_circle_surface"
                 android:contentDescription="@string/cd_back"
-                android:src="@drawable/ic_arrow_back"
+                android:src="@drawable/icon_back"
                 app:tint="@android:color/white"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintStart_toStartOf="parent" />
@@ -244,7 +244,7 @@
                 android:layout_marginEnd="12dp"
                 android:background="@drawable/bg_circle_surface"
                 android:contentDescription="@string/cd_more_menu"
-                android:src="@drawable/ic_more_vert"
+                android:src="@drawable/icon_more"
                 android:visibility="gone"
                 app:tint="@android:color/white"
                 app:layout_constraintTop_toTopOf="parent"
@@ -459,7 +459,7 @@
                     android:layout_marginHorizontal="20dp"
                     android:layout_marginBottom="8dp"
                     android:hint="@string/profile_files_search_hint"
-                    app:startIconDrawable="@drawable/ic_search">
+                    app:startIconDrawable="@drawable/icon_search">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/fileSearchEditText"

@@ -103,7 +103,7 @@
             android:foreground="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/cd_back"
             android:padding="12dp"
-            android:src="@drawable/ic_arrow_back"
+            android:src="@drawable/icon_back"
             app:tint="?attr/colorOnSurface" />
 
         <!-- Аватар + имя + статус: тап открывает профиль собеседника или карточку группы -->
@@ -219,7 +219,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_audio_call"
                 android:padding="11dp"
-                android:src="@drawable/ic_phone"
+                android:src="@drawable/icon_calls"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <ImageButton
@@ -230,7 +230,7 @@
                 android:contentDescription="@string/cd_more_menu"
                 android:padding="11dp"
                 android:rotation="90"
-                android:src="@drawable/ic_more_vert"
+                android:src="@drawable/icon_more"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </LinearLayout>
@@ -285,7 +285,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/msg_action_copy_text"
             android:padding="11dp"
-            android:src="@drawable/ic_action_copy_text"
+            android:src="@drawable/icon_copy_plain"
             app:tint="?attr/colorOnSurfaceVariant" />
 
         <ImageButton
@@ -295,7 +295,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/msg_action_forward"
             android:padding="11dp"
-            android:src="@drawable/ic_action_forward"
+            android:src="@drawable/icon_forward"
             app:tint="?attr/colorOnSurfaceVariant" />
 
         <ImageButton
@@ -305,7 +305,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/msg_action_delete"
             android:padding="11dp"
-            android:src="@drawable/ic_action_delete"
+            android:src="@drawable/icon_delete"
             app:tint="?attr/colorError" />
 
     </LinearLayout>
@@ -362,7 +362,7 @@
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:layout_marginEnd="10dp"
-                android:src="@drawable/ic_pin"
+                android:src="@drawable/icon_pin"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
                 app:tint="?attr/colorPrimary" />
@@ -402,7 +402,7 @@
                 android:minHeight="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_all_pinned"
-                android:src="@drawable/ic_menu_hamburger"
+                android:src="@drawable/icon_menu"
                 app:tint="?attr/colorOnSurface" />
 
         </LinearLayout>
@@ -435,7 +435,7 @@
         android:visibility="gone"
         android:elevation="6dp"
         app:fabSize="mini"
-        app:srcCompat="@drawable/ic_arrow_down"
+        app:srcCompat="@drawable/icon_arrow_down"
         app:layout_constraintBottom_toTopOf="@id/replyPreviewBar"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -473,7 +473,7 @@
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:layout_marginEnd="8dp"
-                android:src="@drawable/ic_edit"
+                android:src="@drawable/icon_edit"
                 app:tint="?attr/colorPrimary"
                 android:contentDescription="@null" />
 
@@ -637,7 +637,7 @@
             <ImageView
                 android:layout_width="22dp"
                 android:layout_height="22dp"
-                android:src="@drawable/ic_attachment"
+                android:src="@drawable/icon_attach_file"
                 android:rotation="45"
                 app:tint="?attr/colorOnSurfaceVariant"
                 android:contentDescription="@null" />
@@ -701,7 +701,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/cd_attach_file"
             android:padding="13dp"
-            android:src="@drawable/ic_attachment_composer"
+            android:src="@drawable/icon_attach_file"
             app:tint="?attr/colorOnSurfaceVariant" />
 
         <EditText
@@ -729,7 +729,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/cd_stickers"
             android:padding="13dp"
-            android:src="@drawable/ic_sticker"
+            android:src="@drawable/icon_sticker"
             app:tint="?attr/colorOnSurfaceVariant" />
 
     </LinearLayout>
@@ -784,13 +784,13 @@
 
         <ImageButton android:id="@+id/voiceRecordDelete" android:layout_width="48dp" android:layout_height="48dp"
             android:visibility="gone" android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
-            android:contentDescription="@string/cd_voice_discard" android:src="@drawable/ic_delete" app:tint="?attr/colorOnSurfaceVariant" />
+            android:contentDescription="@string/cd_voice_discard" android:src="@drawable/icon_delete" app:tint="?attr/colorOnSurfaceVariant" />
         <ImageButton android:id="@+id/voiceRecordPause" android:layout_width="48dp" android:layout_height="48dp"
             android:visibility="gone" android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
-            android:contentDescription="@string/voice_record_pause" android:src="@drawable/ic_pause" app:tint="?attr/colorPrimary" />
+            android:contentDescription="@string/voice_record_pause" android:src="@drawable/icon_pause" app:tint="?attr/colorPrimary" />
         <ImageButton android:id="@+id/voiceRecordStop" android:layout_width="48dp" android:layout_height="48dp"
             android:visibility="gone" android:background="?attr/selectableItemBackgroundBorderless" android:padding="12dp"
-            android:contentDescription="@string/voice_record_stop" android:src="@drawable/ic_voice_stop" app:tint="?attr/colorPrimary" />
+            android:contentDescription="@string/voice_record_stop" android:src="@drawable/icon_stop" app:tint="?attr/colorPrimary" />
 
     </LinearLayout>
 
@@ -806,7 +806,7 @@
         android:elevation="4dp"
         android:foreground="?attr/selectableItemBackgroundBorderless"
         android:padding="14dp"
-        android:src="@drawable/ic_send_filled"
+        android:src="@drawable/icon_send"
         app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
         app:layout_constraintEnd_toEndOf="parent" />
 

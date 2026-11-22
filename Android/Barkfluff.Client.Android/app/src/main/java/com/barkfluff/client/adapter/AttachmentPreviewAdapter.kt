@@ -134,7 +134,7 @@ class AttachmentPreviewAdapter(
             val attachment = item.attachment
             val isVideo = attachment.type == Shared.MessageAttachmentType.VIDEO
             binding.previewImageView.visibility = View.VISIBLE
-            binding.previewImageView.setImageResource(R.drawable.ic_image_placeholder)
+            binding.previewImageView.setImageResource(R.drawable.icon_image)
             binding.fileIconContainer.visibility = View.GONE
             binding.videoIndicator.visibility = if (isVideo) View.VISIBLE else View.GONE
             binding.galleryDownloadIcon.visibility = View.VISIBLE
@@ -281,9 +281,9 @@ class AttachmentPreviewAdapter(
                 binding.playButton.isEnabled = !downloading
                 binding.playIcon.visibility = if (downloading) View.INVISIBLE else View.VISIBLE
                 binding.playIcon.setImageResource(when {
-                    playing -> R.drawable.ic_pause
-                    active || cached -> R.drawable.ic_play_arrow
-                    else -> R.drawable.ic_download
+                    playing -> R.drawable.icon_pause
+                    active || cached -> R.drawable.icon_play
+                    else -> R.drawable.icon_download
                 })
                 binding.playButton.contentDescription = context.getString(when {
                     playing -> R.string.cd_pause

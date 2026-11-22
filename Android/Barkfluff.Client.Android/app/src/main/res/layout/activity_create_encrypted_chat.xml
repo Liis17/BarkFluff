@@ -133,7 +133,7 @@
                     android:layout_height="48dp"
                     android:layout_weight="1"
                     android:text="@string/encrypted_chat_type_secret"
-                    app:icon="@drawable/ic_security"
+                    app:icon="@drawable/icon_security"
                     app:iconGravity="textStart"
                     app:iconSize="18dp" />
 
@@ -160,7 +160,7 @@
                 app:boxCornerRadiusBottomStart="16dp"
                 app:boxCornerRadiusTopEnd="16dp"
                 app:boxCornerRadiusTopStart="16dp"
-                app:startIconDrawable="@drawable/ic_person">
+                app:startIconDrawable="@drawable/icon_personal">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/peerIdEditText"
@@ -263,7 +263,7 @@
                 android:text="@string/encrypted_chat_create"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 app:cornerRadius="28dp"
-                app:icon="@drawable/ic_chat_bubble"
+                app:icon="@drawable/icon_messages"
                 app:iconGravity="textStart" />
 
             <com.google.android.material.loadingindicator.LoadingIndicator

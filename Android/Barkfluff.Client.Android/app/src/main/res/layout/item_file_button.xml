@@ -31,7 +31,7 @@
                 android:layout_height="32dp"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_file"
+                android:src="@drawable/icon_document"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <TextView
