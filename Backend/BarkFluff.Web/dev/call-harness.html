@@ -34,6 +34,7 @@
 
 </style>
 <!-- Настоящие стили экрана звонка, без копии. -->
+<link rel="stylesheet" href="../wwwroot/css/icons.css">
 <link rel="stylesheet" href="../wwwroot/css/messenger.css">
 </head>
 <body>
@@ -70,8 +71,8 @@
       <div class="call-ring-name" id="callRingName">Входящий звонок</div>
       <div class="call-ring-sub" id="callRingSub"></div>
       <div class="call-ring-actions">
-        <button class="call-round-btn call-btn-reject" id="callRingReject" title="Отклонить">✕</button>
-        <button class="call-round-btn call-btn-accept" id="callRingAccept" title="Принять">✓</button>
+        <button class="call-round-btn call-btn-reject" id="callRingReject" title="Отклонить"><span class="bf-icon" data-bf-icon="call-reject" aria-hidden="true"></span></button>
+        <button class="call-round-btn call-btn-accept" id="callRingAccept" title="Принять"><span class="bf-icon" data-bf-icon="calls" aria-hidden="true"></span></button>
       </div>
     </div>
   </div>
@@ -427,6 +428,7 @@
   });
 })();
 </script>
+<script src="../wwwroot/js/app/icons.js" data-icon-root="../../../Icons/"></script>
 <script src="../wwwroot/js/app/calls-ui.js"></script>
 </body>
 </html>

@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Администраторы</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .admins-table { width: 100%; border-collapse: collapse; }
         .admins-table th {
@@ -80,10 +81,10 @@
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
                 <button id="add-admin-btn" class="md-btn md-btn-filled md-btn-square-press">
-                    <span class="msr size-18">person_add</span>Добавить администратора
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/share-contact.svg);" aria-hidden="true"></span>Добавить администратора
                 </button>
-                <button id="refresh-btn" class="md-icon-btn" title="Обновить"><span class="msr">refresh</span></button>
-                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+                <button id="refresh-btn" class="md-icon-btn" title="Обновить"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/refresh.svg);" aria-hidden="true"></span></button>
+                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span></button>
             </div>
         </header>
 
@@ -118,7 +119,7 @@
     <div class="md-dialog" role="dialog" aria-modal="true" aria-labelledby="inviteModalTitle">
         <div class="md-dialog-header">
             <h3 id="inviteModalTitle">Добавить администратора</h3>
-            <button id="invite-header-close" class="md-icon-btn" title="Закрыть" onclick="closeInviteModal()"><span class="msr">close</span></button>
+            <button id="invite-header-close" class="md-icon-btn" title="Закрыть" onclick="closeInviteModal()"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <form onsubmit="submitInvitation(event)">
             <div class="md-dialog-body">
@@ -143,10 +144,10 @@
                     <p style="margin:0 0 12px;color:var(--md-on-surface);">Передайте эту ссылку приглашённому администратору:</p>
                     <div class="invite-link-wrap">
                         <input type="text" id="inviteLink" readonly class="md-input-outlined" aria-label="Ссылка приглашения">
-                        <button type="button" id="copyInviteBtn" class="md-btn md-btn-tonal"><span class="msr size-18">content_copy</span>Копировать</button>
+                        <button type="button" id="copyInviteBtn" class="md-btn md-btn-tonal"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/copy-plain.svg);" aria-hidden="true"></span>Копировать</button>
                     </div>
                     <div id="inviteStatus" class="invite-status pending" style="margin-top:16px;">
-                        <span class="msr size-20" id="inviteStatusIcon">schedule</span>
+                        <span class="bf-icon size-20" id="inviteStatusIcon" style="--bf-icon-url:url(/assets/icons/scheduled.svg);" aria-hidden="true"></span>
                         <span id="inviteStatusText">Ожидание перехода и подтверждения в Telegram…</span>
                     </div>
                     <p id="inviteExpires" class="invite-help" style="margin:10px 0 0;"></p>
@@ -155,7 +156,7 @@
             <div class="md-dialog-actions">
                 <button type="button" id="inviteCancelBtn" class="md-btn md-btn-text" onclick="closeInviteModal()">Закрыть</button>
                 <button type="submit" id="createInviteBtn" class="md-btn md-btn-filled md-btn-square-press">
-                    <span class="msr size-18">link</span>Создать ссылку
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/link.svg);" aria-hidden="true"></span>Создать ссылку
                 </button>
             </div>
         </form>
@@ -163,9 +164,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     const ALL_ROLES = ['Support', 'ContentAdmin', 'OperationsAdmin', 'SecurityAdmin'];
     let admins = [];
@@ -222,7 +223,7 @@
             const safeId = escapeHtml(id);
             const draft = draftRoles[id] || new Set();
             const roles = admin.isOwner
-                ? '<span class="role-chip locked"><span class="msr size-16">lock</span>Owner</span>'
+                ? '<span class="role-chip locked"><span class="bf-icon size-16" style="--bf-icon-url:url(/assets/icons/lock.svg);" aria-hidden="true"></span>Owner</span>'
                 : ALL_ROLES.map(role => {
                     const on = draft.has(role);
                     return `<button type="button" class="role-chip ${on ? 'on' : ''}" onclick="toggleRole('${safeId}', '${role}')">${role}</button>`;
@@ -232,12 +233,12 @@
                 : '';
             const changed = hasDraftChanges(admin);
             const saveBtn = changed
-                ? `<button class="md-btn md-btn-filled md-btn-square-press" onclick="saveRoles('${safeId}')"><span class="msr size-18">save</span> Сохранить</button>
+                ? `<button class="md-btn md-btn-filled md-btn-square-press" onclick="saveRoles('${safeId}')"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/save.svg);" aria-hidden="true"></span> Сохранить</button>
                    <button class="md-btn md-btn-text" onclick="resetRoles('${safeId}')">Сбросить</button>`
                 : '';
             const deleteBtn = admin.isOwner
                 ? ''
-                : `<button class="md-icon-btn" style="color:var(--md-error);" title="Удалить администратора" onclick="deleteAdmin('${safeId}')"><span class="msr size-20">delete</span></button>`;
+                : `<button class="md-icon-btn" style="color:var(--md-error);" title="Удалить администратора" onclick="deleteAdmin('${safeId}')"><span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/delete.svg);" aria-hidden="true"></span></button>`;
             return `
             <tr>
                 <td>
@@ -344,14 +345,14 @@
         const icon = document.getElementById('inviteStatusIcon');
         const text = document.getElementById('inviteStatusText');
         const labels = {
-            pending: ['pending', 'schedule', 'Ожидание перехода и подтверждения в Telegram…'],
-            accepted: ['success', 'check_circle', 'Приглашение принято. Администратор добавлен с ролью Viewer.'],
-            rejected: ['error', 'cancel', 'Приглашение отклонено пользователем.'],
-            expired: ['error', 'timer_off', 'Срок действия приглашения истёк.']
+            pending: ['pending', 'scheduled', 'Ожидание перехода и подтверждения в Telegram…'],
+            accepted: ['success', 'check-circle', 'Приглашение принято. Администратор добавлен с ролью Viewer.'],
+            rejected: ['error', 'close', 'Приглашение отклонено пользователем.'],
+            expired: ['error', 'history', 'Срок действия приглашения истёк.']
         };
         const value = labels[status] || labels.pending;
         statusEl.className = `invite-status ${value[0]}`;
-        icon.textContent = value[1];
+        bfSetIcon(icon, value[1]);
         text.textContent = value[2];
     }
 

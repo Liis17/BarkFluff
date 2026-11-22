@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Юзеры</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .users-list { display: flex; flex-direction: column; gap: 6px; }
         .user-row {
@@ -191,7 +192,7 @@
             transform: scale(.9);
             transition: opacity 160ms ease-out, transform 160ms ease-out, background 160ms ease-out;
         }
-        .badge-tile-remove .msr { font-size: 16px; }
+        .badge-tile-remove .bf-icon { font-size: 16px; }
         @media (hover: hover) and (pointer: fine) {
             .badge-tile-add:hover { background: var(--md-primary-container); border-color: var(--md-primary); }
             .badge-tile:hover .badge-tile-remove,
@@ -350,15 +351,15 @@
             <h1>Юзеры</h1>
             <div style="display:flex;gap:8px;align-items:center;">
                 <div class="md-search" style="width:320px;">
-                    <span class="msr">search</span>
+                    <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/search.svg);" aria-hidden="true"></span>
                     <input id="searchInput" type="text" placeholder="Поиск по username или ID...">
                 </div>
                 <button class="md-btn md-btn-tonal md-btn-square-press" onclick="openReservedNamesModal()">
-                    <span class="msr size-18">shield</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/security.svg);" aria-hidden="true"></span>
                     Зарезервированные
                 </button>
                 <button id="logoutBtn" class="md-icon-btn" title="Выйти">
-                    <span class="msr">logout</span>
+                    <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span>
                 </button>
             </div>
         </header>
@@ -371,7 +372,7 @@
             </div>
             <div class="users-list" id="usersList"></div>
             <div id="emptyState" class="md-empty" style="display:none;">
-                <span class="msr size-48">group_off</span>
+                <span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/users.svg);" aria-hidden="true"></span>
                 <h3>Пользователи не найдены</h3>
                 <p>Попробуйте изменить параметры поиска.</p>
             </div>
@@ -389,7 +390,7 @@
     <div class="md-dialog user-dialog">
         <div class="md-dialog-header" style="border-bottom:1px solid var(--md-outline-variant);background:var(--md-surface-container-high);">
             <h3 id="modalUserTitle">Пользователь</h3>
-            <button class="md-icon-btn" onclick="closeUserModal()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeUserModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body" id="modalContent" style="padding:0;"></div>
     </div>
@@ -400,7 +401,7 @@
     <div class="md-dialog badge-add-dialog">
         <div class="md-dialog-header">
             <h3>Добавить бейдж</h3>
-            <button class="md-icon-btn" onclick="closeBadgeAddModal()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeBadgeAddModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body">
             <label class="field-label" for="badgeAddSelect">Бейдж</label>
@@ -420,7 +421,7 @@
     <div class="md-dialog">
         <div class="md-dialog-header">
             <h3>Устройство</h3>
-            <button class="md-icon-btn" onclick="closeDeviceModal()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeDeviceModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body" id="deviceModalContent"></div>
     </div>
@@ -431,7 +432,7 @@
     <div class="md-dialog">
         <div class="md-dialog-header">
             <h3>Зарезервированные юзернеймы</h3>
-            <button class="md-icon-btn" onclick="closeReservedNamesModal()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeReservedNamesModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body" id="reservedNamesList" style="max-height:400px;overflow-y:auto;"></div>
         <div class="md-dialog-actions" style="gap:8px;">
@@ -444,9 +445,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=7"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     let users = [];
     let totalCount = 0;
@@ -589,7 +590,7 @@
             .map(([section]) => unavailableLabels[section] || section);
         const availabilityWarning = unavailable.length
             ? `<div class="user-data-warning" role="status">
-                    <span class="msr size-20">warning</span>
+                    <span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/warning.svg);" aria-hidden="true"></span>
                     <span>Часть данных временно недоступна: ${unavailable.map(escapeHtml).join(', ')}. Остальные сведения актуальны.</span>
                </div>`
             : '';
@@ -614,14 +615,14 @@
             <div class="user-modal-cover" onclick="document.getElementById('posterFileInput').click()">
                 ${p.profilePosterUrl
                     ? `<img src="${escapeHtml(p.profilePosterUrl)}" alt="Постер профиля">`
-                    : `<span class="msr size-48" style="opacity:.55;">image</span>`}
-                <div class="overlay"><span class="msr">image</span> Изменить постер</div>
+                    : `<span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/image.svg);opacity:.55;" aria-hidden="true"></span>`}
+                <div class="overlay"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/image.svg);" aria-hidden="true"></span> Изменить постер</div>
             </div>
             <div class="user-modal-avatar-wrap" onclick="document.getElementById('avatarFileInput').click()">
                 ${p.profilePicture
                     ? `<img src="${escapeHtml(p.profilePicture)}" alt="Аватар профиля">`
                     : `<span>${escapeHtml(getInitials(p.firstName, p.lastName))}</span>`}
-                <div class="user-modal-avatar-overlay"><span class="msr">photo_camera</span></div>
+                <div class="user-modal-avatar-overlay"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/image.svg);" aria-hidden="true"></span></div>
             </div>
             <input type="file" id="posterFileInput" accept="image/*" style="display:none;" onchange="handlePosterUpload(this, ${p.id})">
             <input type="file" id="avatarFileInput" accept="image/*" style="display:none;" onchange="handleAvatarUpload(this, ${p.id})">
@@ -661,7 +662,7 @@
             </div>
             <div style="margin-top:12px;">
                 <button class="md-btn md-btn-filled md-btn-square-press" onclick="saveProfileChanges(${p.id})">
-                    <span class="msr size-18">save</span> Сохранить профиль
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/save.svg);" aria-hidden="true"></span> Сохранить профиль
                 </button>
             </div>
         </section>
@@ -742,7 +743,7 @@
             const imageUrl = badge.miniImageUrl || badge.imageUrl;
             const image = imageUrl
                 ? `<img src="${escapeHtml(imageUrl)}" alt="">`
-                : '<span class="msr size-32" style="color:var(--md-primary);">workspace_premium</span>';
+                : '<span class="bf-icon size-32" style="--bf-icon-url:url(/assets/icons/badge.svg);color:var(--md-primary);" aria-hidden="true"></span>';
             return `
                 <div class="badge-tile" title="${escapeHtml(badgeName)}">
                     ${image}
@@ -750,14 +751,14 @@
                     ${userBadge.isPrimary ? '<span class="badge-primary-label">Основной</span>' : ''}
                     <button type="button" class="badge-tile-remove" aria-label="Удалить бейдж «${escapeHtml(badgeName)}»"
                         onclick="event.stopPropagation();removeUserBadge(${profile.id}, ${badgeId})">
-                        <span class="msr">close</span>
+                        <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span>
                     </button>
                 </div>`;
         }).join('');
 
         return `${tiles}
             <button type="button" class="badge-tile badge-tile-add" onclick="openBadgeAddModal(${profile.id})" aria-label="Добавить бейдж">
-                <span class="msr size-28">add</span>
+                <span class="bf-icon size-28" style="--bf-icon-url:url(/assets/icons/add.svg);" aria-hidden="true"></span>
                 <span class="badge-name">Добавить</span>
             </button>`;
     }
@@ -780,7 +781,7 @@
         } else {
             list.innerHTML = visibleSessions.map((session, index) => `
                 <div class="session-row" data-session-index="${index}">
-                    <span class="msr" style="color:var(--md-primary);">${session.appName && session.appName.includes('Desktop') ? 'desktop_mac' : 'smartphone'}</span>
+                    <span style="color:var(--md-primary);">${bfIcon(session.appName && session.appName.includes('Desktop') ? 'default-desktop-mac' : 'default-phone')}</span>
                     <div style="flex:1;min-width:0;">
                         <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(session.customName || session.originalName || 'Устройство')}</div>
                         <div style="font-size:12px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(session.operationSystem || '')} • ${escapeHtml(session.appName || '')} ${session.location ? '• ' + escapeHtml(session.location) : ''}</div>
@@ -802,8 +803,8 @@
 
         toggle.style.display = allSessions.length > 3 ? 'inline-flex' : 'none';
         toggle.innerHTML = sessionsExpanded
-            ? '<span class="msr size-18">expand_less</span> Свернуть'
-            : '<span class="msr size-18">expand_more</span> Развернуть';
+            ? '<span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/chevron-up.svg);" aria-hidden="true"></span> Свернуть'
+            : '<span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/chevron-down.svg);" aria-hidden="true"></span> Развернуть';
     }
 
     window.toggleSessions = function (uid) {
@@ -1086,7 +1087,7 @@
         if (!reservedNames.length) { list.innerHTML = '<p style="color:var(--md-on-surface-variant);font-size:13px;text-align:center;padding:16px;">Нет зарезервированных имён</p>'; return; }
         list.innerHTML = reservedNames.map(n => `
             <div class="badge-row">
-                <span class="msr size-18" style="color:var(--md-primary);">tag</span>
+                <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/code.svg);color:var(--md-primary);" aria-hidden="true"></span>
                 <span style="flex:1;font-family:'Roboto Mono',monospace;">${escapeHtml(n)}</span>
                 <button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="removeReservedName('${escapeHtml(n)}')">Удалить</button>
             </div>`).join('');

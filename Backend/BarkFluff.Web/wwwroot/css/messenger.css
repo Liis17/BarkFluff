@@ -992,7 +992,7 @@
             display: flex; align-items: center; justify-content: center;
             transition: transform .15s, filter .15s;
         }
-        .call-round-btn svg { width: 26px; height: 26px; }
+        .call-round-btn .bf-icon { width: 26px; height: 26px; }
         .call-round-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
         .call-btn-accept { background: #2e9e5b; }
         .call-btn-reject, .call-ctl-end { background: #e8412a; }
@@ -1124,7 +1124,7 @@
         }
         .call-vt-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .call-vt-icon { color: #c9c9d1; flex: none; }
-        .call-vt-icon svg, .call-vt-muted svg { width: 13px; height: 13px; display: block; }
+        .call-vt-icon .bf-icon, .call-vt-muted .bf-icon { width: 13px; height: 13px; display: block; }
         .call-vt-muted { display: none; flex: none; color: #ff7a66; }
         .call-vt.mute .call-vt-muted { display: block; }
         .call-vt.small .call-vt-pill { left: 6px; bottom: 6px; height: 24px; font-size: 11px; }
@@ -1169,7 +1169,7 @@
         .call-member-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .call-member-name { font-size: 14px; font-weight: 650; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .call-member-muted { display: none; color: #ff7a66; }
-        .call-member-muted svg { width: 15px; height: 15px; display: block; }
+        .call-member-muted .bf-icon { width: 15px; height: 15px; display: block; }
         .call-member.mute .call-member-muted { display: block; }
 
         /* Эквалайзер «говорит»: пять полосок, высоту задаёт JS по уровню голоса. */
@@ -1218,15 +1218,15 @@
             display: flex; align-items: center; justify-content: center;
             transition: background .16s ease, color .16s ease;
         }
-        .call-ctl svg { width: 20px; height: 20px; }
+        .call-ctl .bf-icon { width: 20px; height: 20px; }
         .call-ctl:hover { filter: brightness(1.18); }
         .call-ctl.active { background: #f0f0f2; color: #141418; }
         .call-ctl-end { width: 64px; border-radius: 999px; background: #e8412a; color: #fff; }
-        .call-ctl-end svg { width: 24px; height: 24px; }
+        .call-ctl-end .bf-icon { width: 24px; height: 24px; }
         .call-ctl-end:hover { background: #f2543d; }
         /* Спиннер «применяю качество» поверх кнопки качества. */
         @keyframes spin { to { transform: rotate(360deg); } }
-        .call-ctl.busy svg { opacity: .3; }
+        .call-ctl.busy .bf-icon { opacity: .3; }
         .call-ctl.busy::after {
             content: ''; position: absolute; top: 50%; left: 50%; margin: -12px 0 0 -12px;
             width: 24px; height: 24px; border: 2px solid rgba(255,255,255,0.35);
@@ -1292,7 +1292,7 @@
             width: 26px; height: 48px; margin: 0 4px 0 -8px; padding: 0; border: 0; background: transparent;
             color: inherit; opacity: .6; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
-        .call-ctl-caret svg { width: 12px; height: 12px; }
+        .call-ctl-caret .bf-icon { width: 12px; height: 12px; }
         .call-ctl-caret:hover { opacity: 1; }
         .call-ctl-menu {
             display: block; position: absolute; left: 50%; bottom: 64px;
@@ -1721,7 +1721,7 @@
             background: rgba(0,0,0,0.25);
             pointer-events: none;
         }
-        .video-play-overlay span {
+        .video-play-disc {
             width: 48px; height: 48px;
             background: rgba(0,0,0,0.6);
             border-radius: 50%;
@@ -1844,12 +1844,6 @@
             width: 14px;
             height: 12px;
             display: block;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 1.8;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            overflow: visible;
         }
 
         .msg-status-icon--read { width: 20px; }
@@ -2495,11 +2489,8 @@
         .profile-action-btn.icon-only { flex: 0 0 44px; width: 44px; }
 
         .profile-action-btn .bf-icon,
-        .profile-action-btn svg,
         .profile-info-copy .bf-icon,
-        .profile-info-copy svg,
-        .profile-info-icon .bf-icon,
-        .profile-info-icon svg {
+        .profile-info-icon .bf-icon {
             width: 20px;
             height: 20px;
             display: block;
@@ -3159,7 +3150,7 @@
         }
 
         .btn-logout-settings:hover { background: rgba(220, 38, 38, 0.12); }
-        .btn-logout-settings svg { flex-shrink: 0; }
+        .btn-logout-settings .bf-icon { width: 18px; height: 18px; }
 
         /* Sub-view: form fields */
         .sd-form { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
@@ -3900,7 +3891,7 @@
             cursor: pointer;
             transition: background 0.15s, color 0.15s, border-color 0.15s;
         }
-        .ie-tool-btn svg { width: 18px; height: 18px; display: block; }
+        .ie-tool-btn .bf-icon { width: 18px; height: 18px; display: block; }
         .ie-tool-btn:hover { background: var(--primary-alpha); color: var(--text-main); }
         .ie-tool-btn.active {
             background: var(--primary-alpha);
@@ -4310,7 +4301,7 @@
         }
 
         .newchat-menu button:hover { background: rgba(0, 0, 0, 0.06); }
-        .newchat-menu button svg { width: 18px; height: 18px; flex-shrink: 0; }
+        .newchat-menu button .bf-icon { width: 18px; height: 18px; flex-shrink: 0; }
 
         .newchat-dialog { max-width: 420px; display: flex; flex-direction: column; }
 

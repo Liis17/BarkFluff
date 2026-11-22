@@ -107,11 +107,12 @@
     toast.setAttribute('role', kind === 'error' ? 'alert' : 'status');
 
     const icon = document.createElement('span');
-    icon.className = 'msr size-20';
-    icon.textContent = kind === 'success' ? 'check_circle'
+    icon.className = 'bf-icon size-20';
+    icon.setAttribute('aria-hidden', 'true');
+    window.bfSetIcon(icon, kind === 'success' ? 'check-circle'
       : kind === 'error' ? 'error'
       : kind === 'warning' ? 'warning'
-      : 'info';
+      : 'info');
 
     const text = document.createElement('span');
     text.textContent = String(message);

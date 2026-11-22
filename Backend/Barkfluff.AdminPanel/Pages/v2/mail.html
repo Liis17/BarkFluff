@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Почта</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .md-page { padding: 0; }
         .mail-shell {
@@ -72,7 +73,7 @@
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
             display: flex; align-items: center; gap: 6px;
         }
-        .msg-preview .msr { font-size: 14px; }
+        .msg-preview .bf-icon { font-size: 14px; }
 
         .detail-pane {
             display: flex; flex-direction: column;
@@ -88,7 +89,7 @@
             flex-direction: column; gap: 8px;
             color: var(--md-on-surface-variant);
         }
-        .detail-empty .msr { font-size: 64px; opacity: .4; }
+        .detail-empty .bf-icon { font-size: 64px; opacity: .4; }
         .detail-header {
             padding: 20px 32px;
             border-bottom: 1px solid var(--md-outline-variant);
@@ -156,14 +157,14 @@
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
                 <button class="md-btn md-btn-tonal md-btn-square-press" onclick="loadMessages()">
-                    <span class="msr size-18">refresh</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/refresh.svg);" aria-hidden="true"></span>
                     Обновить
                 </button>
                 <button class="md-btn md-btn-filled md-btn-square-press" onclick="openCompose()">
-                    <span class="msr size-18">edit</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/edit.svg);" aria-hidden="true"></span>
                     Написать
                 </button>
-                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="msr">logout</span></button>
+                <button id="logout-btn" class="md-icon-btn" title="Выйти"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/logout.svg);" aria-hidden="true"></span></button>
             </div>
         </header>
 
@@ -177,7 +178,7 @@
             </aside>
             <section class="detail-pane">
                 <div id="message-detail" class="detail-empty">
-                    <span class="msr">mark_email_read</span>
+                    <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/mail.svg);" aria-hidden="true"></span>
                     <div style="font-size:14px;">Выберите письмо для просмотра</div>
                 </div>
             </section>
@@ -190,7 +191,7 @@
     <div class="md-dialog md-dialog-lg">
         <div class="md-dialog-header">
             <h3 id="compose-title">Новое письмо</h3>
-            <button class="md-icon-btn" onclick="closeCompose()"><span class="msr">close</span></button>
+            <button class="md-icon-btn" onclick="closeCompose()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body">
             <div class="compose-grid">
@@ -204,7 +205,7 @@
                         <span style="margin-left:8px;font-size:13px;">Отправить как HTML</span>
                     </label>
                     <button type="button" class="md-btn md-btn-text" onclick="document.getElementById('compose-files').click()">
-                        <span class="msr size-18">attach_file</span>
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/attach-file.svg);" aria-hidden="true"></span>
                         Прикрепить файлы
                     </button>
                     <input type="file" id="compose-files" multiple style="display:none;" onchange="onFilesSelected()">
@@ -215,7 +216,7 @@
         <div class="md-dialog-actions">
             <button class="md-btn md-btn-text" onclick="closeCompose()">Отмена</button>
             <button id="compose-send-btn" class="md-btn md-btn-filled md-btn-square-press" onclick="sendMail()">
-                <span class="msr size-18">send</span>
+                <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/send.svg);" aria-hidden="true"></span>
                 Отправить
             </button>
         </div>
@@ -223,9 +224,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script>
     const state = {
         accounts: [], activeAccount: null,
@@ -270,7 +271,7 @@
         $('account-tabs').innerHTML = state.accounts.map(a => {
             const isActive = a.address === state.activeAccount;
             return `<button class="acc-chip ${isActive?'active':''}" onclick="selectAccount('${a.address}')">
-                <span class="msr size-18">alternate_email</span>
+                <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/mail.svg);" aria-hidden="true"></span>
                 ${escapeHtml(a.address)}
                 ${a.unread > 0 ? `<span class="unread-badge">${a.unread}</span>` : ''}
             </button>`;
@@ -311,7 +312,7 @@
                 </div>
                 <div class="msg-subject">${escapeHtml(m.subject || '(без темы)')}</div>
                 <div class="msg-preview">
-                    ${m.hasAttachments ? '<span class="msr">attach_file</span>' : ''}
+                    ${m.hasAttachments ? '<span class="bf-icon" style="--bf-icon-url:url(/assets/icons/attach-file.svg);" aria-hidden="true"></span>' : ''}
                     <span style="overflow:hidden;text-overflow:ellipsis;">${escapeHtml(m.preview || '')}</span>
                 </div>
             </div>
@@ -338,7 +339,7 @@
         const el = $('message-detail');
         if (!d) {
             el.className = 'detail-pane';
-            el.innerHTML = `<div class="detail-empty"><span class="msr">mark_email_read</span><div style="font-size:14px;">Выберите письмо для просмотра</div></div>`;
+            el.innerHTML = `<div class="detail-empty"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/mail.svg);" aria-hidden="true"></span><div style="font-size:14px;">Выберите письмо для просмотра</div></div>`;
             return;
         }
         const atts = d.attachments || [];
@@ -346,23 +347,23 @@
             <div class="attachments-bar">
                 <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--md-on-surface-variant);margin-bottom:8px;">Вложения (${atts.length})</div>
                 ${atts.map(a => `<a class="attachment-row" target="_blank" href="/api/mail/${encodeURIComponent(state.activeAccount)}/messages/${d.uid}/attachments/${a.index}">
-                    <span class="msr" style="color:var(--md-primary);">attach_file</span>
+                    <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/attach-file.svg);color:var(--md-primary);" aria-hidden="true"></span>
                     <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.fileName)}</span>
                     <span style="font-size:12px;color:var(--md-on-surface-variant);">${fmtSize(a.size)}</span>
-                    <span class="msr size-18" style="color:var(--md-on-surface-variant);">download</span>
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/download.svg);color:var(--md-on-surface-variant);" aria-hidden="true"></span>
                 </a>`).join('')}
             </div>`;
         el.innerHTML = `
             <div class="detail-header">
                 <h2 class="detail-subject">${escapeHtml(d.subject || '(без темы)')}</h2>
                 <div class="detail-meta-row">
-                    <span class="from-pill"><span class="msr size-18">person</span>${escapeHtml(addrText(d.from))}</span>
+                    <span class="from-pill"><span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/personal.svg);" aria-hidden="true"></span>${escapeHtml(addrText(d.from))}</span>
                     <span>•</span>
                     <span>${fmtDate(d.date)}</span>
                 </div>
                 <div style="margin-top:12px;display:flex;gap:8px;">
                     <button class="md-btn md-btn-tonal md-btn-square-press" onclick="replyToMessage()">
-                        <span class="msr size-18">reply</span>Ответить
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/reply.svg);" aria-hidden="true"></span>Ответить
                     </button>
                 </div>
             </div>
@@ -395,7 +396,7 @@
         state.pendingFiles = Array.from(input.files || []);
         $('compose-files-list').innerHTML = state.pendingFiles.map(f => `
             <div class="attachment-row" style="margin-bottom:4px;background:var(--md-surface-container);">
-                <span class="msr" style="color:var(--md-primary);">attach_file</span>
+                <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/attach-file.svg);color:var(--md-primary);" aria-hidden="true"></span>
                 <span style="flex:1;">${escapeHtml(f.name)}</span>
                 <span style="font-size:12px;color:var(--md-on-surface-variant);">${fmtSize(f.size)}</span>
             </div>`).join('');
