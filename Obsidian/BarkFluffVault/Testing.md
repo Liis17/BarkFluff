@@ -108,6 +108,7 @@ dotnet test Tests/BarkFluff.Messages.Tests/BarkFluff.Messages.Tests.csproj
 | Users handler-тесты | `Tests/BarkFluff.Users.Tests/TestHelper.cs`: EF InMemory |
 | Users device concurrency | `Tests/BarkFluff.Users.Tests/Features/Devices/DevicesStorageConcurrencyTests.cs`: SQLite с несколькими соединениями |
 | Users deletion claim concurrency | `Tests/BarkFluff.Users.Tests/Features/Prekeys/PrekeyPostgresTests.cs`: `BARKFLUFF_PREKEY_POSTGRES`, disposable PostgreSQL; concurrent account deletion claims and idempotent cleanup state |
+| Users trigram search status filter | `Tests/BarkFluff.Users.Tests/Features/Search/SearchUsersServerPostgresTests.cs`: `BARKFLUFF_PREKEY_POSTGRES`, disposable PostgreSQL; `similarity()` и набор статусов до пагинации и total |
 | Identity account deletion worker | `Tests/BarkFluff.Identity.Tests/Infrastructure/AccountDeletionWorkerTests.cs`: mocked Redis lease and service RPCs, SQLite for transactional identity cleanup and retry after Identity/Files/Bots failures |
 | Bots account restriction and deletion | `Tests/BarkFluff.Bots.Tests/Consumers/AccountRestrictionTests.cs`: SQLite-backed status reconciliation/consumer idempotency and repeated owner deletion |
 | Messages PostgreSQL search | `Tests/BarkFluff.Messages.Tests/Persistence/SearchMessagesPostgresTests.cs`: `BARKFLUFF_SEARCH_POSTGRES`, disposable DB и право CREATE DATABASE |

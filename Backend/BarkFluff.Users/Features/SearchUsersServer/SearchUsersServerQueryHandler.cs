@@ -27,12 +27,14 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
         if (request.Size > 50)
             request.Size = 50;
 
+        var statusFilters = ResolveStatusFilters(request);
+
         List<Domain.User> users;
         int totalCount;
 
         if (string.IsNullOrWhiteSpace(request.Query))
         {
-            var allResult = await _usersStorage.GetAllUsersDescending(request.Offset, request.Size, ToDomainStatus(request.StatusFilter));
+            var allResult = await _usersStorage.GetAllUsersDescending(request.Offset, request.Size, statusFilters);
             users = allResult.Users;
             totalCount = allResult.TotalCount;
         }
@@ -41,7 +43,7 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
             var user = await _usersStorage.GetById(userId);
 
             if (user is null || user.IsDraft || user.IsBot
-                || (request.StatusFilter.HasValue && user.AccountStatus != ToDomainStatus(request.StatusFilter)))
+                || (statusFilters is not null && !statusFilters.Contains(user.AccountStatus)))
                 return new SearchUsersServerResponse { TotalCount = 0 };
 
             users = new List<Domain.User> { user };
@@ -54,7 +56,7 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
             var usersResult = await _usersStorage.SearchUsersByTrigram(
                 request.Query, request.Offset, request.Size,
                 respectSearchVisibility: false, excludeBots: true,
-                statusFilter: ToDomainStatus(request.StatusFilter));
+                statusFilters: statusFilters);
             users = usersResult.Users;
             totalCount = Math.Max(usersResult.TotalCount, 0);
         }
@@ -107,6 +109,15 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
         };
     }
 
-    private static Domain.AccountStatus? ToDomainStatus(BarkFluff.Proto.Users.AccountStatus? status) =>
-        status.HasValue ? (Domain.AccountStatus)(int)status.Value : null;
+    // Непустой StatusFilters задаёт набор статусов; иначе действует одиночный StatusFilter; без обоих фильтра нет.
+    private static IReadOnlyCollection<Domain.AccountStatus>? ResolveStatusFilters(SearchUsersServerQuery request)
+    {
+        if (request.StatusFilters.Count > 0)
+            return request.StatusFilters.Select(ToDomainStatus).Distinct().ToArray();
+
+        return request.StatusFilter is { } status ? [ToDomainStatus(status)] : null;
+    }
+
+    private static Domain.AccountStatus ToDomainStatus(BarkFluff.Proto.Users.AccountStatus status) =>
+        (Domain.AccountStatus)(int)status;
 }

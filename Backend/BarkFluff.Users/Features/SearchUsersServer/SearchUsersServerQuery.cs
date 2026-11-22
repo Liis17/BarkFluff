@@ -13,4 +13,6 @@ public class SearchUsersServerQuery : IRequest<SearchUsersServerResponse>
     public int Size { get; set; }
 
     public BarkFluff.Proto.Users.AccountStatus? StatusFilter { get; set; }
+
+    public IReadOnlyCollection<BarkFluff.Proto.Users.AccountStatus> StatusFilters { get; set; } = [];
 }

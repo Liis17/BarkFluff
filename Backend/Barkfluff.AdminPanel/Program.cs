@@ -65,6 +65,7 @@ public class Program
         builder.Services.AddSingleton<MetricsCacheDbContext>();
         builder.Services.AddSingleton<RemoteDockerDbContext>();
         builder.Services.AddSingleton<AuditDbContext>();
+        builder.Services.AddSingleton<DeployJobDbContext>();
 
         // Register Services
         builder.Services.AddSingleton<PendingAuthService>();
@@ -75,6 +76,7 @@ public class Program
         builder.Services.AddSingleton<StepUpService>();
         builder.Services.AddSingleton<AuditService>();
         builder.Services.AddScoped<UserSessionRevocationService>();
+        builder.Services.AddScoped<NotificationTestService>();
 
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
