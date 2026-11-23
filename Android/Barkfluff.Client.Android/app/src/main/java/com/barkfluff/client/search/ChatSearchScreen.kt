@@ -35,6 +35,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.barkfluff.client.R
+import com.barkfluff.client.badges.PrimaryBadgeIcon
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.domain.model.MessageSearchHit
 
 @Composable
@@ -151,7 +153,21 @@ private fun ChatSearchResult(
     SearchGroupedItem(index = index, count = count, onClick = onClick, modifier = modifier) {
         ListItem(
             headlineContent = {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    val badgeUserId = chat.otherUserId.takeIf {
+                        !chat.chat.isGroupChat && chat.accountStatus == AccountStatus.ACTIVE
+                    } ?: 0L
+                    if (badgeUserId > 0L) {
+                        PrimaryBadgeIcon(userId = badgeUserId, modifier = Modifier.padding(start = 4.dp))
+                    }
+                }
             },
             supportingContent = {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

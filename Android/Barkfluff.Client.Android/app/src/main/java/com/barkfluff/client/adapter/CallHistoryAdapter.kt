@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.R
+import com.barkfluff.client.badges.PrimaryBadgeView
 import com.barkfluff.client.databinding.ItemCallHistoryBinding
 
 /**
@@ -44,6 +45,7 @@ class CallHistoryAdapter(
 
         fun bind(row: Row) {
             binding.callTitle.text = row.title
+            PrimaryBadgeView.bind(binding.callPrimaryBadge, if (row.isGroup) 0L else row.peerUserId)
             binding.callSubtitle.text = row.subtitle
 
             val tintAttr = if (row.isMissed) {

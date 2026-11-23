@@ -1,5 +1,6 @@
 package com.barkfluff.client
 
+import com.barkfluff.client.badges.PrimaryBadgeView
 import barkfluff.calls.CallsApiOuterClass
 import android.Manifest
 import android.animation.ValueAnimator
@@ -496,6 +497,7 @@ class ChatActivity : AppCompatActivity() {
                     previousTitle = displayTitle
                     binding.chatNameTextView.text = displayTitle
                 }
+                bindHeaderBadge()
                 if (previousAvatarFileId != chatAvatarFileId) {
                     previousAvatarFileId = chatAvatarFileId
                     loadChatAvatar()
@@ -907,6 +909,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun setupToolbar() {
         binding.chatNameTextView.text = if (isSavedMessages) getString(R.string.saved_messages_title) else chatTitle.ifBlank { getString(R.string.chat_default_title) }
+        bindHeaderBadge()
 
         // Показываем статус онлайна только для личных чатов
         if (!isGroupChat && otherUserId > 0) {
@@ -1009,6 +1012,18 @@ class ChatActivity : AppCompatActivity() {
 
     private var renderedSavedMessages = false
 
+    private var headerBadgeUserId: Long? = null
+
+    /** Основной бейдж собеседника в шапке; для групп, «Избранного» и ограниченных аккаунтов скрыт. */
+    private fun bindHeaderBadge() {
+        val userId = otherUserId.takeIf {
+            !isGroupChat && !isSavedMessages && peerAccountStatus == AccountStatus.ACTIVE
+        } ?: 0L
+        if (headerBadgeUserId == userId) return
+        headerBadgeUserId = userId
+        PrimaryBadgeView.bind(binding.chatPrimaryBadge, userId)
+    }
+
     private val isSavedMessages: Boolean
         get() = !isGroupChat && intent.getIntExtra(EXTRA_CHAT_KIND, KIND_REGULAR) == KIND_REGULAR && otherUserId > 0 && otherUserId == currentUserId
 
@@ -1075,6 +1090,7 @@ class ChatActivity : AppCompatActivity() {
         chatTitle = accountStatusLabel(peerAccountStatus)
         chatAvatarFileId = null
         binding.chatNameTextView.text = chatTitle
+        bindHeaderBadge()
         binding.chatAvatarPlaceholder.text = chatTitle.trim().firstOrNull()?.uppercase() ?: "?"
         loadChatAvatar()
         binding.onlineStatusTextView.visibility = View.GONE

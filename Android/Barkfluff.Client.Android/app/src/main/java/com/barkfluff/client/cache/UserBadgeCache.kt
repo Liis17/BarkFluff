@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 interface UserBadgeCache {
+    /** Ключ текущего scope кеша; бейджи разных нод и аккаунтов не смешиваются. */
+    fun scopeKey(): String?
     fun observeUserBadges(userId: Long): Flow<List<UserBadgeInfo>>
     suspend fun readUserBadges(userId: Long): List<UserBadgeInfo>
     suspend fun replaceUserBadges(userId: Long, badges: List<UserBadgeInfo>)
@@ -12,6 +14,8 @@ interface UserBadgeCache {
 }
 
 class RoomUserBadgeCache(private val cache: ChatCacheRepository) : UserBadgeCache {
+    override fun scopeKey(): String? = cache.currentScopeId()
+
     override fun observeUserBadges(userId: Long): Flow<List<UserBadgeInfo>> =
         cache.observeUserBadges(userId).map { badges -> badges.map(CachedUserBadgeEntity::toDomain) }
 

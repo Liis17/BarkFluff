@@ -21,6 +21,7 @@ import coil.imageLoader
 import coil.load
 import coil.dispose
 import com.barkfluff.client.R
+import com.barkfluff.client.badges.PrimaryBadgeView
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
 import com.google.android.material.card.MaterialCardView
@@ -784,6 +785,7 @@ class MessageAdapter(
             val senderAvatarFileId = resolved?.second ?: item.senderAvatarFileId
 
             binding.senderNameTextView.text = senderName
+            PrimaryBadgeView.bind(binding.senderPrimaryBadge, item.senderId)
 
             if (!senderAvatarFileId.isNullOrBlank()) {
                 AvatarLoader.loadByFileId(

@@ -585,6 +585,9 @@ class ChatCacheRepository(context: Context, private val secretChats: com.barkflu
             }
         }
 
+    /** ID текущего scope кеша (нода + пользователь) или null без авторизованной сессии. */
+    fun currentScopeId(): String? = CacheScope.from(GlobalParam(appContext))?.id
+
     fun observeUserBadges(userId: Long): Flow<List<CachedUserBadgeEntity>> = flow {
         val scope = CacheScope.from(GlobalParam(appContext)) ?: run {
             emit(emptyList())

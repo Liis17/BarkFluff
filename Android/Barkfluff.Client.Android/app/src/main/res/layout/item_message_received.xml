@@ -77,6 +77,16 @@
                 android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="Имя пользователя" />
 
+            <ImageView
+                android:id="@+id/senderPrimaryBadge"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:scaleType="fitCenter"
+                android:visibility="gone"
+                tools:src="@drawable/icon_verified"
+                tools:visibility="visible" />
+
         </LinearLayout>
 
         <!-- Контейнер сообщения -->

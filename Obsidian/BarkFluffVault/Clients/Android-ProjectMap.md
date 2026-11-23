@@ -38,7 +38,9 @@ MediaHttpTransport обрабатывает Files upload/download отдельн
 
 `ProfileFragment` открывает `BadgesSettingsActivity` для просмотра и выбора primary; `UserProfileActivity` показывает primary у имени и остальные бейджи отдельной карточкой. Оба экрана используют `UserBadgeRepository`: поток Room-кеша отображается первым, полный список пользователя затем обновляется через `UserBadgeGateway`/`GrpcApiTransport`. Успешный SetPrimaryBadge меняет флаги в `cached_user_badges` транзакционно; ошибка сохраняет текущее выделение и показывается Snackbar. `BadgeViewerSheet` общий для профиля и настроек, а Coil использует ImageLoader/OkHttp аватаров с TLS ноды и URL-ключами обоих кешей.
 
-Основные исходники: core/domain/model/UserBadgeInfo.kt, core/domain/gateway/DomainGateways.kt, core/domain/gateway/GrpcGatewayAdapters.kt, core/grpc/GrpcApiTransport.kt; app/BadgesSettingsActivity.kt, app/UserProfileActivity.kt, app/badges/BadgeViewerSheet.kt, app/cache/UserBadgeRepository.kt, app/cache/ChatCacheRepository.kt.
+Основной бейдж собеседника в списках, поиске, шапке чата и группах рисует `badges/PrimaryBadgeView.kt` через in-memory кеш `UserBadgeRepository` с TTL и объединением запросов `GetUserBadges`.
+
+Основные исходники: core/domain/model/UserBadgeInfo.kt, core/domain/gateway/DomainGateways.kt, core/domain/gateway/GrpcGatewayAdapters.kt, core/grpc/GrpcApiTransport.kt; app/BadgesSettingsActivity.kt, app/UserProfileActivity.kt, app/badges/BadgeViewerSheet.kt, app/badges/PrimaryBadgeView.kt, app/cache/UserBadgeRepository.kt, app/cache/ChatCacheRepository.kt.
 
 ### Обычный чат
 
