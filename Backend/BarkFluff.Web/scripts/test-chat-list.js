@@ -290,6 +290,11 @@ function createHarness(chatCount, restrictedUser) {
         },
         realtime: {
             on: function (name, callback) { realtimeListeners[name] = callback; }
+        },
+        userBadges: {
+            slotHtml: function (userId) {
+                return '<span class="user-badge-slot" data-badge-user="' + userId + '"></span>';
+            }
         }
     };
     var state = { currentChatId: null };
@@ -430,6 +435,14 @@ test('restricted peers use a local title and have no avatar or online indicator'
     var row = h.row(1000);
     assert.match(row.innerHTML, /accountRestriction\.userBlocked/);
     assert.doesNotMatch(row.innerHTML, /avatar\.png|online-dot/);
+    assert.doesNotMatch(row.innerHTML, /user-badge-slot/, 'restricted peers show no badge');
+});
+
+test('a direct chat row shows the primary badge slot of the loaded peer after the name', function () {
+    var h = createHarness(1, { id: 2, accountStatus: 0 });
+    h.BF.chatList.render();
+    var row = h.row(1000);
+    assert.match(row.innerHTML, /<span class="chat-name-text">Chat 0<\/span><span class="user-badge-slot" data-badge-user="2"><\/span>/);
 });
 
 test('scrolling moves the window and keeps the rover row in the DOM', function () {

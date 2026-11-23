@@ -275,6 +275,7 @@
                         currentChatPeerIsBot = !!peer.isBot;
                         setChatCallButtonsVisible(!currentChatPeerIsBot);
                         setChatReadOnly(peer);
+                        if (!currentChatPeerIsRestricted) chatHeaderName.appendChild(BF.userBadges.createSlot(peerId));
                         if (currentChatPeerIsBot) {
                             chatHeaderStatus.hidden = true;
                             return;

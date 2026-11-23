@@ -310,6 +310,7 @@
             // Update avatar
             profileBlock.replaceChild(renderAvatarEl(user, 'sd-avatar'), avatarEl);
             nameEl.textContent = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || '';
+            nameEl.appendChild(BF.userBadges.createSlot(myUserId));
             unameEl.textContent = user.username ? '@' + user.username : '';
         });
 
@@ -612,7 +613,8 @@
                     badges.forEach(function (b) {
                         b.isPrimary = b.id === primaryId;
                     });
-                    currentUser = null; // профиль с бейджами перечитается при следующем открытии
+                    // Значок рядом с именем в списках и шапках обновляется сразу.
+                    BF.userBadges.set(myUserId, badges);
                 })
                 .catch(function () {
                     status.textContent = BF.i18n.t('common.error');
@@ -627,8 +629,11 @@
         BF.api
             .getUserBadges(myUserId)
             .then(function (data) {
+                BF.userBadges.set(myUserId, data.badges);
                 if (body.dataset.view !== 'badges') return;
-                badges = data.badges;
+                badges = data.badges.map(function (b) {
+                    return Object.assign({}, b);
+                });
                 draw();
             })
             .catch(function () {

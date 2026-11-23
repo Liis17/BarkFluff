@@ -575,6 +575,7 @@
   "settings.badges.empty": "Aún no tienes insignias",
   "settings.badges.hint": "Tu insignia principal se muestra junto a tu nombre. Toca una insignia para elegirla o tócala de nuevo para quitarla.",
   "settings.badges.primary": "Principal",
+  "badge.received": "Recibida el {date}",
   "settings.bio": "Biografía",
   "settings.installApp": "Instalar la aplicación BarkFluff",
   "settings.language.hint": "La interfaz cambia al instante: no hace falta recargar la página.",
