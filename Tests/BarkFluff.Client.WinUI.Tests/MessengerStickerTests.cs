@@ -147,6 +147,7 @@ public sealed class MessengerStickerTests
         };
 
         Assert.True(await vm.SendStickerAsync(sticker));
+        await MessengerTestDoubles.WaitForMessageAsync(vm, 51);
         Assert.Equal(1, calls);
         Assert.Null(vm.ReplyTarget);
         Assert.Equal("draft", vm.DraftText);
@@ -159,16 +160,16 @@ public sealed class MessengerStickerTests
     }
 
     [Fact]
-    public async Task FailedSendPreservesReplyAndDoesNotAddRecent()
+    public async Task FailedEnqueuePreservesReplyAndDoesNotAddRecent()
     {
         var (vm, service, sticker) = await OpenMessengerAsync();
         var reply = Assert.Single(vm.Messages);
         vm.StartReplyMessageCommand.Execute(reply);
-        service.SendAttachments = (_, _, _, _) => Task.FromResult<(ErrorReturner, MessageModel?)>((null!, null));
+        service.OutgoingStore.BeforeFirstSave = _ => throw new IOException();
 
         Assert.False(await vm.SendStickerAsync(sticker));
         Assert.Same(reply, vm.ReplyTarget);
-        Assert.Equal("Messenger_ActionFailed", vm.ActionError);
+        Assert.Equal("Messenger_OutboxStorageFailed", vm.ActionError);
         var picker = vm.StickerPicker!;
         picker.SelectedTab = picker.Tabs[0];
         await picker.LoadAsync();
@@ -226,26 +227,36 @@ public sealed class MessengerStickerTests
     [InlineData(true)]
     public async Task SendCompletionDoesNotModifyNewChatOrSession(bool reset)
     {
-        var (vm, service, sticker) = await OpenMessengerAsync();
-        var pending = new TaskCompletionSource<(ErrorReturner, MessageModel?)>(TaskCreationOptions.RunContinuationsAsynchronously);
-        service.SendAttachments = (chat, _, _, _) =>
+        var dispatcher = new InlineUiDispatcher();
+        var (vm, service, sticker) = await OpenMessengerAsync(dispatcher: dispatcher);
+        var committed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.OutgoingStore.AfterFirstSaveAsync = message =>
         {
-            Assert.Equal("a", chat);
-            return pending.Task;
+            Assert.Equal("a", message.ChatId);
+            committed.SetResult();
+            return release.Task.WaitAsync(TimeSpan.FromSeconds(5));
         };
 
         var sending = vm.SendStickerAsync(sticker);
+        await committed.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.True(vm.StickerPicker!.IsSending);
         if (reset)
         {
-            vm.Reset();
-            service.CurrentUserId = 2;
+            dispatcher.Post(() =>
+            {
+                vm.Reset();
+                service.CurrentUserId = 2;
+            });
             await vm.LoadAsync();
         }
-        vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
-        vm.DraftText = "other";
+        dispatcher.Post(() =>
+        {
+            vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+            vm.DraftText = "other";
+        });
 
-        pending.SetResult(await SentAsync("a"));
+        release.SetResult();
         Assert.False(await sending);
         Assert.Empty(vm.Messages);
         Assert.Null(vm.ActionError);
@@ -307,9 +318,13 @@ public sealed class MessengerStickerTests
         return picker;
     }
 
-    private static async Task<(MessengerViewModel, FakeMessengerService, PickerSticker)> OpenMessengerAsync()
+    internal static async Task<(MessengerViewModel, FakeMessengerService, PickerSticker)> OpenMessengerAsync(
+        BarkFluff.Client.Core.Services.OutgoingMessageQueue? outgoing = null, string? node = null,
+        InlineUiDispatcher? dispatcher = null)
     {
         var service = new FakeMessengerService();
+        if (node is not null)
+            service.CurrentNodeAddress = node;
         service.Chats.AddRange([
             MessengerTestDoubles.CreateChat("a"),
             MessengerTestDoubles.CreateChat("b"),
@@ -317,7 +332,7 @@ public sealed class MessengerStickerTests
         ]);
         service.Messages.Add(MessengerTestDoubles.CreateMessage(50, "a", 1));
         var picker = CreatePicker(new("a"));
-        var vm = MessengerTestDoubles.CreateViewModel(service, stickerPicker: picker);
+        var vm = MessengerTestDoubles.CreateViewModel(service, stickerPicker: picker, outgoing: outgoing, dispatcher: dispatcher);
         await vm.LoadAsync();
         vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "a");
         await vm.OpenStickerPickerAsync();

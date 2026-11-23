@@ -396,59 +396,22 @@ public sealed partial class MessengerViewModel
         }
 
         var comment = ForwardComment.Trim();
-        IsForwardVisible = false;
-        ChatItemViewModel? tailChat = null;
-        var tailChatVersion = 0;
+        var chat = SelectedChat;
+        var version = _chatVersion;
         foreach (var chatId in targetChatIds)
         {
-            var chat = SelectedChat;
-            var version = _chatVersion;
-            var revision = session!.Journal.Revision;
-            using var reading = session.Journal.ReadHistory(chatId, isPrivate: false);
-            var (error, message) = await _messenger.SendMessageAsync(chatId, comment, forwardedMessageIds: sourceIds);
-            if (!IsCurrent(session))
-            {
+            if (!await EnqueueOutgoingAsync(session!, chatId, comment, forwards: sourceIds))
                 return;
-            }
-
-            if (!error.IsSuccess)
-            {
-                ActionError = DescribeError(error);
-                continue;
-            }
-
-            if (message is not null && chat?.Id == chatId && IsOpen(session, chat, version))
-            {
-                if (!_feedIncludesTail)
-                {
-                    tailChat = chat;
-                    tailChatVersion = version;
-                    continue;
-                }
-
-                await MergeSentRowAsync(session, chat, version,
-                    new(message.MessageId, message.SentAt.ToDateTimeOffset(), message, null), revision);
-                if (IsOpen(session, chat, version))
-                {
-                    RequestScroll(MessageScrollTarget.Bottom);
-                }
-            }
             if (!IsCurrent(session))
-            {
                 return;
-            }
+            var target = ForwardTargets.FirstOrDefault(item => item.ChatId == chatId);
+            if (target is not null)
+                target.IsSelected = false;
         }
 
-
-        if (tailChat is not null && IsOpen(session, tailChat, tailChatVersion) && !_feedIncludesTail)
-        {
-            await ReloadHistoryTailAsync();
-        }
-        if (!IsCurrent(session))
-        {
-            return;
-        }
         CancelForward();
+        if (chat is not null && IsOpen(session, chat, version) && targetChatIds.Contains(chat.Id))
+            await ShowOutgoingTailAsync();
     }
 
     private void NotifyForwardSelectionChanged()

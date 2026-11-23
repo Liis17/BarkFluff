@@ -1,3 +1,6 @@
+using BarkFluff.Client.Core.Services;
+using Microsoft.Extensions.Time.Testing;
+using static BarkFluff.Client.WinUI.Tests.MessengerTestDoubles;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
@@ -55,6 +58,7 @@ public sealed class MessengerAttachmentTests : IDisposable
 
         await vm.SendCommand.ExecuteAsync(null);
 
+        await WaitForMessageAsync(vm, 51);
         Assert.False(vm.AttachmentComposer.HasFiles);
     }
 
@@ -66,11 +70,14 @@ public sealed class MessengerAttachmentTests : IDisposable
         await AddAsync(vm, names);
         var releaseFirst = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseOthers = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstPairStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var thirdStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var started = new List<string>();
         service.UploadAttachment = async (name, _, _, _) =>
         {
             started.Add(name);
+            if (name == names[1])
+                firstPairStarted.SetResult();
             if (name == names[2])
                 thirdStarted.SetResult();
             await (name == names[0] ? releaseFirst.Task : releaseOthers.Task);
@@ -83,12 +90,13 @@ public sealed class MessengerAttachmentTests : IDisposable
             return SentAsync(chat, text);
         };
 
-        var sending = vm.SendCommand.ExecuteAsync(null);
+        await vm.SendCommand.ExecuteAsync(null);
+        await firstPairStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var initiallyStarted = started.ToArray();
         releaseOthers.SetResult();
-        await thirdStarted.Task;
+        await thirdStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         releaseFirst.SetResult();
-        await sending;
+        await WaitForMessageAsync(vm, 51);
 
         Assert.Equal(names[..2], initiallyStarted);
         Assert.Equal(names, sent);
@@ -119,28 +127,34 @@ public sealed class MessengerAttachmentTests : IDisposable
 
         await vm.SendCommand.ExecuteAsync(null);
 
+        if (checkFails)
+            await WaitForMessageAsync(vm, 51);
+        else
+        {
+            await WaitForOutgoingAsync(vm, () => vm.PendingMessages.SingleOrDefault()?.CanRetry == true);
+            Assert.Equal("Messenger_AttachmentStorageFull", Assert.Single(vm.PendingMessages).Status);
+        }
         Assert.Equal(1, checks);
         Assert.Equal(checkFails ? 2 : 0, uploads);
-        if (!checkFails)
-            Assert.Equal("Messenger_AttachmentStorageFull", vm.AttachmentComposer.Error);
     }
 
     [Fact]
-    public async Task CancelAndRetryOneFilePreservesReadyFileCaptionAndReply()
+    public async Task RetryingQueuedAttachmentPreservesReadyFileCaptionAndReply()
     {
-        var (vm, service) = await OpenChatAsync();
+        var clock = new FakeTimeProvider();
+        var (vm, service) = await OpenChatAsync(clock);
         vm.StartReplyMessageCommand.Execute(Assert.Single(vm.Messages));
         vm.DraftText = "caption";
         await AddAsync(vm, "ready.gif", "retry.pdf");
         var attempt = new TaskCompletionSource<(ErrorReturner, string?)>(TaskCreationOptions.RunContinuationsAsynchronously);
         var uploads = new List<string>();
-        service.UploadAttachment = (name, _, progress, token) =>
+        service.UploadAttachment = (name, _, progress, _) =>
         {
             uploads.Add(name);
             if (uploads.Count == 2)
             {
-                progress.Report(0.4);
-                return attempt.Task.WaitAsync(token);
+                progress.Report(0.8);
+                return attempt.Task;
             }
             if (uploads.Count == 3)
                 return Task.FromResult<(ErrorReturner, string?)>((new(false, errorResourceKey: "Messenger_AttachmentStorageFull"), null));
@@ -156,19 +170,22 @@ public sealed class MessengerAttachmentTests : IDisposable
             return SentAsync(chat, text);
         };
 
-        var sending = vm.SendCommand.ExecuteAsync(null);
-        var retry = vm.AttachmentComposer.Files[1];
-        Assert.Equal(40, retry.Progress);
-        retry.CancelCommand.Execute(null);
-        await sending;
-        Assert.Equal("Messenger_AttachmentCancelled", retry.Status);
-        Assert.Equal("caption", vm.DraftText);
+        await vm.SendCommand.ExecuteAsync(null);
+        await WaitForOutgoingAsync(vm, () => vm.PendingMessages.SingleOrDefault()?.Progress == 40);
+        var bubble = Assert.Single(vm.PendingMessages);
+        Assert.True(bubble.IsUploading);
+        Assert.Empty(vm.DraftText);
+        Assert.Equal("caption", bubble.Text);
+        Assert.Equal(0, sends);
+        attempt.SetResult((new(false), null));
+        await WaitForOutgoingAsync(vm, () => bubble.Status == "Messenger_OutboxWaiting");
+        clock.Advance(TimeSpan.FromSeconds(1));
+        await WaitForOutgoingAsync(vm, () => bubble.CanRetry);
+        Assert.Equal("Messenger_AttachmentStorageFull", bubble.Status);
         Assert.Equal(0, sends);
 
-        await vm.RetryAttachmentAsync(retry);
-        Assert.Equal("Messenger_AttachmentStorageFull", retry.Status);
-        await vm.RetryAttachmentAsync(retry);
-        await vm.SendCommand.ExecuteAsync(null);
+        await bubble.RetryCommand.ExecuteAsync(null);
+        await WaitForMessageAsync(vm, 51);
         Assert.Equal(new[] { "ready.gif", "retry.pdf", "retry.pdf", "retry.pdf" }, uploads);
         Assert.Equal(1, sends);
         Assert.Empty(vm.AttachmentComposer.Files);
@@ -178,17 +195,17 @@ public sealed class MessengerAttachmentTests : IDisposable
     [InlineData("chat")]
     [InlineData("reset")]
     [InlineData("exit")]
-    public async Task LeavingComposerCancelsUploadAndDeletesTemporaryInput(string reason)
+    public async Task LeavingComposerDeletesTemporaryInputAndOnlyLogoutOrResetCancelsDelivery(string reason)
     {
         var (vm, service) = await OpenChatAsync();
         await vm.AddAttachmentsAsync(_ => Task.FromResult<IReadOnlyList<AttachmentSourceFile>>(
             [new(_path, "изображение.png", IsTemporary: true)]));
         var response = new TaskCompletionSource<(ErrorReturner, string?)>(TaskCreationOptions.RunContinuationsAsynchronously);
-        CancellationToken uploadToken = default;
+        var started = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
         service.UploadAttachment = (_, _, _, token) =>
         {
-            uploadToken = token;
-            return response.Task;
+            started.SetResult(token);
+            return response.Task.WaitAsync(token);
         };
         var sends = 0;
         service.SendAttachments = (chat, text, _, _) =>
@@ -196,22 +213,33 @@ public sealed class MessengerAttachmentTests : IDisposable
             sends++;
             return SentAsync(chat, text);
         };
-        var send = vm.SendCommand.ExecuteAsync(null);
+        await vm.SendCommand.ExecuteAsync(null);
+        var uploadToken = await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var cancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var registration = uploadToken.Register(() => cancelled.TrySetResult());
 
         Task? exiting = null;
         if (reason == "reset")
             vm.Reset();
         else if (reason == "exit")
-            exiting = vm.CancelAttachmentsAsync();
+            exiting = vm.ClearOutgoingForLogoutAsync();
         else
             vm.SelectedChat = vm.Chats.Single(c => c.Id == "b");
-        Assert.True(uploadToken.IsCancellationRequested);
+        if (reason != "chat")
+            await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        else
+            Assert.False(uploadToken.IsCancellationRequested);
         Assert.Empty(vm.AttachmentComposer.Files);
         response.SetResult((new(true), "late-file-id"));
-        await send;
         await (exiting ?? vm.CancelAttachmentsAsync());
-        Assert.Equal(0, sends);
+        if (reason == "chat")
+        {
+            vm.SelectedChat = vm.Chats.Single(c => c.Id == "a");
+            await WaitForMessageAsync(vm, 51);
+        }
+        Assert.Equal(reason == "chat" ? 1 : 0, sends);
         Assert.False(File.Exists(_path));
+        vm.Reset();
     }
 
     [Fact]
@@ -287,7 +315,7 @@ public sealed class MessengerAttachmentTests : IDisposable
     private static Task<(ErrorReturner, MessageModel?)> SentAsync(string chat, string text) =>
         Task.FromResult<(ErrorReturner, MessageModel?)>((new(true), MessengerTestDoubles.CreateMessage(51, chat, 1, text)));
 
-    private static async Task<(MessengerViewModel, FakeMessengerService)> OpenChatAsync()
+    private static async Task<(MessengerViewModel, FakeMessengerService)> OpenChatAsync(TimeProvider? clock = null)
     {
         var service = new FakeMessengerService();
         service.Chats.AddRange([
@@ -296,7 +324,7 @@ public sealed class MessengerAttachmentTests : IDisposable
             MessengerTestDoubles.CreateChat("private", chatType: ChatType.Private)
         ]);
         service.Messages.Add(MessengerTestDoubles.CreateMessage(50, "a", 2));
-        var vm = MessengerTestDoubles.CreateViewModel(service);
+        var vm = MessengerTestDoubles.CreateViewModel(service, timeProvider: clock);
         await vm.LoadAsync();
         vm.SelectedChat = vm.Chats.Single(c => c.Id == "a");
         return (vm, service);

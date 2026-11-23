@@ -1,3 +1,5 @@
+using System.Collections.Specialized;
+using BarkFluff.Client.Core.Infrastructure.Storage;
 using BarkFluff.Client.Core.Infrastructure.Localization;
 using BarkFluff.Client.Core.Infrastructure.Threading;
 using BarkFluff.Client.Core.Services;
@@ -8,6 +10,7 @@ using BarkFluff.Proto.Shared;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+using OutgoingMessage = BarkFluff.Client.Core.Services.OutgoingMessage;
 
 using Google.Protobuf.WellKnownTypes;
 
@@ -36,20 +39,75 @@ internal static class MessengerTestDoubles
         IVoiceRecorder? voiceRecorder = null,
         IVoicePlayer? voicePlayer = null,
         IChatDraftStore? draftStore = null,
-        IChatDraftRemote? draftRemote = null)
+        IChatDraftRemote? draftRemote = null,
+        OutgoingMessageQueue? outgoing = null)
     {
         var effectiveMessenger = messenger ?? new FakeMessengerService();
         var effectivePresence = presence ?? new FakeOnlinePresenceService();
         localization ??= new StubLocalizationService();
+        outgoing ??= CreateOutgoingQueue(effectiveMessenger, timeProvider ?? TimeProvider.System);
         return new(effectiveMessenger,
             keys ?? new FakePrivateChatKeyStore(),
             realtime ?? new FakeRealtimeMessengerService(),
             effectivePresence,
             localization,
             dispatcher ?? new InlineUiDispatcher(),
-            new ProfileViewModel(effectiveMessenger, effectivePresence, localization),
+            new ProfileViewModel(effectiveMessenger, effectivePresence, localization), outgoing,
             timeProvider, chatFolders, typing, notifications, notificationSettings, stickerPicker, stickerPreferences,
             voiceRecorder: voiceRecorder, voicePlayer: voicePlayer, draftStore: draftStore, draftRemote: draftRemote);
+    }
+
+    internal static OutgoingMessageQueue CreateOutgoingQueue(FakeMessengerService messenger, TimeProvider clock) =>
+        new(messenger.OutgoingStore, messenger,
+            new AppDataPaths(Path.Combine(Path.GetTempPath(), $"barkfluff-test-outgoing-{Guid.NewGuid():N}")), clock)
+        {
+            AfterEnqueueCommitAsync = message =>
+                messenger.OutgoingStore.AfterFirstSaveAsync?.Invoke(message) ?? Task.CompletedTask
+        };
+
+    internal static Task WaitForMessageAsync(MessengerViewModel vm, long id, IUiDispatcher? dispatcher = null)
+    {
+        var messages = (INotifyCollectionChanged)vm.Messages;
+        return ObserveAsync(() => vm.Messages.Any(row => row.Id == id),
+            notify =>
+            {
+                NotifyCollectionChangedEventHandler handler = (_, _) => notify();
+                messages.CollectionChanged += handler;
+                return () => messages.CollectionChanged -= handler;
+            }, dispatcher);
+    }
+
+    internal static Task WaitForOutgoingAsync(MessengerViewModel vm, Func<bool> condition) =>
+        ObserveAsync(condition, notify =>
+        {
+            System.ComponentModel.PropertyChangedEventHandler handler = (_, args) =>
+            {
+                if (args.PropertyName == nameof(MessengerViewModel.OutgoingHistoryNotice))
+                    notify();
+            };
+            vm.PropertyChanged += handler;
+            return () => vm.PropertyChanged -= handler;
+        });
+
+    private static async Task ObserveAsync(Func<bool> condition, Func<Action, Action> subscribe,
+        IUiDispatcher? dispatcher = null)
+    {
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Changed()
+        {
+            if (condition())
+                ready.TrySetResult();
+        }
+        var unsubscribe = subscribe(Changed);
+        try
+        {
+            if (dispatcher is null)
+                Changed();
+            else
+                dispatcher.Post(Changed);
+            await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally { unsubscribe(); }
     }
 
     public static Chat CreateChat(string id, string title = "Chat", long peerUserId = 0, ChatType chatType = ChatType.Regular)
@@ -97,7 +155,13 @@ internal static class MessengerTestDoubles
 
 internal sealed class InlineUiDispatcher : IUiDispatcher
 {
-    public void Post(Action action) => action();
+    private readonly object _gate = new();
+
+    public void Post(Action action)
+    {
+        lock (_gate)
+            action();
+    }
 }
 
 internal sealed class StubLocalizationService : ILocalizationService
@@ -203,7 +267,7 @@ internal sealed class FakeOnlinePresenceService : IOnlinePresenceService
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 
-internal sealed class FakeMessengerService : IMessengerService
+internal sealed class FakeMessengerService : IMessengerService, IOutgoingMessageTransport
 {
     public long? CurrentUserId { get; set; } = 1;
 
@@ -249,7 +313,31 @@ internal sealed class FakeMessengerService : IMessengerService
 
     public bool MessagesFail { get; set; }
 
-    public bool SendFails { get; set; }
+    internal MemoryOutgoingStore OutgoingStore { get; } = new();
+
+    internal sealed class MemoryOutgoingStore : IOutgoingMessageStore
+    {
+        private readonly Dictionary<(OutgoingScope, Guid), OutgoingMessage> _messages = [];
+        public Action<OutgoingMessage>? BeforeFirstSave { get; set; }
+        public Func<OutgoingMessage, Task>? AfterFirstSaveAsync { get; set; }
+        public IReadOnlyList<OutgoingMessage> Load(OutgoingScope scope) =>
+            _messages.Where(pair => pair.Key.Item1 == scope).Select(pair => pair.Value).ToArray();
+        public IReadOnlyList<(OutgoingScope Scope, Guid Id)> ListOperations() => _messages.Keys.ToArray();
+        public void Save(OutgoingScope scope, OutgoingMessage message)
+        {
+            if (!_messages.ContainsKey((scope, message.Id)))
+                BeforeFirstSave?.Invoke(message);
+            _messages[(scope, message.Id)] = message;
+        }
+        public void Remove(OutgoingScope scope, Guid id) => _messages.Remove((scope, id));
+        public void Clear(OutgoingScope scope)
+        {
+            foreach (var message in Load(scope))
+                Remove(scope, message.Id);
+        }
+    }
+
+    internal Func<OutgoingMessage, CancellationToken, Task<(ErrorReturner, MessageModel?)>>? SendOutgoing { get; set; }
     public Func<Task<(ErrorReturner, MessageModel?)>>? SendResponse { get; set; }
     public Func<Task<ErrorReturner>>? DeleteResponse { get; set; }
 
@@ -271,9 +359,27 @@ internal sealed class FakeMessengerService : IMessengerService
 
     public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(string chatId, string text, long replyToMessageId = 0, IReadOnlyList<long>? forwardedMessageIds = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? attachmentIds = null) =>
         (attachmentIds is { Count: > 0 } ? SendAttachments?.Invoke(chatId, text, replyToMessageId, attachmentIds) : null)
-        ?? SendResponse?.Invoke() ?? Task.FromResult<(ErrorReturner, MessageModel?)>(SendFails
-            ? (new ErrorReturner(false, "сообщение не отправлено"), null)
-            : (new ErrorReturner(true), null));
+        ?? SendResponse?.Invoke() ?? Task.FromResult<(ErrorReturner, MessageModel?)>((new ErrorReturner(true), null));
+
+    Task<long?> IOutgoingMessageTransport.GetStorageAvailableAsync(OutgoingScope scope, CancellationToken token) =>
+        GetAttachmentStorageAvailableAsync(token);
+
+    Task<(ErrorReturner error, string? fileId)> IOutgoingMessageTransport.UploadAsync(OutgoingScope scope,
+        OutgoingFile file, string path, IProgress<double> progress, CancellationToken token) =>
+        UploadAttachmentAsync(path, file.Name, file.ContentType, file.Type, progress, token);
+
+    async Task<(ErrorReturner error, MessageModel? message)> IOutgoingMessageTransport.SendAsync(
+        OutgoingScope scope, OutgoingMessage message, CancellationToken token)
+    {
+        var (error, sent) = await (SendOutgoing?.Invoke(message, token) ??
+            SendMessageAsync(message.ChatId, message.Text, message.ReplyId, message.Forwards, token,
+                message.Attachments.Concat(message.Uploaded.OfType<string>()).ToArray()));
+        if (sent is not null)
+            sent.ClientOperationId = message.Id.ToString();
+        if (error is { IsSuccess: true } && sent is null && SendResponse is null && SendOutgoing is null)
+            return (new(false, errorResourceKey: "Messenger_UserUnavailable"), null);
+        return (error, sent);
+    }
 
     public Func<Task<(ErrorReturner, PrivateMessageModel?)>>? PrivateSendResponse { get; set; }
     public Func<Task<(ErrorReturner, MessageModel?)>>? EditResponse { get; set; }

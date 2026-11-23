@@ -178,10 +178,4 @@ public sealed partial class MessengerPage
             // Имя и тип остаются доступны, даже если локальный файл больше не открывается.
         }
     }
-
-    private async void OnRetryAttachmentClick(object sender, RoutedEventArgs args)
-    {
-        if (sender is Button { DataContext: PendingAttachment attachment })
-            await ViewModel.RetryAttachmentAsync(attachment);
-    }
 }

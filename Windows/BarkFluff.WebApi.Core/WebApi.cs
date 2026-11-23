@@ -355,6 +355,25 @@ namespace BarkFluff.WebApi.Core
             Proto.Messages.MessagesApi.MessagesApiClient Client);
 
         internal volatile DraftClientBinding? DraftClient;
+        internal sealed record OutgoingClientBinding(GlobalParam Parameters,
+            Proto.Messages.MessagesApi.MessagesApiClient Messages, Proto.Files.FilesApi.FilesApiClient Files);
+        internal volatile OutgoingClientBinding? OutgoingClient;
+
+        public async Task<long?> GetOutgoingAttachmentStorageAvailableAsync(GlobalParam parameters, CancellationToken token)
+        {
+            var client = GetOutgoingClient(parameters, token).Files;
+            var response = await client.GetUserStorageInfoAsync(new Proto.Files.GetUserStorageInfoRequest(),
+                cancellationToken: token).ResponseAsync.ConfigureAwait(false);
+            return response.StorageLimit - response.TotalUsedStorage;
+        }
+
+        internal OutgoingClientBinding GetOutgoingClient(GlobalParam parameters, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            if (OutgoingClient is { } binding && ReferenceEquals(binding.Parameters, parameters))
+                return binding;
+            throw new OperationCanceledException();
+        }
 
         public Task<Proto.Messages.GetChatDraftResponse?> GetChatDraft(
             GlobalParam parameters, string chatId, CancellationToken cancellationToken) =>
@@ -402,6 +421,9 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter) => await MessageManager.SendMessage(globalParam, options, letter);
         public Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter, CancellationToken cancellationToken) =>
             MessageManager.SendMessage(globalParam, options, letter, cancellationToken);
+        public Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, string chatId,
+            ForwardingLetter letter, Guid clientOperationId, CancellationToken cancellationToken) =>
+            MessageManager.SendMessage(globalParam, (false, chatId), letter, clientOperationId.ToString(), cancellationToken);
         public async Task<(bool, string?)> CreateGroupChat(GlobalParam globalParam, string chatName, List<long> userIds) => await MessageManager.CreateGroupChat(globalParam, chatName, userIds); // исправить не использовать в таком виде
         public async Task<(bool, string?)> CreateChat(GlobalParam globalParam, string userId) => await MessageManager.CreateChat(globalParam, userId); // исправить не использовать в таком виде
         public async Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessages(GlobalParam globalParam, string chatId, long fromMessageId) => await MessageManager.GetMessages(globalParam, chatId, fromMessageId);
@@ -565,6 +587,11 @@ namespace BarkFluff.WebApi.Core
         public Task<(ErrorReturner error, string? fileId)> UploadFileAsync(GlobalParam globalParam, string filePath, string fileName,
             string? contentType, Proto.Files.UploadFileType fileType, IProgress<double>? progress, CancellationToken cancellationToken) =>
             FileManager.UploadFileAsync(globalParam, filePath, fileName, contentType, fileType, progress, cancellationToken);
+        public Task<(ErrorReturner error, string? fileId)> UploadFileAsync(GlobalParam globalParam, string filePath, string fileName,
+            string? contentType, Proto.Files.UploadFileType fileType, Guid clientOperationId, IProgress<double>? progress,
+            CancellationToken cancellationToken) =>
+            FileManager.UploadFileAsync(globalParam, filePath, fileName, contentType, fileType, progress, cancellationToken,
+                clientOperationId.ToString());
         public async Task<ErrorReturner> UploadUserAvatarAsync(GlobalParam globalParam, byte[] jpegImageBytes) => await FileManager.UploadUserAvatarAsync(globalParam, jpegImageBytes);
         public async Task<(ErrorReturner error, string? url)> GetFile(GlobalParam globalParam, string fileId) => await FileManager.GetFile(globalParam, fileId);
         public async Task<(ErrorReturner error, List<string>? urls)> GetFiles(GlobalParam globalParam, List<string> fileId) => await FileManager.GetFiles(globalParam, fileId);

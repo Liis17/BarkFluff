@@ -177,6 +177,25 @@ public sealed class AttachmentTransportTests : IDisposable
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => upload);
     }
 
+    [Fact]
+    public async Task CompletedSlotReturnsServerFileIdWithoutReadingOrPostingFile()
+    {
+        var id = Guid.NewGuid();
+        using var client = new HttpClient(new TestHandler((request, _) =>
+        {
+            Assert.Equal(HttpMethod.Get, request.Method);
+            Assert.Equal("/upload/slot/status", request.RequestUri!.AbsolutePath);
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = System.Net.Http.Json.JsonContent.Create(new { fileId = id, state = "completed" })
+            });
+        }));
+        var result = await WebApiFileManager.ResumeAttachmentAsync(client, "https://example.invalid/upload/slot",
+            () => throw new InvalidOperationException("A completed slot must not post"), null, default);
+        Assert.True(result.error.IsSuccess);
+        Assert.Equal(id.ToString(), result.fileId);
+    }
+
     private sealed class TestHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>

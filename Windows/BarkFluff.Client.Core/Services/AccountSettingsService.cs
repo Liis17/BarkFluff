@@ -114,6 +114,7 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
     public async Task<string?> LogoutAsync(CancellationToken cancellationToken = default)
     {
         var draftCleanup = _messengerViewModel.StopDraftsForLogoutAsync();
+        var outgoingCleanup = _messengerViewModel.ClearOutgoingForLogoutAsync();
         _messengerViewModel.Reset();
         await _realtimeMessenger.StopAsync();
         await _presence.StopAsync();
@@ -131,9 +132,10 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
         {
             draftsCleared = false;
         }
+        var outgoingCleared = await outgoingCleanup;
         _navigation.ShowLogin();
 
-        return result.IsSuccess && draftsCleared ? null : "Error_LogoutFailed";
+        return result.IsSuccess && draftsCleared && outgoingCleared ? null : "Error_LogoutFailed";
     }
 
     /// <summary>Отдельная точка для проверки порядка выхода без подключения к живой ноде.</summary>

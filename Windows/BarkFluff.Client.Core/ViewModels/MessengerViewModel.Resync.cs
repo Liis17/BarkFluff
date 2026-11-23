@@ -13,7 +13,19 @@ public sealed partial class MessengerViewModel
     private TaskCompletionSource? _feedLoadCompletion;
     private TaskCompletionSource? _reconnectFeed;
     private bool _feedLoaded;
-    private bool _feedIncludesTail = true;
+    private bool _historyIncludesTail = true;
+    private bool _feedIncludesTail
+    {
+        get => _historyIncludesTail;
+        set
+        {
+            if (_historyIncludesTail == value)
+                return;
+            _historyIncludesTail = value;
+            OnPropertyChanged(nameof(IsOutgoingTailVisible));
+            OnPropertyChanged(nameof(OutgoingHistoryNotice));
+        }
+    }
 
     private void BeginFeedCatchUp()
     {
@@ -490,6 +502,7 @@ public sealed partial class MessengerViewModel
             var visible = existing ?? item;
             if (row.Regular is { } regular)
             {
+                _ = ConfirmOutgoingAsync(session, chat.Id, regular);
                 foreach (var reader in regular.ReadBy)
                 {
                     visible.RegisterReader(reader);

@@ -51,6 +51,7 @@ namespace BarkFluff.WebApi.Core.Managers
             Attachments = message.Content.Attachments.Select(MapAttachment).ToList(),
             SenderId = message.SenderId,
             SentAt = message.SentAt,
+            ClientOperationId = message.ClientOperationId,
             Type = message.Type,
             ReadBy = message.ReadBy.ToList(),
             IsEdited = message.IsEdited,
@@ -210,30 +211,39 @@ namespace BarkFluff.WebApi.Core.Managers
         /// <summary>
         /// Отправка сообщения в чат
         /// </summary>
-        public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter, CancellationToken cancellationToken = default)
+        public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter, CancellationToken cancellationToken = default) =>
+            await SendMessage(globalParam, options, letter, "", cancellationToken);
+
+        internal async Task<(ErrorReturner error, MessageModel? message)> SendMessage(
+            GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter,
+            string clientOperationId, CancellationToken cancellationToken)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    var client = clientOperationId.Length == 0 ? MessagesAC
+                        : _webApi.GetOutgoingClient(globalParam, cancellationToken).Messages;
                     Proto.Messages.SendMessageResponse response;
                     string chatId;
                     if (!options.isUserId)
                     {
                         chatId = options.recipient;
-                        response = await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
+                        response = await client!.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
                             ChatId = options.recipient,
+                            ClientOperationId = clientOperationId,
                             Message = BuildOutgoingMessage(letter),
                         }, cancellationToken: cancellationToken);
                     }
                     else
                     {
                         chatId = string.Empty;
-                        response = await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
+                        response = await client!.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
                             UserId = long.Parse(options.recipient),
+                            ClientOperationId = clientOperationId,
                             Message = BuildOutgoingMessage(letter),
                         }, cancellationToken: cancellationToken);
                     }
@@ -243,16 +253,38 @@ namespace BarkFluff.WebApi.Core.Managers
             }
             catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
             {
-                return (new ErrorReturner(false, "Неверный идентификатор чата."), null);
+                return (new ErrorReturner(false, "Неверный идентификатор чата.",
+                    clientOperationId.Length == 0 ? 0 : ErrorReturner.PermanentOutgoingFailure), null);
             }
             catch (BarkFluff.Shared.Exceptions.Users.UserUnavailableException)
             {
                 return (new ErrorReturner(false, errorResourceKey: "Messenger_UserUnavailable"), null);
             }
+            catch (Exception exception) when (clientOperationId.Length > 0 && IsPermanentOperationFailure(exception))
+            {
+                return (new ErrorReturner(false, errorCode: ErrorReturner.PermanentOutgoingFailure), null);
+            }
             catch (Exception)
             {
+                if (clientOperationId.Length > 0)
+                    cancellationToken.ThrowIfCancellationRequested();
                 return (new ErrorReturner(false, "Ошибка отправки сообщения"), null);
             }
+        }
+
+        internal static bool IsPermanentOperationFailure(Exception exception)
+        {
+            while (exception is InvalidOperationException { InnerException: { } inner })
+                exception = inner;
+            var status = exception switch
+            {
+                BarkFluff.Shared.Exceptions.BaseGrpcException domain => domain.StatusCode,
+                Grpc.Core.RpcException rpc => rpc.StatusCode,
+                _ => Grpc.Core.StatusCode.Unknown
+            };
+            return status is Grpc.Core.StatusCode.InvalidArgument or Grpc.Core.StatusCode.NotFound
+                or Grpc.Core.StatusCode.PermissionDenied or Grpc.Core.StatusCode.FailedPrecondition
+                or Grpc.Core.StatusCode.Unimplemented;
         }
 
         public async Task<(bool, string?)> CreateGroupChat(GlobalParam globalParam, string chatName, List<long> userIds)

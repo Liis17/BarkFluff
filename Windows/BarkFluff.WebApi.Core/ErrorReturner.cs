@@ -3,6 +3,7 @@
     public class ErrorReturner
     {
         public const int HistoryAnchorNotFound = 2;
+        public const int PermanentOutgoingFailure = 3;
 
         public bool IsSuccess { get; set; }
         public string? ErrorMessage { get; set; }

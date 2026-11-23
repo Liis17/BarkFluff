@@ -291,11 +291,8 @@ public sealed class MessengerHistoryTests
         Assert.Equal(incoming.Text, vm.SelectedChat!.Preview);
 
         var sent = CreateMessage(182, sender: 1);
-        api.SendResponse = () =>
-        {
-            api.Messages.Add(sent);
-            return Task.FromResult<(ErrorReturner, MessageModel?)>((new(true), sent));
-        };
+        var response = new TaskCompletionSource<(ErrorReturner, MessageModel?)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        api.SendResponse = () => response.Task;
         if (forward)
         {
             vm.StartForwardMessageCommand.Execute(vm.Messages[0]);
@@ -308,13 +305,45 @@ public sealed class MessengerHistoryTests
             await vm.SendCommand.ExecuteAsync(null);
         }
 
-        Assert.Equal(Enumerable.Range(133, 50).Select(id => (long)id), vm.Messages.Select(row => row.Id));
+        Assert.Equal(Enumerable.Range(132, 50).Select(id => (long)id), vm.Messages.Select(row => row.Id));
         Assert.Equal(MessageScrollTarget.Bottom, vm.ScrollRequest!.Target);
+        api.Messages.Add(sent);
+        response.SetResult((new(true), sent));
+        await MessengerTestDoubles.WaitForMessageAsync(vm, 182);
+        await vm.ShowOutgoingTailCommand.ExecuteAsync(null);
+        Assert.Equal(182, vm.Messages[^1].Id);
         vm.Reset();
     }
 
     [Fact]
-    public async Task MultiChatForwardReloadsTailOnceAfterSendingToTargets()
+    public async Task FailedOutgoingMessageIsVisibleAndCanBeRetriedFromHistory()
+    {
+        var (api, _, updates) = CreateChat(180);
+        var attempts = 0;
+        api.SendOutgoing = (_, _) => Task.FromResult<(ErrorReturner, MessageModel?)>(++attempts == 1
+            ? (new(false, errorResourceKey: "Messenger_UserUnavailable"), null)
+            : (new(true), CreateMessage(181, sender: 1)));
+        var vm = await OpenAsync(api, updates);
+        vm.DraftText = "queued";
+        await vm.SendCommand.ExecuteAsync(null);
+        await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => vm.PendingMessages.SingleOrDefault()?.CanRetry == true);
+        Assert.Null(vm.OutgoingHistoryNotice);
+
+        await vm.NavigateToMessageAsync(1);
+        Assert.False(vm.IsOutgoingTailVisible);
+        Assert.Equal("Messenger_OutboxHistoryFailed", vm.OutgoingHistoryNotice);
+        await vm.ShowOutgoingTailCommand.ExecuteAsync(null);
+
+        Assert.True(vm.IsOutgoingTailVisible);
+        Assert.Null(vm.OutgoingHistoryNotice);
+        await Assert.Single(vm.PendingMessages).RetryCommand.ExecuteAsync(null);
+        await MessengerTestDoubles.WaitForMessageAsync(vm, 181);
+        Assert.Equal(2, attempts);
+        vm.Reset();
+    }
+
+    [Fact]
+    public async Task MultiChatForwardReloadsTailOnceAfterQueueingForTargets()
     {
         var (api, chat, updates) = CreateChat(180);
         chat.CountUnread = 180;
@@ -331,29 +360,29 @@ public sealed class MessengerHistoryTests
             }
             return history(id, anchor, before, after);
         };
-        var secondSend = new TaskCompletionSource<(ErrorReturner, MessageModel?)>();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var bothStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var sent = CreateMessage(181, sender: 1);
-        var sends = 0;
-        api.SendResponse = () =>
+        var sends = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        api.SendOutgoing = async (message, _) =>
         {
-            if (++sends == 1)
-            {
-                api.Messages.Add(sent);
-                return Task.FromResult<(ErrorReturner, MessageModel?)>((new(true), sent));
-            }
-            return secondSend.Task;
+            sends.Enqueue(message.ChatId);
+            if (sends.Count == 2)
+                bothStarted.TrySetResult();
+            await release.Task;
+            return (new(true), message.ChatId == "a" ? sent : MessengerTestDoubles.CreateMessage(182, "b", 1));
         };
         vm.StartForwardMessageCommand.Execute(vm.Messages[0]);
         foreach (var target in vm.ForwardTargets)
         {
             vm.ToggleForwardTargetCommand.Execute(target);
         }
-        var forwarding = vm.SubmitForwardCommand.ExecuteAsync(null);
-        Assert.Equal(2, sends);
-        Assert.Equal(0, tailRequests);
-        secondSend.SetResult((new(true), sent));
-        await forwarding;
-
+        await vm.SubmitForwardCommand.ExecuteAsync(null);
+        await bothStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(new[] { "a", "b" }, sends.Order());
+        Assert.Equal(1, tailRequests);
+        release.SetResult();
+        await MessengerTestDoubles.WaitForMessageAsync(vm, 181);
         Assert.Equal(1, tailRequests);
         Assert.Equal(181, vm.Messages[^1].Id);
         vm.Reset();
@@ -367,24 +396,36 @@ public sealed class MessengerHistoryTests
         var (api, _, updates) = CreateChat(1);
         api.Chats.Add(MessengerTestDoubles.CreateChat("b"));
         var vm = await OpenAsync(api, updates);
-        var response = new TaskCompletionSource<(ErrorReturner, MessageModel?)>();
-        api.SendResponse = () => response.Task;
+        var response = new TaskCompletionSource<(ErrorReturner, MessageModel?)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sending = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
+        api.SendOutgoing = (_, token) =>
+        {
+            sending.TrySetResult(token);
+            return response.Task;
+        };
         vm.StartForwardMessageCommand.Execute(vm.Messages[0]);
         vm.ToggleForwardTargetCommand.Execute(vm.ForwardTargets.Single(target => target.ChatId == "b"));
-        var forwarding = vm.SubmitForwardCommand.ExecuteAsync(null);
-        Assert.False(forwarding.IsCompleted);
+        await vm.SubmitForwardCommand.ExecuteAsync(null);
+        var token = await sending.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
         if (resetSession)
         {
+            Assert.True(await vm.ClearOutgoingForLogoutAsync());
             vm.Reset();
             await vm.LoadAsync();
             vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+            Assert.True(token.IsCancellationRequested);
         }
-        response.SetResult((new(false, "forward failed"), null));
-        await forwarding;
-
-        Assert.Equal(resetSession ? null : "forward failed", vm.ActionError);
+        response.SetResult((new(false, errorResourceKey: "Messenger_UserUnavailable"), null));
+        if (resetSession)
+            Assert.Empty(vm.PendingMessages);
+        else
+        {
+            await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => vm.PendingMessages.SingleOrDefault()?.CanRetry == true);
+            Assert.Equal("Messenger_UserUnavailable", Assert.Single(vm.PendingMessages).Status);
+        }
+        Assert.Null(vm.ActionError);
         vm.Reset();
     }
 
@@ -505,6 +546,7 @@ public sealed class MessengerHistoryTests
     [InlineData(true)]
     public async Task WindowJumpDuringSendStillClearsDraft(bool isPrivate)
     {
+        var dispatcher = new InlineUiDispatcher();
         var (api, chat, updates) = CreateChat(160, isPrivate);
         api.PrivateMessages.AddRange(Enumerable.Range(1, 160).Select(id => new PrivateMessageModel
         {
@@ -514,16 +556,27 @@ public sealed class MessengerHistoryTests
             Slice(api.PrivateMessages, message => message.MessageId, anchor, before, after));
         var regular = new TaskCompletionSource<(ErrorReturner, MessageModel?)>();
         var encrypted = new TaskCompletionSource<(ErrorReturner, PrivateMessageModel?)>();
+        var writing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        api.OutgoingStore.AfterFirstSaveAsync = _ =>
+        {
+            writing.TrySetResult();
+            return release.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        };
         api.SendResponse = () => regular.Task;
         api.PrivateSendResponse = () => encrypted.Task;
-        var vm = await OpenAsync(api, updates);
+        var vm = await OpenAsync(api, updates, dispatcher);
         if (!isPrivate)
         {
             vm.StartReplyMessageCommand.Execute(vm.Messages[^1]);
         }
         vm.DraftText = "send";
         var sending = vm.SendCommand.ExecuteAsync(null);
-        await vm.NavigateToMessageAsync(1);
+        if (!isPrivate)
+            await writing.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Task navigation = Task.CompletedTask;
+        dispatcher.Post(() => navigation = vm.NavigateToMessageAsync(1));
+        await navigation;
         Assert.Equal(1, vm.ScrollRequest?.MessageId);
 
         var sent = CreateMessage(161, sender: 1);
@@ -535,13 +588,19 @@ public sealed class MessengerHistoryTests
         api.PrivateMessages.Add(privateSent);
         regular.SetResult((new(true), sent));
         encrypted.SetResult((new(true), privateSent));
+        release.TrySetResult();
         await sending;
+        if (!isPrivate)
+            await MessengerTestDoubles.WaitForMessageAsync(vm, 161);
 
-        Assert.Empty(vm.DraftText);
-        Assert.Null(vm.ReplyTarget);
-        Assert.Equal(161, vm.Messages[^1].Id);
-        Assert.Equal(MessageScrollTarget.Bottom, vm.ScrollRequest?.Target);
-        vm.Reset();
+        dispatcher.Post(() =>
+        {
+            Assert.Empty(vm.DraftText);
+            Assert.Null(vm.ReplyTarget);
+            Assert.Equal(161, vm.Messages[^1].Id);
+            Assert.Equal(MessageScrollTarget.Bottom, vm.ScrollRequest?.Target);
+            vm.Reset();
+        });
     }
 
     [Fact]
@@ -753,9 +812,10 @@ public sealed class MessengerHistoryTests
         return (api, chat, new());
     }
 
-    private static async Task<MessengerViewModel> OpenAsync(FakeMessengerService api, FakeRealtimeMessengerService updates)
+    private static async Task<MessengerViewModel> OpenAsync(FakeMessengerService api, FakeRealtimeMessengerService updates,
+        InlineUiDispatcher? dispatcher = null)
     {
-        var vm = MessengerTestDoubles.CreateViewModel(api, updates, keys: new() { Key = new byte[32] });
+        var vm = MessengerTestDoubles.CreateViewModel(api, updates, keys: new() { Key = new byte[32] }, dispatcher: dispatcher);
         await vm.LoadAsync();
         vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "a");
         return vm;

@@ -67,9 +67,108 @@ internal partial class WebApiFileManager
         }
     }
 
+    internal async Task<(ErrorReturner error, string? fileId)> UploadFileAsync(
+        GlobalParam parameters, string path, string name, string? contentType, UploadFileType type,
+        IProgress<double>? progress, CancellationToken cancellationToken, string clientOperationId)
+    {
+        try
+        {
+            return await _webApi.TokenManager.SafeCallAsync(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var client = _webApi.GetOutgoingClient(parameters, cancellationToken).Files;
+                var slot = await client.GetUploadUrlAsync(new GetUploadUrlRequest
+                {
+                    FileType = type,
+                    ClientOperationId = clientOperationId
+                }, deadline: DateTime.UtcNow.AddSeconds(30), cancellationToken: cancellationToken)
+                    .ResponseAsync.ConfigureAwait(false);
+                var url = ToMediaUrl(parameters, slot.Url);
+                return await ResumeAttachmentAsync(AttachmentHttpClient, url, PostAsync, progress, cancellationToken)
+                    .ConfigureAwait(false);
+
+                async Task<(ErrorReturner error, string? fileId)> PostAsync()
+                {
+                    string? processed = null;
+                    try
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (!File.Exists(path))
+                            return Failure("Messenger_AttachmentReadFailed");
+                        if (type == UploadFileType.MessageAttachmentImage)
+                            processed = await ImageProcessor.ProcessImageForUploadAsync(path,
+                                Path.GetDirectoryName(path)!).ConfigureAwait(false);
+
+                        var converted = processed is not null && processed != path;
+                        return await PostAttachmentAsync(AttachmentHttpClient, url, processed ?? path,
+                            converted ? Path.ChangeExtension(name, ".jpg") : name,
+                            converted ? "image/jpeg" : contentType, progress, cancellationToken,
+                            queued: true).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        if (processed is not null && processed != path)
+                        {
+                            try { File.Delete(processed); }
+                            catch (IOException) { }
+                            catch (UnauthorizedAccessException) { }
+                        }
+                    }
+                }
+            }, parameters).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (WebApiMessageManager.IsPermanentOperationFailure(exception))
+        {
+            return (new ErrorReturner(false, errorCode: ErrorReturner.PermanentOutgoingFailure), null);
+        }
+        catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException
+            or UnauthorizedAccessException)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Failure("Messenger_AttachmentReadFailed");
+        }
+        catch (Exception)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Failure();
+        }
+    }
+
+    internal static async Task<(ErrorReturner error, string? fileId)> ResumeAttachmentAsync(
+        HttpClient client, string url, Func<Task<(ErrorReturner error, string? fileId)>> post,
+        IProgress<double>? progress, CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(MaxStatusWait);
+        using var response = await client.GetAsync(AttachmentStatusUrl(url), timeout.Token).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+            return UploadHttpFailure(response.StatusCode);
+
+        var status = await response.Content.ReadFromJsonAsync<UploadResult>(timeout.Token).ConfigureAwait(false);
+        if (status?.State == "pending")
+            return await post().ConfigureAwait(false);
+
+        if (status?.State == "processing")
+            status = await WaitForAttachmentAsync(client, url, TimeSpan.FromSeconds(Math.Max(1, status.RetryAfterSeconds)),
+                TimeProvider.System, cancellationToken).ConfigureAwait(false);
+
+        if (status?.State != "completed" || status.FileId == Guid.Empty)
+            return Failure();
+
+        progress?.Report(1);
+        return (new ErrorReturner(true), status.FileId.ToString());
+    }
+
+    private static Uri AttachmentStatusUrl(string url)
+    {
+        var builder = new UriBuilder(url);
+        builder.Path = builder.Path.TrimEnd('/') + "/status";
+        return builder.Uri;
+    }
+
     internal static async Task<(ErrorReturner error, string? fileId)> PostAttachmentAsync(
         HttpClient client, string url, string path, string name, string? contentType,
-        IProgress<double>? progress, CancellationToken cancellationToken, TimeProvider? timeProvider = null)
+        IProgress<double>? progress, CancellationToken cancellationToken, TimeProvider? timeProvider = null, bool queued = false)
     {
         var clock = timeProvider ?? TimeProvider.System;
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete,
@@ -127,7 +226,7 @@ internal partial class WebApiFileManager
         }
         else
         {
-            return Failure();
+            return queued ? UploadHttpFailure(response.StatusCode) : Failure();
         }
 
         if (result is null || result.FileId == Guid.Empty)
@@ -143,13 +242,12 @@ internal partial class WebApiFileManager
         var deadline = clock.GetUtcNow() + MaxStatusWait;
         using var deadlineCancellation = new CancellationTokenSource(MaxStatusWait, clock);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadlineCancellation.Token);
-        var statusUrl = new UriBuilder(url);
-        statusUrl.Path = statusUrl.Path.TrimEnd('/') + "/status";
+        var statusUrl = AttachmentStatusUrl(url);
         while (clock.GetUtcNow() + delay < deadline)
         {
             await Task.Delay(delay >= TimeSpan.FromSeconds(1) ? delay : TimeSpan.FromSeconds(1), clock, timeout.Token)
                 .ConfigureAwait(false);
-            using var response = await client.GetAsync(statusUrl.Uri, timeout.Token).ConfigureAwait(false);
+            using var response = await client.GetAsync(statusUrl, timeout.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 return null;
 
@@ -163,6 +261,13 @@ internal partial class WebApiFileManager
         }
         return null;
     }
+
+    private static (ErrorReturner, string?) UploadHttpFailure(HttpStatusCode status) => status switch
+    {
+        HttpStatusCode.BadRequest or HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.InsufficientStorage
+            => (new ErrorReturner(false, errorCode: ErrorReturner.PermanentOutgoingFailure), null),
+        _ => Failure()
+    };
 
     private static (ErrorReturner, string?) Failure(string key = "Messenger_AttachmentUploadFailed") =>
         (new ErrorReturner(false, errorResourceKey: key), null);

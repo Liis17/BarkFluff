@@ -201,7 +201,10 @@ namespace BarkFluff.WebApi.Core
         /// </summary>
         /// <param name="filePath">Path to the file to process</param>
         /// <returns>Path to processed file (may be same as input if no conversion needed)</returns>
-        public static async Task<string> ProcessImageForUploadAsync(string filePath)
+        public static Task<string> ProcessImageForUploadAsync(string filePath) =>
+            ProcessImageForUploadAsync(filePath, Path.GetTempPath());
+
+        internal static async Task<string> ProcessImageForUploadAsync(string filePath, string temporaryDirectory)
         {
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new ArgumentNullException(nameof(filePath), "File path cannot be null or empty");
@@ -214,7 +217,7 @@ namespace BarkFluff.WebApi.Core
                 return filePath;
 
             // Create temp file for converted image
-            var tempPath = Path.Combine(Path.GetTempPath(), $"converted_{Guid.NewGuid()}.jpg");
+            var tempPath = Path.Combine(temporaryDirectory, $"converted_{Guid.NewGuid()}.jpg");
 
             // Convert to JPEG
             var success = await ConvertToJpegAsync(filePath, tempPath);

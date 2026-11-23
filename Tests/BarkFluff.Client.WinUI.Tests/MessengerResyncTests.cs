@@ -706,7 +706,8 @@ public sealed class MessengerResyncTests
         }
         vm.StartForwardMessageCommand.Execute(vm.Messages[0]);
         vm.ToggleForwardTargetCommand.Execute(vm.ForwardTargets.Single(target => target.ChatId == "a"));
-        var sending = vm.SubmitForwardCommand.ExecuteAsync(null);
+        await vm.SubmitForwardCommand.ExecuteAsync(null);
+        await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => vm.PendingMessages.Count == 1);
         if (!switchChat)
         {
             updates.Raise(new MessageUpdate("a", false, 3, MessageUpdateKind.Delete));
@@ -719,8 +720,7 @@ public sealed class MessengerResyncTests
             vm.ScrollRequest = null;
             attachment.SetResult("resolved");
         }
-        await sending;
-
+        await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => vm.PendingMessages.Count == 0);
         Assert.DoesNotContain(vm.Messages, message => message.Id == 3);
         if (switchChat)
         {
@@ -762,11 +762,24 @@ public sealed class MessengerResyncTests
     [InlineData("window")]
     public async Task Send_DuringResyncSurvivesHistoryAndLateEcho(string pausedRequest)
     {
-        var (vm, api, updates) = await OpenAsync();
+        var dispatcher = new ResyncUiDispatcher();
+        var (vm, api, updates) = await OpenAsync(dispatcher: dispatcher);
         var sent = MakeMessage(pausedRequest == "window" ? 54 : 3, "sent during resync");
         api.SendResponse = () => Task.FromResult<(ErrorReturner, MessageModel?)>((new(true), sent));
-        var chatSnapshot = new TaskCompletionSource<(ErrorReturner, List<Chat>?)>();
-        var historySnapshot = new TaskCompletionSource<(ErrorReturner, List<MessageModel>?)>();
+        var chatSnapshot = new TaskCompletionSource<(ErrorReturner, List<Chat>?)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var historySnapshot = new TaskCompletionSource<(ErrorReturner, List<MessageModel>?)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var historyApplied = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? outsideDispatcher = null;
+        ((System.Collections.Specialized.INotifyCollectionChanged)vm.Messages).CollectionChanged += (_, _) =>
+        {
+            if (!dispatcher.IsDispatching)
+                Interlocked.CompareExchange(ref outsideDispatcher, Environment.StackTrace, null);
+        };
+        vm.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(vm.IsHistoryUpdating) && !vm.IsHistoryUpdating)
+                historyApplied.TrySetResult();
+        };
         var oldChats = api.Chats.Select(chat => chat.Clone()).ToList();
         var oldRows = api.Messages.ToList();
         var tail = Enumerable.Range(4, 50).Select(id => MakeMessage(id, "tail")).ToList();
@@ -795,23 +808,35 @@ public sealed class MessengerResyncTests
 
         updates.Resync();
         Assert.True(paused);
-        vm.DraftText = sent.Text;
-        await vm.SendCommand.ExecuteAsync(null);
-        var row = Assert.Single(vm.Messages, message => message.Id == sent.MessageId);
+        Task sending = Task.CompletedTask;
+        dispatcher.Post(() =>
+        {
+            vm.DraftText = sent.Text;
+            sending = vm.SendCommand.ExecuteAsync(null);
+        });
+        await sending;
+        await MessengerTestDoubles.WaitForMessageAsync(vm, sent.MessageId, dispatcher);
+        MessageItemViewModel? row = null;
+        dispatcher.Post(() => row = Assert.Single(vm.Messages, message => message.Id == sent.MessageId));
         chatSnapshot.TrySetResult((new(true), oldChats));
         historySnapshot.TrySetResult((new(true), pausedRequest == "window" ? [.. oldRows, .. tail] : oldRows));
-
-        Assert.Same(row, Assert.Single(vm.Messages, message => message.Id == sent.MessageId));
-        updates.Raise(new IncomingMessage("a", sent));
-        Assert.Same(row, Assert.Single(vm.Messages, message => message.Id == sent.MessageId));
-        Assert.Equal(sent.Text, vm.SelectedChat!.Preview);
-        vm.Reset();
+        await historyApplied.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        dispatcher.Post(() =>
+        {
+            Assert.True(outsideDispatcher is null, outsideDispatcher);
+            Assert.Same(row, Assert.Single(vm.Messages, message => message.Id == sent.MessageId));
+            updates.Raise(new IncomingMessage("a", sent));
+            Assert.Same(row, Assert.Single(vm.Messages, message => message.Id == sent.MessageId));
+            Assert.Equal(sent.Text, vm.SelectedChat!.Preview);
+            vm.Reset();
+        });
     }
 
     [Fact]
     public async Task Send_EchoKeepsPreviewWhenOlderChatSnapshotCompletes()
     {
-        var (vm, api, updates) = await OpenAsync();
+        var dispatcher = new InlineUiDispatcher();
+        var (vm, api, updates) = await OpenAsync(dispatcher: dispatcher);
         var snapshot = new TaskCompletionSource<(ErrorReturner, List<Chat>?)>();
         var oldChats = api.Chats.Select(chat => chat.Clone()).ToList();
         api.ChatSnapshot = () => snapshot.Task;
@@ -821,20 +846,24 @@ public sealed class MessengerResyncTests
         updates.Resync();
         vm.DraftText = sent.Text;
         await vm.SendCommand.ExecuteAsync(null);
-        updates.Raise(new IncomingMessage("a", sent));
-        Assert.Equal(sent.Text, vm.SelectedChat!.Preview);
-        snapshot.SetResult((new(true), oldChats));
+        await MessengerTestDoubles.WaitForMessageAsync(vm, sent.MessageId, dispatcher);
+        dispatcher.Post(() =>
+        {
+            updates.Raise(new IncomingMessage("a", sent));
+            Assert.Equal(sent.Text, vm.SelectedChat!.Preview);
+            snapshot.SetResult((new(true), oldChats));
 
-        Assert.Equal(sent.Text, vm.SelectedChat.Preview);
-        vm.Reset();
+            Assert.Equal(sent.Text, vm.SelectedChat.Preview);
+            vm.Reset();
+        });
     }
 
     private static async Task<(MessengerViewModel, FakeMessengerService, FakeRealtimeMessengerService)> OpenAsync(
-        Func<TimeSpan, CancellationToken, Task>? delay = null)
+        Func<TimeSpan, CancellationToken, Task>? delay = null, IUiDispatcher? dispatcher = null)
     {
         var api = CreateApi();
         var updates = new FakeRealtimeMessengerService();
-        var vm = MessengerTestDoubles.CreateViewModel(api, updates);
+        var vm = MessengerTestDoubles.CreateViewModel(api, updates, dispatcher: dispatcher);
         if (delay is not null)
         {
             vm.ResyncDelay = delay;
@@ -884,9 +913,36 @@ public sealed class MessengerResyncTests
         };
     }
 
+    private sealed class ResyncUiDispatcher : SynchronizationContext, IUiDispatcher
+    {
+        private readonly object _gate = new();
+
+        internal bool IsDispatching => Monitor.IsEntered(_gate);
+
+        public override void Post(SendOrPostCallback callback, object? state) => Post(() => callback(state));
+
+        public void Post(Action action)
+        {
+            lock (_gate)
+            {
+                // Как в WinUI, продолжения await возвращаются в тот же UI-диспетчер.
+                var previous = Current;
+                SetSynchronizationContext(this);
+                try
+                {
+                    action();
+                }
+                finally
+                {
+                    SetSynchronizationContext(previous);
+                }
+            }
+        }
+    }
+
     private sealed class QueuedDispatcher : IUiDispatcher
     {
-        private readonly Queue<Action> _queued = new();
+        private readonly System.Collections.Concurrent.ConcurrentQueue<Action> _queued = new();
 
         public void Post(Action action) => _queued.Enqueue(action);
 

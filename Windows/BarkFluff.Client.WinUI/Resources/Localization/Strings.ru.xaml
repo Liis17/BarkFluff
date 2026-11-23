@@ -490,9 +490,6 @@
     <x:String x:Key="Messenger_AttachmentConnectionTimeout">Связь прервалась при загрузке файла. Проверьте подключение и повторите попытку.</x:String>
     <x:String x:Key="Messenger_AttachmentResponseTimeout">Сервер слишком долго не отвечает. Повторите загрузку.</x:String>
     <x:String x:Key="Messenger_AttachmentUploading">Загрузка…</x:String>
-    <x:String x:Key="Messenger_AttachmentWaiting">Ожидает загрузки</x:String>
-    <x:String x:Key="Messenger_AttachmentReady">Загружено</x:String>
-    <x:String x:Key="Messenger_AttachmentCancelled">Загрузка отменена</x:String>
     <x:String x:Key="Messenger_AttachmentRetry">Повторить загрузку</x:String>
     <x:String x:Key="Messenger_AttachmentPhoto">Фото</x:String>
     <x:String x:Key="Messenger_AttachmentGif">GIF</x:String>
@@ -512,4 +509,14 @@
     <x:String x:Key="Messenger_VoicePlaybackFailed">Не удалось воспроизвести вложение.</x:String>
     <x:String x:Key="Messenger_VoicePlayStop">Воспроизвести или остановить аудио</x:String>
     <x:String x:Key="Messenger_VoiceProgress">Прогресс воспроизведения</x:String>
+    <x:String x:Key="Messenger_OutboxWaiting">Ожидает отправки</x:String>
+    <x:String x:Key="Messenger_OutboxSending">Отправляется</x:String>
+    <x:String x:Key="Messenger_OutboxRejected">Сервер отклонил отправку</x:String>
+    <x:String x:Key="Messenger_OutboxStorageFailed">Не удалось сохранить очередь отправки</x:String>
+    <x:String x:Key="Messenger_OutboxForward">Пересылка</x:String>
+    <x:String x:Key="Messenger_OutboxReply">Ответ</x:String>
+    <x:String x:Key="Messenger_OutboxSticker">Стикер</x:String>
+    <x:String x:Key="Messenger_OutboxRetry">Повторить</x:String>
+    <x:String x:Key="Messenger_OutboxHistoryPending">Неотправленные сообщения ({0}). К последним сообщениям</x:String>
+    <x:String x:Key="Messenger_OutboxHistoryFailed">Ошибка отправки. Неотправленные сообщения ({0}). К последним сообщениям</x:String>
 </ResourceDictionary>

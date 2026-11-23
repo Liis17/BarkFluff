@@ -1,6 +1,5 @@
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
-using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace BarkFluff.Client.Core.ViewModels;
@@ -50,43 +49,20 @@ public sealed partial class MessengerViewModel
         var version = _chatVersion;
         var token = AttachmentComposer.ScopeToken;
         var reply = ReplyTarget;
-        using var reading = session.Journal.ReadHistory(chat.Id, chat.IsPrivate);
-        var revision = session.Journal.Revision;
         picker.IsSending = true;
         ActionError = null;
         try
         {
-            var (error, message) = await _messenger.SendMessageAsync(chat.Id, "", reply?.Id ?? 0,
-                cancellationToken: token, attachmentIds: [sticker.FileId]);
-            if (!IsCurrent(session))
+            if (!await EnqueueOutgoingAsync(session, chat.Id, "", reply?.Id ?? 0,
+                    attachments: [sticker.FileId], token: token))
                 return false;
 
-            if (error is not { IsSuccess: true } || message is null)
-            {
-                _uiDispatcher.Post(() =>
-                {
-                    if (IsOpen(session, chat, version))
-                        ActionError = error is null ? _localization.GetString("Messenger_ActionFailed") : DescribeError(error);
-                });
-                return false;
-            }
-
-            if (IsOpen(session, chat, version))
-            {
-                if (_feedIncludesTail)
-                    await MergeSentRowAsync(session, chat, version,
-                        new(message.MessageId, message.SentAt.ToDateTimeOffset(), message, null), revision);
-
-                _uiDispatcher.Post(() =>
-                {
-                    if (IsOpen(session, chat, version) && ReferenceEquals(ReplyTarget, reply))
-                        ReplyTarget = null;
-                });
-            }
-
+            if (IsOpen(session, chat, version) && ReferenceEquals(ReplyTarget, reply))
+                ReplyTarget = null;
             if (IsCurrent(session))
                 await picker.RememberAsync(sticker);
-
+            if (IsOpen(session, chat, version))
+                await ShowOutgoingTailAsync();
             return IsOpen(session, chat, version);
         }
         catch (Exception) when (!IsOpen(session, chat, version) || token.IsCancellationRequested)

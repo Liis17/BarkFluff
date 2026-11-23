@@ -15,6 +15,7 @@ public sealed partial class MessengerViewModel
         internal string Node { get; } = node;
         internal CancellationTokenSource Lifetime { get; } = new();
         internal MessageUpdateJournal Journal { get; } = new();
+        internal Dictionary<(string ChatId, long MessageId), List<(MessageUpdate Update, bool FromDelivery)>> ConfirmingMessages { get; } = [];
         internal ResyncLoop Resync { get; set; } = null!;
         internal ResyncLoop ChatRefresh { get; set; } = null!;
         internal ResyncLoop PinRefresh { get; set; } = null!;
@@ -58,6 +59,7 @@ public sealed partial class MessengerViewModel
             : Task.FromResult(true), session.Lifetime.Token) { Delay = ResyncDelay };
         _realtimeSession = session;
         StartDraftSession(session);
+        StartOutgoing(session);
         _stickerFrames?.StartSession();
         StickerPicker?.StartSession(session.Node, session.UserId, session.Lifetime.Token, () => IsCurrent(session));
         _notificationSettings?.StartSession(() => IsCurrent(session), session.Lifetime.Token);
@@ -99,6 +101,7 @@ public sealed partial class MessengerViewModel
             return;
         }
 
+        EndOutgoing();
         _realtimeSession = null;
         _ = StopDraftsAsync();
         _notificationSettings?.EndSession();
@@ -136,10 +139,45 @@ public sealed partial class MessengerViewModel
         }
     });
 
-    private void OnMessageChanged(RealtimeSession session, MessageUpdate update) =>
-        PostSession(session, scope => _ = ApplyMessageUpdateAsync(scope, update));
+    private void OnMessageChanged(RealtimeSession session, MessageUpdate update, bool fromOutgoingDelivery = false)
+    {
+        PostSession(session, scope =>
+        {
+            var key = (update.ChatId, update.MessageId);
+            if (!update.IsPrivate && scope.ConfirmingMessages.TryGetValue(key, out var pending))
+            {
+                pending.Add((update, fromOutgoingDelivery));
+                return;
+            }
 
-    private async Task ApplyMessageUpdateAsync(RealtimeSession session, MessageUpdate update)
+            if (!fromOutgoingDelivery && update is { Kind: MessageUpdateKind.New, IsPrivate: false, Message: { } confirmed })
+            {
+                var confirmation = ConfirmOutgoingAsync(scope, update.ChatId, confirmed);
+                if (!confirmation.IsCompletedSuccessfully)
+                {
+                    scope.ConfirmingMessages.Add(key, [(update, false)]);
+                    _ = ApplyAfterConfirmationAsync(confirmation);
+                    return;
+                }
+            }
+            _ = ApplyMessageUpdateAsync(scope, update, fromOutgoingDelivery);
+        });
+
+        async Task ApplyAfterConfirmationAsync(Task confirmation)
+        {
+            await confirmation.ConfigureAwait(false);
+            PostSession(session, scope =>
+            {
+                var key = (update.ChatId, update.MessageId);
+                var pending = scope.ConfirmingMessages[key];
+                scope.ConfirmingMessages.Remove(key);
+                foreach (var (deferred, fromDelivery) in pending)
+                    _ = ApplyMessageUpdateAsync(scope, deferred, fromDelivery);
+            });
+        }
+    }
+
+    private async Task ApplyMessageUpdateAsync(RealtimeSession session, MessageUpdate update, bool fromOutgoingDelivery = false)
     {
         var chat = Chats.FirstOrDefault(item => item.Id == update.ChatId);
         if (chat is not null && chat.IsPrivate != update.IsPrivate)
@@ -178,7 +216,7 @@ public sealed partial class MessengerViewModel
 
         try
         {
-            var applying = ApplyRecordedUpdateAsync(session, chat, update, change, existing);
+            var applying = ApplyRecordedUpdateAsync(session, chat, update, change, existing, fromOutgoingDelivery);
             _ = NotifyIncomingAsync(session, update, chat);
             await applying;
         }
@@ -189,7 +227,7 @@ public sealed partial class MessengerViewModel
     }
 
     private async Task ApplyRecordedUpdateAsync(RealtimeSession session, ChatItemViewModel? chat,
-        MessageUpdate update, MessageUpdateJournal.Change change, MessageItemViewModel? existing)
+        MessageUpdate update, MessageUpdateJournal.Change change, MessageItemViewModel? existing, bool fromOutgoingDelivery)
     {
         if (chat is null)
         {
@@ -291,7 +329,8 @@ public sealed partial class MessengerViewModel
             return;
         }
 
-        if (existing is null && change.SawNew && _reconnectFeed is { } recovering &&
+        // Ответ отправки подтверждает конкретную строку в открытом хвосте даже во время сверки.
+        if (!fromOutgoingDelivery && existing is null && change.SawNew && _reconnectFeed is { } recovering &&
             !IsInsideLoadedWindow(effective))
         {
             // До сверки неизвестно, прилегает ли вновь полученное сообщение к открытому окну.

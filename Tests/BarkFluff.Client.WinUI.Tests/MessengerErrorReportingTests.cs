@@ -30,16 +30,16 @@ public sealed class MessengerErrorReportingTests
 
     /// <summary>Черновик обязан пережить неудачу: иначе пользователь теряет набранный текст.</summary>
     [Fact]
-    public async Task SendAsync_WhenSendFails_ShowsErrorAndKeepsDraft()
+    public async Task SendAsync_WhenEnqueueFails_ShowsErrorAndKeepsDraft()
     {
         var (viewModel, messenger, _) = await CreateLoadedAsync();
         viewModel.SelectedChat = viewModel.Chats.Single(chat => chat.Id == "a");
-        messenger.SendFails = true;
+        messenger.OutgoingStore.BeforeFirstSave = _ => throw new IOException();
         viewModel.DraftText = "черновик";
 
         await viewModel.SendCommand.ExecuteAsync(null);
 
-        Assert.Equal("сообщение не отправлено", viewModel.ActionError);
+        Assert.Equal("Messenger_OutboxStorageFailed", viewModel.ActionError);
         Assert.Equal("черновик", viewModel.DraftText);
     }
 
@@ -48,10 +48,10 @@ public sealed class MessengerErrorReportingTests
     {
         var (viewModel, messenger, _) = await CreateLoadedAsync();
         viewModel.SelectedChat = viewModel.Chats.Single(chat => chat.Id == "a");
-        messenger.SendFails = true;
+        messenger.OutgoingStore.BeforeFirstSave = _ => throw new IOException();
         viewModel.DraftText = "черновик";
         await viewModel.SendCommand.ExecuteAsync(null);
-        messenger.SendFails = false;
+        messenger.OutgoingStore.BeforeFirstSave = null;
 
         viewModel.SelectedChat = viewModel.Chats.Single(chat => chat.Id == "b");
 
@@ -79,14 +79,14 @@ public sealed class MessengerErrorReportingTests
     {
         var (viewModel, messenger, realtime) = await CreateLoadedAsync();
         viewModel.SelectedChat = viewModel.Chats.Single(chat => chat.Id == "a");
-        messenger.SendFails = true;
+        messenger.OutgoingStore.BeforeFirstSave = _ => throw new IOException();
         viewModel.DraftText = "черновик";
         await viewModel.SendCommand.ExecuteAsync(null);
 
         messenger.ChatsFail = true;
         realtime.Raise(new IncomingMessage("unknown", MessengerTestDoubles.CreateMessage(1, "unknown", 2)));
 
-        Assert.Equal("сообщение не отправлено", viewModel.ActionError);
+        Assert.Equal("Messenger_OutboxStorageFailed", viewModel.ActionError);
     }
 
     private static FakeMessengerService CreateMessenger()

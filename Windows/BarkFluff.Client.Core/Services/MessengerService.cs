@@ -8,7 +8,7 @@ using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 
 namespace BarkFluff.Client.Core.Services;
 
-public sealed class MessengerService : IMessengerService
+public sealed class MessengerService : IMessengerService, IOutgoingMessageTransport
 {
     private readonly WebApiClient _webApi;
     private readonly IClientSession _session;
@@ -80,6 +80,34 @@ public sealed class MessengerService : IMessengerService
         UploadFileType type, IProgress<double> progress, CancellationToken cancellationToken) =>
         WithParametersAsync(parameters => Task.Run(
             () => _webApi.UploadFileAsync(parameters, path, name, contentType, type, progress, cancellationToken), cancellationToken));
+
+    Task<long?> IOutgoingMessageTransport.GetStorageAvailableAsync(OutgoingScope scope, CancellationToken token) =>
+        _webApi.GetOutgoingAttachmentStorageAvailableAsync(OutgoingParameters(scope, token), token);
+
+    Task<(ErrorReturner error, string? fileId)> IOutgoingMessageTransport.UploadAsync(
+        OutgoingScope scope, OutgoingFile file, string path, IProgress<double> progress, CancellationToken token) =>
+        _webApi.UploadFileAsync(OutgoingParameters(scope, token), path, file.Name, file.ContentType, file.Type,
+            file.Id, progress, token);
+
+    Task<(ErrorReturner error, MessageModel? message)> IOutgoingMessageTransport.SendAsync(
+        OutgoingScope scope, OutgoingMessage message, CancellationToken token) =>
+        _webApi.SendMessage(OutgoingParameters(scope, token), message.ChatId, new ForwardingLetter
+        {
+            Text = message.Text,
+            ReplyToMessageId = message.ReplyId,
+            ForwardedMessageIds = [.. message.Forwards],
+            FilesId = [.. message.Attachments, .. message.Uploaded.OfType<string>()],
+        }, message.Id, token);
+
+    private GlobalParam OutgoingParameters(OutgoingScope scope, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        if (_session.CurrentConnection is { } connection && connection.ConnectionParameters.UserId is { } userId &&
+            OutgoingScope.Create(connection.Profile.BeaconAddress, userId) == scope)
+            return connection.ConnectionParameters;
+
+        throw new OperationCanceledException();
+    }
 
     public Task<(ErrorReturner error, MessageModel? message)> EditMessageAsync(string chatId, long messageId, string text, CancellationToken cancellationToken = default) =>
         WithParametersAsync(parameters => _webApi.EditMessage(parameters, chatId, messageId, text));

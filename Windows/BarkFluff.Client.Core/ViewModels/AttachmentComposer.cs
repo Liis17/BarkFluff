@@ -1,9 +1,7 @@
 using System.Collections.ObjectModel;
 using BarkFluff.Client.Core.Infrastructure.Localization;
-using BarkFluff.Client.Core.Infrastructure.Threading;
-using BarkFluff.Client.Core.Services;
 using BarkFluff.Proto.Files;
-using BarkFluff.WebApi.Core;
+using WindowsWebApi = BarkFluff.WebApi.Core.WebApi;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -12,10 +10,9 @@ namespace BarkFluff.Client.Core.ViewModels;
 public sealed record AttachmentSourceFile(string Path, string Name, string? ContentType = null, bool IsTemporary = false, bool IsVoice = false);
 
 public sealed partial class AttachmentComposer(
-    IMessengerService messenger, ILocalizationService localization, IUiDispatcher dispatcher) : ObservableObject
+    ILocalizationService localization) : ObservableObject
 {
     public const int MaxFiles = 10;
-    private readonly SemaphoreSlim _uploadSlots = new(2);
     private readonly ObservableCollection<PendingAttachment> _files = [];
     private readonly HashSet<Task> _inputs = [];
     private CancellationTokenSource _scope = new();
@@ -91,105 +88,11 @@ public sealed partial class AttachmentComposer(
             return "Messenger_AttachmentLimit";
         if (size == 0)
             return "Messenger_AttachmentReadFailed";
-        if (size >= BarkFluff.WebApi.Core.WebApi.MaxFileUploadRequestSize)
+        if (size >= WindowsWebApi.MaxFileUploadRequestSize)
             return "Messenger_AttachmentTooLarge";
 
         _files.Add(new PendingAttachment(this, file, size, localization));
         return null;
-    }
-
-    internal async Task<string[]?> PrepareAsync(CancellationToken token, Func<bool> isCurrent)
-    {
-        var files = _files.ToArray();
-        var pendingBytes = files.Where(file => file.FileId is null && file.ActiveUpload is not { IsCompleted: false })
-            .Sum(file => file.Size);
-        if (pendingBytes > 0)
-        {
-            long? available = null;
-            try { available = await messenger.GetAttachmentStorageAvailableAsync(token); }
-            catch (Exception)
-            {
-                // При недоступной проверке квоту проверит сервер при загрузке.
-            }
-
-            if (token.IsCancellationRequested || !isCurrent())
-                return null;
-            if (available is { } remaining && pendingBytes > remaining)
-            {
-                Error = localization.GetString("Messenger_AttachmentStorageFull");
-                return null;
-            }
-        }
-
-        Error = null;
-        await Task.WhenAll(files.Select(file => UploadAsync(file, isCurrent)));
-        if (token.IsCancellationRequested || !isCurrent() || files.Any(file => file.FileId is null))
-            return null;
-
-        return files.Select(file => file.FileId!).ToArray();
-    }
-
-    internal Task UploadAsync(PendingAttachment file, Func<bool> isCurrent)
-    {
-        if (!_files.Contains(file) || file.FileId is not null || !isCurrent())
-            return Task.CompletedTask;
-        if (file.ActiveUpload is { IsCompleted: false } active)
-            return active;
-
-        return file.ActiveUpload = UploadCoreAsync(file, isCurrent);
-    }
-
-    private async Task UploadCoreAsync(PendingAttachment file, Func<bool> isCurrent)
-    {
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ScopeToken);
-        file.Cancellation = cancellation;
-        file.Progress = 0;
-        file.SetState("Messenger_AttachmentUploading", uploading: true);
-        var progress = new UploadProgress(value => dispatcher.Post(() =>
-        {
-            if (ReferenceEquals(file.Cancellation, cancellation) && !cancellation.IsCancellationRequested && isCurrent())
-                file.Progress = value * 100;
-        }));
-
-        try
-        {
-            await _uploadSlots.WaitAsync(cancellation.Token);
-            (ErrorReturner error, string? fileId) result;
-            try
-            {
-                cancellation.Token.ThrowIfCancellationRequested();
-                result = await messenger.UploadAttachmentAsync(file.Source.Path, file.Name, file.Source.ContentType,
-                    file.UploadType, progress, cancellation.Token);
-            }
-            finally
-            {
-                _uploadSlots.Release();
-            }
-            if (!isCurrent() || !_files.Contains(file))
-                return;
-
-            cancellation.Token.ThrowIfCancellationRequested();
-            if (result.error is { IsSuccess: true } && !string.IsNullOrWhiteSpace(result.fileId))
-            {
-                file.FileId = result.fileId;
-                file.Progress = 100;
-                file.SetState("Messenger_AttachmentReady");
-            }
-            else
-            {
-                file.SetState(result.error?.ErrorResourceKey ?? "Messenger_AttachmentUploadFailed", canRetry: true);
-            }
-        }
-        catch (Exception)
-        {
-            if (isCurrent() && _files.Contains(file))
-                file.SetState(cancellation.IsCancellationRequested
-                    ? "Messenger_AttachmentCancelled" : "Messenger_AttachmentUploadFailed", canRetry: true);
-        }
-        finally
-        {
-            file.Cancellation = null;
-        }
     }
 
     internal Task ClearAsync()
@@ -214,24 +117,18 @@ public sealed partial class AttachmentComposer(
     private static async Task FinishCleanupAsync(CancellationTokenSource scope, PendingAttachment[] files, Task[] inputs)
     {
         using (scope)
-            await Task.WhenAll(inputs.Concat(files.Select(RemoveTemporaryAsync)));
+        {
+            foreach (var file in files)
+                DeleteTemporary(file.Source);
+            await Task.WhenAll(inputs);
+        }
     }
 
-    internal async Task RemoveAsync(PendingAttachment file)
+    internal void Remove(PendingAttachment file)
     {
         if (IsSending || !_files.Remove(file))
             return;
-        file.Cancellation?.Cancel();
         OnPropertyChanged(nameof(HasFiles));
-        var cleanup = RemoveTemporaryAsync(file);
-        _cleanup = Task.WhenAll(_cleanup, cleanup);
-        await cleanup;
-    }
-
-    private static async Task RemoveTemporaryAsync(PendingAttachment file)
-    {
-        if (file.ActiveUpload is { } active)
-            await active;
         DeleteTemporary(file.Source);
     }
 
@@ -242,11 +139,6 @@ public sealed partial class AttachmentComposer(
         try { File.Delete(file.Path); }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
-    }
-
-    private sealed class UploadProgress(Action<double> report) : IProgress<double>
-    {
-        public void Report(double value) => report(value);
     }
 }
 
@@ -263,13 +155,9 @@ public sealed partial class PendingAttachment : ObservableObject
         Source = file;
         Size = size;
         _type = file.IsVoice ? UploadFileType.MessageAttachmentVoice : ResolveType(file.Name, file.ContentType);
-        SetState("Messenger_AttachmentWaiting");
     }
 
     internal AttachmentSourceFile Source { get; }
-    internal string? FileId { get; set; }
-    internal Task? ActiveUpload { get; set; }
-    internal CancellationTokenSource? Cancellation { get; set; }
     public string Name => Source.Name;
     public string Path => Source.Path;
     public long Size { get; }
@@ -280,7 +168,7 @@ public sealed partial class PendingAttachment : ObservableObject
     public bool SupportsAsDocument => _type is UploadFileType.MessageAttachmentImage
         or UploadFileType.MessageAttachmentGif or UploadFileType.MessageAttachmentAudio;
     public bool CanRemove => !_owner.IsSending;
-    public bool CanChangeType => CanRemove && !IsUploading && FileId is null && SupportsAsDocument;
+    public bool CanChangeType => CanRemove && SupportsAsDocument;
     public string TypeLabel => _localization.GetString(UploadType switch
     {
         UploadFileType.MessageAttachmentImage => "Messenger_AttachmentPhoto",
@@ -302,18 +190,6 @@ public sealed partial class PendingAttachment : ObservableObject
         }
     }
 
-    [ObservableProperty] private double _progress;
-    [ObservableProperty] private string _status = string.Empty;
-    [ObservableProperty] private bool _canRetry;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanChangeType))] private bool _isUploading;
-
-    internal void SetState(string key, bool uploading = false, bool canRetry = false)
-    {
-        Status = _localization.GetString(key);
-        IsUploading = uploading;
-        CanRetry = canRetry;
-    }
-
     internal void UpdateComposerState()
     {
         OnPropertyChanged(nameof(CanRemove));
@@ -321,10 +197,7 @@ public sealed partial class PendingAttachment : ObservableObject
     }
 
     [RelayCommand]
-    private void Cancel() => Cancellation?.Cancel();
-
-    [RelayCommand]
-    private Task RemoveAsync() => _owner.RemoveAsync(this);
+    private void Remove() => _owner.Remove(this);
 
     internal static UploadFileType ResolveType(string name, string? mime)
     {

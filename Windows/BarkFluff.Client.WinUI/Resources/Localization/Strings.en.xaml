@@ -490,9 +490,6 @@
     <x:String x:Key="Messenger_AttachmentConnectionTimeout">The upload stopped transferring data. Check your connection and retry.</x:String>
     <x:String x:Key="Messenger_AttachmentResponseTimeout">The server took too long to respond. Retry the upload.</x:String>
     <x:String x:Key="Messenger_AttachmentUploading">Uploading…</x:String>
-    <x:String x:Key="Messenger_AttachmentWaiting">Waiting to upload</x:String>
-    <x:String x:Key="Messenger_AttachmentReady">Uploaded</x:String>
-    <x:String x:Key="Messenger_AttachmentCancelled">Upload cancelled</x:String>
     <x:String x:Key="Messenger_AttachmentRetry">Retry upload</x:String>
     <x:String x:Key="Messenger_AttachmentPhoto">Photo</x:String>
     <x:String x:Key="Messenger_AttachmentGif">GIF</x:String>
@@ -512,4 +509,14 @@
     <x:String x:Key="Messenger_VoicePlaybackFailed">Could not play this attachment.</x:String>
     <x:String x:Key="Messenger_VoicePlayStop">Play or stop audio</x:String>
     <x:String x:Key="Messenger_VoiceProgress">Playback progress</x:String>
+    <x:String x:Key="Messenger_OutboxWaiting">Waiting to send</x:String>
+    <x:String x:Key="Messenger_OutboxSending">Sending</x:String>
+    <x:String x:Key="Messenger_OutboxRejected">The server rejected the message</x:String>
+    <x:String x:Key="Messenger_OutboxStorageFailed">Could not save the outgoing queue</x:String>
+    <x:String x:Key="Messenger_OutboxForward">Forwarded messages</x:String>
+    <x:String x:Key="Messenger_OutboxReply">Reply</x:String>
+    <x:String x:Key="Messenger_OutboxSticker">Sticker</x:String>
+    <x:String x:Key="Messenger_OutboxRetry">Retry</x:String>
+    <x:String x:Key="Messenger_OutboxHistoryPending">Unsent messages ({0}). Go to latest messages</x:String>
+    <x:String x:Key="Messenger_OutboxHistoryFailed">Send failed. Unsent messages ({0}). Go to latest messages</x:String>
 </ResourceDictionary>

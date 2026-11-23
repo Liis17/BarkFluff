@@ -61,6 +61,7 @@ public partial class App : Application
 
             var dataStore = services.GetRequiredService<IApplicationDataStore>();
             await dataStore.InitializeAsync();
+            await services.GetRequiredService<OutgoingMessageQueue>().SweepOrphansAsync();
 
             var theme = await dataStore.GetThemeAsync() ?? ApplicationThemeMode.System;
             var themeService = services.GetRequiredService<IApplicationThemeService>();
@@ -124,6 +125,7 @@ public partial class App : Application
                 if (errorResourceKey is not ("Error_AccountBlocked" or "Error_AccountPendingDeletion")) return;
                 mainWindow.DispatcherQueue.TryEnqueue(() =>
                 {
+                    _ = services.GetRequiredService<MessengerViewModel>().ClearOutgoingForLogoutAsync();
                     navigation.ShowLogin();
                     services.GetRequiredService<LoginViewModel>().ShowSessionRestrictionNotice(errorResourceKey);
                 });
@@ -275,7 +277,13 @@ public partial class App : Application
         builder.Services.AddSingleton<WebApiClient>();
         builder.Services.AddSingleton<INodeAddressParser, NodeAddressParser>();
         builder.Services.AddSingleton<IClientSession, ClientSession>();
-        builder.Services.AddSingleton<IMessengerService, MessengerService>();
+        builder.Services.AddSingleton<MessengerService>();
+        builder.Services.AddSingleton<IMessengerService>(services => services.GetRequiredService<MessengerService>());
+        builder.Services.AddSingleton<IOutgoingMessageTransport>(services => services.GetRequiredService<MessengerService>());
+        builder.Services.AddSingleton<IOutgoingMessageStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton(services => new OutgoingMessageQueue(
+            services.GetRequiredService<IOutgoingMessageStore>(), services.GetRequiredService<IOutgoingMessageTransport>(),
+            services.GetRequiredService<AppDataPaths>(), TimeProvider.System));
         builder.Services.AddSingleton<IStickerCatalog, StickerCatalog>();
         builder.Services.AddSingleton(_ => Controls.StickerImage.CreateCache());
         builder.Services.AddSingleton<StickerPickerViewModel>();

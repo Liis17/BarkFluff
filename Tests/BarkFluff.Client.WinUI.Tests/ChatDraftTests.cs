@@ -233,20 +233,30 @@ public sealed class ChatDraftTests
     {
         using var database = await DraftDatabase.CreateAsync();
         var remote = new Remote();
-        var sent = new TaskCompletionSource<(ErrorReturner, MessageModel?)>();
+        var writing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var dispatcher = new InlineUiDispatcher();
         var messenger = new FakeMessengerService
         {
-            SendResponse = () => sent.Task,
             EditResponse = () => Task.FromResult<(ErrorReturner, MessageModel?)>(
                 (new(true), CreateMessage(10, "a", 1, "edited")))
         };
+        messenger.OutgoingStore.AfterFirstSaveAsync = _ =>
+        {
+            writing.SetResult();
+            return release.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        };
         messenger.Messages.Add(CreateMessage(10, "a", 1, "message"));
-        var vm = await OpenAsync(database.Store, remote, new(), messenger);
+        var vm = await OpenAsync(database.Store, remote, new(), messenger, dispatcher);
         vm.DraftText = "draft";
         var pending = vm.SendCommand.ExecuteAsync(null);
-        vm.DraftText = "new";
-        vm.DraftText = "draft";
-        sent.SetResult((new(true), CreateMessage(11, "a", 1, "draft")));
+        await writing.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        dispatcher.Post(() =>
+        {
+            vm.DraftText = "new";
+            vm.DraftText = "draft";
+        });
+        release.SetResult();
         await pending;
         Assert.Equal("draft", vm.DraftText);
         Assert.Empty(remote.DeleteRevisions);
@@ -257,7 +267,7 @@ public sealed class ChatDraftTests
         Assert.Equal("draft", database.Store.Load("node", 1)["a"].Text);
         await vm.SendCommand.ExecuteAsync(null);
         Assert.Equal("draft", vm.DraftText);
-        vm.Reset();
+        dispatcher.Post(vm.Reset);
         await vm.StopDraftsAsync();
     }
 
@@ -267,24 +277,34 @@ public sealed class ChatDraftTests
         using var database = await DraftDatabase.CreateAsync();
         var remote = new Remote();
         remote.Drafts["a"] = new() { Text = "send from a", Revision = "original" };
-        var sent = new TaskCompletionSource<(ErrorReturner, MessageModel?)>();
-        var vm = await OpenAsync(database.Store, remote, new(), new FakeMessengerService
+        var writing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var messenger = new FakeMessengerService();
+        var dispatcher = new InlineUiDispatcher();
+        messenger.OutgoingStore.AfterFirstSaveAsync = _ =>
         {
-            SendResponse = () => sent.Task
-        });
+            writing.SetResult();
+            return release.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        };
+        var vm = await OpenAsync(database.Store, remote, new(), messenger, dispatcher);
 
         var pending = vm.SendCommand.ExecuteAsync(null);
-        vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
-        vm.DraftText = "draft in b";
-        sent.SetResult((new(true), CreateMessage(11, "a", 1, "send from a")));
+        await writing.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        dispatcher.Post(() =>
+        {
+            vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+            vm.DraftText = "draft in b";
+        });
+        release.SetResult();
         await pending;
 
         Assert.Equal("draft in b", vm.DraftText);
-        Assert.Equal(new[] { "original" }, remote.DeleteRevisions);
         await vm.FlushDraftsAsync();
+        Assert.Equal(new[] { "original" }, remote.DeleteRevisions);
         Assert.False(database.Store.Load("node", 1).ContainsKey("a"));
         Assert.Equal("draft in b", database.Store.Load("node", 1)["b"].Text);
-        vm.Reset();
+        dispatcher.Post(vm.Reset);
+        await vm.StopDraftsAsync();
         await vm.StopDraftsAsync();
     }
 
@@ -370,14 +390,29 @@ public sealed class ChatDraftTests
     }
 
     private static async Task<MessengerViewModel> OpenAsync(IChatDraftStore store, Remote remote, FakeTimeProvider clock,
-        FakeMessengerService? messenger = null)
+        FakeMessengerService? messenger = null, InlineUiDispatcher? dispatcher = null)
     {
         messenger ??= new();
         messenger.CurrentNodeAddress = "node";
         if (messenger.Chats.Count == 0)
             messenger.Chats.AddRange([CreateChat("a"), CreateChat("b")]);
-        var vm = CreateViewModel(messenger: messenger, timeProvider: clock, draftStore: store, draftRemote: remote);
-        await vm.LoadAsync();
+        var outgoing = CreateOutgoingQueue(messenger, clock);
+        var vm = CreateViewModel(messenger: messenger, dispatcher: dispatcher, timeProvider: clock,
+            draftStore: store, draftRemote: remote, outgoing: outgoing);
+
+        // Дождаться первого чтения общих часов очередью перед запуском таймеров черновика.
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnOutgoingChanged() => started.TrySetResult();
+        outgoing.Changed += OnOutgoingChanged;
+        try
+        {
+            await vm.LoadAsync();
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            outgoing.Changed -= OnOutgoingChanged;
+        }
         vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "a");
         return vm;
     }

@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.ComponentModel;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Files.Services;
@@ -73,7 +74,7 @@ public sealed class MessengerVoiceTests
             {
                 uploads.Add((name, type));
                 return Task.FromResult<(ErrorReturner, string?)>(uploads.Count == 1
-                    ? (new(false, "failed"), null)
+                    ? (new(false, errorResourceKey: "Messenger_AttachmentReadFailed"), null)
                     : (new(true), "voice-id"));
             };
             var sends = new List<(string, string, long, string)>();
@@ -81,17 +82,26 @@ public sealed class MessengerVoiceTests
             {
                 sends.Add((chat, text, reply, string.Join(",", ids)));
                 return Task.FromResult<(ErrorReturner, MessageModel?)>(sends.Count == 1
-                    ? (new(false, "failed"), null)
+                    ? (new(false, errorResourceKey: "Messenger_UserUnavailable"), null)
                     : (new(true), MessengerTestDoubles.CreateMessage(51, chat, 1, text)));
             };
             await vm.SendCommand.ExecuteAsync(null);
+            await MessengerTestDoubles.WaitForOutgoingAsync(vm, () =>
+                vm.PendingMessages.SingleOrDefault()?.Status == "Messenger_AttachmentReadFailed");
+            var bubble = Assert.Single(vm.PendingMessages);
+            Assert.True(bubble.CanRetry);
+            Assert.Equal("voice.ogg", bubble.Details);
             Assert.Empty(sends);
-            Assert.Same(draft, Assert.Single(vm.AttachmentComposer.Files));
-            Assert.True(File.Exists(draft.Path));
-            await vm.SendCommand.ExecuteAsync(null);
-            Assert.Same(draft, Assert.Single(vm.AttachmentComposer.Files));
-            Assert.True(File.Exists(draft.Path));
-            await vm.SendCommand.ExecuteAsync(null);
+            Assert.Empty(vm.AttachmentComposer.Files);
+            Assert.False(File.Exists(draft.Path));
+
+            await bubble.RetryCommand.ExecuteAsync(null);
+            await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => bubble.Status == "Messenger_UserUnavailable");
+            Assert.True(bubble.CanRetry);
+            Assert.Single(sends);
+
+            await bubble.RetryCommand.ExecuteAsync(null);
+            await MessengerTestDoubles.WaitForMessageAsync(vm, 51);
             Assert.Equal([("voice.ogg", UploadFileType.MessageAttachmentVoice), ("voice.ogg", UploadFileType.MessageAttachmentVoice)], uploads);
             Assert.Equal([("a", "", 50L, "voice-id"), ("a", "", 50L, "voice-id")], sends);
             Assert.Empty(vm.AttachmentComposer.Files);
@@ -267,8 +277,24 @@ public sealed class MessengerVoiceTests
         var (vm, _) = await OpenAsync(player: player, clock: clock, withVoice: true);
         var items = Assert.Single(vm.Messages).FileAttachments.ToArray();
         Assert.Equal(2, items.Length);
-        await vm.ToggleVoicePlaybackAsync(items[0]);
-        clock.Advance(TimeSpan.FromMilliseconds(200));
+        // Общий FakeTimeProvider может обработать таймер в другом потоке после возврата из Advance.
+        var updated = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnTimeChanged(object? sender, PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName == nameof(MessageAttachmentItemViewModel.VoiceTime))
+                updated.TrySetResult();
+        }
+        items[0].PropertyChanged += OnTimeChanged;
+        try
+        {
+            await vm.ToggleVoicePlaybackAsync(items[0]);
+            clock.Advance(TimeSpan.FromMilliseconds(200));
+            await updated.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            items[0].PropertyChanged -= OnTimeChanged;
+        }
         Assert.True(items[0].IsVoiceActive);
         Assert.Equal(25, items[0].VoiceProgress);
         Assert.Equal("00:01 / 00:04", items[0].VoiceTime);
@@ -383,7 +409,7 @@ public sealed class MessengerVoiceTests
         return wave;
     }
 
-    private sealed class Recorder(int samples = 24_017, Exception? startError = null, bool deferStart = false) : IVoiceRecorder, IVoiceRecording
+    internal sealed class Recorder(int samples = 24_017, Exception? startError = null, bool deferStart = false) : IVoiceRecorder, IVoiceRecording
     {
         private readonly TaskCompletionSource<IVoiceRecording> _start = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Action? Interrupted { get; private set; }

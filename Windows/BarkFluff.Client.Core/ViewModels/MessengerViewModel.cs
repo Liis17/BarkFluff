@@ -43,6 +43,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         ILocalizationService localization,
         IUiDispatcher uiDispatcher,
         ProfileViewModel profile,
+        OutgoingMessageQueue outgoing,
         TimeProvider? timeProvider = null,
         IChatFoldersState? chatFolders = null,
         IChatTypingService? typing = null,
@@ -59,12 +60,13 @@ public sealed partial class MessengerViewModel : ObservableObject
         _messenger = messenger;
         _draftStore = draftStore;
         _draftRemote = draftRemote;
+        _outgoing = outgoing;
         _privateChatKeyStore = privateChatKeyStore;
         _realtimeMessenger = realtimeMessenger;
         _presence = presence;
         _localization = localization;
         _uiDispatcher = uiDispatcher;
-        AttachmentComposer = new(messenger, localization, uiDispatcher);
+        AttachmentComposer = new(localization);
         var clock = timeProvider ?? TimeProvider.System;
         Voice = new(voiceRecorder, localization, uiDispatcher, clock, VoiceComposer.TemporaryDirectory);
         _voicePlayback = new(voicePlayer, uiDispatcher, localization, clock);
@@ -161,12 +163,12 @@ public sealed partial class MessengerViewModel : ObservableObject
             Reset();
         }
 
+        ActionError = null;
         StartRealtimeSession(currentUserId.Value);
         _chatFolders?.Start();
         var session = _realtimeSession!;
         var token = session.Lifetime.Token;
         IsLoading = true;
-        ActionError = null;
         try
         {
             await _realtimeMessenger.StartAsync(token);
@@ -329,6 +331,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _feedLoaded = false;
         _feedIncludesTail = true;
         _chatVersion++;
+        RefreshOutgoing();
         StickerPicker?.Close();
         WatchTyping(newValue);
         _ = CancelAttachmentsAsync();
@@ -386,7 +389,27 @@ public sealed partial class MessengerViewModel : ObservableObject
         using var reading = session!.Journal.ReadHistory(chat.Id, chat.IsPrivate);
         var revision = session.Journal.Revision;
         ActionError = null;
-        if (chat.IsPrivate)
+        if (!chat.IsPrivate)
+        {
+            var composer = AttachmentComposer;
+            var files = composer.Files.Select(file => (file.Source, file.UploadType)).ToArray();
+            var token = composer.ScopeToken;
+            composer.IsSending = true;
+            try
+            {
+                if (!await EnqueueOutgoingAsync(session, chat.Id, sentText, reply?.Id ?? 0, files: files, token: token))
+                    return;
+                ClearSentDraft();
+                if (IsOpen(session, chat, version))
+                    _ = composer.ClearAsync();
+            }
+            finally
+            {
+                if (IsOpen(session, chat, version))
+                    composer.IsSending = false;
+            }
+        }
+        else
         {
             var key = await GetPrivateChatKeyAsync(chat);
             if (!IsOpen(session, chat, version))
@@ -418,30 +441,6 @@ public sealed partial class MessengerViewModel : ObservableObject
             {
                 await MergeSentRowAsync(session, chat, version,
                     new(message.MessageId, message.SentAt.ToDateTimeOffset(), null, message), revision);
-            }
-        }
-        else
-        {
-            var sent = AttachmentComposer.HasFiles
-                ? await SendWithAttachmentsAsync(chat, session, version, sentText, reply?.Id ?? 0)
-                : await _messenger.SendMessageAsync(chat.Id, draft.Trim(), reply?.Id ?? 0);
-            if (sent is { error.IsSuccess: true, message: not null })
-                ClearSentDraft();
-            if (!IsOpen(session, chat, version) || sent is not { } result)
-            {
-                return;
-            }
-
-            if (result.error is not { IsSuccess: true } || result.message is not { } message)
-            {
-                ActionError = result.error is null ? _localization.GetString("Messenger_ActionFailed") : DescribeError(result.error);
-                return;
-            }
-
-            if (_feedIncludesTail)
-            {
-                await MergeSentRowAsync(session, chat, version,
-                    new(message.MessageId, message.SentAt.ToDateTimeOffset(), message, null), revision);
             }
         }
 
@@ -1047,6 +1046,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         {
             BeginFeedCatchUp();
             _isRealtimeConnected = isConnected;
+            if (isConnected)
+                _ = _outgoing.WakeAsync(OutboxScope(session), session.Lifetime.Token);
             session.Resync.SetOnline(isConnected);
             session.ChatRefresh.SetOnline(isConnected);
             session.PinRefresh.SetOnline(isConnected);
