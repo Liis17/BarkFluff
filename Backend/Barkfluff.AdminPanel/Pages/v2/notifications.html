@@ -27,6 +27,23 @@
             letter-spacing: .5px; color: var(--md-on-surface-variant); margin-bottom: 8px;
         }
 
+        .section-label {
+            display: block; font-size: 11px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: .5px; color: var(--md-on-surface-variant); margin-bottom: 12px;
+        }
+        .section-hint { font-size: 12px; color: var(--md-on-surface-variant); margin: -4px 0 12px; line-height: 1.5; }
+        .btn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .recipient-card { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+        .recipient-name { font-weight: 600; font-size: 14px; word-break: break-word; }
+        .recipient-meta { font-size: 12px; color: var(--md-on-surface-variant); }
+        .device-list { margin: 0 0 16px; padding-left: 18px; font-size: 13px; line-height: 1.6; word-break: break-word; }
+        .send-status { font-size: 12px; line-height: 1.5; color: var(--md-on-surface-variant); margin: 12px 0 0; }
+        .send-status.is-error { color: var(--md-error); }
+        .confirm-text { margin: 0 0 12px; line-height: 1.5; }
+        .confirm-list { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; word-break: break-word; }
+        .confirm-list.mono { font-family: 'Roboto Mono', monospace; font-size: 12px; }
+        .confirm-details summary { cursor: pointer; font-size: 13px; color: var(--md-on-surface-variant); margin-bottom: 8px; }
+
         /* Android preview */
         .preview-shell {
             background: linear-gradient(180deg, #0e1116 0%, #1a1d23 100%);
@@ -93,13 +110,51 @@
                         </div>
                     </div>
 
+                    <div class="section" id="testSection">
+                        <span class="section-label">Тестовая отправка</span>
+                        <p class="section-hint">Уведомление уйдёт только на устройства вашего тестового получателя. Текст берётся из полей выше.</p>
+
+                        <div id="testLinkedView" hidden>
+                            <div class="recipient-card">
+                                <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/user-id.svg);" aria-hidden="true"></span>
+                                <div>
+                                    <div id="testRecipientName" class="recipient-name"></div>
+                                    <div id="testRecipientMeta" class="recipient-meta"></div>
+                                </div>
+                            </div>
+                            <ul id="testDeviceList" class="device-list"></ul>
+                            <div class="btn-row">
+                                <button id="btnSendTest" class="md-btn md-btn-filled md-btn-square-press" onclick="sendTest()">
+                                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/send.svg);" aria-hidden="true"></span>
+                                    Отправить себе
+                                </button>
+                                <button id="btnUnlinkTest" class="md-btn md-btn-text" onclick="unlinkTestRecipient()">
+                                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span>
+                                    Отвязать
+                                </button>
+                            </div>
+                        </div>
+
+                        <form id="testLinkForm" hidden onsubmit="linkTestRecipient(event)">
+                            <div class="field">
+                                <label for="testBarkFluffId">BarkFluff ID вашего пользователя</label>
+                                <input type="text" inputmode="numeric" id="testBarkFluffId" placeholder="123456" class="md-input-outlined" style="width:100%;font-family:'Roboto Mono',monospace;">
+                            </div>
+                            <button id="btnLinkTest" type="submit" class="md-btn md-btn-tonal md-btn-square-press">
+                                <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/link.svg);" aria-hidden="true"></span>
+                                Привязать
+                            </button>
+                        </form>
+                        <p id="testStatus" class="send-status" role="status" hidden></p>
+                    </div>
+
                     <div class="section">
-                        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--md-on-surface-variant);margin-bottom:12px;">Рассылка всем</label>
+                        <span class="section-label">Рассылка всем</span>
                         <button id="btnSendAll" class="md-btn md-btn-filled md-btn-square-press" onclick="sendAll()">
                             <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/notifications.svg);" aria-hidden="true"></span>
                             Отправить на все устройства
                         </button>
-                        <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:8px;">Уведомление получат все пользователи с включёнными push.</p>
+                        <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:8px;">Получатели: все устройства с включёнными push-уведомлениями и FCM-токеном.</p>
                     </div>
 
                     <div class="section">
@@ -113,6 +168,8 @@
                             Отправить на устройства
                         </button>
                     </div>
+
+                    <p id="sendStatus" class="send-status" role="status" hidden></p>
                 </div>
 
                 <div class="panel" style="position:sticky;top:88px;align-self:start;">
@@ -162,9 +219,10 @@
 
     function toast(msg, type = '') { BF.toast(msg, type === 'err' ? 'error' : type); }
 
-    function openConfirm(title, body, onOk) {
+    // content — массив узлов: абзацы и списки получателей строятся через textContent.
+    function openConfirm(title, content, onOk) {
         document.getElementById('confirmTitle').textContent = title;
-        document.getElementById('confirmBody').textContent = body;
+        document.getElementById('confirmBody').replaceChildren(...content);
         document.getElementById('confirmScrim').classList.add('open');
         const ok = document.getElementById('confirmOk');
         const handler = () => { closeConfirm(); onOk(); };
@@ -201,13 +259,66 @@
         };
     }
 
+    const ACCEPTED_TOAST = 'Принято к отправке';
+    const DELIVERY_NOTE = 'Доставка выполняется асинхронно; панель не получает подтверждений от устройств.';
+    const sendStatusEl = document.getElementById('sendStatus');
+    const testStatusEl = document.getElementById('testStatus');
+    let testRecipient = null;
+
+    function showStatus(el, text, isError) {
+        el.textContent = text;
+        el.classList.toggle('is-error', !!isError);
+        el.hidden = false;
+    }
+
+    function confirmParagraph(text) {
+        const p = document.createElement('p');
+        p.className = 'confirm-text';
+        p.textContent = text;
+        return p;
+    }
+
+    // Списки длиннее collapseAbove сворачиваются, чтобы диалог оставался читаемым.
+    function confirmList(lines, collapseAbove, monospace) {
+        const ul = document.createElement('ul');
+        ul.className = 'confirm-list' + (monospace ? ' mono' : '');
+        lines.forEach(function (line) {
+            const li = document.createElement('li');
+            li.textContent = line;
+            ul.appendChild(li);
+        });
+        if (lines.length <= collapseAbove) return ul;
+
+        const details = document.createElement('details');
+        details.className = 'confirm-details';
+        const summary = document.createElement('summary');
+        summary.textContent = 'Показать все (' + lines.length + ')';
+        details.append(summary, ul);
+        return details;
+    }
+
+    function deviceLabel(d) {
+        let label = [d.name, d.appName, d.operationSystem].filter(Boolean).join(' · ');
+        if (!d.notificationsEnabled) label += ' — push выключен, не получит';
+        return label;
+    }
+
+    function recipientName(r) {
+        const full = [r.firstName, r.lastName].filter(Boolean).join(' ');
+        return full || (r.username ? '@' + r.username : 'пользователь ' + r.userId);
+    }
+
     window.sendAll = function () {
         const payload = buildPayload();
         if (!payload.title || !payload.body) { toast('Заполните заголовок и тело', 'err'); return; }
-        openConfirm('Отправить всем?', `Уведомление будет разослано всем пользователям с включёнными push-уведомлениями.`, async () => {
+        openConfirm('Отправить всем?', [
+            confirmParagraph('Получатели: все устройства с включёнными push-уведомлениями и FCM-токеном.'),
+            confirmParagraph('Точное количество устройств панель при постановке не получает.')
+        ], async () => {
             const btn = document.getElementById('btnSendAll');
             try {
-                await BF.request('/api/notifications/broadcast/all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...payload, confirm: true }), loading: btn, successToast: 'Рассылка отправлена' });
+                await BF.request('/api/notifications/broadcast/all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...payload, confirm: true }), loading: btn, successToast: ACCEPTED_TOAST });
+                showStatus(sendStatusEl, 'Принято к отправке: рассылка на все устройства с включёнными push поставлена в очередь. ' + DELIVERY_NOTE);
             } catch {}
         });
     };
@@ -219,10 +330,91 @@
         if (!raw) { toast('Укажите хотя бы один Device ID', 'err'); return; }
         const ids = raw.split(/[\s,;\n]+/).map(s => s.trim()).filter(Boolean);
         if (!ids.length) { toast('Не нашли валидных Device ID', 'err'); return; }
-        openConfirm('Отправить выбранным?', `Уведомление получат ${ids.length} устройств.`, async () => {
+        openConfirm('Отправить выбранным?', [
+            confirmParagraph('Получатели: устройства с указанными Device ID (' + ids.length + ').'),
+            confirmParagraph('Устройство без включённых push-уведомлений или FCM-токена уведомление не получит.'),
+            confirmList(ids, 5, true)
+        ], async () => {
             const btn = document.getElementById('btnSendDevices');
             try {
-                await BF.request('/api/notifications/broadcast/devices', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...payload, deviceIds: ids}), loading: btn, successToast: 'Рассылка отправлена' });
+                const result = await BF.request('/api/notifications/broadcast/devices', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...payload, deviceIds: ids}), loading: btn, successToast: ACCEPTED_TOAST });
+                showStatus(sendStatusEl, 'Принято к отправке: уведомление поставлено в очередь на устройства (' + result.deviceCount + '). ' + DELIVERY_NOTE);
+            } catch {}
+        });
+    };
+
+    // -------- Тестовая отправка --------
+
+    function renderTestRecipient(recipient) {
+        testRecipient = recipient;
+        const linked = !!recipient;
+        document.getElementById('testLinkedView').hidden = !linked;
+        document.getElementById('testLinkForm').hidden = linked;
+        if (!linked) return;
+
+        document.getElementById('testRecipientName').textContent = recipientName(recipient);
+        document.getElementById('testRecipientMeta').textContent = 'BarkFluff ID ' + recipient.userId;
+
+        const list = document.getElementById('testDeviceList');
+        if (recipient.devices.length) {
+            list.replaceChildren(...recipient.devices.map(d => {
+                const li = document.createElement('li');
+                li.textContent = deviceLabel(d);
+                return li;
+            }));
+        } else {
+            const li = document.createElement('li');
+            li.textContent = 'У пользователя нет устройств';
+            list.replaceChildren(li);
+        }
+        document.getElementById('btnSendTest').disabled = recipient.devices.length === 0;
+    }
+
+    async function loadTestRecipient() {
+        try {
+            const data = await BF.request('/api/notifications/test-recipient', { errorToast: false });
+            renderTestRecipient(data.recipient);
+        } catch (e) {
+            showStatus(testStatusEl, 'Не удалось загрузить тестового получателя: ' + e.message, true);
+        }
+    }
+
+    window.linkTestRecipient = async function (event) {
+        event.preventDefault();
+        const raw = document.getElementById('testBarkFluffId').value.trim();
+        if (!/^\d+$/.test(raw) || Number(raw) <= 0) { toast('BarkFluff ID — положительное число', 'err'); return; }
+        const btn = document.getElementById('btnLinkTest');
+        try {
+            const data = await BF.request('/api/notifications/test-recipient', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ barkFluffUserId: Number(raw) }), loading: btn, successToast: 'Получатель привязан' });
+            document.getElementById('testBarkFluffId').value = '';
+            testStatusEl.hidden = true;
+            renderTestRecipient(data.recipient);
+        } catch {}
+    };
+
+    window.unlinkTestRecipient = async function () {
+        const btn = document.getElementById('btnUnlinkTest');
+        try {
+            await BF.request('/api/notifications/test-recipient', { method:'DELETE', loading: btn, successToast: 'Получатель отвязан' });
+            testStatusEl.hidden = true;
+            renderTestRecipient(null);
+        } catch {}
+    };
+
+    window.sendTest = function () {
+        const payload = buildPayload();
+        if (!payload.title || !payload.body) { toast('Заполните заголовок и тело', 'err'); return; }
+        if (!testRecipient || !testRecipient.devices.length) { toast('Привяжите получателя с устройствами', 'err'); return; }
+        const r = testRecipient;
+        openConfirm('Отправить себе?', [
+            confirmParagraph('Получатель: ' + recipientName(r) + ', BarkFluff ID ' + r.userId + '.'),
+            confirmParagraph('Уведомление уйдёт только на устройства этого пользователя (' + r.devices.length + '):'),
+            confirmList(r.devices.map(deviceLabel), 5, false)
+        ], async () => {
+            const btn = document.getElementById('btnSendTest');
+            try {
+                const result = await BF.request('/api/notifications/test', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload), loading: btn, successToast: ACCEPTED_TOAST });
+                showStatus(testStatusEl, 'Принято к отправке: тестовое уведомление поставлено в очередь на устройства (' + result.deviceCount + '). ' + DELIVERY_NOTE);
             } catch {}
         });
     };
@@ -236,6 +428,7 @@
         const auth = await checkAuth(); if (!auth) return;
         if (window.mdNavSetUser) window.mdNavSetUser(auth.name || 'Admin', auth.createdAt ? formatDate(auth.createdAt) : '');
         BF.pageReady();
+        loadTestRecipient();
     })();
 </script>
 </body>

@@ -80,12 +80,30 @@ function createHarness(api) {
             elements[id] = makeEl();
         }
     );
+    var badgeCacheWrites = [];
     var BF = {
         api: api,
         authUI: { cancelAll: function () {} },
         node: {
             pinned: function () {
                 return true;
+            }
+        },
+        userBadges: {
+            set: function (userId, badges) {
+                badgeCacheWrites.push({
+                    userId: userId,
+                    primaryIds: badges
+                        .filter(function (b) {
+                            return b.isPrimary;
+                        })
+                        .map(function (b) {
+                            return b.id;
+                        })
+                });
+            },
+            createSlot: function () {
+                return makeEl('span');
             }
         },
         icons: {
@@ -141,7 +159,8 @@ function createHarness(api) {
         body: elements['#sdBody'],
         backBtn: elements['#sdBack'],
         title: elements['#sdTitle'],
-        langChanges: langChanges
+        langChanges: langChanges,
+        badgeCacheWrites: badgeCacheWrites
     };
 }
 
@@ -203,6 +222,15 @@ async function main() {
         rows[1].listeners.click();
         await settle();
         assert.deepEqual(calls, [2, 0], 'clicking the primary badge again clears the choice');
+        assert.deepEqual(
+            JSON.parse(JSON.stringify(h.badgeCacheWrites)),
+            [
+                { userId: 42, primaryIds: [1] },
+                { userId: 42, primaryIds: [2] },
+                { userId: 42, primaryIds: [] }
+            ],
+            'the shared badge cache follows the loaded list and every successful choice'
+        );
         assert.equal(badgeRows(h.body).filter(function (r) {
             return /primary/.test(r.className);
         }).length, 0);
@@ -223,6 +251,7 @@ async function main() {
         await settle();
         assert.doesNotMatch(badgeRows(h.body)[0].className, /primary/);
         assert.match(h.body.textContent, /common\.error/);
+        assert.equal(h.badgeCacheWrites.length, 1, 'a failed choice does not touch the shared cache');
     });
 
     await test('storage shows used of limit and non-empty types sorted by size', async function () {

@@ -36,6 +36,7 @@ public sealed class DockerEndpointsTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"adminpanel-docker-endpoints-{Guid.NewGuid():N}");
     private readonly TokenDbContext _tokenDb;
     private readonly AuditDbContext _auditDb;
+    private readonly DeployJobDbContext _deployJobDb;
     private readonly MemoryCache _cache = new(new MemoryCacheOptions());
     private readonly StepUpService _stepUpService = new();
     private readonly AuthToken _requestToken = new()
@@ -65,6 +66,7 @@ public sealed class DockerEndpointsTests : IDisposable
         {
             Path = Path.Combine(_directory, "audit.db")
         }));
+        _deployJobDb = new DeployJobDbContext(Path.Combine(_directory, "deploy_jobs.db"));
 
         _runner = new RecordingDockerCommandRunner(CreateContainerList(
             ("barkfluff-settings", "settings", "docker.barkfluff.com/barkfluff-settings-nightly:latest"),
@@ -110,6 +112,7 @@ public sealed class DockerEndpointsTests : IDisposable
             _seqHttpClient,
             Options.Create(new SeqSettings { Enabled = false, ServerUrl = "" }),
             NullLogger<SeqService>.Instance));
+        builder.Services.AddSingleton(_deployJobDb);
         builder.Services.AddSingleton<DeployJobService>();
 
         _app = builder.Build();
@@ -137,6 +140,7 @@ public sealed class DockerEndpointsTests : IDisposable
         _cache.Dispose();
         _tokenDb.Dispose();
         _auditDb.Dispose();
+        _deployJobDb.Dispose();
 
         try { Directory.Delete(_directory, recursive: true); } catch (IOException) { }
     }

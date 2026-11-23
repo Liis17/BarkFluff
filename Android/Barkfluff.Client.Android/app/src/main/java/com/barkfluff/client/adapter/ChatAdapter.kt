@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.shape.ShapeAppearanceModel
 import barkfluff.shared.Shared
 import com.barkfluff.client.R
+import com.barkfluff.client.badges.PrimaryBadgeView
 import com.barkfluff.client.databinding.ItemChatBinding
 import com.barkfluff.client.domain.model.ChatSummary
 import com.barkfluff.client.domain.model.AccountStatus
@@ -124,6 +125,10 @@ class ChatAdapter(
             binding.chatTitle.text = if (savedMessages) binding.root.context.getString(R.string.saved_messages_title) else item.displayTitle.trim()
             val isPrivateChat = chat.chatType == Shared.ChatType.CHAT_TYPE_PRIVATE
             binding.privateChatLock.visibility = if (isPrivateChat) View.VISIBLE else View.GONE
+            val badgeUserId = item.otherUserId.takeIf {
+                !savedMessages && !chat.isGroupChat && item.accountStatus == AccountStatus.ACTIVE
+            } ?: 0L
+            PrimaryBadgeView.bind(binding.chatPrimaryBadge, badgeUserId)
 
             // Аватар через AvatarLoader с fileId
             if (savedMessages) {

@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.R
+import com.barkfluff.client.badges.PrimaryBadgeView
 import com.barkfluff.client.databinding.ItemGroupMemberBinding
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.view.M3ContextMenu
@@ -44,6 +45,7 @@ class GroupMemberAdapter(
 
         fun bind(item: MemberItem) {
             binding.memberName.text = item.name
+            PrimaryBadgeView.bind(binding.memberPrimaryBadge, item.userId)
             binding.memberSubtitle.text = item.subtitle
             binding.memberSubtitle.visibility = if (item.subtitle.isBlank()) View.GONE else View.VISIBLE
             binding.memberPresenceDot.visibility = if (item.online) View.VISIBLE else View.GONE

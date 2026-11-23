@@ -556,12 +556,39 @@
         }
 
         .chat-name {
+            display: flex;
+            align-items: center;
+            min-width: 0;
             font-size: 15px;
             font-weight: 600;
             white-space: nowrap;
             overflow: hidden;
+        }
+
+        .chat-name-text {
+            min-width: 0;
+            overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        .chat-name .chat-lock,
+        .chat-name .bot-badge { flex-shrink: 0; }
+
+        /* Основной бейдж пользователя рядом с именем; пустой слот места не занимает. */
+        .user-badge-slot {
+            display: inline-flex;
+            flex-shrink: 0;
+            margin-left: 4px;
+            vertical-align: -3px;
+        }
+        .user-badge-slot:empty { display: none; }
+        .user-badge-mini {
+            display: block;
+            width: 16px;
+            height: 16px;
+            object-fit: contain;
+        }
+        .chat-header-name .user-badge-mini { width: 18px; height: 18px; }
 
         .bot-badge {
             display: inline-flex;
@@ -2778,28 +2805,93 @@
         .profile-details-card .profile-info-item.no-copy .profile-info-text {
             grid-column: 2 / 4;
         }
+        .profile-primary-badge {
+            display: inline-flex;
+            margin-left: 6px;
+            padding: 2px;
+            border: none;
+            border-radius: 6px;
+            background: none;
+            vertical-align: -3px;
+            cursor: pointer;
+        }
+        .profile-primary-badge .user-badge-mini { width: 22px; height: 22px; }
+
+        .profile-badges-card {
+            margin: 0 30px 14px;
+            padding: 14px 18px;
+            border-radius: 18px;
+            background: var(--profile-info-bg);
+        }
+        .profile-badges-card[hidden] { display: none; }
+
+        .profile-badges-title {
+            margin-bottom: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-sub);
+        }
+
         .profile-badges {
             display: flex;
             gap: 8px;
-            flex-wrap: wrap;
-            justify-content: center;
+            overflow-x: auto;
         }
 
         .profile-badge {
             display: flex;
+            flex-shrink: 0;
             align-items: center;
-            gap: 4px;
-            padding: 4px 10px;
-            background: rgba(140, 53, 28, 0.08);
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: none;
             border-radius: 12px;
-            font-size: 12px;
-            color: var(--primary);
-            font-weight: 500;
+            background: rgba(140, 53, 28, 0.08);
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .profile-badge:hover { background: rgba(140, 53, 28, 0.16); }
+        .profile-badge .user-badge-mini { width: 32px; height: 32px; }
+
+        .profile-primary-badge:focus-visible,
+        .profile-badge:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
         }
 
-        .profile-badge img {
-            width: 16px;
-            height: 16px;
+        .badge-viewer-overlay { z-index: 95; }
+
+        .badge-viewer-panel {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            width: 320px;
+            max-width: 92vw;
+            padding: 44px 24px 28px;
+            border-radius: 24px;
+            background: var(--profile-bg);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.28);
+            text-align: center;
+            animation: fadeScaleIn 0.2s ease-out;
+        }
+
+        .badge-viewer-image {
+            width: 160px;
+            height: 160px;
+            margin-bottom: 8px;
+            object-fit: contain;
+        }
+        .badge-viewer-name { font-size: 18px; font-weight: 700; color: var(--text-main); }
+        .badge-viewer-desc { font-size: 14px; color: var(--text-sub); line-height: 1.4; }
+        .badge-viewer-date { font-size: 13px; color: var(--text-sub); }
+        .badge-viewer-panel [hidden] { display: none; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .badge-viewer-panel { animation: none; }
         }
 
         .profile-media-section {
@@ -3050,11 +3142,18 @@
 
         .group-member-name {
             flex: 1;
+            display: flex;
+            align-items: center;
+            min-width: 0;
             font-size: 14px;
             color: var(--text-main);
+            white-space: nowrap;
+        }
+
+        .group-member-name-text {
+            min-width: 0;
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap;
         }
 
         .group-member-remove {

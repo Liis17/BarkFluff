@@ -14,8 +14,31 @@
 
 `users.block` и `users.delete` разрешены только SecurityAdmin и Owner. Маршруты POST `/api/users/{id}/block`, POST `/unblock`, POST `/deletion` и DELETE `/deletion` проверяют обязательную причину (до 500 символов), привязывают к Telegram step-up `userId`, действие и причину и делегируют изменение `IdentityServerApi.SetAccountRestrictionServer`.
 
-GET `/api/users` передаёт Users фильтр `status=all|blocked|pending_deletion`; Users выполняет фильтрацию до пагинации и считает общий total. Список и карточка пользователя показывают статус, причину, время ограничения и дату окончательного удаления. Tombstone со статусом Deleted отображается без действий. UI и JSON-маршруты находятся в `Pages/v2/users.html` и `Endpoints/UsersEndpoints.cs`.
+GET `/api/users` переводит `status` в набор `status_filters`: `all` (и пустой) — Active и Blocked, `blocked`, `pending_deletion` и `deleted` — один статус. Аккаунты «В удалении» и «Удалённые» видны только своими фильтрами, в том числе при поиске по ID в списке. Карточка `GET /api/users/{id}` набором не ограничивается. Users применяет набор до пагинации и считает общий total по той же выборке. Список и карточка пользователя показывают статус, причину, время ограничения и дату окончательного удаления. Tombstone со статусом Deleted отображается без действий. UI и JSON-маршруты находятся в `Pages/v2/users.html` и `Endpoints/UsersEndpoints.cs`.
 
+## Тестовая отправка push
+
+Администратор один раз привязывает BarkFluff user ID к своей записи (`AdminRecord.BarkFluffUserId` в LiteDB; поле необязательное, старые записи читаются без привязки). Привязка проверяется через Users: пользователь должен существовать, ответ содержит его имя и устройства с признаком включённых push. Bootstrap Owner сохраняет запись целиком, поэтому привязку не затирает. Логика — в `Services/NotificationTestService.cs`, маршруты `/api/notifications/test-recipient` и `/api/notifications/test` — в `Endpoints/NotificationsEndpoints.cs`; права — `notifications.manage`, step-up не требуется.
+
+Тестовая отправка берёт устройства привязанного пользователя из Users и публикует `AdminBroadcastNotificationEvent` с их `TargetDeviceIds`. Пустой список в этом событии означает рассылку на все устройства, поэтому панель отказывает до публикации, если устройств нет. Недоступность Users возвращает 503. Ответ «принято к отправке» означает постановку в очередь, а не доставку: см. [[Backend/CloudMessaging]]. Тестовая отправка и привязка не пишутся в аудит — как и остальные рассылки, аудит панели покрывает действия над администраторами.
+
+## Журнал аудита
+
+Записи хранятся в LiteDB (`Services/AuditService.cs`, `Data/AuditDbContext.cs`) и удаляются старше 90 дней. GET `/api/audit` (permission AuditRead) отдаёт страницу новых сверху: `limit` и курсор `beforeUtc`. Необязательные фильтры:
+
+- `admin` — username без «@», точное совпадение без учёта регистра;
+- `action` — подстрока ключа действия без учёта регистра; проверяется в памяти, потому что LiteDB транслирует Contains в LIKE, где `%` и `_` стали бы шаблонами;
+- `outcome` — `success` (ok или confirmed) либо точное значение без учёта регистра, например `invalid_confirmation`, `approved`, `rejected`;
+- `fromUtc` — включительно, `toUtc` — исключительно; `fromUtc` позже `toUtc` возвращает 400. Значения длиннее 200 символов тоже 400.
+
+Admin, outcome и период применяются в запросе LiteDB до лимита вместе с курсором, поэтому «Загрузить ещё» продолжает ту же отфильтрованную выборку. Курсор сравнивает только `At`: записи с тем же временем, что и граница страницы, могут не попасть в выдачу. GET `/api/audit/facets` (AuditRead) отдаёт уникальных администраторов и ключи действий для подсказок. Страница `Pages/v2/audit.html` хранит фильтры в query string.
+
+## Ссылки на текущую выборку
+
+`Pages/v2/logs.html`: кнопка «Скопировать ссылку» строит абсолютный `/logs` из сервиса, уровня (только в режиме событий), поиска, одного контекста (`correlationId`, `requestId` или `userId`), `view=groups` и периода `from`. `buildFilterQuery` и `parseFilterQuery` задают один набор параметров для ссылки и для восстановления фильтров при открытии. Без `navigator.clipboard` (http) копирование идёт через textarea.
+
+`Pages/v2/users.html`: `history.replaceState` пишет `q`, `status` (не пишется для `all`), `page` — число подгруженных порций по 50 — и `userId` открытой карточки. Закрытие карточки убирает только `userId`. Users ограничивает `size` 50, поэтому страница восстанавливает порции последовательными запросами, не более 20. Старая ссылка `/users?userId=N` без `q` ищет по id и открывает карточку.
+>
 ## Управление сервисом
 
 При запуске `Program.cs` вызывает `LoadConfiguration(ServiceId.Unknown, requireValidSettings: false)`.
@@ -39,11 +62,17 @@ Endpoint-группы в Program.cs охватывают auth/step-up/admins/aud
 
 Массовые обновление и перезапуск используют `DeployJobService.DeployOrder`: все 16 сервисов из `PlatformServiceRegistry.BarkFluff`, Settings первым; инфраструктура и сама панель в этот список не входят. «Обновить доступные» передаёт поле `container` строк с `updateAvailable` для BarkFluff-сервисов в `/api/docker/containers/update-many`; сервер разрешает фактические имена в Compose service keys.
 
+История задач деплоя хранится в LiteDB-файле `db/deploy_jobs.db` (`Data/DeployJobDbContext.cs`), рядом с остальными данными панели; путь не настраивается и попадает в смонтированный `/app/db`. `DeployJobService` пишет снимок задачи при постановке в очередь, при старте и завершении каждого шага и при завершении задачи; опрос health в файл не пишется. При старте панели история загружается: задачи в Queued/Running помечаются Failed с причиной «Прервано перезапуском панели» (шаги Pending/InProgress тоже Failed) и в очередь повторно не ставятся. Хранятся не больше 20 завершённых задач, лишние удаляются и из файла. Ошибка чтения или записи истории только логируется и не прерывает деплой. `GET /api/docker/deploy/jobs` отдаёт историю из памяти процесса, которая поднята из файла при старте; страница «Сервисы» показывает её в блоке «Недавние операции», а клик открывает результат задачи (упавший шаг, причина, состояние отката) без повторного запуска действий.
+
 Nightly compose запускает панель от root и монтирует /var/run/docker.sock, данные /app/db, compose-файл и .env. Поэтому панель имеет доступ к Docker host. Deploy/update helper читает `com.docker.compose.project.config_files` активного контейнера AdminPanel и повторно передаёт все Compose-файлы, включая opt-in overlays, для pull/up и отката; каталоги файлов монтируются в helper read-only. Compose-вызовы используют `--project-name barkfluff` и имена сервисов, а `inspect`, restart и health-check разрешают фактическое имя контейнера. В исходнике cookie создаётся клиентским JS; не предполагайте HttpOnly.
 
 `Seq:Enabled` по умолчанию `true`; переменная окружения `Seq__Enabled=false` отключает интеграцию и позволяет запускать панель без URL Seq. Seq-зависимые endpoints возвращают HTTP 503 с `available: false` и сообщением `Seq отключён`; `/api/seq/services` и `/api/seq/services/status` остаются доступны, чтобы фильтры и список сервисов работали без Seq. Страница логов отображает состояние отключения явно.
 
 Сборка: dotnet build Backend/Barkfluff.AdminPanel/Barkfluff.AdminPanel.csproj. Конфигурация по умолчанию — Backend/Barkfluff.AdminPanel/appsettings.json.
+
+Дашборд `Pages/v2/dashboard.html` показывает проблемные сервисы (`down`, `degraded`, `unknown`) первыми, в порядке тяжести; внутри группы порядок снимка сохраняется. Заголовок «Состояние сервисов» показывает `generatedAtUtc` снимка и обновляется при каждом опросе. Для проблемного сервиса доступна ссылка «Открыть логи»: `/logs` с `service`, `level=Error` и `from` — время снимка минус час. Снимок содержит `SeqEnabled` (значение `Seq:Enabled` на момент сбора); при `false` вместо логов ссылка ведёт в «Сервисы» на строку сервиса (подсветка через `focusLinkedService`).
+
+Страница логов `Pages/v2/logs.html` принимает `from` (ISO UTC с часовым поясом; иное значение игнорируется). Значение уходит в `/api/seq/events` как `fromUtc` и показывается рядом с фильтрами с кнопкой сброса. Период применяется только к событиям: в режиме групп ошибок он не работает, верхней границы у периода нет.
 
 ## Логирование
 

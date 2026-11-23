@@ -3,14 +3,16 @@ namespace Barkfluff.AdminPanel.Models.Dtos;
 /// <summary>
 /// Снимок состояния платформы, собирается HealthCollectorService в фоне:
 /// liveness (/health/live с fallback /ping), readiness (/health/ready),
-/// docker-статусы, инфраструктура.
+/// docker-статусы, инфраструктура. SeqEnabled — Seq:Enabled на момент сбора: при false
+/// страница health предлагает переход к сервисам вместо ссылки на логи.
 /// </summary>
 public sealed record HealthSnapshot(
     DateTime GeneratedAtUtc,
     IReadOnlyList<ServiceHealthStatus> Services,
     HealthSummary Summary,
     string SystemStatus,
-    IReadOnlyList<InfrastructureHealth> Infrastructure);
+    IReadOnlyList<InfrastructureHealth> Infrastructure,
+    bool SeqEnabled);
 
 public sealed record HealthSummary(int Total, int Healthy, int Degraded, int Down, int Unknown);
 

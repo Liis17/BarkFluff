@@ -189,6 +189,8 @@
                         chatHeaderName.replaceChildren(BF.icons.element('private'), ' ' + name);
                         chatHeaderAvatar.replaceChildren();
                         chatHeaderAvatar.textContent = name[0] || '?';
+                    } else {
+                        chatHeaderName.appendChild(BF.userBadges.createSlot(privatePeer.userId));
                     }
                     deps.setChatTabContext(
                         peerIsRestricted ? BF.utils.restrictedUserName(peer) : deps.chatTabTitle(peer),

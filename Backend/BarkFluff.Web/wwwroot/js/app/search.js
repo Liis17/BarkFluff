@@ -2,7 +2,7 @@
  * Sidebar search: an instant filter over the loaded chats plus debounced user (SearchUsers)
  * and message (SearchMessages) searches. Message search pages by cursor and has author,
  * period and attachment filters.
- * Requires: BF.api, BF.i18n, BF.utils
+ * Requires: BF.api, BF.i18n, BF.utils, BF.userBadges
  * Exposes: BF.search
  */
 (function () {
@@ -402,6 +402,7 @@
                 '</div>' +
                 '<div class="search-result-info"><div class="user-name">' +
                 u.escapeHtml(title) +
+                (peer && !restricted ? BF.userBadges.slotHtml(hit.otherUserId) : '') +
                 '<span class="search-result-time">' +
                 u.escapeHtml(u.formatChatListTime(hit.sentAt)) +
                 '</span></div><div class="search-result-text">' +
@@ -467,6 +468,7 @@
                     '</div>' +
                     '<div class="search-result-info"><div class="user-name">' +
                     u.escapeHtml(title) +
+                    (peer && !restricted ? BF.userBadges.slotHtml(peer.id) : '') +
                     '</div></div>';
                 el.addEventListener('click', function () {
                     clearSearch();
@@ -493,6 +495,7 @@
                         '</div>' +
                         '<div class="search-result-info"><div class="user-name">' +
                         u.escapeHtml(name) +
+                        (restricted ? '' : BF.userBadges.slotHtml(user.id)) +
                         '</div>' +
                         (restricted
                             ? ''

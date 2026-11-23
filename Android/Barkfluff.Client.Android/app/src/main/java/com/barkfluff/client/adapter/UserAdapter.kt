@@ -5,7 +5,9 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.barkfluff.client.badges.PrimaryBadgeView
 import com.barkfluff.client.databinding.ItemUserBinding
+import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.domain.model.UserProfile
 import com.barkfluff.client.utils.AvatarLoader
 
@@ -32,6 +34,10 @@ class UserAdapter(
 
         fun bind(item: UserDisplayItem) {
             binding.userFullName.text = item.displayFullName
+            PrimaryBadgeView.bind(
+                binding.userPrimaryBadge,
+                item.userData.userId.takeIf { item.userData.accountStatus == AccountStatus.ACTIVE } ?: 0L,
+            )
             binding.userUsername.text = item.displayUsername
 
             // Загрузка аватара

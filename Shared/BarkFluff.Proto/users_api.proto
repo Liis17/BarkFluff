@@ -343,6 +343,8 @@ message SearchUsersServerRequest {
   int32 offset = 2;
   int32 size = 3;     // макс 50
   optional AccountStatus status_filter = 4;
+  // Набор статусов; если не пуст, имеет приоритет над status_filter. Фильтр применяется до пагинации.
+  repeated AccountStatus status_filters = 5;
 }
 
 message SearchUsersServerResponse {

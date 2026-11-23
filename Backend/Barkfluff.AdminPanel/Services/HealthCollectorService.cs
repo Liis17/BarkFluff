@@ -135,7 +135,8 @@ public class HealthCollectorService : BackgroundService
                 services,
                 new HealthSummary(services.Count, healthy, degraded, down, unknown),
                 ResolveSystemStatus(services),
-                infrastructure);
+                infrastructure,
+                seq.IsEnabled);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception ex)

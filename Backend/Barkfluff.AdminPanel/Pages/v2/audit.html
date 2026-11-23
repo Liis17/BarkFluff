@@ -29,6 +29,14 @@
         .outcome-ok { color: var(--md-success); }
         .outcome-invalid { color: var(--md-error); font-weight: 600; }
 
+        .audit-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+        .audit-filters .md-input-outlined { flex: 1 1 180px; min-width: 0; }
+        .audit-filter-date { display: flex; align-items: center; gap: 6px; flex: 1 1 220px; font-size: 13px; color: var(--md-on-surface-variant); }
+        .audit-filter-date .md-input-outlined { flex: 1; min-width: 0; }
+        .audit-filter-buttons { display: flex; gap: 8px; }
+        .audit-filter-hint { font-size: 12px; color: var(--md-on-surface-variant); margin-bottom: 12px; }
+        .audit-filter-error { font-size: 13px; color: var(--md-error); margin-bottom: 12px; }
+
         @media (max-width: 600px) {
             .audit-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
         }
@@ -57,6 +65,28 @@
         </header>
 
         <div class="md-page">
+            <form id="filter-form" class="audit-filters" autocomplete="off">
+                <input id="f-admin" class="md-input-outlined" type="text" maxlength="200" list="admins-list" placeholder="Администратор" aria-label="Администратор">
+                <input id="f-action" class="md-input-outlined" type="text" maxlength="200" list="actions-list" placeholder="Действие, например docker" aria-label="Действие">
+                <select id="f-outcome" class="md-input-outlined" aria-label="Результат">
+                    <option value="">Любой результат</option>
+                    <option value="success">Успешно</option>
+                    <option value="invalid_confirmation">Невалидное подтверждение</option>
+                    <option value="approved">Одобрено в Telegram</option>
+                    <option value="rejected">Отклонено в Telegram</option>
+                </select>
+                <label class="audit-filter-date">С <input id="f-from" class="md-input-outlined" type="datetime-local" aria-label="Период с"></label>
+                <label class="audit-filter-date">По <input id="f-to" class="md-input-outlined" type="datetime-local" aria-label="Период по"></label>
+                <div class="audit-filter-buttons">
+                    <button type="submit" class="md-btn md-btn-filled">Применить</button>
+                    <button type="button" id="filter-reset-btn" class="md-btn md-btn-text">Сбросить</button>
+                </div>
+            </form>
+            <datalist id="admins-list"></datalist>
+            <datalist id="actions-list"></datalist>
+            <div class="audit-filter-hint">Период в часовом поясе браузера; «По» включает выбранную минуту.</div>
+            <div id="filter-error" class="audit-filter-error" role="alert" style="display:none;"></div>
+
             <div class="toolbar" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant);cursor:pointer;">
                     <input type="checkbox" id="auto-refresh" checked> Авто-обновление (30с)
@@ -97,9 +127,121 @@
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=5"></script>
 <script>
+    const PAGE_SIZE = 100;
     let entries = [];
     let oldestAt = null;
     let refreshTimer = null;
+    let loadSeq = 0;
+    let loadingMore = false;
+    let filters = emptyFilters();
+
+    function emptyFilters() { return { admin: '', action: '', outcome: '', from: '', to: '' }; }
+    function hasActiveFilters() { return Object.values(filters).some(v => v !== ''); }
+
+    function readFilterInputs() {
+        return {
+            admin: document.getElementById('f-admin').value.trim(),
+            action: document.getElementById('f-action').value.trim(),
+            outcome: document.getElementById('f-outcome').value,
+            from: document.getElementById('f-from').value,
+            to: document.getElementById('f-to').value
+        };
+    }
+
+    function fillFilterInputs(values) {
+        document.getElementById('f-admin').value = values.admin;
+        document.getElementById('f-action').value = values.action;
+        document.getElementById('f-outcome').value = values.outcome;
+        document.getElementById('f-from').value = values.from;
+        document.getElementById('f-to').value = values.to;
+    }
+
+    // datetime-local (локальное время браузера) → Date; пустое или некорректное значение → null
+    function parseLocalInput(value) {
+        if (!value) return null;
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function validateFilterValues(values) {
+        const from = parseLocalInput(values.from);
+        const to = parseLocalInput(values.to);
+        return from && to && from > to ? 'Период: дата «с» позже даты «по»' : '';
+    }
+
+    function setFilterError(message) {
+        const el = document.getElementById('filter-error');
+        el.textContent = message;
+        el.style.display = message ? '' : 'none';
+    }
+
+    // Параметры запроса для текущих примененных фильтров; beforeUtc — курсор «Загрузить ещё» внутри той же выборки
+    function filterQuery(beforeUtc) {
+        const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+        if (beforeUtc) params.set('beforeUtc', beforeUtc.toISOString());
+        if (filters.admin) params.set('admin', filters.admin);
+        if (filters.action) params.set('action', filters.action);
+        if (filters.outcome) params.set('outcome', filters.outcome);
+        const from = parseLocalInput(filters.from);
+        if (from) params.set('fromUtc', from.toISOString());
+        const to = parseLocalInput(filters.to);
+        // toUtc на сервере исключительно: «по 12:30» включает всю минуту 12:30
+        if (to) params.set('toUtc', new Date(to.getTime() + 60000).toISOString());
+        return params.toString();
+    }
+
+    function filtersFromUrl() {
+        const p = new URLSearchParams(window.location.search);
+        return {
+            admin: p.get('admin') || '',
+            action: p.get('action') || '',
+            outcome: p.get('outcome') || '',
+            from: p.get('from') || '',
+            to: p.get('to') || ''
+        };
+    }
+
+    function writeFiltersToUrl() {
+        const p = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => { if (value) p.set(key, value); });
+        const query = p.toString();
+        window.history.replaceState({}, '', window.location.pathname + (query ? '?' + query : ''));
+    }
+
+    function restoreFilters() {
+        fillFilterInputs(filtersFromUrl());
+        filters = readFilterInputs();
+        setFilterError(validateFilterValues(filters));
+        writeFiltersToUrl();
+    }
+
+    function applyFilters(next) {
+        const error = validateFilterValues(next);
+        setFilterError(error);
+        if (error) return;
+        filters = next;
+        writeFiltersToUrl();
+        loadEntries();
+    }
+
+    async function loadFacets() {
+        try {
+            const facets = await BF.request('/api/audit/facets', { errorToast: false });
+            fillDatalist('admins-list', facets.admins);
+            fillDatalist('actions-list', facets.actions);
+        } catch (e) {
+            // подсказки необязательны: поля фильтров работают и без них
+        }
+    }
+
+    function fillDatalist(id, values) {
+        const options = (values || []).map(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            return option;
+        });
+        document.getElementById(id).replaceChildren(...options);
+    }
 
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
     function formatTime(s) { if (!s) return '—'; const d = new Date(s); if (isNaN(d.getTime())) return '—'; return d.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
@@ -107,30 +249,37 @@
     function checkAuth() { return BF.requireAuth(); }
 
     async function loadEntries(beforeUtc) {
+        const seq = ++loadSeq;
         const tbody = document.getElementById('audit-body');
         try {
-            let url = '/api/audit?limit=100';
-            if (beforeUtc) url += '&beforeUtc=' + encodeURIComponent(beforeUtc.toISOString());
-            const batch = await BF.request(url, { errorToast: false });
-            if (beforeUtc) {
-                entries = entries.concat(batch);
-            } else {
-                entries = batch;
-            }
-            if (entries.length > 0) {
-                oldestAt = new Date(entries[entries.length - 1].at);
-            }
+            const batch = await BF.request('/api/audit?' + filterQuery(beforeUtc), { errorToast: false });
+            // Ответ устарел: за это время начата новая загрузка (другие фильтры или первая страница)
+            if (seq !== loadSeq) return;
+            entries = beforeUtc ? entries.concat(batch) : batch;
+            oldestAt = entries.length > 0 ? new Date(entries[entries.length - 1].at) : null;
             render();
-            document.getElementById('load-more-btn').style.display = batch.length >= 100 ? '' : 'none';
+            document.getElementById('load-more-btn').style.display = batch.length >= PAGE_SIZE ? '' : 'none';
         } catch (e) {
-            if (!beforeUtc) {
+            if (seq !== loadSeq) return;
+            if (beforeUtc) {
+                BF.toast(e.message, 'error');
+            } else {
                 tbody.innerHTML = `<tr><td colspan="6" class="empty-cell" style="color:var(--md-error);">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
             }
         }
     }
 
-    function loadMore() {
-        if (oldestAt) loadEntries(oldestAt);
+    async function loadMore() {
+        if (!oldestAt || loadingMore) return;
+        loadingMore = true;
+        const btn = document.getElementById('load-more-btn');
+        btn.disabled = true;
+        try {
+            await loadEntries(oldestAt);
+        } finally {
+            loadingMore = false;
+            btn.disabled = false;
+        }
     }
 
     function outcomeCell(outcome) {
@@ -141,9 +290,13 @@
 
     function render() {
         const tbody = document.getElementById('audit-body');
-        document.getElementById('entries-count').textContent = entries.length ? `Записей: ${entries.length}` : '';
+        const filtered = hasActiveFilters();
+        document.getElementById('entries-count').textContent = entries.length
+            ? `Записей: ${entries.length}${filtered ? ' по фильтру' : ''}`
+            : '';
         if (!entries.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Записей пока нет</td></tr>';
+            const message = filtered ? 'Нет записей по фильтру' : 'Записей пока нет';
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">${message}</td></tr>`;
             return;
         }
         tbody.innerHTML = entries.map(e => `
@@ -158,6 +311,16 @@
     }
 
     document.getElementById('refresh-btn').addEventListener('click', () => loadEntries());
+
+    document.getElementById('filter-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        applyFilters(readFilterInputs());
+    });
+
+    document.getElementById('filter-reset-btn').addEventListener('click', () => {
+        fillFilterInputs(emptyFilters());
+        applyFilters(emptyFilters());
+    });
 
     document.getElementById('auto-refresh').addEventListener('change', (e) => {
         setupAutoRefresh(e.target.checked);
@@ -179,6 +342,8 @@
 
     (async function () {
         const auth = await checkAuth(); if (!auth) return;
+        restoreFilters();
+        loadFacets();
         await loadEntries();
         setupAutoRefresh(document.getElementById('auto-refresh').checked);
         BF.pageReady();

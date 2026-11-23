@@ -40,7 +40,7 @@ Parent: [[Clients/Android]]
 | chat | RegularChatSession, MessageNavigator и timeline coordination |
 | adapter | MessageRowProjector, MessageAdapter и UI lists |
 | cache | SQLCipher Room v8, статус peer в cached_chat_displays, UserBadgeRepository, migrations 6→7→8, outbox records и выборочная очистка (ClearCacheOptions, clearHistoryCache/clearSecretHistory/clearOutgoingKeepReads, compact) |
-| badges | BadgeViewerSheet, BadgeIconAdapter, BadgeGridAdapter и Coil image loading для бейджей |
+| badges | BadgeViewerSheet, BadgeIconAdapter, BadgeGridAdapter, PrimaryBadgeView (основной бейдж рядом с именем) и Coil image loading для бейджей |
 | drafts | ChatDraftRepository и ComposerAttachmentStore |
 | send | OutgoingMessageQueue, OutgoingMessageWorker и retry policy; GrpcOutgoingFailure помечает UserUnavailable постоянной ошибкой |
 | auth | Activity-retained challenge state и диалог; AccountRestrictionUi обрабатывает статус входа и завершение сессии |

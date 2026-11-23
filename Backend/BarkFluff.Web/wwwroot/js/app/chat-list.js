@@ -1,7 +1,7 @@
 /**
  * Sidebar chat list: paged loading, windowed (virtualized) rendering, keyboard listbox navigation,
  * quiet catch-up refresh and the chat context menu (folders, delete chat / leave group).
- * Requires: BF.api, BF.folders, BF.drafts, BF.i18n, BF.icons, BF.utils, BF.realtime
+ * Requires: BF.api, BF.folders, BF.drafts, BF.i18n, BF.icons, BF.utils, BF.realtime, BF.userBadges
  * Exposes: BF.chatList
  */
 (function () {
@@ -375,8 +375,11 @@
                   BF.icons.html('security') +
                   '</span>'
                 : '') +
+            '<span class="chat-name-text">' +
             u.escapeHtml(title) +
+            '</span>' +
             (isBot ? deps.botBadgeMarkup() : '') +
+            (peerUser && !restricted ? BF.userBadges.slotHtml(peerUserId) : '') +
             '</span>' +
             '<span class="chat-time">' +
             time +

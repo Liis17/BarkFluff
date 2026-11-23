@@ -169,17 +169,37 @@
                 android:layout_weight="1"
                 android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/chatNameTextView"
-                    android:layout_width="match_parent"
+                <!-- wrap_content + вес у имени: длинное имя сжимается, бейдж остаётся сразу за ним -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:lineHeight="28sp"
-                    android:maxLines="1"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textFontWeight="600"
-                    android:textSize="22sp"
-                    tools:text="Имя пользователя" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/chatNameTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:lineHeight="28sp"
+                        android:maxLines="1"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textFontWeight="600"
+                        android:textSize="22sp"
+                        tools:text="Имя пользователя" />
+
+                    <ImageView
+                        android:id="@+id/chatPrimaryBadge"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_marginStart="6dp"
+                        android:scaleType="fitCenter"
+                        android:visibility="gone"
+                        tools:src="@drawable/icon_verified"
+                        tools:visibility="visible" />
+
+                </LinearLayout>
 
                 <!-- Строка статуса (онлайн / печатает); при прокрутке не скрывается -->
                 <FrameLayout

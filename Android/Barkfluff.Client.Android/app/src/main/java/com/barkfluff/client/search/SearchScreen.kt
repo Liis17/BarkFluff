@@ -80,6 +80,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import com.barkfluff.client.R
+import com.barkfluff.client.badges.PrimaryBadgeIcon
 import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.view.AvatarView
 
@@ -334,12 +335,21 @@ private fun SearchResults(
             ) {
                 ListItem(
                     headlineContent = {
-                        Text(
-                            text = displayName,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = displayName,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            if (!restricted) {
+                                PrimaryBadgeIcon(
+                                    userId = user.userData.userId,
+                                    modifier = Modifier.padding(start = 4.dp)
+                                )
+                            }
+                        }
                     },
                     supportingContent = if (displayUsername.isBlank()) null else {
                         {
