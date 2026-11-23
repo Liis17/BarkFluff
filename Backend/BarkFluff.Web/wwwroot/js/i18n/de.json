@@ -575,6 +575,7 @@
   "settings.badges.empty": "Du hast noch keine Abzeichen",
   "settings.badges.hint": "Dein Hauptabzeichen wird neben deinem Namen angezeigt. Tippe auf ein Abzeichen, um es auszuwählen, oder erneut, um die Auswahl aufzuheben.",
   "settings.badges.primary": "Haupt",
+  "badge.received": "Erhalten am {date}",
   "settings.bio": "Biografie",
   "settings.installApp": "BarkFluff-App installieren",
   "settings.language.hint": "Die Oberfläche wechselt sofort – die Seite muss nicht neu geladen werden.",

@@ -584,6 +584,7 @@
   "settings.badges.empty": "You have no badges yet",
   "settings.badges.hint": "Your primary badge is shown next to your name. Tap a badge to select it, or tap it again to clear the choice.",
   "settings.badges.primary": "Primary",
+  "badge.received": "Received {date}",
   "settings.bio": "Bio",
   "settings.installApp": "Install the BarkFluff app",
   "settings.language.hint": "The interface switches instantly — no page reload needed.",
