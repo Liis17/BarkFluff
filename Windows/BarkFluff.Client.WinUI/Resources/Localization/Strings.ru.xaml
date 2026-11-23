@@ -163,6 +163,7 @@
     <x:String x:Key="Messenger_StatusLastSeenAt">был(а) в {0}</x:String>
     <x:String x:Key="Messenger_StatusLastSeenOn">был(а) {0}</x:String>
     <x:String x:Key="Messenger_ReplyToMessage">Ответить</x:String>
+    <x:String x:Key="Messenger_Draft">Черновик</x:String>
     <x:String x:Key="Messenger_ReplyingTo">Ответ на сообщение</x:String>
     <x:String x:Key="Messenger_Forward">Переслать</x:String>
     <x:String x:Key="Messenger_ForwardTitle">Переслать сообщение</x:String>

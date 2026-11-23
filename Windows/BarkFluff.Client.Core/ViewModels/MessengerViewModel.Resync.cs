@@ -115,6 +115,7 @@ public sealed partial class MessengerViewModel
             if (!Chats.Any(chat => chat.Id == item.Id))
             {
                 UpdateMuteIndicator(session, item);
+                UpdateDraftPreview(item);
                 Chats.Add(item);
             }
         }

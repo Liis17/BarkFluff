@@ -295,16 +295,13 @@ public sealed partial class MessengerViewModel
         }
 
         ActionError = null;
-        ReplyTarget = null;
-        EditingMessage = message;
-        DraftText = message.Text;
+        BeginDraftEdit(message);
     }
 
     [RelayCommand]
     private void CancelEdit()
     {
-        EditingMessage = null;
-        DraftText = string.Empty;
+        RestoreDraftAfterEdit();
     }
 
     [RelayCommand]
@@ -533,8 +530,7 @@ public sealed partial class MessengerViewModel
 
         if (EditingMessage == message && DraftText == draft)
         {
-            EditingMessage = null;
-            DraftText = string.Empty;
+            RestoreDraftAfterEdit();
         }
 
         await ApplyMessageUpdateAsync(session!, new(chat.Id, false, message.Id, MessageUpdateKind.Edit, Message: edited));

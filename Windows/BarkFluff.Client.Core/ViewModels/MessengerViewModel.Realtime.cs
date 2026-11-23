@@ -57,6 +57,7 @@ public sealed partial class MessengerViewModel
             ? RefreshPinsAsync(chat, _chatVersion, reportError: false)
             : Task.FromResult(true), session.Lifetime.Token) { Delay = ResyncDelay };
         _realtimeSession = session;
+        StartDraftSession(session);
         _stickerFrames?.StartSession();
         StickerPicker?.StartSession(session.Node, session.UserId, session.Lifetime.Token, () => IsCurrent(session));
         _notificationSettings?.StartSession(() => IsCurrent(session), session.Lifetime.Token);
@@ -99,6 +100,7 @@ public sealed partial class MessengerViewModel
         }
 
         _realtimeSession = null;
+        _ = StopDraftsAsync();
         _notificationSettings?.EndSession();
         _notifications?.EndSession();
         _chatFolders?.Reset();
@@ -362,18 +364,16 @@ public sealed partial class MessengerViewModel
             RefreshPinnedBar();
         }
 
+        if (ReplyTarget?.Id == messageId)
+            ReplyTarget = null;
+
         var existing = Messages.FirstOrDefault(item => item.Id == messageId);
         if (existing is not null)
         {
             Messages.Remove(existing);
             if (EditingMessage?.Id == messageId)
             {
-                EditingMessage = null;
-            }
-
-            if (ReplyTarget?.Id == messageId)
-            {
-                ReplyTarget = null;
+                RestoreDraftAfterEdit();
             }
 
             if (MessagePendingDelete?.Id == messageId)

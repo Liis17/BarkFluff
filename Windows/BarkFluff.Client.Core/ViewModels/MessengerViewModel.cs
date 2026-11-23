@@ -52,9 +52,13 @@ public sealed partial class MessengerViewModel : ObservableObject
         ISettingsPreferences? stickerPreferences = null,
         StickerFrameCache? stickerFrames = null,
         IVoiceRecorder? voiceRecorder = null,
-        IVoicePlayer? voicePlayer = null)
+        IVoicePlayer? voicePlayer = null,
+        IChatDraftStore? draftStore = null,
+        IChatDraftRemote? draftRemote = null)
     {
         _messenger = messenger;
+        _draftStore = draftStore;
+        _draftRemote = draftRemote;
         _privateChatKeyStore = privateChatKeyStore;
         _realtimeMessenger = realtimeMessenger;
         _presence = presence;
@@ -336,8 +340,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _reconnectFeed?.TrySetResult();
         _reconnectFeed = null;
         CancelPendingReadBatch();
-        ResetMessageActionState();
-        Messages.Clear();
+        ChangeComposerChat(oldValue, newValue);
         ScrollRequest = null;
         // Только что открытый чат следует за новыми сообщениями, пока пользователь не ушёл вверх.
         _isFeedAtBottom = true;
@@ -378,6 +381,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         _typing?.StopSending();
         var draft = DraftText;
         var reply = ReplyTarget;
+        var draftGeneration = _drafts?.Generation(chat.Id);
+        var sentText = AttachmentComposer.HasVoice ? string.Empty : draft.Trim();
         using var reading = session!.Journal.ReadHistory(chat.Id, chat.IsPrivate);
         var revision = session.Journal.Revision;
         ActionError = null;
@@ -396,6 +401,8 @@ public sealed partial class MessengerViewModel : ObservableObject
             }
 
             var result = await _messenger.SendPrivateMessageAsync(chat.Id, draft.Trim(), key);
+            if (result.error is { IsSuccess: true } && result.message is not null)
+                ClearSentDraft();
             if (!IsOpen(session, chat, version))
             {
                 return;
@@ -416,8 +423,10 @@ public sealed partial class MessengerViewModel : ObservableObject
         else
         {
             var sent = AttachmentComposer.HasFiles
-                ? await SendWithAttachmentsAsync(chat, session, version, AttachmentComposer.HasVoice ? string.Empty : draft.Trim(), reply?.Id ?? 0)
+                ? await SendWithAttachmentsAsync(chat, session, version, sentText, reply?.Id ?? 0)
                 : await _messenger.SendMessageAsync(chat.Id, draft.Trim(), reply?.Id ?? 0);
+            if (sent is { error.IsSuccess: true, message: not null })
+                ClearSentDraft();
             if (!IsOpen(session, chat, version) || sent is not { } result)
             {
                 return;
@@ -438,11 +447,6 @@ public sealed partial class MessengerViewModel : ObservableObject
 
         if (IsOpen(session, chat, version))
         {
-            if (DraftText == draft && ReplyTarget == reply)
-            {
-                DraftText = string.Empty;
-                ReplyTarget = null;
-            }
             if (_feedIncludesTail)
             {
                 RequestScroll(MessageScrollTarget.Bottom);
@@ -451,6 +455,17 @@ public sealed partial class MessengerViewModel : ObservableObject
             {
                 await ReloadHistoryTailAsync();
             }
+        }
+
+        void ClearSentDraft()
+        {
+            if (!IsCurrent(session) || sentText != draft.Trim())
+                return;
+
+            if (draftGeneration is { } generation)
+                _drafts?.ClearSent(chat.Id, generation, sentText, reply?.Id ?? 0);
+            else if (IsOpen(session, chat, version) && !IsEditing && DraftText == draft && ReplyTarget == reply)
+                SetComposerDraft("");
         }
     }
 
@@ -686,6 +701,7 @@ public sealed partial class MessengerViewModel : ObservableObject
                 item = created;
                 ObserveMuteHint(session, item, request, definition.Muted);
                 UpdateMuteIndicator(session, item);
+                UpdateDraftPreview(item);
                 Chats.Insert(0, item);
                 ApplyChatFilter();
                 await TrackPresenceForChatsAsync();
@@ -1214,6 +1230,12 @@ public sealed partial class ChatItemViewModel : ObservableObject
         ApplySnapshot(chat);
     }
 
+    partial void OnPreviewChanged(string value)
+    {
+        if (!(_localDraft?.HasContent ?? _serverHasDraft))
+            NotifyDraftPreviewChanged();
+    }
+
     internal long LastMessageId { get; private set; }
     internal DateTimeOffset? LastMessageEditedAt { get; private set; }
     internal long SnapshotLastMessageId { get; private set; }
@@ -1221,6 +1243,11 @@ public sealed partial class ChatItemViewModel : ObservableObject
 
     internal void ApplySnapshot(Chat chat, bool applyPreview = true, bool applyUnread = true)
     {
+        var previousPreview = ListPreview;
+        _serverHasDraft = chat.ChatType == ChatType.Regular && chat.HasDraft;
+        if (previousPreview != ListPreview)
+            NotifyDraftPreviewChanged();
+
         if (applyPreview)
         {
             SnapshotLastMessageId = chat.LastMessage?.Id ?? 0;

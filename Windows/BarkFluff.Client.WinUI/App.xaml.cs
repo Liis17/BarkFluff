@@ -259,7 +259,10 @@ public partial class App : Application
         var builder = Host.CreateApplicationBuilder();
 
         builder.Services.AddSingleton(AppDataPaths.CreateDefault());
-        builder.Services.AddSingleton<IApplicationDataStore, SqliteApplicationDataStore>();
+        builder.Services.AddSingleton<SqliteApplicationDataStore>();
+        builder.Services.AddSingleton<IApplicationDataStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton<IChatDraftStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton<IChatDraftRemote, ChatDraftRemote>();
         builder.Services.AddSingleton<ISecureSessionStore, DpapiSecureSessionStore>();
         builder.Services.AddSingleton<IPrivateChatKeyStore, DpapiPrivateChatKeyStore>();
         builder.Services.AddSingleton<IRealtimeMessengerService, RealtimeMessengerService>();

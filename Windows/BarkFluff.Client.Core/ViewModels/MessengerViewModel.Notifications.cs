@@ -163,6 +163,7 @@ public sealed partial class MessengerViewModel
                 {
                     chat = item;
                     UpdateMuteIndicator(session, item);
+                    UpdateDraftPreview(item);
                     Chats.Add(item);
                     ApplyChatFilter();
                 }

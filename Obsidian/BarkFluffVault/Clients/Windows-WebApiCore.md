@@ -25,6 +25,8 @@ SubscribeToChatFoldersChanged передаёт пустые сигналы Updat
 
 `UserData.AccountStatus` заполняется из Users API и используется WinUI для локальных подписей ограниченных профилей и read-only личных чатов. Менеджеры токенов и FastAuth переводят `AccountBlockedException`/`AccountPendingDeletionException` в локализуемые ключи ошибки; отправка regular/private/secret сообщений, создание личных чатов/secret invite и вызов переводят `UserUnavailableException` в `Messenger_UserUnavailable`. WebApi не получает причину блокировки из legacy RPC.
 
+Для WinUI фасад предоставляет `GetChatDraft`, `UpsertChatDraft` и `DeleteChatDraft` с отменой. Клиент привязан к экземпляру параметров подключения и поддерживает назначение ID пользователя после создания канала при автовходе. Адаптер WinUI сверяет ноду и ID пользователя с сессией черновиков перед каждым вызовом фасада. Пустой ответ чтения означает отсутствие черновика, отсутствие самого ответа означает сбой. При удалении ожидаемая ревизия передаётся в Messages API.
+
 ## Модели и безопасность
 
 GlobalParam содержит endpoints, профиль, токены и параметры интерфейса. Для legacy WPF методы Save/Load шифруют datas/GlobalParam.json AES-256-GCM; BFV3 выводит ключ PBKDF2-SHA512/600 000, чтение BFV2 поддерживает PBKDF2-SHA256/100 000. WPF V2 и WinUI сохраняют сессию собственными DPAPI CurrentUser хранилищами в SQLite; не смешивать эти форматы.

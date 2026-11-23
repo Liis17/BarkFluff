@@ -34,7 +34,9 @@ internal static class MessengerTestDoubles
         StickerPickerViewModel? stickerPicker = null,
         ISettingsPreferences? stickerPreferences = null,
         IVoiceRecorder? voiceRecorder = null,
-        IVoicePlayer? voicePlayer = null)
+        IVoicePlayer? voicePlayer = null,
+        IChatDraftStore? draftStore = null,
+        IChatDraftRemote? draftRemote = null)
     {
         var effectiveMessenger = messenger ?? new FakeMessengerService();
         var effectivePresence = presence ?? new FakeOnlinePresenceService();
@@ -47,7 +49,7 @@ internal static class MessengerTestDoubles
             dispatcher ?? new InlineUiDispatcher(),
             new ProfileViewModel(effectiveMessenger, effectivePresence, localization),
             timeProvider, chatFolders, typing, notifications, notificationSettings, stickerPicker, stickerPreferences,
-            voiceRecorder: voiceRecorder, voicePlayer: voicePlayer);
+            voiceRecorder: voiceRecorder, voicePlayer: voicePlayer, draftStore: draftStore, draftRemote: draftRemote);
     }
 
     public static Chat CreateChat(string id, string title = "Chat", long peerUserId = 0, ChatType chatType = ChatType.Regular)

@@ -45,10 +45,10 @@
                                TextWrapping="NoWrap" />
                     <TextBlock Margin="0,3,0,0"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="{x:Bind Preview, Mode=OneWay}"
+                               Text="{x:Bind ListPreview, Mode=OneWay}"
                                TextTrimming="CharacterEllipsis"
                                TextWrapping="NoWrap"
-                               Visibility="{x:Bind HasPreview, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                               Visibility="{x:Bind HasListPreview, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top">

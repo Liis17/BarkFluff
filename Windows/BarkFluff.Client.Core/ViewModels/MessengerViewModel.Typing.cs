@@ -40,7 +40,8 @@ public sealed partial class MessengerViewModel
 
     partial void OnDraftTextChanged(string value)
     {
-        if (SelectedChat is { CanSend: true, Definition.ChatType: ChatType.Regular } &&
+        SaveComposerDraft();
+        if (!_applyingDraft && SelectedChat is { CanSend: true, Definition.ChatType: ChatType.Regular } &&
             !IsEditing && IsCurrent(_realtimeSession))
         {
             _typing?.Input(!string.IsNullOrWhiteSpace(value));

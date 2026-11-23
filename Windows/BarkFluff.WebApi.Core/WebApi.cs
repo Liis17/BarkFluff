@@ -350,6 +350,49 @@ namespace BarkFluff.WebApi.Core
         #endregion
 
         #region Работа с сообщениями (делегирование к MessageManager)
+        internal sealed record DraftClientBinding(
+            GlobalParam Parameters,
+            Proto.Messages.MessagesApi.MessagesApiClient Client);
+
+        internal volatile DraftClientBinding? DraftClient;
+
+        public Task<Proto.Messages.GetChatDraftResponse?> GetChatDraft(
+            GlobalParam parameters, string chatId, CancellationToken cancellationToken) =>
+            CallDraftAsync(parameters, cancellationToken, (client, deadline) => client.GetChatDraftAsync(
+                new Proto.Messages.GetChatDraftRequest { ChatId = chatId }, deadline: deadline,
+                cancellationToken: cancellationToken).ResponseAsync);
+
+        public Task<Proto.Messages.UpsertChatDraftResponse?> UpsertChatDraft(
+            GlobalParam parameters, string chatId, string text, long replyId, CancellationToken cancellationToken) =>
+            CallDraftAsync(parameters, cancellationToken, (client, deadline) => client.UpsertChatDraftAsync(
+                new Proto.Messages.UpsertChatDraftRequest { ChatId = chatId, Text = text, ReplyToMessageId = replyId },
+                deadline: deadline, cancellationToken: cancellationToken).ResponseAsync);
+
+        public Task<Proto.Messages.DeleteChatDraftResponse?> DeleteChatDraft(
+            GlobalParam parameters, string chatId, string revision, CancellationToken cancellationToken) =>
+            CallDraftAsync(parameters, cancellationToken, (client, deadline) => client.DeleteChatDraftAsync(
+                new Proto.Messages.DeleteChatDraftRequest { ChatId = chatId, ExpectedRevision = revision },
+                deadline: deadline, cancellationToken: cancellationToken).ResponseAsync);
+
+        private async Task<T?> CallDraftAsync<T>(GlobalParam parameters, CancellationToken cancellationToken,
+            Func<Proto.Messages.MessagesApi.MessagesApiClient, DateTime, Task<T>> call) where T : class
+        {
+            if (!ReferenceEquals(DraftClient?.Parameters, parameters))
+                return null;
+
+            var userId = parameters.UserId;
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            return await TokenManager.SafeCallAsync<T?>(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // После обновления токена канал заменяется. Повтор берёт клиент той же сессии.
+                var binding = DraftClient;
+                return binding is not null && ReferenceEquals(binding.Parameters, parameters) && parameters.UserId == userId
+                    ? await call(binding.Client, deadline)
+                    : null;
+            }, parameters).WaitAsync(cancellationToken);
+        }
+
         public Task<(ErrorReturner error, List<Proto.Messages.Chat>? chats, int totalCount)> ListChatsPageAsync(
             GlobalParam globalParam, int offset, int size, CancellationToken cancellationToken) =>
             MessageManager.ListChatsPageAsync(globalParam, offset, size, cancellationToken);

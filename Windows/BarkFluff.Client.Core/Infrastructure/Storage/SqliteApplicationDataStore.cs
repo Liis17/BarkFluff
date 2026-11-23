@@ -8,7 +8,7 @@ using System.Text.Json;
 
 namespace BarkFluff.Client.Core.Infrastructure.Storage;
 
-public sealed class SqliteApplicationDataStore : IApplicationDataStore
+public sealed partial class SqliteApplicationDataStore : IApplicationDataStore
 {
     private const string WelcomeSeenKey = "onboarding.welcome-seen";
     private const string LanguageKey = "application.language";
@@ -53,6 +53,13 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
             CREATE TABLE IF NOT EXISTS secure_session (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 protected_data BLOB NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS chat_drafts (
+                node TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                chat_id TEXT NOT NULL,
+                protected_data BLOB NOT NULL,
+                PRIMARY KEY (node, user_id, chat_id)
             );
             CREATE TABLE IF NOT EXISTS private_chat_keys (
                 scope TEXT PRIMARY KEY,

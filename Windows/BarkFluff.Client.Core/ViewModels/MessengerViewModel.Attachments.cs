@@ -51,10 +51,7 @@ public sealed partial class MessengerViewModel
                 return null;
 
             var result = await _messenger.SendMessageAsync(chat.Id, text, replyId, cancellationToken: token, attachmentIds: ids);
-            if (!IsCurrent())
-                return null;
-
-            if (result.error is { IsSuccess: true } && result.message is not null)
+            if (IsCurrent() && result.error is { IsSuccess: true } && result.message is not null)
                 _ = composer.ClearAsync();
             return result;
         }

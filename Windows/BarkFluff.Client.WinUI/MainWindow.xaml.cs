@@ -240,7 +240,9 @@ public sealed partial class MainWindow : Window
 
     private async Task CloseAfterSavingWindowSizeAsync()
     {
-        var attachments = App.Services.GetRequiredService<MessengerViewModel>().CancelAttachmentsAsync();
+        var messenger = App.Services.GetRequiredService<MessengerViewModel>();
+        var attachments = messenger.CancelAttachmentsAsync();
+        var drafts = messenger.StopDraftsAsync();
         try
         {
             _windowSizeSaveCancellation?.Cancel();
@@ -263,7 +265,7 @@ public sealed partial class MainWindow : Window
             try
             {
                 var typing = App.Services.GetRequiredService<IChatTypingService>();
-                await Task.WhenAll(attachments, typing.StopAsync(), CleanupLoginForExitAsync(),
+                await Task.WhenAll(attachments, drafts, typing.StopAsync(), CleanupLoginForExitAsync(),
                     ((App)Application.Current).StopNotificationsAsync()).WaitAsync(TimeSpan.FromSeconds(3));
             }
             catch (TimeoutException)

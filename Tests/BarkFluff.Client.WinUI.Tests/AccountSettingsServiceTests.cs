@@ -1,6 +1,8 @@
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
+using BarkFluff.Proto.Shared;
+using Microsoft.Extensions.Time.Testing;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData;
 
@@ -15,10 +17,20 @@ public sealed class AccountSettingsServiceTests
         var realtime = new FakeRealtimeMessengerService { OnStop = () => calls.Add("realtime") };
         var presence = new FakeOnlinePresenceService { OnStop = () => calls.Add("presence") };
         var privateKeys = new FakePrivateChatKeyStore { OnForgetAll = () => calls.Add("keys") };
-        var messengerService = new FakeMessengerService();
-        messengerService.Chats.Add(MessengerTestDoubles.CreateChat("chat"));
-        var messenger = MessengerTestDoubles.CreateViewModel(messengerService, realtime, presence);
+        using var database = await ChatDraftTests.DraftDatabase.CreateAsync();
+        const string node = "https://node.example";
+        var store = database.Store;
+        store.Save(node, 1, "regular", new("keep", 0, ChatType.Regular));
+        store.Save(node, 1, "secret", new("remove", 0, ChatType.Secret));
+        store.Save(node, 2, "secret", new("other user", 0, ChatType.Secret));
+        store.Save("other-node", 1, "secret", new("other node", 0, ChatType.Secret));
+        var messengerService = new FakeMessengerService { CurrentNodeAddress = node };
+        messengerService.Chats.Add(MessengerTestDoubles.CreateChat("chat", chatType: ChatType.Private));
+        var messenger = MessengerTestDoubles.CreateViewModel(messengerService, realtime, presence,
+            timeProvider: new FakeTimeProvider(), draftStore: store, draftRemote: new ChatDraftTests.Remote());
         await messenger.LoadAsync();
+        messenger.SelectedChat = Assert.Single(messenger.Chats);
+        messenger.DraftText = "pending private write";
         var navigation = new RecordingNavigationService(messenger, calls);
         var service = new TestAccountSettingsService(
             new TestClientSession(),
@@ -34,6 +46,9 @@ public sealed class AccountSettingsServiceTests
 
         Assert.Null(errorKey);
         Assert.Equal(["realtime", "presence", "server", "session", "keys", "login"], calls);
+        Assert.Equal("regular", Assert.Single(store.Load(node, 1)).Key);
+        Assert.Equal("other user", store.Load(node, 2)["secret"].Text);
+        Assert.Equal("other node", store.Load("other-node", 1)["secret"].Text);
     }
 
     private sealed class TestAccountSettingsService : AccountSettingsService
@@ -65,7 +80,7 @@ public sealed class AccountSettingsServiceTests
     {
         public NodeConnection? CurrentConnection { get; } = new(
             new NodeProfile("https://node.example", "Node", string.Empty),
-            new GlobalParam());
+            new GlobalParam { UserId = 1 });
 
         public void SetConnection(NodeConnection connection) { }
     }

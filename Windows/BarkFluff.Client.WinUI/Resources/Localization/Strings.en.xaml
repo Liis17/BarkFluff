@@ -163,6 +163,7 @@
     <x:String x:Key="Messenger_StatusLastSeenAt">last seen at {0}</x:String>
     <x:String x:Key="Messenger_StatusLastSeenOn">last seen on {0}</x:String>
     <x:String x:Key="Messenger_ReplyToMessage">Reply</x:String>
+    <x:String x:Key="Messenger_Draft">Draft</x:String>
     <x:String x:Key="Messenger_ReplyingTo">Replying to</x:String>
     <x:String x:Key="Messenger_Forward">Forward</x:String>
     <x:String x:Key="Messenger_ForwardTitle">Forward message</x:String>
