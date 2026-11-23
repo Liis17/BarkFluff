@@ -9,7 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace BarkFluff.Client.Core.ViewModels;
 
-public sealed record AttachmentSourceFile(string Path, string Name, string? ContentType = null, bool IsTemporary = false);
+public sealed record AttachmentSourceFile(string Path, string Name, string? ContentType = null, bool IsTemporary = false, bool IsVoice = false);
 
 public sealed partial class AttachmentComposer(
     IMessengerService messenger, ILocalizationService localization, IUiDispatcher dispatcher) : ObservableObject
@@ -23,6 +23,7 @@ public sealed partial class AttachmentComposer(
 
     public IReadOnlyList<PendingAttachment> Files => _files;
     public bool HasFiles => _files.Count != 0;
+    internal bool HasVoice => _files.Any(file => file.Source.IsVoice);
     internal CancellationToken ScopeToken => _scope.Token;
 
     [ObservableProperty]
@@ -261,7 +262,7 @@ public sealed partial class PendingAttachment : ObservableObject
         _localization = localization;
         Source = file;
         Size = size;
-        _type = ResolveType(file.Name, file.ContentType);
+        _type = file.IsVoice ? UploadFileType.MessageAttachmentVoice : ResolveType(file.Name, file.ContentType);
         SetState("Messenger_AttachmentWaiting");
     }
 
@@ -285,6 +286,7 @@ public sealed partial class PendingAttachment : ObservableObject
         UploadFileType.MessageAttachmentImage => "Messenger_AttachmentPhoto",
         UploadFileType.MessageAttachmentGif => "Messenger_AttachmentGif",
         UploadFileType.MessageAttachmentVideo => "Messenger_AttachmentVideo",
+        UploadFileType.MessageAttachmentVoice => "Messenger_VoiceAttachment",
         UploadFileType.MessageAttachmentAudio => "Messenger_AttachmentAudio",
         _ => "Messenger_AttachmentFile"
     });

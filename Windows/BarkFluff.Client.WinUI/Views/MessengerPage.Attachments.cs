@@ -47,7 +47,7 @@ public sealed partial class MessengerPage
         try
         {
             data = Clipboard.GetContent();
-            if (!CanBeginAttachmentInput(ViewModel.CanAttach, ViewModel.AttachmentComposer.IsSending) &&
+            if (!CanBeginAttachmentInput(ViewModel.CanAddAttachments, ViewModel.AttachmentComposer.IsSending) &&
                 data.Contains(StandardDataFormats.Text))
                 return;
             if (!data.Contains(StandardDataFormats.StorageItems) &&
@@ -68,7 +68,7 @@ public sealed partial class MessengerPage
         if (!HasAttachmentData(args.DataView))
             return;
 
-        var accepts = ViewModel is { CanAttach: true } && !ViewModel.AttachmentComposer.IsSending;
+        var accepts = ViewModel is { CanAddAttachments: true } && !ViewModel.AttachmentComposer.IsSending;
         args.AcceptedOperation = accepts ? DataPackageOperation.Copy : DataPackageOperation.None;
         SetAttachmentDropHighlight(accepts);
         if (accepts)

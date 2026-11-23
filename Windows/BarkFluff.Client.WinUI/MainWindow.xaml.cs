@@ -221,6 +221,8 @@ public sealed partial class MainWindow : Window
         {
             eventArgs.Cancel = true;
             _isWindowActive = false;
+            if (_viewModel.CurrentViewModel is MessengerViewModel messenger)
+                _ = messenger.LeaveMessengerAsync();
             this.Hide();
             UpdateNotificationWindowState();
             return;

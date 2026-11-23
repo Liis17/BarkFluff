@@ -31,19 +31,19 @@ public sealed partial class MessengerViewModel
 
     public Task OpenStickerPickerAsync()
     {
-        if (!CanAttach || SelectedChat is not { } chat)
+        if (!CanAddAttachments || SelectedChat is not { } chat)
             return Task.CompletedTask;
 
         var session = _realtimeSession;
         var version = _chatVersion;
-        return StickerPicker?.OpenAsync(() => CanAttach && IsOpen(session, chat, version)) ?? Task.CompletedTask;
+        return StickerPicker?.OpenAsync(() => CanAddAttachments && IsOpen(session, chat, version)) ?? Task.CompletedTask;
     }
 
     public void CloseStickerPicker() => StickerPicker?.Close();
 
     public async Task<bool> SendStickerAsync(PickerSticker sticker)
     {
-        if (!CanAttach || AttachmentComposer.IsSending || StickerPicker is not { } picker || !picker.CanChoose(sticker) ||
+        if (!CanAddAttachments || AttachmentComposer.IsSending || StickerPicker is not { } picker || !picker.CanChoose(sticker) ||
             _realtimeSession is not { } session || SelectedChat is not { } chat || !IsCurrent(session))
             return false;
 

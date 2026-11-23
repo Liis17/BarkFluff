@@ -49,6 +49,7 @@ public sealed partial class MessengerViewModel
 
     partial void OnEditingMessageChanged(MessageItemViewModel? value)
     {
+        NotifyVoiceComposerChanged();
         if (value is not null)
         {
             _typing?.StopSending();

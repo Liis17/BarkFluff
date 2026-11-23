@@ -289,7 +289,7 @@ public sealed partial class MessengerViewModel
     [RelayCommand]
     private void StartEditMessage(MessageItemViewModel message)
     {
-        if (!message.CanModify)
+        if (!message.CanModify || Voice.IsBusy || AttachmentComposer.HasVoice)
         {
             return;
         }

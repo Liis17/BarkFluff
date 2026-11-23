@@ -39,6 +39,8 @@ _Избегать:_ инстанс. _В коде:_ `NodeName`; в федерац
 
 **Сообщение** — единица переписки в чате: текст, вложения или системное событие. _В коде:_ `Message`.
 
+**Голосовое сообщение** — сообщение с записью речи во вложении OGG/Opus. _В коде:_ `MessageAttachmentType.Voice`, `MessageAttachmentVoice`.
+
 **Закреплённое сообщение** — сообщение, которое участник закрепил в чате. _В коде:_ `PinnedMessageInfo`. Подробнее — [[Backend/Messages-PinnedMessages-ClientGuide|PinnedMessages-ClientGuide]].
 
 **Черновик** — неотправленный текст сообщения, сохранённый для чата. _В коде:_ `ChatDraftInfo`.

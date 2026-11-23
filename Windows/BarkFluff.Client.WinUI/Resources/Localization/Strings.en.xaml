@@ -499,4 +499,16 @@
     <x:String x:Key="Messenger_AttachmentAudio">Audio</x:String>
     <x:String x:Key="Messenger_AttachmentFile">File</x:String>
     <x:String x:Key="Messenger_AttachmentClipboardName">Clipboard image.png</x:String>
+    <x:String x:Key="Messenger_VoiceAttachment">Voice message</x:String>
+    <x:String x:Key="Messenger_VoiceRecord">Record a voice message</x:String>
+    <x:String x:Key="Messenger_VoiceRecording">Voice recording</x:String>
+    <x:String x:Key="Messenger_VoiceFinish">Finish</x:String>
+    <x:String x:Key="Messenger_VoiceMicSettings">Open Windows microphone settings</x:String>
+    <x:String x:Key="Messenger_VoiceMicUnavailable">No microphone is available or access is blocked. Connect a microphone and check microphone access in Windows settings.</x:String>
+    <x:String x:Key="Messenger_VoiceInterrupted">The microphone disconnected or recording was interrupted.</x:String>
+    <x:String x:Key="Messenger_VoiceCaptureFailed">Could not finish the voice recording. Try recording again.</x:String>
+    <x:String x:Key="Messenger_VoiceTooShort">Record at least half a second.</x:String>
+    <x:String x:Key="Messenger_VoicePlaybackFailed">Could not play this attachment.</x:String>
+    <x:String x:Key="Messenger_VoicePlayStop">Play or stop audio</x:String>
+    <x:String x:Key="Messenger_VoiceProgress">Playback progress</x:String>
 </ResourceDictionary>

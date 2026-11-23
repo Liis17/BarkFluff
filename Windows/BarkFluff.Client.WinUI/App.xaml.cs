@@ -5,6 +5,7 @@ using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Client.Core.ViewModels.Settings;
+using BarkFluff.Client.WinUI.Infrastructure;
 using BarkFluff.Client.WinUI.Infrastructure.Appearance;
 using BarkFluff.Client.WinUI.Infrastructure.Dialogs;
 using BarkFluff.Client.WinUI.Infrastructure.Localization;
@@ -50,6 +51,7 @@ public partial class App : Application
     {
         try
         {
+            VoiceComposer.CleanTemporaryFiles();
             _pendingNotification ??= _notificationPresenter.ReadStartupActivation();
             _host = CreateHost();
             await _host.StartAsync();
@@ -297,6 +299,8 @@ public partial class App : Application
         builder.Services.AddSingleton<LoginViewModel>();
         builder.Services.AddSingleton<RegistrationViewModel>();
         builder.Services.AddSingleton<PasswordRecoveryViewModel>();
+        builder.Services.AddSingleton<IVoiceRecorder, WindowsVoiceRecorder>();
+        builder.Services.AddSingleton<IVoicePlayer, WindowsVoicePlayer>();
         builder.Services.AddSingleton<MessengerViewModel>();
         builder.Services.AddSingleton<ProfileViewModel>();
         builder.Services.AddSingleton<SettingsSecurityViewModel>();

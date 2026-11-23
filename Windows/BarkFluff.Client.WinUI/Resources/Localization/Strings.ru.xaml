@@ -499,4 +499,16 @@
     <x:String x:Key="Messenger_AttachmentAudio">Аудио</x:String>
     <x:String x:Key="Messenger_AttachmentFile">Файл</x:String>
     <x:String x:Key="Messenger_AttachmentClipboardName">Изображение из буфера.png</x:String>
+    <x:String x:Key="Messenger_VoiceAttachment">Голосовое сообщение</x:String>
+    <x:String x:Key="Messenger_VoiceRecord">Записать голосовое сообщение</x:String>
+    <x:String x:Key="Messenger_VoiceRecording">Запись голосового сообщения</x:String>
+    <x:String x:Key="Messenger_VoiceFinish">Завершить</x:String>
+    <x:String x:Key="Messenger_VoiceMicSettings">Открыть настройки микрофона Windows</x:String>
+    <x:String x:Key="Messenger_VoiceMicUnavailable">Микрофон недоступен или доступ запрещён. Подключите микрофон и проверьте разрешения в настройках Windows.</x:String>
+    <x:String x:Key="Messenger_VoiceInterrupted">Микрофон отключён или запись прервана.</x:String>
+    <x:String x:Key="Messenger_VoiceCaptureFailed">Не удалось завершить запись. Попробуйте записать сообщение ещё раз.</x:String>
+    <x:String x:Key="Messenger_VoiceTooShort">Запишите хотя бы полсекунды.</x:String>
+    <x:String x:Key="Messenger_VoicePlaybackFailed">Не удалось воспроизвести вложение.</x:String>
+    <x:String x:Key="Messenger_VoicePlayStop">Воспроизвести или остановить аудио</x:String>
+    <x:String x:Key="Messenger_VoiceProgress">Прогресс воспроизведения</x:String>
 </ResourceDictionary>

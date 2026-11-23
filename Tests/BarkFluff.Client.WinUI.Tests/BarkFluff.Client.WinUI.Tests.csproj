@@ -32,6 +32,7 @@
       падает с REGDB_E_CLASSNOTREG.
     -->
     <ProjectReference Include="..\..\Windows\BarkFluff.Client.Core\BarkFluff.Client.Core.csproj" />
+    <Compile Include="..\..\Backend\BarkFluff.Files\Services\FileTypeDetector.cs" Link="FileTypeDetector.cs" />
     <EmbeddedResource Include="..\..\Windows\BarkFluff.Client.WinUI\Resources\Localization\Strings.en.xaml" LogicalName="Typing.Strings.en.xaml" WithCulture="false" />
     <EmbeddedResource Include="..\..\Windows\BarkFluff.Client.WinUI\Resources\Localization\Strings.ru.xaml" LogicalName="Typing.Strings.ru.xaml" WithCulture="false" />
   </ItemGroup>

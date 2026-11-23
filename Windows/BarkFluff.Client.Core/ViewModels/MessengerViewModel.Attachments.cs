@@ -8,16 +8,17 @@ public sealed partial class MessengerViewModel
 {
     public AttachmentComposer AttachmentComposer { get; }
     public bool CanAttach => SelectedChat is { IsPrivate: false, CanSend: true } && !IsEditing;
+    public bool CanAddAttachments => CanAttach && !Voice.IsBusy && !AttachmentComposer.HasVoice;
     public bool HasPrivateAttachmentRestriction => SelectedChat?.IsPrivate == true;
 
     public Task AddAttachmentsAsync(Func<CancellationToken, Task<IReadOnlyList<AttachmentSourceFile>>> read)
     {
-        if (!CanAttach || AttachmentComposer.IsSending || SelectedChat is not { } chat)
+        if (!CanAddAttachments || AttachmentComposer.IsSending || SelectedChat is not { } chat)
             return Task.CompletedTask;
         var session = _realtimeSession;
         var version = _chatVersion;
         return IsOpen(session, chat, version)
-            ? AttachmentComposer.AddAsync(read, () => CanAttach && IsOpen(session, chat, version))
+            ? AttachmentComposer.AddAsync(read, () => CanAddAttachments && IsOpen(session, chat, version))
             : Task.CompletedTask;
     }
 
@@ -30,7 +31,11 @@ public sealed partial class MessengerViewModel
         return AttachmentComposer.UploadAsync(file, () => IsOpen(session, chat, version));
     }
 
-    public Task CancelAttachmentsAsync() => AttachmentComposer.ClearAsync();
+    public Task CancelAttachmentsAsync()
+    {
+        _voicePlayback.Stop();
+        return Task.WhenAll(Voice.CancelAsync(), AttachmentComposer.ClearAsync());
+    }
 
     private async Task<(ErrorReturner error, MessageModel? message)?> SendWithAttachmentsAsync(
         ChatItemViewModel chat, RealtimeSession session, int version, string text, long replyId)

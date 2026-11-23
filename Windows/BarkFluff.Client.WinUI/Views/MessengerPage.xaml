@@ -160,22 +160,13 @@
             </Border>
         </DataTemplate>
 
-        <!--
-            Голосовое в профиле: строка сворачивает иконку/имя/размер, плеер — как у видео,
-            скрыт до кнопки Play (behaviors:PlayVideoBehavior — не специфична для видео, ищет
-            ближайший предок-Grid и раскрывает в нём MediaPlayerElement). Кнопка и плеер обязаны
-            лежать в одном Grid, поэтому строка и плеер — это два ряда одного Grid, а не Border+StackPanel.
-        -->
+        <!-- Лента и профиль используют общую карточку и один проигрыватель голосовых сообщений. -->
         <DataTemplate x:Key="VoiceAttachmentTemplate" x:DataType="vm:MessageAttachmentItemViewModel">
             <Border Margin="0,0,0,4"
                     Padding="8"
                     Background="{ThemeResource ControlFillColorSecondaryBrush}"
                     CornerRadius="8">
                 <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -185,26 +176,27 @@
                             Height="36"
                             Padding="0"
                             CornerRadius="18"
-                            behaviors:PlayVideoBehavior.Enable="True"
-                            Content="&#x25B6;"
-                            Tag="{x:Bind FileUrl}" />
-                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                            AutomationProperties.Name="{StaticResource Messenger_VoicePlayStop}"
+                            Click="OnVoicePlaybackClick"
+                            Content="{x:Bind VoicePlaybackSymbol, Mode=OneWay}"
+                            Tag="{x:Bind}" />
+                    <StackPanel Grid.Column="1" MinWidth="120" Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="{x:Bind FileName}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock FontSize="11"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Text="{x:Bind SizeLabel}" />
+                        <TextBlock FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="{x:Bind VoiceTime, Mode=OneWay}" />
+                        <ProgressBar Value="{x:Bind VoiceProgress, Mode=OneWay}"
+                                     AutomationProperties.Name="{StaticResource Messenger_VoiceProgress}" />
+                        <TextBlock Text="{x:Bind VoiceError, Mode=OneWay}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                   Visibility="{x:Bind VoiceError, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
                     </StackPanel>
-
-                    <MediaPlayerElement Grid.Row="1"
-                                         Grid.ColumnSpan="2"
-                                         Height="44"
-                                         Margin="0,8,0,0"
-                                         AreTransportControlsEnabled="True"
-                                         AutoPlay="False"
-                                         Visibility="Collapsed" />
                 </Grid>
             </Border>
         </DataTemplate>
+
+        <local:MessageFileTemplateSelector x:Key="MessageFileTemplateSelector"
+                                           FileTemplate="{StaticResource FileAttachmentTemplate}"
+                                           VoiceTemplate="{StaticResource VoiceAttachmentTemplate}" />
 
         <!--
             Пузырь лежит прямо в шаблоне, а не в UserControl: x:Bind внутри UserControl смотрит
@@ -377,7 +369,7 @@
                             </ItemsRepeater>
 
                             <ItemsControl Margin="0,8,0,0"
-                                          ItemTemplate="{StaticResource FileAttachmentTemplate}"
+                                          ItemTemplateSelector="{StaticResource MessageFileTemplateSelector}"
                                           ItemsSource="{x:Bind FileAttachments, Mode=OneWay}"
                                           Visibility="{x:Bind HasFiles, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
@@ -702,6 +694,20 @@
             </Border>
 
             <StackPanel Grid.Row="4" Margin="12,6,12,0">
+                <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                           Text="{x:Bind ViewModel.Voice.Error, Mode=OneWay}" TextWrapping="Wrap"
+                           Visibility="{x:Bind ViewModel.Voice.Error, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                <HyperlinkButton Content="{StaticResource Messenger_VoiceMicSettings}"
+                                 NavigateUri="ms-settings:privacy-microphone"
+                                 Visibility="{x:Bind ViewModel.Voice.ShowMicrophoneSettings, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            Visibility="{x:Bind ViewModel.Voice.IsBusy, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="{StaticResource Messenger_VoiceRecording}" VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Bind ViewModel.Voice.Elapsed, Mode=OneWay}" VerticalAlignment="Center" />
+                    <Button Content="{StaticResource Messenger_VoiceFinish}" Command="{x:Bind ViewModel.StopVoiceRecordingCommand}"
+                            IsEnabled="{x:Bind ViewModel.Voice.IsRecording, Mode=OneWay}" />
+                    <Button Content="{StaticResource Messenger_Cancel}" Command="{x:Bind ViewModel.CancelVoiceRecordingCommand}" />
+                </StackPanel>
                 <StackPanel Visibility="{x:Bind ViewModel.CanAttach, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                                Text="{x:Bind ViewModel.AttachmentComposer.Error, Mode=OneWay}"
@@ -794,13 +800,13 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
                     <Button Margin="0,0,8,0" VerticalAlignment="Bottom"
                             Click="OnAttachClick"
-                            IsEnabled="{x:Bind CanBeginAttachmentInput(ViewModel.CanAttach, ViewModel.AttachmentComposer.IsSending), Mode=OneWay}"
+                            IsEnabled="{x:Bind CanBeginAttachmentInput(ViewModel.CanAddAttachments, ViewModel.AttachmentComposer.IsSending), Mode=OneWay}"
                             AutomationProperties.Name="{StaticResource Messenger_AttachmentAdd}"
                             ToolTipService.ToolTip="{StaticResource Messenger_AttachmentAdd}">
                         <FontIcon Glyph="&#xE723;" />
                     </Button>
                     <Button Margin="0,0,8,0"
-                            IsEnabled="{x:Bind CanPickSticker(ViewModel.CanAttach, ViewModel.AttachmentComposer.IsSending, ViewModel.StickerPicker.IsSending), Mode=OneWay}"
+                            IsEnabled="{x:Bind CanPickSticker(ViewModel.CanAddAttachments, ViewModel.AttachmentComposer.IsSending, ViewModel.StickerPicker.IsSending), Mode=OneWay}"
                             AutomationProperties.Name="{StaticResource Messenger_Stickers}"
                             ToolTipService.ToolTip="{StaticResource Messenger_Stickers}">
                         <FontIcon Glyph="&#xE899;" />
@@ -876,7 +882,7 @@
                          MaxHeight="120"
                          AcceptsReturn="True"
                          Paste="OnComposerPaste"
-                         IsEnabled="{x:Bind ViewModel.SelectedChat.CanSend, Mode=OneWay}"
+                         IsEnabled="{x:Bind ViewModel.CanEditComposerText, Mode=OneWay}"
                          Text="{x:Bind ViewModel.DraftText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          TextWrapping="Wrap"
                          behaviors:SendOnEnterBehavior.Command="{x:Bind ViewModel.SendCommand}" />
@@ -884,9 +890,18 @@
                         Margin="8,0,0,0"
                         VerticalAlignment="Bottom"
                         Command="{x:Bind ViewModel.SendCommand}"
+                        Visibility="{x:Bind ViewModel.ShowComposerSend, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                         IsEnabled="{x:Bind ViewModel.SelectedChat.CanSend, Mode=OneWay}"
                         Content="{StaticResource Messenger_Send}"
                         Style="{StaticResource AccentButtonStyle}" />
+                <Button Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                        Command="{x:Bind ViewModel.RecordVoiceCommand}"
+                        Visibility="{x:Bind ViewModel.ShowVoiceMicrophone, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        AutomationProperties.Name="{StaticResource Messenger_VoiceRecord}"
+                        ToolTipService.ToolTip="{StaticResource Messenger_VoiceRecord}"
+                        Style="{StaticResource AccentButtonStyle}">
+                    <FontIcon Glyph="&#xE720;" />
+                </Button>
             </Grid>
             <Border x:Name="AttachmentDropHighlight" Grid.Row="2" Grid.RowSpan="4"
                     IsHitTestVisible="False" Visibility="Collapsed" BorderThickness="2" CornerRadius="8"

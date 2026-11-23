@@ -98,6 +98,15 @@ AdminPanel UI дополнительно использует **Tailwind CSS** (
 
 ## Windows-клиенты (.NET / WPF)
 
+### BarkFluff.Client.WinUI
+
+WinUI использует управляемый кодек Opus с BSD-подобной лицензией (BSD-3-Clause) и MIT-библиотеку чтения OGG. Нативное ускорение Concentus отключено. Тексты лицензий входят в исходники пакетов.
+
+| Пакет | Версия | Лицензия |
+|---|---|---|
+| [Concentus](https://www.nuget.org/packages/Concentus/2.2.2) | 2.2.2 | [BSD-3-Clause, Opus](https://github.com/lostromb/concentus/blob/master/LICENSE) |
+| [Concentus.Oggfile](https://www.nuget.org/packages/Concentus.Oggfile/1.0.7) | 1.0.7 | [MIT](https://github.com/lostromb/concentus.oggfile/blob/master/LICENSE) |
+
 ### BarkFluff.Client.WPF
 
 | Пакет | Версия | Лицензия |

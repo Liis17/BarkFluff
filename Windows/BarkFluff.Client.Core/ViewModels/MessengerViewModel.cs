@@ -50,7 +50,9 @@ public sealed partial class MessengerViewModel : ObservableObject
         SettingsNotificationsViewModel? notificationSettings = null,
         StickerPickerViewModel? stickerPicker = null,
         ISettingsPreferences? stickerPreferences = null,
-        StickerFrameCache? stickerFrames = null)
+        StickerFrameCache? stickerFrames = null,
+        IVoiceRecorder? voiceRecorder = null,
+        IVoicePlayer? voicePlayer = null)
     {
         _messenger = messenger;
         _privateChatKeyStore = privateChatKeyStore;
@@ -59,6 +61,24 @@ public sealed partial class MessengerViewModel : ObservableObject
         _localization = localization;
         _uiDispatcher = uiDispatcher;
         AttachmentComposer = new(messenger, localization, uiDispatcher);
+        var clock = timeProvider ?? TimeProvider.System;
+        Voice = new(voiceRecorder, localization, uiDispatcher, clock, VoiceComposer.TemporaryDirectory);
+        _voicePlayback = new(voicePlayer, uiDispatcher, localization, clock);
+        Voice.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(VoiceComposer.IsBusy))
+                NotifyVoiceComposerChanged();
+        };
+        AttachmentComposer.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(AttachmentComposer.HasFiles))
+                NotifyVoiceComposerChanged();
+        };
+        SendCommand.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(SendCommand.IsRunning))
+                NotifyVoiceComposerChanged();
+        };
         StickerPicker = stickerPicker;
         _stickerPreferences = stickerPreferences;
         _stickerFrames = stickerFrames;
@@ -68,6 +88,11 @@ public sealed partial class MessengerViewModel : ObservableObject
         _notifications = notifications;
         _notificationSettings = notificationSettings;
         Profile = profile;
+        Profile.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ProfileViewModel.SelectedAttachmentTabIndex))
+                _voicePlayback.StopProfilePlayback();
+        };
         _presence.PresenceChanged += OnPresenceChanged;
         _presence.ConnectionChanged += OnPresenceConnectionChanged;
     }
@@ -102,7 +127,8 @@ public sealed partial class MessengerViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasSelectedChat), nameof(IsChatPlaceholderVisible))]
     [NotifyPropertyChangedFor(nameof(IsPresenceLabelVisible), nameof(IsChatHeaderReconnectingVisible), nameof(IsChatListReconnectingVisible))]
     private ChatItemViewModel? _selectedChat;
-    [ObservableProperty] private string _draftText = string.Empty;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowVoiceMicrophone), nameof(ShowComposerSend))]
+    private string _draftText = string.Empty;
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private MessageScrollRequest? _scrollRequest;
@@ -165,6 +191,8 @@ public sealed partial class MessengerViewModel : ObservableObject
     /// </summary>
     public void Reset()
     {
+        if (SelectedChat is null)
+            _ = CancelAttachmentsAsync();
         ResetTyping();
         EndRealtimeSession();
         ActionError = null;
@@ -300,7 +328,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         StickerPicker?.Close();
         WatchTyping(newValue);
         _ = CancelAttachmentsAsync();
-        OnPropertyChanged(nameof(CanAttach));
+        NotifyVoiceComposerChanged();
         OnPropertyChanged(nameof(HasPrivateAttachmentRestriction));
         ResetHistoryWindow();
         _feedLoadCompletion?.TrySetResult();
@@ -327,7 +355,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     private async Task SendAsync()
     {
         var currentUserId = _messenger.CurrentUserId;
-        if (currentUserId is null || SelectedChat is null || !SelectedChat.CanSend ||
+        if (Voice.IsBusy || currentUserId is null || SelectedChat is null || !SelectedChat.CanSend ||
             (string.IsNullOrWhiteSpace(DraftText) && (!CanAttach || !AttachmentComposer.HasFiles)))
         {
             return;
@@ -388,7 +416,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         else
         {
             var sent = AttachmentComposer.HasFiles
-                ? await SendWithAttachmentsAsync(chat, session, version, draft.Trim(), reply?.Id ?? 0)
+                ? await SendWithAttachmentsAsync(chat, session, version, AttachmentComposer.HasVoice ? string.Empty : draft.Trim(), reply?.Id ?? 0)
                 : await _messenger.SendMessageAsync(chat.Id, draft.Trim(), reply?.Id ?? 0);
             if (!IsOpen(session, chat, version) || sent is not { } result)
             {
@@ -1219,6 +1247,7 @@ public sealed partial class ChatItemViewModel : ObservableObject
                 MessageAttachmentType.Image => "Messenger_AttachmentPhoto",
                 MessageAttachmentType.Gif => "Messenger_AttachmentGif",
                 MessageAttachmentType.Video => "Messenger_AttachmentVideo",
+                MessageAttachmentType.Voice => "Messenger_VoiceAttachment",
                 MessageAttachmentType.Audio => "Messenger_AttachmentAudio",
                 MessageAttachmentType.Document => "Messenger_AttachmentFile",
                 _ => "Messenger_Attachment"
@@ -1466,15 +1495,21 @@ public sealed class ReplyContentViewModel(long messageId, string senderName, str
     public bool IsDeleted { get; } = isDeleted;
 }
 
-public sealed class MessageAttachmentItemViewModel(
+public sealed partial class MessageAttachmentItemViewModel(
     MessageAttachmentType type,
     string previewUrl,
     string fileUrl,
     string fileName,
     long size,
     int imageWidth,
-    int imageHeight)
+    int imageHeight) : ObservableObject
 {
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(VoicePlaybackSymbol))] private bool _isVoiceActive;
+    public string VoicePlaybackSymbol => IsVoiceActive ? "■" : "▶";
+    [ObservableProperty] private double _voiceProgress;
+    [ObservableProperty] private string? _voiceTime;
+    [ObservableProperty] private string? _voiceError;
+
     internal MessageAttachmentType Type => type;
     public string PreviewUrl { get; } = previewUrl;
     public string FileUrl { get; } = fileUrl;
@@ -1485,6 +1520,7 @@ public sealed class MessageAttachmentItemViewModel(
     public bool IsSticker => type == MessageAttachmentType.Sticker;
     public string StickerUrl => FileUrl.Length > 0 ? FileUrl : PreviewUrl;
     public bool IsVideo { get; } = type == MessageAttachmentType.Video;
+    public bool IsOpusVoice => type == MessageAttachmentType.Voice;
     public bool IsVoice { get; } = type is MessageAttachmentType.Voice or MessageAttachmentType.Audio;
     public bool IsImageOrGif { get; } = type is MessageAttachmentType.Image or MessageAttachmentType.Gif;
     public bool IsMedia => type is MessageAttachmentType.Image or MessageAttachmentType.Video or MessageAttachmentType.Gif or MessageAttachmentType.Sticker;

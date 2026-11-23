@@ -27,6 +27,19 @@ public sealed partial class MessengerPage : Page
             _ = ViewModel.LoadStickerPreferencesAsync();
     }
 
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        if (ViewModel is not null)
+            _ = ViewModel.LeaveMessengerAsync();
+        base.OnNavigatedFrom(e);
+    }
+
+    private async void OnVoicePlaybackClick(object sender, RoutedEventArgs args)
+    {
+        if (sender is Button { Tag: MessageAttachmentItemViewModel item })
+            await ViewModel.ToggleVoicePlaybackAsync(item);
+    }
+
     /// <summary>
     /// <c>ScrollViewer</c> меряет содержимое бесконечной высотой, поэтому запаса для
     /// <c>VerticalAlignment="Bottom"</c> нет. Пол задаётся по фактическому размеру вьюпорта —
