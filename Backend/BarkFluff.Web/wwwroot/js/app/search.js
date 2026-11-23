@@ -373,6 +373,8 @@
         var nextCursor = null;
         var loadingMore = false;
         var moreFailed = false;
+        // Индекс первой строки, дописанной «Показать ещё»: только на одном рендере эти строки получают появление.
+        var appendedFrom = -1;
 
         function renderHit(hit) {
             var el = document.createElement('div');
@@ -530,8 +532,10 @@
                     note.textContent = BF.i18n.t(messagesFailed ? 'search.messagesFailed' : 'common.nothingFound');
                     searchResults.appendChild(note);
                 }
-                hits.forEach(function (hit) {
-                    searchResults.appendChild(renderHit(hit));
+                hits.forEach(function (hit, i) {
+                    var el = renderHit(hit);
+                    if (appendedFrom >= 0 && i >= appendedFrom) el.classList.add('search-hit-enter');
+                    searchResults.appendChild(el);
                 });
                 if (nextCursor) {
                     var more = document.createElement('button');
@@ -559,6 +563,7 @@
                     foundHits.forEach(function (hit) {
                         known[hit.messageId] = true;
                     });
+                    var fromIndex = foundHits.length;
                     foundHits = foundHits.concat(
                         ((data && data.hits) || []).filter(function (hit) {
                             return !known[hit.messageId];
@@ -566,7 +571,9 @@
                     );
                     nextCursor = (data && data.nextCursor) || null;
                     loadingMore = false;
+                    appendedFrom = fromIndex;
                     render();
+                    appendedFrom = -1;
                 })
                 .catch(function () {
                     if (token !== searchToken) return;

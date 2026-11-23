@@ -61,6 +61,9 @@
 
         document.querySelector('#sdClose').addEventListener('click', close);
         backBtn.addEventListener('click', goBack);
+        body.addEventListener('animationend', function (e) {
+            if (e.target === body) clearSlide();
+        });
         overlay.addEventListener('click', function (e) {
             if (e.target === overlay) close();
         });
@@ -97,6 +100,8 @@
         var target = view || 'main';
         viewStack = target === 'main' ? [] : ['main'];
         currentUser = null;
+        // Первое открытие без перехода: остаток класса от прерванного перехода (оверлей закрыт) не должен сработать.
+        clearSlide();
         showView(target);
         BF.utils.openOverlay(overlay);
     }
@@ -108,8 +113,21 @@
         viewStack = [];
     }
 
+    // Направление перехода содержимого #sdBody: класс перезапускает keyframes (reflow), снимается по animationend.
+    var SLIDE_FORWARD = 'sd-slide-forward';
+    var SLIDE_BACK = 'sd-slide-back';
+    function clearSlide() {
+        body.classList.remove(SLIDE_FORWARD, SLIDE_BACK);
+    }
+    function playSlide(cls) {
+        clearSlide();
+        void body.offsetWidth;
+        body.classList.add(cls);
+    }
+
     function goBack() {
         viewStack.pop();
+        playSlide(SLIDE_BACK);
         if (viewStack.length === 0) {
             showView('main');
         } else {
@@ -119,6 +137,7 @@
 
     function navigate(name) {
         viewStack.push(name);
+        playSlide(SLIDE_FORWARD);
         showView(name);
     }
 
@@ -200,6 +219,27 @@
             if (d && d.user) currentUser = d.user;
             return currentUser;
         });
+    }
+
+    // Заглушки экранов на время загрузки: строки повторяют форму реальных; текст загрузки виден только скринридеру.
+    var SKELETON_BADGE_ROW =
+        '<div class="sd-badge-item sd-badge-skeleton" aria-hidden="true"><span class="skeleton sd-badge-skeleton-icon"></span>' +
+        '<span class="sd-badge-info"><span class="skeleton sd-badge-skeleton-name"></span>' +
+        '<span class="skeleton sd-badge-skeleton-desc"></span></span></div>';
+    var SKELETON_SESSION_ROW =
+        '<div class="session-item" aria-hidden="true"><span class="session-info">' +
+        '<span class="skeleton sd-skeleton-line sd-skeleton-line-title"></span>' +
+        '<span class="skeleton sd-skeleton-line sd-skeleton-line-meta"></span></span></div>';
+    var SKELETON_TOGGLE_ROW =
+        '<div class="sd-toggle-row" aria-hidden="true"><span class="sd-toggle-info">' +
+        '<span class="skeleton sd-skeleton-line sd-skeleton-line-title"></span>' +
+        '<span class="skeleton sd-skeleton-line sd-skeleton-line-meta"></span></span>' +
+        '<span class="skeleton sd-skeleton-switch"></span></div>';
+
+    function skeletonRows(count, rowHtml) {
+        var html = '<span class="sr-only">' + BF.utils.escapeHtml(BF.i18n.t('common.loading')) + '</span>';
+        for (var i = 0; i < count; i++) html += rowHtml;
+        return html;
     }
 
     function makeToggleRow(title, desc, initial, onChange) {
@@ -551,7 +591,7 @@
         body.appendChild(hint);
         body.appendChild(list);
         body.appendChild(status);
-        list.textContent = BF.i18n.t('common.loadingShort');
+        list.innerHTML = skeletonRows(3, SKELETON_BADGE_ROW);
 
         var badges = [];
         var saving = false;
@@ -1022,7 +1062,7 @@
 
     function renderSessions() {
         titleEl.textContent = BF.i18n.t('settings.sessions');
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
+        body.innerHTML = skeletonRows(3, SKELETON_SESSION_ROW);
 
         var currentDeviceId = BF.device ? BF.device.getDeviceId() : null;
 
@@ -1147,7 +1187,7 @@
     // --- Privacy ---
     function renderPrivacy() {
         titleEl.textContent = BF.i18n.t('settings.privacy');
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
+        body.innerHTML = skeletonRows(4, SKELETON_TOGGLE_ROW);
 
         BF.api.getPrivacySettings().then(function (data) {
             var s = data.settings || {
@@ -1241,7 +1281,9 @@
     // --- Personalization (poster + chat backgrounds) ---
     function renderPersonalization() {
         titleEl.textContent = BF.i18n.t('settings.section.personalization');
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
+        body.innerHTML =
+            '<div class="sd-profile-preview" aria-hidden="true"><span class="skeleton sd-skeleton-poster"></span></div>' +
+            skeletonRows(3, SKELETON_TOGGLE_ROW);
 
         var p = Promise.all([loadCurrentUser(), BF.api.getPersonalization()]);
         p.then(function (results) {

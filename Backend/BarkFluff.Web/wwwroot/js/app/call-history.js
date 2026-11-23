@@ -10,6 +10,7 @@
     window.BF = window.BF || {};
 
     var PAGE_SIZE = 30;
+    var SKELETON_ROWS = 4;
     // CallsApi enums (calls_api.proto)
     var DIRECTION_INCOMING = 1;
     var MEDIA_VIDEO = 2;
@@ -96,8 +97,20 @@
             });
     }
 
+    // Первая страница: заглушки формы записи; текст загрузки виден только скринридеру.
+    function skeletonHtml() {
+        var rows = '';
+        for (var i = 0; i < SKELETON_ROWS; i++) {
+            rows +=
+                '<div class="call-history-skeleton" aria-hidden="true"><span class="skeleton call-history-skeleton-name"></span>' +
+                '<span class="skeleton call-history-skeleton-meta"></span></div>';
+        }
+        return '<span class="sr-only">' + BF.utils.escapeHtml(BF.i18n.t('common.loading')) + '</span>' + rows;
+    }
+
     function render() {
         listEl.innerHTML = '';
+        if (!items.length && loading) listEl.innerHTML = skeletonHtml();
         if (!items.length && !loading) {
             var empty = document.createElement('div');
             empty.className = 'call-history-empty';

@@ -29,7 +29,20 @@ function makeEl(id) {
         },
         addEventListener: function () {},
         appendChild: function () {},
-        replaceChildren: function () {}
+        replaceChildren: function () {},
+        // Минимальный DOM для скелетона ленты: обёртка ищется по классу и снимается вызовом remove().
+        querySelector: function (selector) {
+            var self = this;
+            if (selector !== '.messages-skeleton-wrap' || !/messages-skeleton-wrap/.test(this.innerHTML)) return null;
+            return {
+                remove: function () {
+                    self.innerHTML = '';
+                }
+            };
+        },
+        get childElementCount() {
+            return this.innerHTML ? 1 : 0;
+        }
     };
 }
 
@@ -69,6 +82,7 @@ function createUiHarness(options) {
         api: {
             listPrivateMessages: function (chatId) {
                 calls.push(['listPrivateMessages', chatId]);
+                if (options.listPrivateMessages) return options.listPrivateMessages(chatId);
                 return Promise.resolve({ messages: [] });
             },
             markPrivateMessagesAsRead: function () {
@@ -76,8 +90,48 @@ function createUiHarness(options) {
             }
         },
         utils: { openOverlay: function () {}, closeOverlay: function () {} },
-        sound: { play: function () {} }
+        sound: { play: function () {} },
+        feed: {
+            removeMessage: function (id) {
+                calls.push(['removeMessage', id]);
+                return Promise.resolve();
+            },
+            findGroup: function (id) {
+                return (options.rendered || []).indexOf(id) >= 0 ? makeEl('group-' + id) : null;
+            },
+            buildElement: function (msg) {
+                calls.push(['build', msg.id]);
+                return Promise.resolve(makeEl('built-' + msg.id));
+            },
+            replaceElement: function () {
+                calls.push(['replaceElement']);
+            }
+        }
     };
+    // Таймеры скелетона управляются тестом: fireTimers() запускает только незаменённые.
+    var timers = [];
+    var timerEnv = {
+        setTimeout: function (callback) {
+            var timer = { callback: callback, cancelled: false };
+            timers.push(timer);
+            return timer;
+        },
+        clearTimeout: function (timer) {
+            if (timer) timer.cancelled = true;
+        }
+    };
+    // Настоящий utils.js: скелетон ленты строит BF.utils.createFeedSkeleton.
+    var utilsBF = { i18n: { t: function (key) { return key; } }, icons: { html: function () { return ''; } } };
+    var utilsContext = vm.createContext({
+        BF: utilsBF,
+        document: {},
+        window: { BF: utilsBF },
+        setTimeout: timerEnv.setTimeout,
+        clearTimeout: timerEnv.clearTimeout
+    });
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '../wwwroot/js/app/utils.js'), 'utf8'), utilsContext);
+    BF.utils.createFeedSkeleton = utilsBF.utils.createFeedSkeleton;
+
     var els = {};
     var context = vm.createContext({
         BF: BF,
@@ -122,6 +176,11 @@ function createUiHarness(options) {
             return Promise.resolve();
         }
     };
+    if (options.chatType !== undefined) {
+        overrides.getCurrentChatType = function () {
+            return options.chatType;
+        };
+    }
     // Остальные зависимости только записывают вызов.
     var deps = new Proxy(overrides, {
         get: function (target, name) {
@@ -134,6 +193,17 @@ function createUiHarness(options) {
     BF.privateChatUI.init(deps);
     return {
         state: state,
+        reload: function () {
+            return BF.privateChatUI.reload();
+        },
+        fireTimers: function () {
+            timers.splice(0).forEach(function (timer) {
+                if (!timer.cancelled) timer.callback();
+            });
+        },
+        messagesEl: function () {
+            return els['#messagesInner'];
+        },
         emit: function (event, data) {
             handlers[event](data);
         },
@@ -291,14 +361,66 @@ async function test(name, fn) {
 }
 
 async function main() {
-    await test('an edit replaces the decrypted message in the open private chat and re-renders', async function () {
-        var h = createUiHarness({ chats: [{ id: 'p1' }], messages: [uiMessage(5), uiMessage(6)] });
+    await test('a slow private chat load shows a skeleton after the delay and removes it when messages arrive', async function () {
+        var resolveList;
+        var h = createUiHarness({
+            chatType: 1,
+            chats: [{ id: 'p1', privateInviteState: 1 }],
+            listPrivateMessages: function () {
+                return new Promise(function (resolve) {
+                    resolveList = resolve;
+                });
+            }
+        });
+        h.reload();
+        assert.doesNotMatch(h.messagesEl().innerHTML, /messages-skeleton/, 'nothing is shown before the delay');
+        h.fireTimers();
+        assert.match(h.messagesEl().innerHTML, /messages-skeleton-wrap/);
+        assert.match(h.messagesEl().innerHTML, /aria-hidden="true"/);
+        resolveList({ messages: [] });
+        await settle();
+        assert.doesNotMatch(h.messagesEl().innerHTML, /messages-skeleton/);
+    });
+
+    await test('a private chat load that answers before the delay never shows the skeleton', async function () {
+        var h = createUiHarness({ chatType: 1, chats: [{ id: 'p1', privateInviteState: 1 }] });
+        h.reload();
+        await settle();
+        h.fireTimers();
+        assert.doesNotMatch(h.messagesEl().innerHTML, /messages-skeleton/);
+    });
+
+    await test('a failed private chat load removes the skeleton', async function () {
+        var h = createUiHarness({
+            chatType: 1,
+            chats: [{ id: 'p1', privateInviteState: 1 }],
+            listPrivateMessages: function () {
+                return Promise.reject(new Error('offline'));
+            }
+        });
+        h.reload();
+        h.fireTimers();
+        assert.match(h.messagesEl().innerHTML, /messages-skeleton-wrap/);
+        await settle();
+        assert.doesNotMatch(h.messagesEl().innerHTML, /messages-skeleton/);
+    });
+
+    await test('an edit replaces the decrypted message and only its element in the open private chat', async function () {
+        var h = createUiHarness({ chats: [{ id: 'p1' }], messages: [uiMessage(5), uiMessage(6)], rendered: [5, 6] });
         h.emit('private_message_edited', { chatId: 'p1', message: encrypted(5) });
         await settle();
         assert.equal(h.state.messages[0].content.text, 'plain-5');
         assert.equal(h.state.messages[0].isEdited, true);
         assert.equal(h.state.messages[1].content.text, 'old-6');
-        assert.deepEqual(h.names(), ['renderMessages']);
+        assert.deepEqual(h.names(), ['build', 'replaceElement'], 'no full redraw of the feed');
+    });
+
+    await test('an edit of a private message without a rendered element only updates the buffer', async function () {
+        var h = createUiHarness({ chats: [{ id: 'p1' }], messages: [uiMessage(5)] });
+        h.emit('private_message_edited', { chatId: 'p1', message: encrypted(5) });
+        await settle();
+        assert.equal(h.state.messages[0].content.text, 'plain-5');
+        assert.deepEqual(h.names(), []);
     });
 
     await test('an edit for a closed chat or an unloaded message changes nothing', async function () {
@@ -330,7 +452,7 @@ async function main() {
             }),
             [6]
         );
-        assert.deepEqual(h.names(), ['renderMessages']);
+        assert.deepEqual(h.calls(), [['removeMessage', 5]], 'one node removed, no full redraw');
     });
 
     await test('an edit event carrying isDeleted removes the message', async function () {

@@ -213,6 +213,8 @@ function createHarness(chatCount, restrictedUser) {
     var rejectDelete;
     var toastCalls = [];
     var frames = [];
+    var timers = new Map();
+    var nextTimerId = 1;
     var muteCalls = [];
     var muteResult = Promise.resolve();
     var BF = {
@@ -312,6 +314,14 @@ function createHarness(chatCount, restrictedUser) {
         requestAnimationFrame: function (callback) {
             frames.push(callback);
         },
+        setTimeout: function (callback) {
+            var id = nextTimerId++;
+            timers.set(id, callback);
+            return id;
+        },
+        clearTimeout: function (id) {
+            timers.delete(id);
+        },
         addEventListener: function () {},
         __mobileShowChat: function () {
             mobileShown++;
@@ -409,6 +419,14 @@ function createHarness(chatCount, restrictedUser) {
             pending.forEach(function (callback) {
                 callback();
             });
+        },
+        // Срабатывают таймеры переезда (снятие is-moving) — без реальных задержек.
+        flushTimers: function () {
+            var pending = Array.from(timers.values());
+            timers.clear();
+            pending.forEach(function (callback) {
+                callback();
+            });
         }
     };
 }
@@ -481,6 +499,63 @@ test('a chat bumped to the top rewrites only its own row and reuses the node', f
     assert.equal(h.spacer.children[0], movedEl);
     assert.equal(movedEl.style.transform, 'translateY(0px)');
     assert.equal(h.row(1000).getAttribute('aria-posinset'), '2');
+});
+
+test('a chat bumped by a new message glides: only rows already in the DOM with a new position get is-moving', function () {
+    var h = createHarness(50);
+    h.BF.chatList.render();
+    var chats = h.chats();
+    chats.unshift(chats.splice(5, 1)[0]);
+    h.BF.chatList.render();
+    assert.equal(h.row(1005).classList.contains('is-moving'), true);
+    assert.equal(h.row(1000).classList.contains('is-moving'), true, 'shifted rows move too');
+    assert.equal(h.row(1006).classList.contains('is-moving'), false, 'a row whose position did not change stays still');
+    h.flushTimers();
+    assert.equal(h.row(1005).classList.contains('is-moving'), false, 'the class is removed after the transition');
+});
+
+test('scrolling never marks rows as moving, including rows that enter the window', function () {
+    var h = createHarness(200);
+    h.BF.chatList.render();
+    h.scrollTo(100 * 75);
+    assert.ok(h.rowIds().indexOf(1100) >= 0, 'row 100 entered the window');
+    h.rowIds().forEach(function (id) {
+        assert.equal(h.row(id).classList.contains('is-moving'), false, 'row ' + id + ' must not glide on scroll');
+    });
+});
+
+test('switching folders (a different set of chats) moves rows without a transition', function () {
+    var h = createHarness(5);
+    h.BF.chatList.render();
+    var all = h.chats();
+    h.setChats([all[3], all[1], all[0]]);
+    h.BF.chatList.render();
+    assert.deepEqual(h.rowIds(), [1003, 1001, 1000]);
+    assert.equal(h.row(1000).style.transform, 'translateY(150px)');
+    assert.equal(h.row(1000).classList.contains('is-moving'), false);
+});
+
+test('an unread badge pops only when its count grows on an already rendered row', function () {
+    var h = createHarness(3);
+    h.chats()[1].countUnread = 4;
+    h.BF.chatList.render();
+    assert.equal(h.row(1001).classList.contains('unread-up'), false, 'the first render is not animated');
+
+    h.chats()[1].countUnread = 5;
+    h.BF.chatList.render();
+    assert.equal(h.row(1001).classList.contains('unread-up'), true, 'growing count pops');
+
+    h.chats()[1].countUnread = 2;
+    h.BF.chatList.render();
+    assert.equal(h.row(1001).classList.contains('unread-up'), false, 'a decrease does not pop');
+
+    h.chats()[1].title = 'Renamed'; // строка перерисовалась, но счётчик не вырос
+    h.BF.chatList.render();
+    assert.equal(h.row(1001).classList.contains('unread-up'), false, 'a re-render without growth does not pop');
+
+    h.chats()[1].countUnread = 0;
+    h.BF.chatList.render();
+    assert.equal(h.row(1001).classList.contains('unread-up'), false, 'a reset does not pop');
 });
 
 test('duplicate chat ids from offset paging render a single row', function () {
@@ -1158,6 +1233,46 @@ async function runAsyncTests() {
         await new Promise(function (resolve) { setImmediate(resolve); });
         assert.equal(!!h.chats()[0].muted, false);
         assert.deepEqual(h.toastCalls, [['common.error', true]]);
+    });
+
+    function skeletonCount(h) {
+        return h.list.children.filter(function (child) {
+            return child.className === 'chat-list-skeleton';
+        }).length;
+    }
+
+    await runAsyncTest('the first load shows skeleton rows outside the option rows until listChats answers', async function () {
+        var h = createHarness(0);
+        var answer;
+        h.setListChats(function () {
+            return new Promise(function (resolve) {
+                answer = resolve;
+            });
+        });
+        h.BF.chatList.load(true);
+        assert.equal(skeletonCount(h), 1);
+        var skeleton = h.list.children.find(function (child) {
+            return child.className === 'chat-list-skeleton';
+        });
+        assert.equal(skeleton.getAttribute('aria-hidden'), 'true');
+        assert.equal((skeleton.innerHTML.match(/chat-skeleton-row/g) || []).length, 8);
+        assert.equal(h.list.getAttribute('aria-busy'), 'true');
+        assert.deepEqual(h.rowIds(), []);
+        answer({ chats: [], totalCount: 0 });
+        await new Promise(function (resolve) { setImmediate(resolve); });
+        assert.equal(skeletonCount(h), 0);
+        assert.equal(h.list.getAttribute('aria-busy'), null);
+    });
+
+    await runAsyncTest('a failed first load also removes the skeleton', async function () {
+        var h = createHarness(0);
+        h.setListChats(function () {
+            return Promise.reject(new Error('offline'));
+        });
+        h.BF.chatList.load(true);
+        assert.equal(skeletonCount(h), 1);
+        await new Promise(function (resolve) { setImmediate(resolve); });
+        assert.equal(skeletonCount(h), 0);
     });
 }
 

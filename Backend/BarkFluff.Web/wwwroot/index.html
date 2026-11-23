@@ -1113,11 +1113,6 @@
         /* hidden-атрибут должен побеждать display:flex/inline-flex на кнопках/секциях модалки */
         .reg-dialog [hidden] { display: none !important; }
 
-        @keyframes fadeScaleIn {
-            from { opacity: 0; transform: scale(0.96); }
-            to   { opacity: 1; transform: scale(1); }
-        }
-
         .reg-dialog {
             background: var(--card-bg);
             backdrop-filter: blur(28px);
@@ -1131,7 +1126,53 @@
             flex-direction: column;
             overflow: hidden;
             box-shadow: var(--card-shadow);
-            animation: fadeScaleIn 0.2s ease-out;
+        }
+
+        /* Вход и выход модалки через BF.utils.openOverlay/closeOverlay (utils.js, класс .is-closing).
+           Значения совпадают с messenger.css; без prefers-reduced-motion панель смещается, с ним — только opacity. */
+        :root {
+            --overlay-enter: 180ms;
+            --overlay-exit: 140ms;
+            --overlay-panel-enter: 200ms;
+            --overlay-panel-exit: 140ms;
+            --overlay-panel-from: scale(0.96) translateY(4px);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --overlay-enter: 120ms;
+                --overlay-exit: 120ms;
+                --overlay-panel-enter: 120ms;
+                --overlay-panel-exit: 120ms;
+                --overlay-panel-from: none;
+            }
+        }
+        .reg-overlay {
+            transition: opacity var(--overlay-exit) var(--ease-out);
+        }
+        .reg-overlay.visible {
+            opacity: 1;
+            transition: opacity var(--overlay-enter) var(--ease-out);
+        }
+        .reg-overlay.is-closing {
+            display: flex;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .reg-dialog {
+            transition: opacity var(--overlay-panel-exit) var(--ease-out), transform var(--overlay-panel-exit) var(--ease-out);
+        }
+        .reg-overlay.visible > .reg-dialog {
+            opacity: 1;
+            transform: none;
+            transition: opacity var(--overlay-panel-enter) var(--ease-out), transform var(--overlay-panel-enter) var(--ease-out);
+        }
+        .reg-overlay.is-closing > .reg-dialog {
+            opacity: 0;
+            transform: var(--overlay-panel-from);
+        }
+        @starting-style {
+            .reg-overlay.visible { opacity: 0; }
+            .reg-overlay.visible > .reg-dialog { opacity: 0; transform: var(--overlay-panel-from); }
         }
 
         .reg-header {

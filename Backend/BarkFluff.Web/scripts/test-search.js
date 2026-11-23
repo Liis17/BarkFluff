@@ -466,6 +466,29 @@ async function main() {
         );
     });
 
+    await test('only hits appended by show more get the entrance class; the first page is not animated', async function () {
+        var h = createHarness();
+        h.type('release');
+        h.fireDebounce();
+        h.answer(0, []);
+        h.answerMessages(0, [hit({ messageId: 1 }), hit({ messageId: 2 })], { opaque: 'page-2' });
+        await settle();
+        function entering() {
+            return h.results.children
+                .filter(function (el) {
+                    return el.className === 'search-result-item search-hit';
+                })
+                .map(function (el) {
+                    return el.classList.contains('search-hit-enter');
+                });
+        }
+        assert.deepEqual(entering(), [false, false], 'typed results are not animated');
+        moreButton(h).listeners.click();
+        h.answerMessages(1, [hit({ messageId: 2 }), hit({ messageId: 3 })]);
+        await settle();
+        assert.deepEqual(entering(), [false, false, true], 'only the appended hit fades in');
+    });
+
     await test('filters stay hidden for short queries and appear once the message search is possible', async function () {
         var h = createHarness();
         assert.equal(h.filters.hidden, true);
