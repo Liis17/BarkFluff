@@ -25,10 +25,10 @@ public interface IChatDraftRemote
     Task<DeleteChatDraftResponse?> DeleteAsync((string Node, long UserId) scope, string chatId, string revision, CancellationToken token);
 }
 
-public sealed class ChatDraftRemote(WebApiClient api, IClientSession session) : IChatDraftRemote
+public sealed class ChatDraftRemote(WebApiClient api, IClientSession session, IAuthenticationService? authentication = null) : IChatDraftRemote
 {
     private GlobalParam? GetParameters((string Node, long UserId) scope) =>
-        session.CurrentConnection is { } connection && connection.Profile.BeaconAddress == scope.Node &&
+        authentication?.IsRestoredSessionOffline != true && session.CurrentConnection is { } connection && connection.Profile.BeaconAddress == scope.Node &&
         connection.ConnectionParameters.UserId == scope.UserId
             ? connection.ConnectionParameters
             : null;

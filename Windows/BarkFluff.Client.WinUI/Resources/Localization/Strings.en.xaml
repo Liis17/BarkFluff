@@ -32,6 +32,7 @@
     <x:String x:Key="ConnectedNode_Status">Connected</x:String>
     <x:String x:Key="ConnectedNode_ChooseAnother">Choose another node</x:String>
     <x:String x:Key="Login_Title">Sign in to BarkFluff</x:String>
+    <x:String x:Key="Login_OfflineLogoutNotice">You signed out on this device. The session on the node remains active until it expires.</x:String>
     <x:String x:Key="Login_Subtitle">Enter your account details for the selected node.</x:String>
     <x:String x:Key="Login_Identifier">Username or email</x:String>
     <x:String x:Key="Login_IdentifierPlaceholder">name or name@example.com</x:String>
@@ -545,4 +546,6 @@
     <x:String x:Key="Messenger_OutboxRetry">Retry</x:String>
     <x:String x:Key="Messenger_OutboxHistoryPending">Unsent messages ({0}). Go to latest messages</x:String>
     <x:String x:Key="Messenger_OutboxHistoryFailed">Send failed. Unsent messages ({0}). Go to latest messages</x:String>
+    <x:String x:Key="Messenger_OfflineCached">Offline · cached chats</x:String>
+    <x:String x:Key="Settings_Storage_ClearChatCache">Clear chat list cache</x:String>
 </ResourceDictionary>

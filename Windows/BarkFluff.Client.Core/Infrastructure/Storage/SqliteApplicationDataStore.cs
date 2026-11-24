@@ -75,6 +75,7 @@ public sealed partial class SqliteApplicationDataStore : IApplicationDataStore
             );
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
+        await Task.Run(InitializeChatCache, cancellationToken);
     }
 
     public async Task<bool> HasSeenWelcomeAsync(CancellationToken cancellationToken = default)

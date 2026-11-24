@@ -15,6 +15,8 @@ WinUI identifier-first flow использует additive `ResolveSignIn`, `Begi
 
 `GenerateFastAuthToken` принимает необязательный `CancellationToken`. WinUI создаёт и подписывает FastAuth-канал на attempt-scoped `WebApi`; полученные access/refresh tokens проходят тот же profile/session commit, что и challenge login. `Authorizations` и legacy WPF-вызовы остаются отдельным существующим контрактом.
 
+WinUI при восстановлении сохранённой сессии вызывает `RefreshTokenForSessionRestoreAsync` и `GetUserDataForSessionRestoreAsync` до запуска стримов. Вызовы принимают отмену, ограничены пятисекундным дедлайном каждый и сохраняют исключения с типом отказа Identity или транспортным gRPC-статусом. Legacy WPF использует прежний контракт обновления токена.
+
 TokenInvalidated сообщает о непригодном refresh token. TokenRefreshed поднимается после проактивного обновления: клиенты должны пересоздать streaming RPC. TokenManager сериализует параллельные обновления, поскольку refresh tokens ротируются. SafeCallAsync повторяет вызов после обновления access token. WebApiBase.ReadStream освобождает gRPC-вызов, но завершает перечисление при RPC/сетевых ошибках; клиент, которому нужно восстановление связи, должен повторно создать поток.
 
 SubscribeToChatFoldersChanged передаёт пустые сигналы Updates и сохраняет gRPC-статус потока, чтобы WinUI мог остановить повторы при UNIMPLEMENTED. Перегрузки Add/Remove для папок принимают CancellationToken. Прежние сигнатуры сохранены.

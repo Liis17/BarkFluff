@@ -23,6 +23,192 @@ namespace BarkFluff.Client.WinUI.Tests;
 
 public sealed class AuthenticationServiceSignInTests
 {
+    [Fact]
+    public async Task RestoreWhenIdentityUnavailable_PreservesSavedSession()
+    {
+        await using var node = await TestIdentityNode.StartAsync("restore-offline");
+        using var api = new BarkFluff.WebApi.Core.WebApi();
+        var connection = CreateConnection(node.Address, "device");
+        Assert.True(api.CreateAC(connection.ConnectionParameters, "test", "test", "test", "1", "").IsSuccess);
+        var saved = new StoredSession("access", "refresh");
+        var store = new TestSessionStore { Value = saved };
+        var authentication = new AuthenticationService(api, new TestClientSession(connection), store);
+
+        Assert.False(await authentication.TryRestoreSessionAsync());
+        Assert.Equal(saved, store.Value);
+        Assert.Equal(0, store.ClearCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RestoreWithCachedUser_ReopensOfflineAndRecovers(bool failDuringProfile)
+    {
+        await using var node = await TestIdentityNode.StartAsync("restored", failFirstProfile: failDuringProfile);
+        node.RefreshStatus = failDuringProfile ? "0" : "14";
+        using var api = new BarkFluff.WebApi.Core.WebApi();
+        var connection = CreateConnection(node.Address, "device");
+        Assert.True(api.CreateAC(connection.ConnectionParameters, "test", "test", "test", "1", "").IsSuccess);
+        var saved = new StoredSession("access", "refresh") { Node = node.Address, UserId = 42, UserName = "cached" };
+        var store = new TestSessionStore { Value = saved };
+        var authentication = new AuthenticationService(api, new TestClientSession(connection), store);
+
+        Assert.True(await authentication.TryRestoreSessionAsync());
+        Assert.True(authentication.IsRestoredSessionOffline);
+        Assert.Equal(42, connection.ConnectionParameters.UserId);
+        Assert.Equal("cached", connection.ConnectionParameters.UserName);
+        Assert.Equal(saved, store.Value);
+
+        node.RefreshStatus = "0";
+        Assert.True(await authentication.TryRestoreSessionAsync());
+        Assert.False(authentication.IsRestoredSessionOffline);
+        Assert.Equal("restored", store.Value!.UserName);
+        Assert.Equal(0, store.ClearCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OfflineMessenger_LoadsCacheQueuesDraftAndHandlesReconnect(bool rejected)
+    {
+        await using var node = await TestIdentityNode.StartAsync("reconnect");
+        using var api = new BarkFluff.WebApi.Core.WebApi();
+        var connection = CreateConnection(node.Address, "device");
+        Assert.True(api.CreateAC(connection.ConnectionParameters, "test", "test", "test", "1", "").IsSuccess);
+        var store = new TestSessionStore
+        {
+            Value = new StoredSession("access", "refresh") { Node = node.Address, UserId = 42, UserName = "cached" }
+        };
+        var memory = new ChatListCacheTests.MemoryCache
+        {
+            Snapshot = new([ChatListCacheTests.Row("kept", "Cached"), ChatListCacheTests.Row("stale", "Stale")], [])
+        };
+        var cache = new ChatListCache(memory);
+        var auth = new AuthenticationService(api, new TestClientSession(connection), store, cache);
+        Assert.True(await auth.TryRestoreSessionAsync());
+
+        var messenger = new FakeMessengerService { CurrentUserId = 42, CurrentNodeAddress = node.Address };
+        messenger.Chats.Add(MessengerTestDoubles.CreateChat("kept", "Online"));
+        var drafts = new ChatListCacheTests.MemoryDrafts();
+        var ui = new InlineUiDispatcher();
+        var navigation = new TestLoginNavigation();
+        var vm = MessengerTestDoubles.CreateViewModel(messenger, dispatcher: ui, chatCache: cache,
+            authentication: auth, draftStore: drafts, draftRemote: new ChatDraftTests.Remote { Offline = true },
+            navigation: navigation);
+        var waitingForNetwork = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var networkReturned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        vm.ResyncDelay = (_, token) =>
+        {
+            waitingForNetwork.TrySetResult();
+            return networkReturned.Task.WaitAsync(token);
+        };
+        Task startup = null!;
+        ui.Post(() => startup = vm.LoadAsync());
+        await waitingForNetwork.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        ChatItemViewModel retained = null!;
+        ui.Post(() =>
+        {
+            Assert.True(vm.IsOffline);
+            Assert.Equal(new[] { "kept", "stale" }, vm.VisibleChats.Select(item => item.Id));
+            retained = vm.VisibleChats[0];
+            vm.SelectedChat = retained;
+            Assert.Equal("saved draft", vm.DraftText);
+        });
+
+        Task sending = null!;
+        ui.Post(() => sending = vm.SendCommand.ExecuteAsync(null));
+        await sending.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Single(messenger.OutgoingStore.Load(OutgoingScope.Create(node.Address, 42)));
+
+        node.RefreshStatus = rejected ? "16" : "0";
+        if (rejected)
+            node.RefreshErrorCode = new InvalidRefreshTokenException().ErrorCode;
+        networkReturned.TrySetResult();
+        await startup.WaitAsync(TimeSpan.FromSeconds(5));
+        if (rejected)
+        {
+            ui.Post(() =>
+            {
+                Assert.Empty(vm.Chats);
+                Assert.False(vm.IsOffline);
+                Assert.Null(vm.SelectedChat);
+                Assert.Equal(1, navigation.ShowLoginCalls);
+            });
+            Assert.Null(store.Value);
+            Assert.Empty(memory.Snapshot.Chats);
+            Assert.Empty(messenger.OutgoingStore.Load(OutgoingScope.Create(node.Address, 42)));
+
+            node.RefreshStatus = "0";
+            store.Value = new StoredSession("access", "refresh") { Node = node.Address, UserId = 42 };
+            Assert.True(await auth.TryRestoreSessionAsync());
+            ui.Post(() => startup = vm.LoadAsync());
+            await startup.WaitAsync(TimeSpan.FromSeconds(5));
+            ui.Post(() =>
+            {
+                Assert.False(vm.IsOffline);
+                Assert.Null(vm.SelectedChat);
+                Assert.Equal("Online", Assert.Single(vm.Chats).Title);
+                vm.Reset();
+            });
+            return;
+        }
+        ui.Post(() =>
+        {
+            Assert.False(vm.IsOffline);
+            Assert.Same(retained, Assert.Single(vm.VisibleChats));
+            Assert.Same(retained, vm.SelectedChat);
+            Assert.Equal("Online", retained.Title);
+            vm.Reset();
+        });
+    }
+
+    [Theory]
+    [InlineData("16")]
+    [InlineData("7")]
+    public async Task RestoreWhenProfileAuthorizationRejected_ClearsSession(string status)
+    {
+        await using var node = await TestIdentityNode.StartAsync("profile-rejected");
+        node.RefreshStatus = "0";
+        node.ProfileStatus = status;
+        using var api = new BarkFluff.WebApi.Core.WebApi();
+        var connection = CreateConnection(node.Address, "device");
+        Assert.True(api.CreateAC(connection.ConnectionParameters, "test", "test", "test", "1", "").IsSuccess);
+        var store = new TestSessionStore
+        {
+            Value = new StoredSession("access", "refresh") { Node = node.Address, UserId = 42 }
+        };
+        var memory = new ChatListCacheTests.MemoryCache();
+        var auth = new AuthenticationService(api, new TestClientSession(connection), store, new ChatListCache(memory));
+
+        Assert.False(await auth.TryRestoreSessionAsync());
+        Assert.False(auth.IsRestoredSessionOffline);
+        Assert.Null(store.Value);
+        Assert.Equal(1, store.ClearCount);
+        Assert.Equal(ChatListScope.Create(node.Address, 42), memory.Cleared);
+    }
+
+    [Fact]
+    public async Task RestoreWhenRefreshRejected_ClearsSessionAndItsCache()
+    {
+        await using var node = await TestIdentityNode.StartAsync("rejected");
+        node.RefreshStatus = "16";
+        node.RefreshErrorCode = new InvalidRefreshTokenException().ErrorCode;
+        using var api = new BarkFluff.WebApi.Core.WebApi();
+        var connection = CreateConnection(node.Address, "device");
+        Assert.True(api.CreateAC(connection.ConnectionParameters, "test", "test", "test", "1", "").IsSuccess);
+        var saved = new StoredSession("access", "refresh") { Node = node.Address, UserId = 42 };
+        var store = new TestSessionStore { Value = saved };
+        var cache = new ChatListCacheTests.MemoryCache();
+        var authentication = new AuthenticationService(api, new TestClientSession(connection), store, new ChatListCache(cache));
+
+        Assert.False(await authentication.TryRestoreSessionAsync());
+        Assert.False(authentication.IsRestoredSessionOffline);
+        Assert.Null(store.Value);
+        Assert.Equal(1, store.ClearCount);
+        Assert.Equal(ChatListScope.Create(node.Address, 42), cache.Cleared);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -70,7 +256,7 @@ public sealed class AuthenticationServiceSignInTests
         await viewModel.LoginCommand.ExecuteAsync(null);
         await viewModel.CleanupAsync();
 
-        Assert.Equal(new StoredSession("committed-access", "committed-refresh"), store.Value);
+        Assert.Equal(("committed-access", "committed-refresh"), (store.Value!.AccessToken, store.Value.RefreshToken));
         Assert.Equal("committed-access", connection.ConnectionParameters.AccessToken.Value);
         Assert.Equal(1, navigation.ShowMessengerCalls);
         Assert.Equal(0, store.ClearCount);
@@ -186,7 +372,7 @@ public sealed class AuthenticationServiceSignInTests
         };
         Assert.True((await authentication.CompleteAuthChallengeAsync(attempt, second, "222222", false)).IsSuccess);
         Assert.Equal(new[] { first, second }, node.CompletedReferences.ToArray());
-        Assert.Equal(new StoredSession("pending-access", "pending-refresh"), store.Value);
+        Assert.Equal(("pending-access", "pending-refresh"), (store.Value!.AccessToken, store.Value.RefreshToken));
     }
 
     [Fact]
@@ -276,7 +462,7 @@ public sealed class AuthenticationServiceSignInTests
         Assert.Equal("active-refresh", connection.ConnectionParameters.RefreshToken.Value);
         Assert.Equal(42, connection.ConnectionParameters.UserId);
         Assert.Equal("existing-user", connection.ConnectionParameters.UserName);
-        Assert.Equal(new StoredSession("saved-access", "saved-refresh"), store.Value);
+        Assert.Equal(("saved-access", "saved-refresh"), (store.Value!.AccessToken, store.Value.RefreshToken));
         Assert.Equal(0, store.SaveCount);
         Assert.Equal(0, store.ClearCount);
         Assert.Empty(node.AuthRequests);
@@ -381,7 +567,7 @@ public sealed class AuthenticationServiceSignInTests
         Assert.Equal("Error_LoginMissingTokens", viewModel.ErrorMessage);
         Assert.Equal("previous-access", connection.ConnectionParameters.AccessToken.Value);
         Assert.Equal("previous-refresh", connection.ConnectionParameters.RefreshToken.Value);
-        Assert.Equal(new StoredSession("saved-access", "saved-refresh"), store.Value);
+        Assert.Equal(("saved-access", "saved-refresh"), (store.Value!.AccessToken, store.Value.RefreshToken));
         Assert.Equal(0, store.SaveCount);
         Assert.Equal(0, store.ClearCount);
         Assert.Equal(0, navigation.ShowMessengerCalls);
@@ -454,7 +640,7 @@ public sealed class AuthenticationServiceSignInTests
         Assert.Single(node.CompletedReferences);
         Assert.Empty(node.AuthRequests);
         Assert.Equal(1, store.SaveCount);
-        Assert.Equal(new StoredSession("concurrent-login-access", "concurrent-login-refresh"), store.Value);
+        Assert.Equal(("concurrent-login-access", "concurrent-login-refresh"), (store.Value!.AccessToken, store.Value.RefreshToken));
         Assert.Equal(1, navigation.ShowMessengerCalls);
         Assert.Equal("concurrent-login-access", connection.ConnectionParameters.AccessToken.Value);
         await viewModel.CleanupAsync();
@@ -480,7 +666,7 @@ public sealed class AuthenticationServiceSignInTests
         var result = await completion;
         Assert.False(result.IsSuccess);
         Assert.Equal("Error_LoginUnavailable", result.ErrorResourceKey);
-        Assert.Equal(new StoredSession("previous-access", "previous-refresh"), store.Value);
+        Assert.Equal(("previous-access", "previous-refresh"), (store.Value!.AccessToken, store.Value.RefreshToken));
         Assert.Null(connection.ConnectionParameters.AccessToken);
         Assert.Null(connection.ConnectionParameters.RefreshToken);
         await authentication.CancelAuthenticationAttemptAsync(replacement);
@@ -525,7 +711,7 @@ public sealed class AuthenticationServiceSignInTests
         var newResult = await authentication.CompleteAuthChallengeAsync(newAttempt, newReference, string.Empty, false);
 
         Assert.True(newResult.IsSuccess);
-        Assert.Equal(new StoredSession("new-save-access", "new-save-refresh"), store.Value);
+        Assert.Equal(("new-save-access", "new-save-refresh"), (store.Value!.AccessToken, store.Value.RefreshToken));
         Assert.Equal("new-save-access", newConnection.ConnectionParameters.AccessToken?.Value);
         Assert.Null(oldConnection.ConnectionParameters.AccessToken);
         await oldNode.CancelledChallengeSeen.Task.WaitAsync(TimeSpan.FromSeconds(3));
@@ -664,6 +850,8 @@ public sealed class AuthenticationServiceSignInTests
 
         public string Address { get; }
         public string Name { get; }
+        public string RefreshStatus { get; set; } = "14";
+        public string? RefreshErrorCode { get; set; }
         public bool BlockProfile { get; init; }
         public bool UnimplementedResolve { get; init; }
         public AuthLoginMode ResolveLoginMode { get; init; } = AuthLoginMode.Password;
@@ -676,6 +864,7 @@ public sealed class AuthenticationServiceSignInTests
         public bool OmitAccessToken { get; init; }
         public bool OmitRefreshToken { get; init; }
         public bool FailFirstProfile { get; init; }
+        public string ProfileStatus { get; set; } = "0";
         public bool InvalidPassword { get; init; }
         public bool BeginUnavailable { get; init; }
         public string? CompleteErrorCode { get; init; }
@@ -716,6 +905,13 @@ public sealed class AuthenticationServiceSignInTests
                 listenOptions.Protocols = HttpProtocols.Http2));
             var application = builder.Build();
             TestIdentityNode? node = null;
+
+            application.MapPost("/barkfluff.identity.IdentityApi/CreateToken", async context =>
+            {
+                await WriteGrpcResponseAsync(context,
+                    new CreateTokenResponse { AccessToken = new Token { Value = "refreshed-access" } },
+                    node!.RefreshStatus, node.RefreshErrorCode);
+            });
 
             application.MapPost("/barkfluff.identity.IdentityApi/Auth", async context =>
             {
@@ -879,6 +1075,11 @@ public sealed class AuthenticationServiceSignInTests
                 _ = await ReadGrpcPayloadAsync(context);
                 node!.ProfileRequestSeen.TrySetResult();
                 node.UserRequestMetadata.Enqueue(CaptureHeaders(context));
+                if (node.ProfileStatus != "0")
+                {
+                    await WriteGrpcResponseAsync(context, new GetUserResponse(), node.ProfileStatus);
+                    return;
+                }
                 if (node.FailFirstProfile && node.UserRequestMetadata.Count == 1)
                 {
                     await WriteGrpcResponseAsync(context, new GetUserResponse(), "14");
@@ -1000,6 +1201,7 @@ public sealed class AuthenticationServiceSignInTests
     private sealed class TestLoginNavigation : IOnboardingNavigationService
     {
         public int ShowMessengerCalls { get; private set; }
+        public int ShowLoginCalls { get; private set; }
         public object? CurrentViewModel => null;
         public event EventHandler<OnboardingNavigationEventArgs>? CurrentViewModelChanged
         {
@@ -1010,7 +1212,7 @@ public sealed class AuthenticationServiceSignInTests
         public void ShowWelcome() { }
         public void ShowSelectNode() { }
         public void ShowConnectedNode() { }
-        public void ShowLogin() { }
+        public void ShowLogin() => ShowLoginCalls++;
         public void ShowRegistration() { }
         public void ShowPasswordRecovery() { }
         public void ShowMessenger() => ShowMessengerCalls++;

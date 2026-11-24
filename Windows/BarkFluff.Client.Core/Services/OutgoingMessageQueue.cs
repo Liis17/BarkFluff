@@ -24,6 +24,7 @@ public sealed class OutgoingMessageQueue(IOutgoingMessageStore store, IOutgoingM
     private sealed class Session(OutgoingScope scope, CancellationToken token)
     {
         internal OutgoingScope Scope { get; } = scope;
+        internal bool Paused { get; set; }
         internal CancellationToken Token { get; } = token;
         internal List<Entry> Entries { get; } = [];
         internal HashSet<string> ActiveChats { get; } = [];
@@ -55,13 +56,13 @@ public sealed class OutgoingMessageQueue(IOutgoingMessageStore store, IOutgoingM
         }
     });
 
-    internal Task StartAsync(OutgoingScope scope, CancellationToken token = default) => Task.Run(() =>
+    internal Task StartAsync(OutgoingScope scope, CancellationToken token = default, bool paused = false) => Task.Run(() =>
     {
         lock (_gate)
         {
             token.ThrowIfCancellationRequested();
             Stop();
-            var session = new Session(scope, token);
+            var session = new Session(scope, token) { Paused = paused };
             try
             {
                 session.Entries.AddRange(store.Load(scope).Select(message => new Entry(message)));
@@ -165,6 +166,7 @@ public sealed class OutgoingMessageQueue(IOutgoingMessageStore store, IOutgoingM
         {
             if (token.IsCancellationRequested || _session is not { } session || session.Scope != scope)
                 return;
+            session.Paused = false;
             foreach (var entry in session.Entries)
                 entry.ReadyAt = default;
             Pump(session);
@@ -240,7 +242,7 @@ public sealed class OutgoingMessageQueue(IOutgoingMessageStore store, IOutgoingM
 
     private void Pump(Session session)
     {
-        if (_session != session || session.Token.IsCancellationRequested)
+        if (_session != session || session.Token.IsCancellationRequested || session.Paused)
             return;
 
         var next = DateTimeOffset.MaxValue;

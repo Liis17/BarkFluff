@@ -55,9 +55,15 @@ public sealed partial class MessengerViewModel : ObservableObject
         IVoiceRecorder? voiceRecorder = null,
         IVoicePlayer? voicePlayer = null,
         IChatDraftStore? draftStore = null,
-        IChatDraftRemote? draftRemote = null)
+        IChatDraftRemote? draftRemote = null,
+        ChatListCache? chatCache = null,
+        IAuthenticationService? authentication = null,
+        IOnboardingNavigationService? navigation = null)
     {
         _messenger = messenger;
+        _chatCache = chatCache;
+        _authentication = authentication;
+        _navigation = navigation;
         _draftStore = draftStore;
         _draftRemote = draftRemote;
         _outgoing = outgoing;
@@ -125,7 +131,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     /// Дубль над списком чатов: шапка целиком скрыта, пока чат не выбран, и обрыв связи
     /// на пустом мессенджере был бы невидим. С заголовочным индикатором не совмещается.
     /// </summary>
-    public bool IsChatListReconnectingVisible => IsReconnecting && !HasSelectedChat;
+    public bool IsChatListReconnectingVisible => IsReconnecting && !HasSelectedChat && !IsOffline;
 
     public bool IsSearchResultsVisible => SearchResults.Count > 0;
 
@@ -164,13 +170,34 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
 
         ActionError = null;
+        if (_realtimeSession is null)
+            IsOffline = _authentication?.IsRestoredSessionOffline == true;
         StartRealtimeSession(currentUserId.Value);
-        _chatFolders?.Start();
         var session = _realtimeSession!;
         var token = session.Lifetime.Token;
+        if (session.Loading)
+            return;
+        session.Loading = true;
         IsLoading = true;
         try
         {
+            var cachedFolders = await LoadChatCacheAsync(session);
+            if (!IsCurrent(session))
+                return;
+            _chatFolders?.Start(cachedFolders, IsOffline);
+            if (IsOffline)
+            {
+                IsLoading = false;
+                if (!await ReconnectRestoredSessionAsync(session, token) || !IsCurrent(session))
+                    return;
+                _ = _chatFolders?.RefreshAsync();
+                if (SelectedChat is { } selected)
+                {
+                    WatchTyping(selected);
+                    _ = LoadMessagesAsync(selected, _chatVersion);
+                }
+            }
+
             await _realtimeMessenger.StartAsync(token);
             if (IsCurrent(session))
             {
@@ -182,6 +209,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
         finally
         {
+            session.Loading = false;
             if (IsCurrent(session))
             {
                 IsLoading = false;
@@ -219,6 +247,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _isRealtimeConnected = true;
         _isPresenceConnected = true;
         IsReconnecting = false;
+        IsOffline = false;
         CancelPrivateUnlock();
     }
 
@@ -280,7 +309,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         _chatVersion++;
         RefreshOutgoing();
         StickerPicker?.Close();
-        WatchTyping(newValue);
+        if (!IsOffline)
+            WatchTyping(newValue);
         _ = CancelAttachmentsAsync();
         NotifyVoiceComposerChanged();
         OnPropertyChanged(nameof(HasPrivateAttachmentRestriction));
@@ -300,7 +330,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         if (newValue is not null)
         {
             ClearChatNotifications(newValue);
-            _ = LoadMessagesAsync(newValue, _chatVersion);
+            if (!IsOffline)
+                _ = LoadMessagesAsync(newValue, _chatVersion);
         }
     }
 
@@ -785,7 +816,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _pendingReadMessageIds.Clear();
     }
 
-    private async Task<ChatItemViewModel> CreateChatItemAsync(Chat chat, long currentUserId)
+    private async Task<ChatItemViewModel> CreateChatItemAsync(Chat chat, long currentUserId, ChatItemViewModel? cached = null)
     {
         var title = string.IsNullOrWhiteSpace(chat.Title) ? _localization.GetString("Messenger_Chat") : chat.Title;
         var firstName = string.Empty;
@@ -797,6 +828,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         // поэтому её нельзя разрешать через Files — она уже готова к показу.
         var avatarUrl = chat.Picture;
 
+        string? avatarFileId = null;
         if (!chat.IsGroupChat)
         {
             var otherMember = chat.Members.FirstOrDefault(member => member.UserId != currentUserId);
@@ -804,7 +836,9 @@ public sealed partial class MessengerViewModel : ObservableObject
             {
                 peerUserId = otherMember.UserId;
                 var userResult = await _messenger.GetUserDataAsync(otherMember.UserId);
-                if (userResult.Error.IsSuccess && userResult.Data is not null)
+                if (userResult is not { Error.IsSuccess: true, Data: not null } && cached is not null)
+                    return cached;
+                if (userResult is { Error.IsSuccess: true, Data: not null })
                 {
                     accountStatus = userResult.Data.AccountStatus;
                     if (accountStatus is BarkFluff.Proto.Users.AccountStatus.Blocked
@@ -825,12 +859,20 @@ public sealed partial class MessengerViewModel : ObservableObject
                         title = string.Join(' ', new[] { firstName, lastName }.Where(name => !string.IsNullOrWhiteSpace(name)));
                         title = string.IsNullOrWhiteSpace(title) ? _localization.GetString("Messenger_Chat") : title;
                         avatarUrl = userResult.Data.ProfilePicturePreviewUrl;
+                        if (Guid.TryParse(userResult.Data.ProfilePictureUrl, out _))
+                            avatarFileId = userResult.Data.ProfilePictureUrl;
+                        if (Guid.TryParse(avatarUrl, out _))
+                        {
+                            avatarFileId = avatarUrl;
+                            avatarUrl = await _messenger.ResolveFileUrlAsync(avatarFileId);
+                        }
                     }
                 }
             }
         }
 
-        return new ChatItemViewModel(chat, title, firstName, lastName, avatarUrl, peerUserId, _localization, username, accountStatus);
+        return new ChatItemViewModel(chat, title, firstName, lastName, avatarUrl, peerUserId, _localization, username,
+            accountStatus, avatarFileId);
     }
 
     private async Task<MessageItemViewModel> CreateMessageItemAsync(MessageModel message, long currentUserId)
@@ -1191,7 +1233,8 @@ public sealed partial class ChatItemViewModel : ObservableObject
         long? peerUserId,
         ILocalizationService localization,
         string username = "",
-        BarkFluff.Proto.Users.AccountStatus accountStatus = BarkFluff.Proto.Users.AccountStatus.Active)
+        BarkFluff.Proto.Users.AccountStatus accountStatus = BarkFluff.Proto.Users.AccountStatus.Active,
+        string? avatarFileId = null)
     {
         _localization = localization;
         Definition = chat;
@@ -1201,6 +1244,7 @@ public sealed partial class ChatItemViewModel : ObservableObject
         LastName = lastName;
         Username = username;
         AvatarUrl = avatarUrl;
+        AvatarFileId = avatarFileId;
         PeerUserId = peerUserId;
         AccountStatus = accountStatus;
         IsPrivate = chat.ChatType == ChatType.Private;
@@ -1220,6 +1264,14 @@ public sealed partial class ChatItemViewModel : ObservableObject
 
     internal void ApplySnapshot(Chat chat, bool applyPreview = true, bool applyUnread = true)
     {
+        if (!ReferenceEquals(Definition, chat))
+        {
+            var wasAccepted = IsPrivateAccepted;
+            Definition = chat;
+            if (wasAccepted != IsPrivateAccepted)
+                OnPropertyChanged(nameof(IsPrivateAccepted));
+        }
+
         var previousPreview = ListPreview;
         _serverHasDraft = chat.ChatType == ChatType.Regular && chat.HasDraft;
         if (previousPreview != ListPreview)
@@ -1262,16 +1314,43 @@ public sealed partial class ChatItemViewModel : ObservableObject
     }
 
     public string Id { get; }
-    internal Chat Definition { get; }
-    public string Title { get; }
-    public string FirstName { get; }
-    public string LastName { get; }
-    public string Username { get; }
-    public string AvatarUrl { get; }
+    internal Chat Definition { get; private set; }
+    public string Title { get => _title; private set => SetProperty(ref _title, value); }
+    public string FirstName { get => _firstName; private set => SetProperty(ref _firstName, value); }
+    public string LastName { get => _lastName; private set => SetProperty(ref _lastName, value); }
+    public string Username { get => _username; private set => SetProperty(ref _username, value); }
+    internal string? AvatarFileId { get; private set; }
+    public string AvatarUrl { get => _avatarUrl; private set => SetProperty(ref _avatarUrl, value); }
+    private string _title = string.Empty;
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string _username = string.Empty;
+    private string _avatarUrl = string.Empty;
 
     /// <summary>Собеседник личного чата; <c>null</c> у групповых — им присутствие не показывается.</summary>
     public long? PeerUserId { get; }
-    public BarkFluff.Proto.Users.AccountStatus AccountStatus { get; }
+    public BarkFluff.Proto.Users.AccountStatus AccountStatus { get; private set; }
+
+    internal void ApplyDisplay(ChatItemViewModel display)
+    {
+        var initials = Initials;
+        Title = display.Title;
+        FirstName = display.FirstName;
+        LastName = display.LastName;
+        Username = display.Username;
+        AvatarUrl = display.AvatarUrl;
+        AvatarFileId = display.AvatarFileId;
+        if (Initials != initials)
+            OnPropertyChanged(nameof(Initials));
+        if (AccountStatus == display.AccountStatus)
+            return;
+        AccountStatus = display.AccountStatus;
+        OnPropertyChanged(nameof(AccountStatus));
+        OnPropertyChanged(nameof(IsRestricted));
+        OnPropertyChanged(nameof(CanSend));
+        OnPropertyChanged(nameof(RestrictionMessage));
+        OnPropertyChanged(nameof(HasPresence));
+    }
     public bool IsRestricted => AccountStatus is BarkFluff.Proto.Users.AccountStatus.Blocked
         or BarkFluff.Proto.Users.AccountStatus.PendingDeletion
         or BarkFluff.Proto.Users.AccountStatus.Deleted;

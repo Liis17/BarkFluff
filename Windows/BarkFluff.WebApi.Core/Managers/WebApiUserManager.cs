@@ -403,11 +403,11 @@ namespace BarkFluff.WebApi.Core.Managers
 
         public async Task<(ErrorReturner Error, UserData? Data)> GetUserDataForAuthentication(
             GlobalParam globalParam,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, DateTime? deadline = null)
         {
             var response = await UsersAC!.GetUserAsync(
                 new Proto.Users.GetUserRequest { UserId = 0 },
-                cancellationToken: cancellationToken);
+                deadline: deadline, cancellationToken: cancellationToken);
 
             return (new ErrorReturner(true), new UserData
             {

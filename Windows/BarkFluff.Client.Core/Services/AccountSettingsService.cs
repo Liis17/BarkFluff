@@ -115,11 +115,13 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
     {
         var draftCleanup = _messengerViewModel.StopDraftsForLogoutAsync();
         var outgoingCleanup = _messengerViewModel.ClearOutgoingForLogoutAsync();
+        var cacheCleanup = _messengerViewModel.ClearChatCacheAsync();
+        var offline = _messengerViewModel.IsOffline;
         _messengerViewModel.Reset();
         await _realtimeMessenger.StopAsync();
         await _presence.StopAsync();
 
-        var result = await LogoutFromServerAsync(Parameters);
+        var revoked = !offline && (await LogoutFromServerAsync(Parameters)).IsSuccess;
 
         await _secureSessionStore.ClearAsync(cancellationToken);
         await _privateChatKeyStore.ForgetAllAsync(cancellationToken);
@@ -133,9 +135,13 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
             draftsCleared = false;
         }
         var outgoingCleared = await outgoingCleanup;
-        _navigation.ShowLogin();
+        var cacheCleared = await cacheCleanup;
+        if (offline)
+            _navigation.ShowLoginAfterOfflineLogout();
+        else
+            _navigation.ShowLogin();
 
-        return result.IsSuccess && draftsCleared && outgoingCleared ? null : "Error_LogoutFailed";
+        return (offline || revoked) && draftsCleared && outgoingCleared && cacheCleared ? null : "Error_LogoutFailed";
     }
 
     /// <summary>Отдельная точка для проверки порядка выхода без подключения к живой ноде.</summary>

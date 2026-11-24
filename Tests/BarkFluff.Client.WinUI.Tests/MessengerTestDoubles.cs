@@ -40,7 +40,10 @@ internal static class MessengerTestDoubles
         IVoicePlayer? voicePlayer = null,
         IChatDraftStore? draftStore = null,
         IChatDraftRemote? draftRemote = null,
-        OutgoingMessageQueue? outgoing = null)
+        OutgoingMessageQueue? outgoing = null,
+        ChatListCache? chatCache = null,
+        IAuthenticationService? authentication = null,
+        IOnboardingNavigationService? navigation = null)
     {
         var effectiveMessenger = messenger ?? new FakeMessengerService();
         var effectivePresence = presence ?? new FakeOnlinePresenceService();
@@ -54,7 +57,8 @@ internal static class MessengerTestDoubles
             dispatcher ?? new InlineUiDispatcher(),
             new ProfileViewModel(effectiveMessenger, effectivePresence, localization), outgoing,
             timeProvider, chatFolders, typing, notifications, notificationSettings, stickerPicker, stickerPreferences,
-            voiceRecorder: voiceRecorder, voicePlayer: voicePlayer, draftStore: draftStore, draftRemote: draftRemote);
+            voiceRecorder: voiceRecorder, voicePlayer: voicePlayer, draftStore: draftStore, draftRemote: draftRemote,
+            chatCache: chatCache, authentication: authentication, navigation: navigation);
     }
 
     internal static OutgoingMessageQueue CreateOutgoingQueue(FakeMessengerService messenger, TimeProvider clock) =>

@@ -123,11 +123,23 @@ public partial class App : Application
             {
                 var errorResourceKey = webApi.LastTokenRefreshErrorResourceKey;
                 if (errorResourceKey is not ("Error_AccountBlocked" or "Error_AccountPendingDeletion")) return;
-                mainWindow.DispatcherQueue.TryEnqueue(() =>
+                var session = services.GetRequiredService<IClientSession>();
+                var connection = session.CurrentConnection;
+                var userId = connection?.ConnectionParameters.UserId;
+                mainWindow.DispatcherQueue.TryEnqueue(async () =>
                 {
-                    _ = services.GetRequiredService<MessengerViewModel>().ClearOutgoingForLogoutAsync();
-                    navigation.ShowLogin();
-                    services.GetRequiredService<LoginViewModel>().ShowSessionRestrictionNotice(errorResourceKey);
+                    if (!ReferenceEquals(connection, session.CurrentConnection) ||
+                        userId != connection?.ConnectionParameters.UserId ||
+                        navigation.CurrentViewModel is not MessengerViewModel messenger)
+                        return;
+                    var localCleanup = messenger.ResetAfterSessionRejectionAsync();
+                    await services.GetRequiredService<ISecureSessionStore>().ClearAsync();
+                    await localCleanup;
+                    if (!ReferenceEquals(connection, session.CurrentConnection) ||
+                        userId != connection?.ConnectionParameters.UserId ||
+                        navigation.CurrentViewModel != messenger)
+                        return;
+                    navigation.ShowRestrictedLogin(errorResourceKey);
                 });
             };
 
@@ -263,6 +275,8 @@ public partial class App : Application
         builder.Services.AddSingleton(AppDataPaths.CreateDefault());
         builder.Services.AddSingleton<SqliteApplicationDataStore>();
         builder.Services.AddSingleton<IApplicationDataStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton<IChatListCacheStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton<ChatListCache>();
         builder.Services.AddSingleton<IChatDraftStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
         builder.Services.AddSingleton<IChatDraftRemote, ChatDraftRemote>();
         builder.Services.AddSingleton<ISecureSessionStore, DpapiSecureSessionStore>();

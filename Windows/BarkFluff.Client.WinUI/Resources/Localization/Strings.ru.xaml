@@ -478,6 +478,7 @@
     <x:String x:Key="Error_DevicesLoadFailed">Не удалось загрузить список устройств.</x:String>
     <x:String x:Key="Error_UpdateCheckFailed">Не удалось проверить обновления.</x:String>
     <x:String x:Key="Error_LogoutFailed">Не удалось выйти из аккаунта.</x:String>
+    <x:String x:Key="Login_OfflineLogoutNotice">Вы вышли на этом устройстве. Сессия на ноде останется активной до истечения срока действия.</x:String>
     <x:String x:Key="Error_AccountBlocked">Аккаунт заблокирован. Снять блокировку может только администратор ноды.</x:String>
     <x:String x:Key="Error_AccountPendingDeletion">Аккаунт удаляется. Чтобы отменить удаление до назначенной даты, обратитесь к администратору ноды.</x:String>
     <x:String x:Key="Login_AccountBlockedTitle">Аккаунт заблокирован</x:String>
@@ -545,4 +546,6 @@
     <x:String x:Key="Messenger_OutboxRetry">Повторить</x:String>
     <x:String x:Key="Messenger_OutboxHistoryPending">Неотправленные сообщения ({0}). К последним сообщениям</x:String>
     <x:String x:Key="Messenger_OutboxHistoryFailed">Ошибка отправки. Неотправленные сообщения ({0}). К последним сообщениям</x:String>
+    <x:String x:Key="Messenger_OfflineCached">Нет связи · список чатов из кэша</x:String>
+    <x:String x:Key="Settings_Storage_ClearChatCache">Очистить кэш списка чатов</x:String>
 </ResourceDictionary>

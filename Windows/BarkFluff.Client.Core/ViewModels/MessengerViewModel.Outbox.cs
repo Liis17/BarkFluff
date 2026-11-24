@@ -51,6 +51,7 @@ public sealed partial class MessengerViewModel
             _outgoing.Delivered -= Delivered;
         };
 
+        var paused = IsOffline;
         _outgoingReady = StartAsync(_outgoingReady);
 
         async Task StartAsync(Task previous)
@@ -58,7 +59,7 @@ public sealed partial class MessengerViewModel
             try
             {
                 await previous;
-                await _outgoing.StartAsync(scope, token);
+                await _outgoing.StartAsync(scope, token, paused);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { }
             catch (Exception) { PostSession(session, _ => ReportOutgoingStorageFailure()); }

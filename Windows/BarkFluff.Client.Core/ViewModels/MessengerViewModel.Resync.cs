@@ -113,6 +113,17 @@ public sealed partial class MessengerViewModel
             return false;
         }
 
+        var hadCachedItems = session.CachedChatIds.Count > 0;
+        var seen = definitions.Select(chat => chat.Id).ToHashSet();
+        foreach (var stale in Chats.Where(chat => session.CachedChatIds.Contains(chat.Id) &&
+                     !seen.Contains(chat.Id) && session.Journal.ChatRevision(chat.Id, chat.IsPrivate) == 0).ToArray())
+        {
+            if (stale == SelectedChat)
+                SelectedChat = null;
+            session.CachedChatIds.Remove(stale.Id);
+            Chats.Remove(stale);
+        }
+
         var known = Chats.Select(chat => chat.Id).ToHashSet();
         var newItems = await Task.WhenAll(definitions.Where(definition => known.Add(definition.Id))
             .Select(definition => CreateChatItemAsync(definition, session.UserId))).WaitAsync(token);
@@ -136,6 +147,8 @@ public sealed partial class MessengerViewModel
         {
             var item = Chats.First(chat => chat.Id == definition.Id);
             ObserveMuteHint(session, item, request, definition.Muted);
+            if (session.CachedChatIds.Remove(item.Id))
+                _ = RefreshCachedDisplayAsync(session, item, definition, token);
             item.ApplySnapshot(definition,
                 applyPreview: session.Journal.ChatRevision(item.Id, item.IsPrivate) <= revision,
                 applyUnread: session.Journal.UnreadRevision(item.Id, item.IsPrivate) <= revision);
@@ -151,8 +164,10 @@ public sealed partial class MessengerViewModel
             }
         }
 
+        session.CanWriteCache = true;
+        ScheduleChatCacheSave(session);
         ApplyChatFilter();
-        if (newItems.Length != 0 || reportError)
+        if (newItems.Length != 0 || reportError || hadCachedItems)
         {
             await TrackPresenceForChatsAsync();
         }

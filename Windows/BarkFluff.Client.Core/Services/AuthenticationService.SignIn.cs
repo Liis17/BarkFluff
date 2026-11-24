@@ -589,7 +589,12 @@ public sealed partial class AuthenticationService
             var previousSession = await _secureSessionStore.LoadAsync(cancellationToken);
             var nextSession = new StoredSession(
                 state.Parameters.AccessToken.Value,
-                state.Parameters.RefreshToken.Value);
+                state.Parameters.RefreshToken.Value)
+            {
+                Node = state.Connection.Profile.BeaconAddress,
+                UserId = state.Parameters.UserId > 0 ? state.Parameters.UserId : null,
+                UserName = state.Parameters.UserName
+            };
 
             try
             {
@@ -639,6 +644,7 @@ public sealed partial class AuthenticationService
                         sharedParameters.RefreshToken = CopyToken(candidate.RefreshToken);
                         sharedParameters.UserId = candidate.UserId;
                         sharedParameters.UserName = candidate.UserName;
+                        _offlineConnection = null;
                         applied = true;
                         state.IsCompleted = true;
                         _activeAttempt = null;

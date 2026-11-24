@@ -26,8 +26,8 @@
                 <Grid Width="44" Height="44" VerticalAlignment="Top">
                     <PersonPicture Width="44"
                                    Height="44"
-                                   DisplayName="{x:Bind Title}"
-                                   ProfilePicture="{x:Bind AvatarUrl, Converter={StaticResource StringToImageSourceConverter}}" />
+                                   DisplayName="{x:Bind Title, Mode=OneWay}"
+                                   ProfilePicture="{x:Bind AvatarUrl, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" />
                     <Ellipse Width="12"
                              Height="12"
                              HorizontalAlignment="Right"
@@ -40,7 +40,7 @@
 
                 <StackPanel Grid.Column="1" Margin="0,1,8,0">
                     <TextBlock FontWeight="SemiBold"
-                               Text="{x:Bind Title}"
+                               Text="{x:Bind Title, Mode=OneWay}"
                                TextTrimming="CharacterEllipsis"
                                TextWrapping="NoWrap" />
                     <TextBlock Margin="0,3,0,0"
@@ -475,6 +475,12 @@
 
             <!--  Пока чат не выбран, шапка с индикатором связи скрыта, и обрыв был бы невидим.  -->
             <StackPanel>
+                <TextBlock Margin="0,0,0,8"
+                           Opacity=".7"
+                           Style="{StaticResource MutedText}"
+                           AutomationProperties.LiveSetting="Polite"
+                           Text="{StaticResource Messenger_OfflineCached}"
+                           Visibility="{x:Bind ViewModel.IsOffline, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <TextBlock Margin="0,0,0,8"
                            Opacity=".7"
                            Style="{StaticResource MutedText}"

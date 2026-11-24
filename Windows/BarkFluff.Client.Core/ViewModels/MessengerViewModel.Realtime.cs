@@ -12,6 +12,12 @@ public sealed partial class MessengerViewModel
     private sealed class RealtimeSession(long userId, string node)
     {
         internal long UserId { get; } = userId;
+        internal bool Loading { get; set; }
+        internal bool CacheLoaded { get; set; }
+        internal bool CacheWriteScheduled { get; set; }
+        // Снимок из realtime может быть неполным до первой полной загрузки или после очистки.
+        internal bool CanWriteCache { get; set; }
+        internal HashSet<string> CachedChatIds { get; } = [];
         internal string Node { get; } = node;
         internal CancellationTokenSource Lifetime { get; } = new();
         internal MessageUpdateJournal Journal { get; } = new();
@@ -79,8 +85,10 @@ public sealed partial class MessengerViewModel
         _realtimeMessenger.ConnectionChanged += connection;
         _realtimeMessenger.MessageRead += read;
         _realtimeMessenger.PrivateMessageRead += privateRead;
+        var unsubscribeCache = ObserveChatCache(session);
         session.Unsubscribe = () =>
         {
+            unsubscribeCache();
             _realtimeMessenger.ChatFoldersChanged -= foldersChanged;
             _realtimeMessenger.MessageReceived -= received;
             _realtimeMessenger.MessageChanged -= changed;

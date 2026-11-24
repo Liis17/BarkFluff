@@ -160,6 +160,15 @@ namespace BarkFluff.WebApi.Core
         /// </summary>
         public async Task<ErrorReturner> EnsureTokenValidAsync(GlobalParam globalParam, int bufferMinutes = 5)
             => await TokenManager.EnsureTokenValidAsync(globalParam, bufferMinutes);
+        /// <summary>Обновление при запуске, до начала работы авторизованных запросов.</summary>
+        public async Task RefreshTokenForSessionRestoreAsync(GlobalParam parameters, CancellationToken cancellationToken)
+        {
+            using var call = IdentityAC!.CreateTokenAsync(
+                new BarkFluff.Proto.Identity.CreateTokenRequest { RefreshToken = parameters.RefreshToken.Value },
+                deadline: DateTime.UtcNow.AddSeconds(5), cancellationToken: cancellationToken);
+            parameters.AccessToken = (await call.ResponseAsync.ConfigureAwait(false)).AccessToken;
+        }
+
         /// <summary>
         /// Принудительно обновляет токен и переинициализирует клиентов.
         /// Используется когда известно, что токен недействителен.
@@ -236,6 +245,10 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner Error, UserData? Data)> GetUserData(GlobalParam globalParam, long userId = 0) => await UserManager.GetUserData(globalParam, userId);
         public Task<(ErrorReturner Error, UserData? Data)> GetUserDataForAuthentication(GlobalParam globalParam, CancellationToken cancellationToken = default) =>
             UserManager.GetUserDataForAuthentication(globalParam, cancellationToken);
+
+        public Task<(ErrorReturner Error, UserData? Data)> GetUserDataForSessionRestoreAsync(
+            GlobalParam parameters, CancellationToken cancellationToken) =>
+            UserManager.GetUserDataForAuthentication(parameters, cancellationToken, DateTime.UtcNow.AddSeconds(5));
         public async Task<(ErrorReturner Error, Proto.Identity.Token? refreshToken, Proto.Identity.Token? accessToken, bool getMeOtpCode)> Authorizations(string _email, string _username, string _password, string _otpCode, GlobalParam global) => await UserManager.Authorizations(_email, _username, _password, _otpCode, global);
         public ErrorReturner CreatePreLoginAuthenticationClient(GlobalParam globalParam, string deviceName, string os, string appName, string appVersion, string ip) =>
             ClientManager.CreatePreLoginAuthenticationClient(globalParam, deviceName, os, appName, appVersion, ip);

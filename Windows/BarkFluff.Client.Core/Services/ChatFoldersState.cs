@@ -14,6 +14,7 @@ public interface IChatFoldersState
     event EventHandler? Changed;
 
     void Start();
+    void Start(IReadOnlyList<ChatFolderData> cached, bool offline) => Start();
     void Reset();
     void Invalidate();
     Task RefreshAsync();
@@ -52,7 +53,9 @@ public sealed class ChatFoldersState(
     public string? LoadError => Current?.LoadError;
     public event EventHandler? Changed;
 
-    public void Start()
+    public void Start() => Start([], false);
+
+    public void Start(IReadOnlyList<ChatFolderData> cached, bool offline)
     {
         if (Current is not null)
         {
@@ -61,8 +64,11 @@ public sealed class ChatFoldersState(
         Reset();
         if (session.CurrentConnection is { } connection)
         {
-            _scope = new Scope(connection);
-            _ = RefreshAsync();
+            _scope = new Scope(connection) { Folders = cached };
+            if (offline)
+                Publish();
+            else
+                _ = RefreshAsync();
         }
     }
 

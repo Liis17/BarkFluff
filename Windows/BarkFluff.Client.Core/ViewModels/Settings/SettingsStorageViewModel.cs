@@ -3,13 +3,17 @@ using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Proto.Files;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using System.Globalization;
 
 namespace BarkFluff.Client.Core.ViewModels.Settings;
 
 public sealed partial class SettingsStorageViewModel(
     IUserPreferencesService service,
-    ILocalizationService localization) : ObservableObject
+    ILocalizationService localization,
+    IMessengerService? messenger = null,
+    ChatListCache? cache = null,
+    MessengerViewModel? viewModel = null) : ObservableObject
 {
     [ObservableProperty]
     private bool _isBusy;
@@ -41,9 +45,38 @@ public sealed partial class SettingsStorageViewModel(
     [ObservableProperty]
     private string _avatarsStorage = string.Empty;
 
+    [ObservableProperty]
+    private string _chatCacheSize = string.Empty;
+
+    [RelayCommand]
+    private async Task ClearChatCacheAsync()
+    {
+        if (viewModel is null)
+            return;
+
+        var cleared = await viewModel.ClearChatCacheAsync();
+        await LoadCacheSizeAsync();
+        if (!cleared)
+            ErrorMessage = localization.GetString("Error_SettingsSaveFailed");
+    }
+
+    private async Task LoadCacheSizeAsync()
+    {
+        if (cache is null || messenger?.CurrentUserId is not { } userId)
+            return;
+
+        var node = messenger.CurrentNodeAddress;
+        var bytes = await cache.SizeAsync(ChatListScope.Create(node, userId));
+        if (messenger.CurrentUserId == userId && messenger.CurrentNodeAddress == node)
+            ChatCacheSize = bytes < 1024 * 1024
+                ? (bytes / 1024d).ToString("0.##", CultureInfo.CurrentCulture) + " KB"
+                : FormatBytes(bytes);
+    }
+
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         IsBusy = true;
+        await LoadCacheSizeAsync();
         var (errorKey, storage) = await service.GetUserStorageInfoAsync(cancellationToken);
         IsBusy = false;
 

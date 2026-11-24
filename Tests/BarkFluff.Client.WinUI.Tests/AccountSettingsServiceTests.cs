@@ -10,8 +10,10 @@ namespace BarkFluff.Client.WinUI.Tests;
 
 public sealed class AccountSettingsServiceTests
 {
-    [Fact]
-    public async Task LogoutAsync_StopsStreamsBeforeRevokingThenClearsTheLocalSession()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LogoutAsync_StopsStreamsAndClearsTheLocalSession(bool offline)
     {
         var calls = new List<string>();
         var realtime = new FakeRealtimeMessengerService { OnStop = () => calls.Add("realtime") };
@@ -26,11 +28,19 @@ public sealed class AccountSettingsServiceTests
         store.Save("other-node", 1, "secret", new("other node", 0, ChatType.Secret));
         var messengerService = new FakeMessengerService { CurrentNodeAddress = node };
         messengerService.Chats.Add(MessengerTestDoubles.CreateChat("chat", chatType: ChatType.Private));
+        var ui = new InlineUiDispatcher();
         var messenger = MessengerTestDoubles.CreateViewModel(messengerService, realtime, presence,
-            timeProvider: new FakeTimeProvider(), draftStore: store, draftRemote: new ChatDraftTests.Remote());
-        await messenger.LoadAsync();
-        messenger.SelectedChat = Assert.Single(messenger.Chats);
-        messenger.DraftText = "pending private write";
+            dispatcher: ui, timeProvider: new FakeTimeProvider(), draftStore: store,
+            draftRemote: new ChatDraftTests.Remote());
+        Task loading = null!;
+        ui.Post(() => loading = messenger.LoadAsync());
+        await loading;
+        ui.Post(() =>
+        {
+            messenger.SelectedChat = Assert.Single(messenger.Chats);
+            messenger.DraftText = "pending private write";
+            messenger.IsOffline = offline;
+        });
         var navigation = new RecordingNavigationService(messenger, calls);
         var service = new TestAccountSettingsService(
             new TestClientSession(),
@@ -42,10 +52,14 @@ public sealed class AccountSettingsServiceTests
             navigation,
             calls);
 
-        var errorKey = await service.LogoutAsync();
+        Task<string?> logout = null!;
+        ui.Post(() => logout = service.LogoutAsync());
+        var errorKey = await logout;
 
         Assert.Null(errorKey);
-        Assert.Equal(["realtime", "presence", "server", "session", "keys", "login"], calls);
+        Assert.Equal(offline
+            ? ["realtime", "presence", "session", "keys", "offline login"]
+            : ["realtime", "presence", "server", "session", "keys", "login"], calls);
         Assert.Equal("regular", Assert.Single(store.Load(node, 1)).Key);
         Assert.Equal("other user", store.Load(node, 2)["secret"].Text);
         Assert.Equal("other node", store.Load("other-node", 1)["secret"].Text);
@@ -119,6 +133,13 @@ public sealed class AccountSettingsServiceTests
         {
             Assert.Empty(messenger.Chats);
             calls.Add("login");
+        }
+
+        public void ShowLoginAfterOfflineLogout()
+        {
+            Assert.Empty(messenger.Chats);
+            Assert.False(messenger.IsOffline);
+            calls.Add("offline login");
         }
     }
 }

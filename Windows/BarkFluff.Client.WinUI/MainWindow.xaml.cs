@@ -243,6 +243,7 @@ public sealed partial class MainWindow : Window
         var messenger = App.Services.GetRequiredService<MessengerViewModel>();
         var attachments = messenger.CancelAttachmentsAsync();
         var drafts = messenger.StopDraftsAsync();
+        var cache = messenger.FlushChatCacheAsync();
         try
         {
             _windowSizeSaveCancellation?.Cancel();
@@ -265,7 +266,7 @@ public sealed partial class MainWindow : Window
             try
             {
                 var typing = App.Services.GetRequiredService<IChatTypingService>();
-                await Task.WhenAll(attachments, drafts, typing.StopAsync(), CleanupLoginForExitAsync(),
+                await Task.WhenAll(attachments, drafts, cache, typing.StopAsync(), CleanupLoginForExitAsync(),
                     ((App)Application.Current).StopNotificationsAsync()).WaitAsync(TimeSpan.FromSeconds(3));
             }
             catch (TimeoutException)
