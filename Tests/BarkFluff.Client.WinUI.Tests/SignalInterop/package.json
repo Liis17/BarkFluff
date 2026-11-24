@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "dependencies": {
+    "@signalapp/libsignal-client": "0.86.16"
+  }
+}

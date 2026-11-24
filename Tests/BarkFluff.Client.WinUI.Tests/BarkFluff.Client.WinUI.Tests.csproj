@@ -10,6 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="..\..\Windows\BarkFluff.SignalShim\target\x86_64-pc-windows-msvc\release\barkfluff_signal_shim.dll"
+          Link="barkfluff_signal_shim.dll" CopyToOutputDirectory="PreserveNewest" />
     <PackageReference Include="AWSSDK.Core" Version="4.0.102.9" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />

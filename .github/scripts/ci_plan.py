@@ -113,6 +113,7 @@ CLIENTS = {
                 'Icons/**', CLIENT_VERSION),
     'macos': ('Mac/Barkfluff/**', 'Mac/macos-rebuild.trigger', CLIENT_VERSION),
     'winui': ('Windows/BarkFluff.Client.WinUI/**', 'Windows/BarkFluff.Client.Core/**',
+              'Windows/BarkFluff.SignalShim/**',
               'Windows/BarkFluff.WebApi.Core/**', 'Windows/BarkFluff.ClientV2.WPF/**',
               *project_patterns('Windows/BarkFluff.Client.WinUI/BarkFluff.Client.WinUI.csproj'),
               'global.json', 'Windows/client-rebuild.trigger', CLIENT_VERSION),

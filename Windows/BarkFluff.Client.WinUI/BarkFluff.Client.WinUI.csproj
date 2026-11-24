@@ -21,9 +21,15 @@
     <RuntimeIdentifier Condition="'$(Platform)' == 'x64'">win-x64</RuntimeIdentifier>
     <RuntimeIdentifier Condition="'$(Platform)' == 'x86'">win-x86</RuntimeIdentifier>
     <RuntimeIdentifier Condition="'$(Platform)' == 'ARM64'">win-arm64</RuntimeIdentifier>
+    <SignalShimTarget Condition="'$(RuntimeIdentifier)' == 'win-x64'">x86_64-pc-windows-msvc</SignalShimTarget>
+    <SignalShimTarget Condition="'$(RuntimeIdentifier)' == 'win-x86'">i686-pc-windows-msvc</SignalShimTarget>
+    <SignalShimTarget Condition="'$(RuntimeIdentifier)' == 'win-arm64'">aarch64-pc-windows-msvc</SignalShimTarget>
   </PropertyGroup>
   
   <ItemGroup>
+    <Content Include="..\BarkFluff.SignalShim\target\$(SignalShimTarget)\release\barkfluff_signal_shim.dll"
+             Link="barkfluff_signal_shim.dll" Condition="'$(SignalShimTarget)' != ''"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!--  Иконка трея адресуется как ms-appx:///Resources/Icons/barkfluff.ico — без Content она не попадёт в пакет.  -->
     <Content Include="Resources\Icons\barkfluff.ico" />
     <Content Include="Resources\Calls\room.html;Resources\Calls\room.js;Resources\Calls\room.css"

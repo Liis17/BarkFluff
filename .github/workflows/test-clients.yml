@@ -21,6 +21,27 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
         with:
           global-json-file: global.json
+
+      - name: Кэш Cargo для Signal shim
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Windows/BarkFluff.SignalShim/target
+          key: ${{ runner.os }}-signal-x64-${{ hashFiles('Windows/BarkFluff.SignalShim/Cargo.lock', 'Windows/BarkFluff.SignalShim/rust-toolchain.toml') }}
+
+      - name: Сборка Signal shim и проверка освобождения буферов (x64)
+        shell: pwsh
+        run: ./Windows/BarkFluff.SignalShim/build.ps1 -Test
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Tests/BarkFluff.Client.WinUI.Tests/SignalInterop/package-lock.json
+      - name: Установка официального libsignal для interop
+        run: npm ci --prefix Tests/BarkFluff.Client.WinUI.Tests/SignalInterop
       - name: Run Windows tests
         shell: pwsh
         run: |
