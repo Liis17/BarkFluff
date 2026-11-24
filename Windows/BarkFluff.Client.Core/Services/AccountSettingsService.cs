@@ -1,8 +1,10 @@
+using BarkFluff.Client.Core.Infrastructure.Storage;
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services.Calls;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData;
+using Microsoft.Data.Sqlite;
 
 using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 
@@ -17,6 +19,8 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
     private readonly MessengerViewModel _messengerViewModel;
     private readonly IOnboardingNavigationService _navigation;
     private readonly AudioCallService? _audioCalls;
+    private readonly IClientSession _session;
+    private readonly SqliteApplicationDataStore? _applicationData;
 
     public AccountSettingsService(
         WebApiClient webApi,
@@ -27,7 +31,8 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
         IPrivateChatKeyStore privateChatKeyStore,
         MessengerViewModel messengerViewModel,
         IOnboardingNavigationService navigation,
-        AudioCallService? audioCalls = null)
+        AudioCallService? audioCalls = null,
+        SqliteApplicationDataStore? applicationData = null)
         : base(webApi, session)
     {
         _realtimeMessenger = realtimeMessenger;
@@ -37,6 +42,8 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
         _messengerViewModel = messengerViewModel;
         _navigation = navigation;
         _audioCalls = audioCalls;
+        _session = session;
+        _applicationData = applicationData;
     }
 
     public async Task<(string? ErrorKey, AccountProfile? Profile)> GetProfileAsync(CancellationToken cancellationToken = default)
@@ -117,6 +124,11 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
     /// </summary>
     public async Task<string?> LogoutAsync(CancellationToken cancellationToken = default)
     {
+        var connection = _session.CurrentConnection;
+        var secretCleanup = connection is not null && connection.ConnectionParameters.UserId > 0 && _applicationData is not null
+            ? ClearSecretsOnLogoutAsync(SqliteApplicationDataStore.SecretScope.Create(
+                connection.Profile.BeaconAddress, connection.ConnectionParameters.UserId))
+            : Task.FromResult(true);
         if (_audioCalls is not null)
             await _audioCalls.StopAsync();
 
@@ -143,12 +155,27 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
         }
         var outgoingCleared = await outgoingCleanup;
         var cacheCleared = await cacheCleanup;
+        var secretsCleared = await secretCleanup;
         if (offline)
             _navigation.ShowLoginAfterOfflineLogout();
         else
             _navigation.ShowLogin();
 
-        return (offline || revoked) && draftsCleared && outgoingCleared && cacheCleared ? null : "Error_LogoutFailed";
+        return (offline || revoked) && draftsCleared && outgoingCleared && cacheCleared && secretsCleared
+            ? null : "Error_LogoutFailed";
+    }
+
+    private async Task<bool> ClearSecretsOnLogoutAsync(SqliteApplicationDataStore.SecretScope scope)
+    {
+        try
+        {
+            await Task.Run(() => _applicationData!.ForgetSecretChatsAsync(scope));
+            return true;
+        }
+        catch (SqliteException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Отдельная точка для проверки порядка выхода без подключения к живой ноде.</summary>

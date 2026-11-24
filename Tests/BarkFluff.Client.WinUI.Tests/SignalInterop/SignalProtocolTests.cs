@@ -6,6 +6,7 @@ using Xunit;
 
 namespace BarkFluff.Client.WinUI.Tests.SignalInterop;
 
+[Collection("Signal shim")]
 public sealed class SignalProtocolTests
 {
     private const string Peer = "node-device";

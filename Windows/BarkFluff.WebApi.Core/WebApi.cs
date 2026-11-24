@@ -7,7 +7,7 @@ using Grpc.Net.Client;
 
 namespace BarkFluff.WebApi.Core
 {
-    public class WebApi : IDisposable
+    public partial class WebApi : IDisposable
     {
         private bool _disposed = false;
 
