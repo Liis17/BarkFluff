@@ -412,6 +412,10 @@ namespace BarkFluff.WebApi.Core
             }, parameters).WaitAsync(cancellationToken);
         }
 
+        public Task<(ErrorReturner error, Proto.Messages.SearchMessagesResponse? page)> SearchMessagesAsync(
+            GlobalParam parameters, Proto.Messages.SearchMessagesRequest request, CancellationToken cancellationToken = default) =>
+            MessageManager.SearchMessagesAsync(parameters, request, cancellationToken);
+
         public Task<(ErrorReturner error, List<Proto.Messages.Chat>? chats, int totalCount)> ListChatsPageAsync(
             GlobalParam globalParam, int offset, int size, CancellationToken cancellationToken) =>
             MessageManager.ListChatsPageAsync(globalParam, offset, size, cancellationToken);
@@ -430,6 +434,8 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessagesWithOffset(GlobalParam globalParam, string chatId, long fromMessageId, int offsetBefore, int offsetAfter) => await MessageManager.GetMessagesWithOffset(globalParam, chatId, fromMessageId, offsetBefore, offsetAfter);
         public async Task<ErrorReturner> MarkMessageAsRead(GlobalParam globalParam, List<long> messageId) => await MessageManager.MarkMessageAsRead(globalParam, messageId);
         public async Task<(ErrorReturner error, string chatId)> GetPersonChatId(GlobalParam globalParam, long userId) => await MessageManager.GetPersonChatId(globalParam, userId);
+        public Task<(ErrorReturner error, string chatId)> GetPersonChatId(GlobalParam globalParam, long userId, CancellationToken cancellationToken) =>
+            MessageManager.GetPersonChatId(globalParam, userId, cancellationToken);
         public async Task<(ErrorReturner error, List<Proto.Messages.ListChatMembersResponse.Types.DetailedChatMemberInfo>? members, int totalCount)> ListChatMembers(GlobalParam globalParam, string chatId, int offset = 0, int size = 50) => await MessageManager.ListChatMembers(globalParam, chatId, offset, size);
         public async Task<(ErrorReturner error, List<Proto.Messages.ChatAttachmentInfo>? attachments, int totalCount)> ListChatAttachments(GlobalParam globalParam, string chatId, Proto.Shared.MessageAttachmentType attachmentType = Proto.Shared.MessageAttachmentType.Unknown, bool sortDescending = true, int offset = 0, int size = 50) => await MessageManager.ListChatAttachments(globalParam, chatId, attachmentType, sortDescending, offset, size);
         public async Task<ErrorReturner> KickUser(GlobalParam globalParam, string chatId, long userId) => await MessageManager.KickUser(globalParam, chatId, userId);
@@ -575,6 +581,10 @@ namespace BarkFluff.WebApi.Core
 
         #region Поиск (делегирование к SearchManager)
         public async Task<(ErrorReturner error, List<UserData>? userList)> SearchUser(GlobalParam globalParam, string userNameSearched) => await SearchManager.SearchUser(globalParam, userNameSearched);
+
+        public Task<(ErrorReturner error, List<UserData>? userList)> SearchUser(
+            GlobalParam globalParam, string userNameSearched, CancellationToken cancellationToken) =>
+            SearchManager.SearchUser(globalParam, userNameSearched, cancellationToken);
         #endregion
 
         #region Файлы (делегирование к FileManager)

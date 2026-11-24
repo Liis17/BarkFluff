@@ -275,9 +275,11 @@ internal sealed class FakeMessengerService : IMessengerService, IOutgoingMessage
 
     public List<Chat> Chats { get; } = [];
     public Func<string, Task<Chat?>>? FindChat { get; set; }
+    public Func<string, CancellationToken, Task<Chat?>>? OnFindChat { get; set; }
 
     public Task<Chat?> FindChatAsync(string chatId, CancellationToken cancellationToken = default) =>
-        FindChat?.Invoke(chatId) ?? Task.FromResult<Chat?>(null);
+        OnFindChat?.Invoke(chatId, cancellationToken) ?? FindChat?.Invoke(chatId) ??
+        Task.FromResult(Chats.FirstOrDefault(chat => chat.Id == chatId));
 
     public List<MessageModel> Messages { get; } = [];
     public List<PrivateMessageModel> PrivateMessages { get; } = [];
@@ -302,10 +304,18 @@ internal sealed class FakeMessengerService : IMessengerService, IOutgoingMessage
     public UserData? UserData { get; set; }
 
     public List<UserData> SearchUsers { get; } = [];
+    public Func<SearchMessagesRequest, CancellationToken, Task<(ErrorReturner, SearchMessagesResponse?)>>? OnSearchMessages { get; set; }
+
+    public Task<(ErrorReturner error, SearchMessagesResponse? page)> SearchMessagesAsync(
+        SearchMessagesRequest request, CancellationToken cancellationToken) =>
+        OnSearchMessages?.Invoke(request, cancellationToken) ??
+        Task.FromResult<(ErrorReturner, SearchMessagesResponse?)>((new(true), new()));
+
 
     public List<string> SearchQueries { get; } = [];
 
     public bool SearchUsersFail { get; set; }
+    public Func<string, CancellationToken, Task<(ErrorReturner, List<UserData>?)>>? OnSearchPeople { get; set; }
 
     public bool UserDataFails { get; set; }
 
@@ -345,6 +355,13 @@ internal sealed class FakeMessengerService : IMessengerService, IOutgoingMessage
         ChatSnapshot?.Invoke() ?? Task.FromResult<(ErrorReturner, List<Chat>?)>(ChatsFail
             ? (new ErrorReturner(false, "чаты недоступны"), null)
             : (new ErrorReturner(true), [.. Chats]));
+
+    public Func<CancellationToken, Task<(ErrorReturner, List<Chat>?)>>? FirstChatPage { get; set; }
+
+    public Task<(ErrorReturner error, List<Chat>? chats)> GetFirstChatPageAsync(CancellationToken cancellationToken) =>
+        FirstChatPage?.Invoke(cancellationToken) ?? Task.FromResult<(ErrorReturner, List<Chat>?)>(ChatsFail
+            ? (new ErrorReturner(false, "чаты недоступны"), null)
+            : (new ErrorReturner(true), Chats.Take(50).ToList()));
 
     public Func<string, string, long, IReadOnlyList<string>, Task<(ErrorReturner, MessageModel?)>>? SendAttachments { get; set; }
     public Func<string, BarkFluff.Proto.Files.UploadFileType, IProgress<double>, CancellationToken, Task<(ErrorReturner, string?)>>? UploadAttachment { get; set; }
@@ -428,6 +445,8 @@ internal sealed class FakeMessengerService : IMessengerService, IOutgoingMessage
     public Task<(ErrorReturner error, List<UserData>? users)> SearchUsersAsync(string query, CancellationToken cancellationToken = default)
     {
         SearchQueries.Add(query);
+        if (OnSearchPeople is not null)
+            return OnSearchPeople(query, cancellationToken);
         return Task.FromResult<(ErrorReturner, List<UserData>?)>(SearchUsersFail
             ? (new ErrorReturner(false, "search failed"), null)
             : (new ErrorReturner(true), [.. SearchUsers]));

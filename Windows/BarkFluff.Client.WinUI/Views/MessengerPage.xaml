@@ -113,6 +113,43 @@
             </Grid>
         </DataTemplate>
 
+        <DataTemplate x:Key="ChatSearchButtonTemplate" x:DataType="vm:ChatItemViewModel">
+            <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                    AutomationProperties.Name="{x:Bind Title, Mode=OneWay}" Tag="{x:Bind}"
+                    Background="Transparent" BorderThickness="0" Click="OnChatSearchResultClick">
+                <ContentControl Content="{x:Bind}" ContentTemplate="{StaticResource ChatListItemTemplate}"
+                                HorizontalContentAlignment="Stretch" />
+            </Button>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PeopleSearchButtonTemplate" x:DataType="vm:UserSearchResultViewModel">
+            <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                    AutomationProperties.Name="{x:Bind DisplayName}" Tag="{x:Bind}"
+                    Background="Transparent" BorderThickness="0" Click="OnPeopleSearchResultClick">
+                <ContentControl Content="{x:Bind}" ContentTemplate="{StaticResource UserSearchResultTemplate}"
+                                HorizontalContentAlignment="Stretch" />
+            </Button>
+        </DataTemplate>
+
+        <DataTemplate x:Key="MessageSearchButtonTemplate" x:DataType="vm:MessageSearchResultViewModel">
+            <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                    AutomationProperties.Name="{x:Bind AccessibleName}" Tag="{x:Bind}"
+                    Background="Transparent" BorderThickness="0" Click="OnMessageSearchResultClick">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{x:Bind ChatTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis">
+                        <Run Text="{x:Bind AuthorName}" /> <Run Text=" · " /> <Run Text="{x:Bind Date}" />
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis">
+                        <Run Text="{x:Bind BeforeMatch}" /><Run Text="{x:Bind Match}" FontWeight="Bold"
+                            Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" /><Run Text="{x:Bind AfterMatch}" />
+                    </TextBlock>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Loaded="OnSearchAttachmentIconsLoaded"
+                                Tag="{x:Bind AttachmentTypes}" />
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+
         <!--
             Плитка медиа внутри пузыря: превью всегда, плеер раскрывается кнопкой. Адрес плееру
             передаёт Tag кнопки — без него PlayVideoBehavior молча ничего не сделает.
@@ -451,37 +488,86 @@
                            Visibility="{x:Bind ViewModel.FolderActionError, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
             </StackPanel>
 
-            <TextBox Grid.Row="1" PlaceholderText="{StaticResource Messenger_Search}" Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <Grid Grid.Row="1" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox PlaceholderText="{StaticResource Messenger_Search}"
+                         AutomationProperties.Name="{StaticResource Messenger_Search}"
+                         Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Column="1" AutomationProperties.Name="{StaticResource Messenger_SearchFilters}">
+                    <FontIcon Glyph="&#xE71C;" />
+                    <Button.Flyout>
+                        <Flyout x:Name="SearchFiltersFlyout" Opening="OnSearchFiltersOpening">
+                            <ScrollViewer MaxHeight="480">
+                                <StackPanel Width="280" Spacing="8">
+                                    <ComboBox x:Name="SearchAuthorPicker" Header="{StaticResource Messenger_SearchAuthor}"
+                                              HorizontalAlignment="Stretch" />
+                                    <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                                               Text="{StaticResource Messenger_SearchAuthorHint}" />
+                                    <CalendarDatePicker x:Name="SearchFromPicker" Header="{StaticResource Messenger_SearchFrom}"
+                                                        HorizontalAlignment="Stretch" />
+                                    <CalendarDatePicker x:Name="SearchThroughPicker" Header="{StaticResource Messenger_SearchThrough}"
+                                                        HorizontalAlignment="Stretch" />
+                                    <ComboBox x:Name="SearchPresencePicker" Header="{StaticResource Messenger_Attachment}"
+                                              SelectionChanged="OnSearchPresenceChanged" HorizontalAlignment="Stretch">
+                                        <ComboBoxItem Content="{StaticResource Messenger_SearchAnyAttachment}" />
+                                        <ComboBoxItem Content="{StaticResource Messenger_SearchWithAttachment}" />
+                                        <ComboBoxItem Content="{StaticResource Messenger_SearchWithoutAttachment}" />
+                                    </ComboBox>
+                                    <ItemsControl x:Name="SearchAttachmentPicker" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="{StaticResource Messenger_SearchApply}" Click="OnSearchFiltersApply" />
+                                        <Button Content="{StaticResource Messenger_SearchReset}" Click="OnSearchFiltersReset" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </Grid>
 
             <Grid Grid.Row="2" Margin="0,12,0,0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <TextBlock Grid.Row="0"
-                           Margin="0,0,0,4"
-                           Style="{StaticResource MutedText}"
-                           Text="{StaticResource Messenger_SearchResults}"
-                           Visibility="{x:Bind ViewModel.IsSearchResultsVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
-
-                <ListView Grid.Row="1"
-                          MaxHeight="220"
-                          Padding="0"
-                          Background="Transparent"
-                          BorderThickness="0"
-                          IsItemClickEnabled="True"
-                          ItemClick="OnSearchResultItemClick"
-                          ItemTemplate="{StaticResource UserSearchResultTemplate}"
-                          ItemsSource="{x:Bind ViewModel.SearchResults}"
-                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                          ScrollViewer.VerticalScrollBarVisibility="Auto"
-                          SelectionMode="None"
-                          Visibility="{x:Bind ViewModel.IsSearchResultsVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <ScrollViewer Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel Spacing="8">
+                        <StackPanel Visibility="{x:Bind ViewModel.IsChatSearchResultsVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Messenger_SearchChats}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.ChatSearchResults, Mode=OneWay}"
+                                          ItemTemplate="{StaticResource ChatSearchButtonTemplate}" />
+                        </StackPanel>
+                        <StackPanel Visibility="{x:Bind ViewModel.IsSearchResultsVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Messenger_SearchResults}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.SearchResults}" ItemTemplate="{StaticResource PeopleSearchButtonTemplate}" />
+                        </StackPanel>
+                        <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.PeopleSearchError, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}">
+                            <TextBlock TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+                                       Text="{x:Bind ViewModel.PeopleSearchError, Mode=OneWay}" />
+                            <Button Content="{StaticResource Messenger_SearchRetry}" Command="{x:Bind ViewModel.RetryPeopleSearchCommand}" />
+                        </StackPanel>
+                        <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.ShowMessageSearch, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Messenger_SearchMessages}" />
+                            <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                                       Text="{StaticResource Messenger_SearchRegularOnly}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.MessageSearchResults}" ItemTemplate="{StaticResource MessageSearchButtonTemplate}" />
+                            <ProgressRing Width="20" Height="20" IsActive="{x:Bind ViewModel.IsMessageSearchBusy, Mode=OneWay}"
+                                          AutomationProperties.Name="{StaticResource Messenger_SearchMessages}"
+                                          Visibility="{x:Bind ViewModel.IsMessageSearchBusy, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Messenger_SearchEmpty}"
+                                       Visibility="{x:Bind ViewModel.ShowMessageSearchEmpty, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <TextBlock TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+                                       Text="{x:Bind ViewModel.MessageSearchError, Mode=OneWay}"
+                                       Visibility="{x:Bind ViewModel.MessageSearchError, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                            <Button Content="{StaticResource Messenger_SearchRetry}" Command="{x:Bind ViewModel.RetryMessageSearchCommand}"
+                                    Visibility="{x:Bind ViewModel.CanRetryMessageSearch, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <Button Content="{StaticResource Messenger_SearchMore}" Command="{x:Bind ViewModel.LoadMoreMessagesCommand}"
+                                    Visibility="{x:Bind ViewModel.CanLoadMoreMessages, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
 
                 <!--  Свойства списка заданы прямо на контроле: WinUI не публикует базовый стиль ListView.  -->
-                <ListView Grid.Row="2"
+                <ListView Visibility="{x:Bind ViewModel.IsChatListVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                           Padding="0"
                           Background="Transparent"
                           BorderThickness="0"
@@ -493,7 +579,7 @@
                           SelectedItem="{x:Bind ViewModel.SelectedChat, Mode=TwoWay}">
                 </ListView>
 
-                <ProgressRing Grid.RowSpan="3"
+                <ProgressRing
                               HorizontalAlignment="Center"
                               VerticalAlignment="Top"
                               IsActive="True"

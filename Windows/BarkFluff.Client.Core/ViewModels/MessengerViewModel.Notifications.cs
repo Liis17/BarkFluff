@@ -129,24 +129,27 @@ public sealed partial class MessengerViewModel
         }
     }
 
-    public async Task<bool> OpenNotificationChatAsync(MessageNotificationTarget target)
+    public Task<bool> OpenNotificationChatAsync(MessageNotificationTarget target)
     {
         var session = _realtimeSession;
-        if (session is null || !IsCurrent(session) || !target.Matches(session.Node, session.UserId))
-        {
-            return false;
-        }
+        return session is not null && IsCurrent(session) && target.Matches(session.Node, session.UserId)
+            ? OpenChatByIdAsync(session, target.ChatId, session.Lifetime.Token)
+            : Task.FromResult(false);
+    }
 
+    private async Task<bool> OpenChatByIdAsync(
+        RealtimeSession session, string chatId, CancellationToken token, Func<bool>? stillRequested = null)
+    {
         var activation = ++_notificationActivation;
         var version = _chatVersion;
-        var token = session.Lifetime.Token;
-        bool CanOpen() => IsCurrent(session) && version == _chatVersion && activation == _notificationActivation;
-        var chat = Chats.FirstOrDefault(item => item.Id == target.ChatId);
+        bool CanOpen() => IsCurrent(session) && version == _chatVersion && activation == _notificationActivation &&
+            !token.IsCancellationRequested && stillRequested?.Invoke() != false;
+        var chat = Chats.FirstOrDefault(item => item.Id == chatId);
         if (chat is null)
         {
             try
             {
-                var definition = await _messenger.FindChatAsync(target.ChatId, token).WaitAsync(token);
+                var definition = await _messenger.FindChatAsync(chatId, token).WaitAsync(token);
                 if (!CanOpen() || definition is null)
                 {
                     return false;
@@ -158,7 +161,7 @@ public sealed partial class MessengerViewModel
                     return false;
                 }
 
-                chat = Chats.FirstOrDefault(existing => existing.Id == target.ChatId);
+                chat = Chats.FirstOrDefault(existing => existing.Id == chatId);
                 if (chat is null)
                 {
                     chat = item;
@@ -173,6 +176,9 @@ public sealed partial class MessengerViewModel
                 return false;
             }
         }
+
+        if (!CanOpen())
+            return false;
 
         IsProfileVisible = false;
         if (ReferenceEquals(SelectedChat, chat))

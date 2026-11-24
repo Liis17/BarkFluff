@@ -210,6 +210,7 @@ public sealed class MessengerRealtimeTests
         var viewModel = MessengerTestDoubles.CreateViewModel(messenger);
 
         await viewModel.LoadAsync();
+        viewModel.SearchDelay = (_, _) => Task.CompletedTask;
         viewModel.SearchText = "li_";
 
         Assert.Equal(["li_"], messenger.SearchQueries);

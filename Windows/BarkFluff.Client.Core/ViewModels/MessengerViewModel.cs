@@ -7,6 +7,7 @@ using BarkFluff.Client.Core.Infrastructure.Threading;
 using BarkFluff.Client.Core.Markdown;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
+using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -33,7 +34,6 @@ public sealed partial class MessengerViewModel : ObservableObject
     // До первого подключения индикатор не показываем: у стримов ещё не было повода упасть.
     private bool _isRealtimeConnected = true;
     private bool _isPresenceConnected = true;
-    private int _searchRequestVersion;
 
     public MessengerViewModel(
         IMessengerService messenger,
@@ -210,9 +210,6 @@ public sealed partial class MessengerViewModel : ObservableObject
         Profile.Reset();
         Chats.Clear();
         VisibleChats.Clear();
-        SearchResults.Clear();
-        _searchRequestVersion++;
-        OnPropertyChanged(nameof(IsSearchResultsVisible));
         Messages.Clear();
         DraftText = string.Empty;
         SearchText = string.Empty;
@@ -225,56 +222,6 @@ public sealed partial class MessengerViewModel : ObservableObject
         CancelPrivateUnlock();
     }
 
-    partial void OnSearchTextChanged(string value)
-    {
-        ApplyChatFilter();
-        _ = LoadServerSearchAsync(value);
-    }
-
-    private async Task LoadServerSearchAsync(string value)
-    {
-        var query = value.Trim();
-        var requestVersion = ++_searchRequestVersion;
-        SearchResults.Clear();
-        OnPropertyChanged(nameof(IsSearchResultsVisible));
-        if (query.Length < 3)
-        {
-            return;
-        }
-
-        try
-        {
-            var result = await _messenger.SearchUsersAsync(query);
-            if (requestVersion != _searchRequestVersion)
-            {
-                return;
-            }
-
-            if (!result.error.IsSuccess || result.users is null)
-            {
-                ReportBackgroundError(result.error);
-                return;
-            }
-
-            foreach (var user in result.users)
-            {
-                SearchResults.Add(new UserSearchResultViewModel(user, _localization));
-            }
-
-            OnPropertyChanged(nameof(IsSearchResultsVisible));
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception)
-        {
-            if (requestVersion == _searchRequestVersion)
-            {
-                ActionError = _localization.GetString("Messenger_ActionFailed");
-            }
-        }
-    }
-
     /// <summary>
     /// Выбранный чат остаётся в выборке даже когда не подходит под фильтр: иначе список
     /// сбросил бы <c>SelectedItem</c> и открытая переписка закрылась бы на середине фразы.
@@ -282,11 +229,11 @@ public sealed partial class MessengerViewModel : ObservableObject
     private void ApplyChatFilter()
     {
         var query = SearchText.Trim();
+        UpdateChatSearchResults(query);
         var filtered = Chats.Where(chat =>
             query.Length == 0
             || chat == SelectedChat
-            || chat.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase)
-            || chat.Username.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+            || MatchesChat(chat, query)).ToArray();
 
         var wanted = filtered.ToHashSet();
         for (var index = VisibleChats.Count - 1; index >= 0; index--)
@@ -649,36 +596,49 @@ public sealed partial class MessengerViewModel : ObservableObject
         var existing = Chats.FirstOrDefault(chat => chat.PeerUserId == result.UserId);
         if (existing is not null)
         {
-            SearchText = string.Empty;
+            ResetSearch();
             SelectedChat = existing;
             return;
         }
 
         ActionError = null;
-        var chatIdResult = await _messenger.GetPersonChatIdAsync(result.UserId);
+        var token = session.Lifetime.Token;
+        (ErrorReturner error, string chatId) chatIdResult;
+        try
+        {
+            chatIdResult = await _messenger.GetPersonChatIdAsync(result.UserId, token).WaitAsync(token);
+        }
+        catch (Exception) when (token.IsCancellationRequested)
+        {
+            return;
+        }
         if (!IsCurrent(session))
         {
             return;
         }
-        if (!chatIdResult.error.IsSuccess)
+        if (chatIdResult.error is not { IsSuccess: true })
         {
-            ActionError = DescribeError(chatIdResult.error);
+            ActionError = chatIdResult.error is { } error
+                ? DescribeError(error)
+                : _localization.GetString("Messenger_ActionFailed");
             return;
         }
 
         var request = session.ChatSnapshotRequest;
-        var chatsResult = await _messenger.GetChatsAsync();
+        Chat? definition;
+        try
+        {
+            definition = await _messenger.FindChatAsync(chatIdResult.chatId, token).WaitAsync(token);
+        }
+        catch (Exception) when (token.IsCancellationRequested)
+        {
+            return;
+        }
         if (!IsCurrent(session))
         {
             return;
         }
-        if (!chatsResult.error.IsSuccess || chatsResult.chats is null)
-        {
-            ActionError = DescribeError(chatsResult.error);
-            return;
-        }
 
-        var definition = chatsResult.chats.FirstOrDefault(chat => chat.Id == chatIdResult.chatId);
         if (definition is null)
         {
             ActionError = _localization.GetString("Messenger_ActionFailed");
@@ -711,7 +671,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             }
         }
 
-        SearchText = string.Empty;
+        ResetSearch();
         SelectedChat = item;
     }
 
@@ -1143,26 +1103,42 @@ public sealed partial class MessengerViewModel : ObservableObject
     private async Task RefreshUnreadStateAsync(ChatItemViewModel chat)
     {
         var session = _realtimeSession;
-        var revision = session?.Journal.UnreadRevision(chat.Id, chat.IsPrivate);
-        var result = await _messenger.GetChatsAsync();
-        if (!IsCurrent(session) || revision != session!.Journal.UnreadRevision(chat.Id, chat.IsPrivate))
-        {
-            return;
-        }
-        if (!result.error.IsSuccess || result.chats is null)
-        {
-            ReportBackgroundError(result.error);
-            return;
-        }
-
-        var updatedChat = result.chats.FirstOrDefault(item => item.Id == chat.Id);
-        if (updatedChat is null)
+        if (session is null || !IsCurrent(session))
         {
             return;
         }
 
-        chat.UnreadCount = updatedChat.CountUnread;
-        chat.FirstUnreadMessageId = updatedChat.FirstUnreadMessageId;
+        var token = session.Lifetime.Token;
+        var revision = session.Journal.UnreadRevision(chat.Id, chat.IsPrivate);
+        (ErrorReturner error, List<Chat>? chats) result;
+        try
+        {
+            result = await _messenger.GetFirstChatPageAsync(token).WaitAsync(token);
+        }
+        catch (Exception) when (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _uiDispatcher.Post(() =>
+        {
+            if (!IsCurrent(session) || revision != session.Journal.UnreadRevision(chat.Id, chat.IsPrivate))
+            {
+                return;
+            }
+            if (!result.error.IsSuccess || result.chats is null)
+            {
+                ReportBackgroundError(result.error);
+                return;
+            }
+
+            var updatedChat = result.chats.FirstOrDefault(item => item.Id == chat.Id);
+            if (updatedChat is not null)
+            {
+                chat.UnreadCount = updatedChat.CountUnread;
+                chat.FirstUnreadMessageId = updatedChat.FirstUnreadMessageId;
+            }
+        });
     }
 }
 

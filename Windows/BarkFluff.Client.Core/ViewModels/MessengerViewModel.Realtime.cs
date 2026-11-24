@@ -20,6 +20,7 @@ public sealed partial class MessengerViewModel
         internal ResyncLoop ChatRefresh { get; set; } = null!;
         internal ResyncLoop PinRefresh { get; set; } = null!;
         internal bool ReportChatRefreshError { get; set; }
+        internal bool MessageSearchUnavailable { get; set; }
         internal long ChatSnapshotRequest { get; set; }
         internal Dictionary<string, DateTimeOffset?> MutedChats { get; set; } = [];
         internal Dictionary<string, long>? PendingMuteHints { get; set; }
@@ -93,6 +94,7 @@ public sealed partial class MessengerViewModel
     private void EndRealtimeSession()
     {
         var session = _realtimeSession;
+        ResetSearch();
         _ = CancelAttachmentsAsync();
         _stickerFrames?.EndSession();
         StickerPicker?.Reset();

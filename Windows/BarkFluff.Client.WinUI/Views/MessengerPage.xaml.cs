@@ -48,14 +48,6 @@ public sealed partial class MessengerPage : Page
     private void OnFeedScrollerSizeChanged(object sender, SizeChangedEventArgs eventArgs) =>
         FeedHost.MinHeight = eventArgs.NewSize.Height;
 
-    private async void OnSearchResultItemClick(object sender, ItemClickEventArgs eventArgs)
-    {
-        if (eventArgs.ClickedItem is UserSearchResultViewModel result)
-        {
-            await ViewModel.OpenSearchResultAsync(result);
-        }
-    }
-
     private void OnChatListContextRequested(UIElement sender, ContextRequestedEventArgs args)
     {
         var list = (ListView)sender;

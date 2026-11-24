@@ -1,3 +1,4 @@
+using BarkFluff.Proto.Messages;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
@@ -134,6 +135,27 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (Exception ex)
             {
                 return (new ErrorReturner(false, "Ошибка получения чатов"), null);
+            }
+        }
+
+        internal async Task<(ErrorReturner error, SearchMessagesResponse? page)> SearchMessagesAsync(
+            GlobalParam parameters, SearchMessagesRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.SearchMessagesAsync(request, cancellationToken: cancellationToken);
+                    return (new ErrorReturner(true), (SearchMessagesResponse?)response);
+                }, parameters);
+            }
+            catch (Grpc.Core.RpcException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                return (new ErrorReturner(false, errorCode: (int)ex.StatusCode), null);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return (new ErrorReturner(false), null);
             }
         }
 
@@ -439,13 +461,14 @@ namespace BarkFluff.WebApi.Core.Managers
         /// <summary>
         /// Получить идентификатор персонального чата с указанным пользователем.
         /// </summary>
-        public async Task<(ErrorReturner error, string chatId)> GetPersonChatId(GlobalParam globalParam, long userId)
+        public async Task<(ErrorReturner error, string chatId)> GetPersonChatId(GlobalParam globalParam, long userId, CancellationToken cancellationToken = default)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    var response = await MessagesAC!.GetPersonChatIdAsync(new Proto.Messages.GetPersonChatIdRequest { UserId = userId });
+                    var response = await MessagesAC!.GetPersonChatIdAsync(
+                        new Proto.Messages.GetPersonChatIdRequest { UserId = userId }, cancellationToken: cancellationToken);
                     return (new ErrorReturner(true), response.ChatId);
                 }, globalParam);
             }
@@ -469,7 +492,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Нет доступа к чату"), string.Empty);
             }
-            catch (Exception ex)
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
                 return (new ErrorReturner(false, "Ошибка получения идентификатора чата"), string.Empty);
             }

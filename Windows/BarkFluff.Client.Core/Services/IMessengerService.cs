@@ -17,6 +17,8 @@ public interface IMessengerService
 
     Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default);
 
+    Task<(ErrorReturner error, List<Chat>? chats)> GetFirstChatPageAsync(CancellationToken cancellationToken);
+
     Task<ErrorReturner> SetChatMutedAsync(string chatId, bool muted, CancellationToken cancellationToken);
     Task<(ErrorReturner error, List<BarkFluff.Proto.Users.MutedChat>? chats)> GetMutedChatsAsync(CancellationToken cancellationToken);
 
@@ -56,6 +58,7 @@ public interface IMessengerService
     Task<(ErrorReturner Error, UserData? Data)> GetUserDataAsync(long userId, CancellationToken cancellationToken = default);
 
     Task<(ErrorReturner error, List<UserData>? users)> SearchUsersAsync(string query, CancellationToken cancellationToken = default);
+    Task<(ErrorReturner error, SearchMessagesResponse? page)> SearchMessagesAsync(SearchMessagesRequest request, CancellationToken cancellationToken);
 
     Task<string> ResolveFileUrlAsync(string fileId, CancellationToken cancellationToken = default);
 
