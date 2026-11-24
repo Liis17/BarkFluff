@@ -86,6 +86,14 @@
             </Grid>
         </DataTemplate>
 
+        <DataTemplate x:Key="CallHistoryEntryTemplate" x:DataType="vm:CallHistoryEntry">
+            <StackPanel Spacing="2" Margin="0,6">
+                <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{x:Bind Details}" TextWrapping="Wrap"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+        </DataTemplate>
+
         <DataTemplate x:Key="UserSearchResultTemplate" x:DataType="vm:UserSearchResultViewModel">
             <Grid Margin="0,4" MinHeight="56">
                 <Grid.ColumnDefinitions>
@@ -498,6 +506,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBox PlaceholderText="{StaticResource Messenger_Search}"
                          AutomationProperties.Name="{StaticResource Messenger_Search}"
@@ -531,6 +540,12 @@
                             </ScrollViewer>
                         </Flyout>
                     </Button.Flyout>
+                </Button>
+                <Button Grid.Column="2" Click="OnCallHistoryClick"
+                        AutomationProperties.Name="{StaticResource Calls_History}"
+                        ToolTipService.ToolTip="{StaticResource Calls_History}"
+                        Visibility="{x:Bind ViewModel.ShowCallHistory, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <FontIcon Glyph="&#xE81C;" />
                 </Button>
             </Grid>
 
@@ -647,6 +662,13 @@
                             Visibility="{x:Bind ViewModel.ShowAudioCall, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <FontIcon FontSize="16" Glyph="&#xE717;" />
                     </Button>
+                    <Button AutomationProperties.Name="{StaticResource Calls_Video}"
+                            ToolTipService.ToolTip="{StaticResource Calls_Video}"
+                            Command="{x:Bind ViewModel.StartVideoCallCommand}"
+                            IsEnabled="{x:Bind ViewModel.CanStartAudioCall, Mode=OneWay}"
+                            Visibility="{x:Bind ViewModel.ShowAudioCall, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <FontIcon FontSize="16" Glyph="&#xE714;" />
+                    </Button>
                     <Button AutomationProperties.Name="{StaticResource Messenger_ChatOptions}"
                             ToolTipService.ToolTip="{StaticResource Messenger_ChatOptions}">
                         <FontIcon FontSize="16" Glyph="&#xE712;" />
@@ -661,58 +683,68 @@
                 </StackPanel>
             </Grid>
 
-            <!--  Плашка закрепа: клик уводит к закрепу и перелистывает на следующий, крестик открепляет.  -->
-            <Border Grid.Row="1"
-                    Margin="12,0,12,8"
-                    Padding="10,6"
-                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
-                    CornerRadius="8"
-                    Visibility="{x:Bind ViewModel.HasPinnedMessages, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Border Width="2"
-                            Margin="0,0,8,0"
-                            Background="{ThemeResource AccentFillColorDefaultBrush}"
-                            CornerRadius="1" />
-                    <TextBlock Grid.Column="1"
-                               Margin="0,0,8,0"
-                               VerticalAlignment="Center"
-                               FontSize="12"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="{x:Bind ViewModel.PinnedPreview.Counter, Mode=OneWay}"
-                               Visibility="{x:Bind ViewModel.PinnedPreview.HasCounter, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <Button Grid.Column="2"
-                            Padding="0"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Left"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Command="{x:Bind ViewModel.CyclePinnedMessageCommand}">
-                        <StackPanel>
-                            <TextBlock FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Text="{x:Bind ViewModel.PinnedPreview.Author, Mode=OneWay}"
-                                       TextTrimming="CharacterEllipsis" />
-                            <TextBlock FontSize="12"
-                                       Opacity=".8"
-                                       Text="{x:Bind ViewModel.PinnedPreview.Preview, Mode=OneWay}"
-                                       TextTrimming="CharacterEllipsis"
-                                       TextWrapping="NoWrap" />
-                        </StackPanel>
-                    </Button>
-                    <Button Grid.Column="3"
-                            Margin="8,0,0,0"
-                            Command="{x:Bind ViewModel.UnpinFromBarCommand}"
-                            ToolTipService.ToolTip="{StaticResource Messenger_Unpin}">
-                        <FontIcon FontSize="12" Glyph="&#xE711;" />
-                    </Button>
-                </Grid>
-            </Border>
+            <StackPanel Grid.Row="1">
+                <Border Margin="12,0,12,8" Padding="10,6" CornerRadius="8"
+                        Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                        Visibility="{x:Bind ViewModel.CanJoinGroupCall, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="{StaticResource Calls_GroupActive}" VerticalAlignment="Center" />
+                        <Button Content="{StaticResource Calls_Join}" Command="{x:Bind ViewModel.JoinGroupCallCommand}" />
+                    </StackPanel>
+                </Border>
+                <!--  Плашка закрепа: клик уводит к закрепу и перелистывает на следующий, крестик открепляет.  -->
+                <Border
+                        Margin="12,0,12,8"
+                        Padding="10,6"
+                        Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                        CornerRadius="8"
+                        Visibility="{x:Bind ViewModel.HasPinnedMessages, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="2"
+                                Margin="0,0,8,0"
+                                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                CornerRadius="1" />
+                        <TextBlock Grid.Column="1"
+                                   Margin="0,0,8,0"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="{x:Bind ViewModel.PinnedPreview.Counter, Mode=OneWay}"
+                                   Visibility="{x:Bind ViewModel.PinnedPreview.HasCounter, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <Button Grid.Column="2"
+                                Padding="0"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Command="{x:Bind ViewModel.CyclePinnedMessageCommand}">
+                            <StackPanel>
+                                <TextBlock FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Text="{x:Bind ViewModel.PinnedPreview.Author, Mode=OneWay}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock FontSize="12"
+                                           Opacity=".8"
+                                           Text="{x:Bind ViewModel.PinnedPreview.Preview, Mode=OneWay}"
+                                           TextTrimming="CharacterEllipsis"
+                                           TextWrapping="NoWrap" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="3"
+                                Margin="8,0,0,0"
+                                Command="{x:Bind ViewModel.UnpinFromBarCommand}"
+                                ToolTipService.ToolTip="{StaticResource Messenger_Unpin}">
+                            <FontIcon FontSize="12" Glyph="&#xE711;" />
+                        </Button>
+                    </Grid>
+                </Border>
+            </StackPanel>
 
             <ScrollViewer x:Name="FeedScroller"
                           Grid.Row="2"

@@ -1,17 +1,19 @@
 using System.Text.Json;
+using BarkFluff.Proto.Calls;
 
 namespace BarkFluff.Client.Core.Services.Calls;
 
 public interface ICallMedia
 {
     event Action<CallMediaEvent>? Received;
-    Task ConnectAsync(Guid callId, Uri url, string token, CancellationToken ct);
+    Task ConnectAsync(Guid callId, Uri url, string token, CancellationToken ct, bool video, CallAudioQuality quality);
     void Send(Guid callId, string type, string? deviceId = null);
     void Disconnect();
 }
 
 public sealed record CallAudioDevice(string Id, string Label, string Kind);
-public sealed record CallMediaEvent(Guid CallId, string Type, IReadOnlyList<CallAudioDevice>? Devices = null);
+public sealed record CallMediaEvent(Guid CallId, string Type, IReadOnlyList<CallAudioDevice>? Devices = null,
+    IReadOnlyList<long>? Participants = null);
 
 public sealed class CallRuntimeException : Exception;
 
@@ -31,11 +33,30 @@ public static class CallMediaBridge
                 !ReadString(root, "call_id", 36, out var id) || !Guid.TryParseExact(id, "D", out var parsed) || parsed != callId)
                 return false;
 
-            if (type is "connected" or "participant_joined" or "participant_left" or "error" or "disconnected")
+            if (type is "connected" or "participant_joined" or "participant_left" or "error" or "disconnected" or
+                "camera_on" or "camera_off" or "camera_error" or "screen_on" or "screen_off" or "screen_error" or "quality_error" or
+                "video_visible" or "video_hidden")
             {
                 if (root.EnumerateObject().Count() != 2)
                     return false;
                 message = new(callId, type);
+                return true;
+            }
+
+            if (type == "participants")
+            {
+                if (root.EnumerateObject().Count() != 3 || !root.TryGetProperty("participants", out var list) ||
+                    list.ValueKind != JsonValueKind.Array || list.GetArrayLength() > 256)
+                    return false;
+                var users = new HashSet<long>();
+                foreach (var item in list.EnumerateArray())
+                {
+                    if (item.ValueKind != JsonValueKind.String || !long.TryParse(item.GetString(),
+                            System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture,
+                            out var userId) || userId <= 0 || !users.Add(userId))
+                        return false;
+                }
+                message = new(callId, type, Participants: users.ToArray());
                 return true;
             }
 
@@ -50,7 +71,7 @@ public static class CallMediaBridge
                 if (device.ValueKind != JsonValueKind.Object || device.EnumerateObject().Count() != 3 ||
                     !ReadString(device, "id", 512, out var deviceId) || deviceId.Length == 0 ||
                     !ReadString(device, "label", 512, out var label) ||
-                    !ReadString(device, "kind", 12, out var kind) || kind is not ("audioinput" or "audiooutput"))
+                    !ReadString(device, "kind", 12, out var kind) || kind is not ("audioinput" or "audiooutput" or "videoinput"))
                     return false;
                 result.Add(new(deviceId, label, kind));
             }
@@ -62,6 +83,10 @@ public static class CallMediaBridge
             return false;
         }
     }
+
+    public static bool MatchesOrigin(string source, string expectedOrigin) =>
+        Uri.TryCreate(source, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps &&
+        uri.UserInfo.Length == 0 && uri.GetLeftPart(UriPartial.Authority) == expectedOrigin;
 
     public static bool TryGetEndpoint(string value, out Uri url)
     {

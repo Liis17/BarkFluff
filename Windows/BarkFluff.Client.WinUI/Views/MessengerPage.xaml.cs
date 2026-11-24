@@ -30,7 +30,10 @@ public sealed partial class MessengerPage : Page
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         if (ViewModel is not null)
+        {
+            ViewModel.CloseCallHistory();
             _ = ViewModel.LeaveMessengerAsync();
+        }
         base.OnNavigatedFrom(e);
     }
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using BarkFluff.Client.Core.Services.Calls;
+using BarkFluff.Proto.Calls;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
 
@@ -8,7 +9,8 @@ namespace BarkFluff.Client.WinUI.Infrastructure.Calls;
 internal sealed class WebViewCallMedia : ICallMedia
 {
     private const string DocumentHost = "call.barkfluff.invalid";
-    private const string DocumentUrl = "https://" + DocumentHost + "/room.html";
+    private const string DocumentOrigin = "https://" + DocumentHost;
+    private const string DocumentUrl = DocumentOrigin + "/room.html";
     private const string AssetHost = "call-assets.barkfluff.invalid";
     private const string AssetOrigin = "https://" + AssetHost;
 
@@ -17,11 +19,11 @@ internal sealed class WebViewCallMedia : ICallMedia
     public Panel? Host { get; set; }
     public event Action<CallMediaEvent>? Received;
 
-    public async Task ConnectAsync(Guid callId, Uri url, string token, CancellationToken ct)
+    public async Task ConnectAsync(Guid callId, Uri url, string token, CancellationToken ct, bool video, CallAudioQuality quality)
     {
         Disconnect();
         var host = Host ?? throw new InvalidOperationException();
-        var view = _view = new WebView2 { Width = 1, Height = 1, Opacity = 0, IsTabStop = false };
+        var view = _view = new WebView2 { IsTabStop = true, DefaultBackgroundColor = Microsoft.UI.Colors.Transparent };
         _callId = callId;
         host.Children.Add(view);
         try
@@ -38,6 +40,9 @@ internal sealed class WebViewCallMedia : ICallMedia
             return;
 
         var core = view.CoreWebView2;
+        // ScreenCaptureStarting доступен начиная со стабильного WebView2 Runtime 131.
+        var canShare = Version.TryParse(core.Environment.BrowserVersionString.Split(' ', 2)[0], out var browserVersion) &&
+            browserVersion >= new Version(131, 0, 2903, 40);
         var directory = Path.Combine(AppContext.BaseDirectory, "Resources", "Calls");
         var html = File.ReadAllBytes(Path.Combine(directory, "room.html"));
         // Документ и виртуальная папка используют разные хосты: WebView2 не
@@ -46,9 +51,10 @@ internal sealed class WebViewCallMedia : ICallMedia
         var wss = url.GetLeftPart(UriPartial.Authority);
         var https = new UriBuilder(url) { Scheme = "https" }.Uri.GetLeftPart(UriPartial.Authority);
         var headers = "Content-Type: text/html; charset=utf-8\r\n" +
+            $"Permissions-Policy: camera=(self), microphone=(self), display-capture={(canShare ? "(self)" : "()")}\r\n" +
             "Cache-Control: no-store\r\n" +
             "X-Content-Type-Options: nosniff\r\n" +
-            $"Content-Security-Policy: default-src 'none'; script-src {AssetOrigin}; connect-src {wss} {https}; " +
+            $"Content-Security-Policy: default-src 'none'; script-src {AssetOrigin}; style-src {AssetOrigin}; connect-src {wss} {https}; " +
             "media-src blob:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'";
 
 #if !DEBUG
@@ -81,13 +87,20 @@ internal sealed class WebViewCallMedia : ICallMedia
         core.PermissionRequested += (_, args) =>
         {
             // Разрешаем воспроизведение, инициированное кнопкой WinUI вне документа.
-            args.State = _view == view &&
-                args.PermissionKind is (CoreWebView2PermissionKind.Microphone or CoreWebView2PermissionKind.Autoplay) &&
-                Uri.TryCreate(args.Uri, UriKind.Absolute, out var origin) &&
-                origin.GetLeftPart(UriPartial.Authority) == "https://" + DocumentHost
+            args.State = _view == view && core.Source == DocumentUrl &&
+                args.PermissionKind is (CoreWebView2PermissionKind.Microphone or CoreWebView2PermissionKind.Camera or CoreWebView2PermissionKind.Autoplay) &&
+                CallMediaBridge.MatchesOrigin(args.Uri, DocumentOrigin)
                 ? CoreWebView2PermissionState.Allow : CoreWebView2PermissionState.Deny;
             args.SavesInProfile = false;
         };
+        if (canShare)
+        {
+            core.ScreenCaptureStarting += (_, args) =>
+            {
+                args.Cancel = _view != view || core.Source != DocumentUrl ||
+                    args.OriginalSourceFrameInfo?.Source != DocumentUrl;
+            };
+        }
         core.WebMessageReceived += (_, args) =>
         {
             if (_view == view && args.Source == DocumentUrl &&
@@ -112,7 +125,9 @@ internal sealed class WebViewCallMedia : ICallMedia
             {
                 sender.PostWebMessageAsJson(JsonSerializer.Serialize(new
                 {
-                    type = "connect", call_id = callId, url = url.AbsoluteUri, token
+                    type = "connect", call_id = callId, url = url.AbsoluteUri, token, video, canShare,
+                    audioQuality = (int)quality,
+                    lang = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ru" ? "ru" : "en"
                 }));
             }
             catch (Exception)

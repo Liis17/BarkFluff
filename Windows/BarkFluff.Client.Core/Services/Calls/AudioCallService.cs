@@ -9,9 +9,12 @@ namespace BarkFluff.Client.Core.Services.Calls;
 public enum AudioCallPhase { Outgoing, Incoming, Connecting, Active }
 
 public sealed record AudioCallStatus(Guid Id, long PeerId, string? PeerName, AudioCallPhase Phase,
-    DateTimeOffset? ActiveSince = null, bool Muted = false, IReadOnlyList<CallAudioDevice>? Devices = null);
+    DateTimeOffset? ActiveSince = null, bool Muted = false, IReadOnlyList<CallAudioDevice>? Devices = null,
+    Guid? ChatId = null, CallMediaType MediaType = CallMediaType.CallMediaAudio,
+    CallAudioQuality AudioQuality = CallAudioQuality.Auto, int VideoQuality = 0,
+    bool CameraOn = false, bool SharingScreen = false, bool VideoVisible = false, IReadOnlyList<long>? Participants = null);
 
-public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher, TimeProvider clock)
+public sealed partial class AudioCallService(ICallMedia media, IUiDispatcher dispatcher, TimeProvider clock)
 {
     private static readonly TimeSpan RingTimeout = TimeSpan.FromSeconds(50);
     // Как в Web: watchdog обнаруживает зависший поток, а предел возраста обновляет его до таймаута прокси.
@@ -27,6 +30,7 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
         public CancellationTokenSource? Stream;
         public EventHandler? Refresh;
         public bool Unsupported;
+        public bool AudioQualityUnsupported;
     }
 
     private sealed class Call(AudioCallStatus status)
@@ -37,6 +41,10 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
         public ITimer? Timeout;
         public bool Connected;
         public bool PeerJoined;
+        public int AudioQualityRevision;
+        public bool AudioQualityPending;
+        public CallAudioQuality MediaAudioQuality;
+        public readonly HashSet<long> Participants = [];
     }
 
     private Session? _session;
@@ -72,6 +80,7 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
 
     public async Task StopAsync()
     {
+        Available = false;
         Task finish = Task.CompletedTask;
         if (_session is { } session)
         {
@@ -85,7 +94,7 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
             session.Lifetime.Cancel();
             session.Lifetime.Dispose();
         }
-        Available = false;
+        ResetGroupLookup();
         Outcome = null;
         Changed?.Invoke();
         await finish;
@@ -110,6 +119,7 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
             {
                 Available = true;
                 Changed?.Invoke();
+                RefreshGroupCall();
             }
         }
 
@@ -178,17 +188,25 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
         Changed?.Invoke();
     }
 
-    public async Task InitiateAsync(long peerId, string peerName)
+    public async Task InitiateAsync(long peerId, string peerName,
+        CallMediaType mediaType = CallMediaType.CallMediaAudio, Guid? chatId = null)
     {
-        if (_session is not { } session || !IsCurrent(session) || !Available || _call is not null)
+        if (_session is not { } session || !IsCurrent(session) || !Available || _call is not null ||
+            (chatId is null ? peerId <= 0 : chatId == Guid.Empty) ||
+            mediaType is not (CallMediaType.CallMediaAudio or CallMediaType.CallMediaVideo))
             return;
 
-        var call = _call = new Call(new(Guid.Empty, peerId, peerName, AudioCallPhase.Outgoing));
+        var call = _call = new Call(new(Guid.Empty, peerId, peerName, AudioCallPhase.Outgoing, ChatId: chatId, MediaType: mediaType));
         Outcome = null;
         Changed?.Invoke();
         try
         {
-            var offer = await session.Signaling.InitiateAsync(peerId, session.Lifetime.Token);
+            var request = new InitiateCallRequest { MediaType = mediaType };
+            if (chatId is { } group)
+                request.ChatId = group.ToString("D");
+            else
+                request.CalleeUserId = peerId;
+            var offer = await session.Signaling.InitiateAsync(request, session.Lifetime.Token);
             if (!IsCurrent(session))
                 return;
             if (offer is null || !Guid.TryParse(offer.CallId, out var id) || id == Guid.Empty)
@@ -205,6 +223,11 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
             Changed?.Invoke();
             if (session.Early.Remove(id, out var early))
                 Receive(session, early);
+            if (chatId is not null && IsCurrent(session, call) && call.Status.Phase == AudioCallPhase.Outgoing)
+            {
+                BeginConnecting(session, call);
+                await ConnectAsync(session, call, offer.LivekitUrl, offer.AccessToken, offer.AudioQuality);
+            }
         }
         catch (Exception ex)
         {
@@ -225,12 +248,14 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
             return;
 
         var id = call.Status.Id;
+        var qualityRevision = call.AudioQualityRevision;
         BeginConnecting(session, call);
         try
         {
             var answer = await session.Signaling.AcceptAsync(id.ToString("D"), session.Lifetime.Token);
             if (IsCurrent(session, call))
-                await ConnectAsync(session, call, answer?.LivekitUrl, answer?.AccessToken);
+                await ConnectAsync(session, call, answer?.LivekitUrl, answer?.AccessToken,
+                    qualityRevision == call.AudioQualityRevision ? answer?.AudioQuality : call.Status.AudioQuality);
         }
         catch (Exception ex)
         {
@@ -283,12 +308,20 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
         {
             var remaining = incoming.StartedAt is { } started
                 ? started.ToDateTimeOffset() + RingTimeout - clock.GetUtcNow() : RingTimeout;
-            if (incoming.ChatId.Length != 0 || incoming.MediaType != CallMediaType.CallMediaAudio ||
+            Guid? chatId = null;
+            if (incoming.ChatId.Length != 0)
+            {
+                if (!Guid.TryParse(incoming.ChatId, out var group) || group == Guid.Empty)
+                    return;
+                chatId = group;
+            }
+            if (incoming.MediaType is not (CallMediaType.CallMediaAudio or CallMediaType.CallMediaVideo) ||
                 incoming.CallerUserId <= 0 || !Guid.TryParse(incoming.CallId, out var incomingId) ||
-                incomingId == Guid.Empty || IsClosed(session, incomingId))
+                incomingId == Guid.Empty)
                 return;
 
-            if (_call?.Status.Id == incomingId)
+            ObserveGroupRing(chatId, incomingId);
+            if (IsClosed(session, incomingId) || _call?.Status.Id == incomingId)
                 return;
             if (_call is not null)
             {
@@ -297,7 +330,8 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
                 return;
             }
 
-            var incomingCall = _call = new Call(new(incomingId, incoming.CallerUserId, null, AudioCallPhase.Incoming));
+            var incomingCall = _call = new Call(new(incomingId, incoming.CallerUserId, null, AudioCallPhase.Incoming,
+                ChatId: chatId, MediaType: incoming.MediaType));
             Outcome = null;
             SetTimeout(session, incomingCall, remaining <= TimeSpan.Zero || remaining > RingTimeout
                 ? RingTimeout : remaining, "Calls_Missed");
@@ -305,15 +339,27 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
             return;
         }
 
-        var rawId = item.Accepted?.CallId ?? item.Rejected?.CallId ?? item.Ended?.CallId;
-        if (!Guid.TryParse(rawId, out var id) || id == Guid.Empty || IsClosed(session, id))
+        var rawId = item.Accepted?.CallId ?? item.Rejected?.CallId ?? item.Ended?.CallId ??
+            item.Member?.CallId ?? item.AudioQuality?.CallId;
+        if (!Guid.TryParse(rawId, out var id) || id == Guid.Empty)
             return;
+        ObserveGroupEvent(id, item);
+        if (IsClosed(session, id))
+            return;
+
+        if (item.Member is not null || item.AudioQuality is not null)
+        {
+            if (_call is { } current && id == current.Status.Id)
+                ReceiveCallDetails(current, item);
+            return;
+        }
         if (_call is not { } call || id != call.Status.Id)
         {
             if (_call?.Status.Id == Guid.Empty && (session.Early.ContainsKey(id) || session.Early.Count < 64) &&
                 (!session.Early.TryGetValue(id, out var old) || old.Accepted is not null))
                 session.Early[id] = item;
-            if (_call?.Status.Id != Guid.Empty)
+            if (_call?.Status.Id != Guid.Empty && (item.Ended is not null || item.Rejected is not null ||
+                item.Accepted?.AcceptedByUserId == session.Signaling.UserId))
                 RememberClosed(session, id);
             return;
         }
@@ -330,12 +376,14 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
         else if (item.Rejected is not null)
             Clear(session, call, "Calls_Rejected");
         // Сервер исключает устройство, которое отправило AcceptCall, из рассылки.
-        else if (item.Accepted is not null && call.IsIncoming)
+        else if (item.Accepted is not null && call.IsIncoming &&
+                 (call.Status.ChatId is null || session.Signaling.UserId == item.Accepted.AcceptedByUserId))
             Clear(session, call, "Calls_AnsweredElsewhere");
         else if (item.Accepted is not null && call.Status.Phase == AudioCallPhase.Outgoing && call.Offer is { } offer)
         {
             BeginConnecting(session, call);
-            _ = ConnectAsync(session, call, offer.LivekitUrl, offer.AccessToken);
+            _ = ConnectAsync(session, call, offer.LivekitUrl, offer.AccessToken,
+                call.AudioQualityRevision == 0 ? offer.AudioQuality : call.Status.AudioQuality);
         }
     }
 
@@ -347,13 +395,17 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
         Changed?.Invoke();
     }
 
-    private async Task ConnectAsync(Session session, Call call, string? endpoint, string? token)
+    private async Task ConnectAsync(Session session, Call call, string? endpoint, string? token, CallAudioQuality? quality)
     {
         try
         {
             if (string.IsNullOrEmpty(token) || !CallMediaBridge.TryGetEndpoint(endpoint ?? string.Empty, out var url))
                 throw new InvalidOperationException();
-            await media.ConnectAsync(call.Status.Id, url, token, session.Lifetime.Token);
+            if (quality is { } received && Enum.IsDefined(received))
+                call.Status = call.Status with { AudioQuality = received };
+            call.MediaAudioQuality = call.Status.AudioQuality;
+            await media.ConnectAsync(call.Status.Id, url, token, session.Lifetime.Token,
+                call.Status.MediaType == CallMediaType.CallMediaVideo, call.Status.AudioQuality);
         }
         catch (Exception ex)
         {
@@ -373,21 +425,51 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
             case "disconnected":
                 _ = CloseAsync(session, call, false, "Calls_MediaError");
                 return;
-            case "participant_left":
+            case "participant_left" when call.Status.ChatId is null:
                 _ = CloseAsync(session, call, false, "Calls_Ended");
                 return;
             case "connected":
                 call.Connected = true;
+                SyncAudioQuality(call);
                 break;
             case "participant_joined":
                 call.PeerJoined = true;
+                break;
+            case "participants":
+                call.Participants.Clear();
+                call.Participants.UnionWith(message.Participants!);
+                UpdateParticipants(call);
+                break;
+            case "camera_on":
+            case "camera_off":
+                call.Status = call.Status with { CameraOn = message.Type == "camera_on" };
+                break;
+            case "screen_on":
+            case "screen_off":
+                call.Status = call.Status with { SharingScreen = message.Type == "screen_on" };
+                break;
+            case "video_visible":
+            case "video_hidden":
+                call.Status = call.Status with { VideoVisible = message.Type == "video_visible" };
+                break;
+            case "camera_error":
+            case "screen_error":
+            case "quality_error":
+                Outcome = message.Type switch
+                {
+                    "camera_error" => "Calls_CameraError",
+                    "screen_error" => "Calls_ScreenError",
+                    _ => "Calls_QualityError"
+                };
                 break;
             case "devices":
                 call.Status = call.Status with { Devices = message.Devices };
                 break;
         }
 
-        if (call.Status.Phase == AudioCallPhase.Connecting && call.Connected && call.PeerJoined)
+        if (_call != call)
+            return;
+        if (call.Status.Phase == AudioCallPhase.Connecting && call.Connected && (call.PeerJoined || call.Status.ChatId is not null))
         {
             call.Timeout?.Dispose();
             call.Timeout = null;
@@ -407,7 +489,7 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
         }), null, time, Timeout.InfiniteTimeSpan);
     }
 
-    private void HandleFailure(Session session, Call call, Exception ex)
+    private void HandleFailure(Session session, Call call, Exception ex, bool disableUnavailable = true)
     {
         var outcome = ex switch
         {
@@ -419,7 +501,7 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
             RpcException { StatusCode: StatusCode.Unavailable or StatusCode.DeadlineExceeded } => "Calls_Network",
             _ => "Calls_Failed"
         };
-        if (outcome == "Calls_Unavailable")
+        if (outcome == "Calls_Unavailable" && disableUnavailable)
         {
             session.Unsupported = true;
             session.Stream?.Cancel();
@@ -432,7 +514,7 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
     {
         var id = call.Status.Id;
         Clear(session, call, outcome);
-        if (id != Guid.Empty)
+        if (id != Guid.Empty && (reject || call.Status.ChatId is null || call.Participants.Count == 0))
             await FinishAsync(session, id, reject, stopping);
     }
 
@@ -463,6 +545,7 @@ public sealed class AudioCallService(ICallMedia media, IUiDispatcher dispatcher,
         media.Disconnect();
         Outcome = outcome;
         Changed?.Invoke();
+        RefreshGroupCall();
     }
 
     private bool IsClosed(Session session, Guid id) =>

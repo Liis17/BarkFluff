@@ -58,21 +58,42 @@
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
             <StackPanel Spacing="6">
-                <Grid x:Name="CallMediaHost" Width="1" Height="1" IsHitTestVisible="False" />
+                <Grid x:Name="CallMediaHost" Height="1" Visibility="Collapsed" />
                 <TextBlock x:Name="CallPeer" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <TextBlock x:Name="CallStatus" AutomationProperties.LiveSetting="Polite" />
                     <TextBlock x:Name="CallDuration" />
                 </StackPanel>
                 <VariableSizedWrapGrid x:Name="CallControls" Orientation="Horizontal">
-                    <Button x:Name="CallMute" Margin="0,0,8,4" Click="OnCallMute" />
+                    <ToggleButton x:Name="CallMute" Margin="0,0,8,4" Click="OnCallMute" />
                     <ComboBox x:Name="CallMicrophone" Margin="0,0,8,4" PlaceholderText="{StaticResource Calls_Microphone}"
                               AutomationProperties.Name="{StaticResource Calls_Microphone}" MaxWidth="220"
+                              DisplayMemberPath="Label" SelectionChanged="OnCallDeviceChanged" />
+                    <ToggleButton x:Name="CallCameraToggle" Margin="0,0,8,4" Click="OnCallCamera" />
+                    <ComboBox x:Name="CallCamera" Margin="0,0,8,4" PlaceholderText="{StaticResource Calls_Camera}"
+                              AutomationProperties.Name="{StaticResource Calls_Camera}" MaxWidth="220"
                               DisplayMemberPath="Label" SelectionChanged="OnCallDeviceChanged" />
                     <ComboBox x:Name="CallSpeaker" Margin="0,0,8,4" PlaceholderText="{StaticResource Calls_Speaker}"
                               AutomationProperties.Name="{StaticResource Calls_Speaker}" MaxWidth="220"
                               DisplayMemberPath="Label" SelectionChanged="OnCallDeviceChanged" />
+                    <ComboBox x:Name="CallAudioQuality" Margin="0,0,8,4" Header="{StaticResource Calls_AudioQuality}"
+                              AutomationProperties.Name="{StaticResource Calls_AudioQuality}" SelectionChanged="OnCallQualityChanged">
+                        <ComboBoxItem Content="{StaticResource Calls_QualityAuto}" />
+                        <ComboBoxItem Content="{StaticResource Calls_QualityLow}" />
+                        <ComboBoxItem Content="{StaticResource Calls_QualityMedium}" />
+                        <ComboBoxItem Content="{StaticResource Calls_QualityHigh}" />
+                    </ComboBox>
+                    <ComboBox x:Name="CallVideoQuality" Margin="0,0,8,4" Header="{StaticResource Calls_VideoQuality}"
+                              AutomationProperties.Name="{StaticResource Calls_VideoQuality}" SelectionChanged="OnCallQualityChanged">
+                        <ComboBoxItem Content="{StaticResource Calls_QualityAuto}" />
+                        <ComboBoxItem Content="{StaticResource Calls_QualityLow}" />
+                        <ComboBoxItem Content="{StaticResource Calls_QualityMedium}" />
+                        <ComboBoxItem Content="{StaticResource Calls_QualityHigh}" />
+                    </ComboBox>
                 </VariableSizedWrapGrid>
+                <TextBlock x:Name="CallParticipants" TextWrapping="Wrap" MaxLines="2"
+                           TextTrimming="CharacterEllipsis" AutomationProperties.LiveSetting="Polite" />
+                <TextBlock x:Name="CallNotice" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button x:Name="CallAccept" Content="{StaticResource Calls_Accept}" Click="OnCallAccept" />
                     <Button x:Name="CallEnd" Click="OnCallEnd" />

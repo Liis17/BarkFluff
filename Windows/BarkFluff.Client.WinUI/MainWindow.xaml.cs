@@ -47,7 +47,10 @@ public sealed partial class MainWindow : Window
 
         Activated += (_, args) =>
         {
+            var wasActive = _isWindowActive;
             _isWindowActive = args.WindowActivationState != WindowActivationState.Deactivated;
+            if (!wasActive && _isWindowActive && ContentFrame.Content is Views.MessengerPage)
+                _calls.RefreshGroupCall();
             UpdateNotificationWindowState();
             UpdateCallNotification();
         };

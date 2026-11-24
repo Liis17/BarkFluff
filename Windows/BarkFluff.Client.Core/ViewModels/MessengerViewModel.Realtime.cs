@@ -104,6 +104,7 @@ public sealed partial class MessengerViewModel
     private void EndRealtimeSession()
     {
         var session = _realtimeSession;
+        CloseCallHistory();
         _calls?.Stop();
         _lookupCallId = Guid.Empty;
         ResetSearch();

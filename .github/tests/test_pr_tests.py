@@ -33,6 +33,9 @@ class PrTestSelectionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assert_suites([path], [suite])
 
+    def test_winui_call_room_tests_select_script_suite(self):
+        self.assert_suites(['Windows/BarkFluff.Client.WinUI/tools/CallRoom.test.cjs'], ['windows', 'scripts'])
+
     def test_builder_tool_changes_select_backend_and_builder_suites(self):
         self.assert_suites(['Tools/BarkFluff.Builder/BuilderModel.cs'], ['backend', 'builder'])
         self.assert_suites(['Tests/BarkFluff.Builder.Tests/BuilderTests.cs'], ['backend', 'builder'])

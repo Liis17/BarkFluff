@@ -26,7 +26,7 @@
   <ItemGroup>
     <!--  Иконка трея адресуется как ms-appx:///Resources/Icons/barkfluff.ico — без Content она не попадёт в пакет.  -->
     <Content Include="Resources\Icons\barkfluff.ico" />
-    <Content Include="Resources\Calls\room.html;Resources\Calls\room.js"
+    <Content Include="Resources\Calls\room.html;Resources\Calls\room.js;Resources\Calls\room.css"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\Backend\BarkFluff.Web\wwwroot\js\vendor\livekit-client.bundle.js"
              Link="Resources\Calls\livekit-client.bundle.js"

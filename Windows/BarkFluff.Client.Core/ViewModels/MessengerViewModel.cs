@@ -317,6 +317,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         _historyFromCache = false;
         _feedIncludesTail = true;
         _chatVersion++;
+        ChangeCallChat();
         RefreshOutgoing();
         StickerPicker?.Close();
         if (!IsOffline)

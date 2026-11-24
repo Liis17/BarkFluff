@@ -693,6 +693,32 @@ namespace BarkFluff.WebApi.Core
                 new Proto.Calls.InitiateCallRequest { CalleeUserId = userId, MediaType = Proto.Calls.CallMediaType.CallMediaAudio },
                 deadline: DateTime.UtcNow.AddSeconds(15), cancellationToken: ct), parameters, ct, retry: false);
 
+        public Task<Proto.Calls.InitiateCallResponse> InitiateCallAsync(
+            Proto.Calls.InitiateCallRequest request, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.InitiateCallAsync(request,
+                deadline: DateTime.UtcNow.AddSeconds(15), cancellationToken: ct), parameters, ct, retry: false);
+
+        public Task<Proto.Calls.JoinCallResponse> JoinCallAsync(string callId, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.JoinCallAsync(new Proto.Calls.JoinCallRequest { CallId = callId },
+                deadline: DateTime.UtcNow.AddSeconds(15), cancellationToken: ct), parameters, ct);
+
+        public Task<Proto.Calls.SetCallAudioQualityResponse> SetCallAudioQualityAsync(
+            string callId, Proto.Calls.CallAudioQuality quality, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.SetCallAudioQualityAsync(
+                new Proto.Calls.SetCallAudioQualityRequest { CallId = callId, Quality = quality },
+                deadline: DateTime.UtcNow.AddSeconds(10), cancellationToken: ct), parameters, ct, retry: false);
+
+        public Task<Proto.Calls.GetActiveCallsResponse> GetActiveCallsAsync(
+            string chatId, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.GetActiveCallsAsync(
+                new Proto.Calls.GetActiveCallsRequest { ChatIds = { chatId } },
+                deadline: DateTime.UtcNow.AddSeconds(10), cancellationToken: ct), parameters, ct);
+
+        public Task<Proto.Calls.ListCallHistoryResponse> ListCallHistoryAsync(
+            Proto.Calls.ListCallHistoryRequest request, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.ListCallHistoryAsync(request,
+                deadline: DateTime.UtcNow.AddSeconds(10), cancellationToken: ct), parameters, ct);
+
         public Task<Proto.Calls.AcceptCallResponse> AcceptCallAsync(string callId, GlobalParam parameters, CancellationToken ct)
             => CallsManager.InvokeAsync(client => client.AcceptCallAsync(new Proto.Calls.AcceptCallRequest { CallId = callId },
                 deadline: DateTime.UtcNow.AddSeconds(15), cancellationToken: ct), parameters, ct);

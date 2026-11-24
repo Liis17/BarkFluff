@@ -1,0 +1,6 @@
+:root { color-scheme: light dark; font: 14px system-ui; }
+body { margin: 4px; }
+#share { margin-bottom: 4px; font: inherit; padding: 4px 8px; }
+#tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 4px; }
+figure { margin: 0; text-align: center; background: Canvas; color: CanvasText; }
+video { display: block; width: 100%; height: 100px; background: #151515; object-fit: contain; }
