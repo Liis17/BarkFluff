@@ -118,6 +118,7 @@ public sealed partial class MessengerViewModel
         var session = _realtimeSession;
         var version = _chatVersion;
         var revision = _pinnedRevision;
+        var cacheGeneration = session is null ? null : HistoryCacheGeneration(session, chat);
         ActionError = null;
         if (message.IsPinned)
         {
@@ -147,6 +148,7 @@ public sealed partial class MessengerViewModel
             }
             _pinnedBarIndex = 0;
             RefreshPinnedBar();
+            SaveHistoryPins(session!, chat, cacheGeneration);
             return;
         }
 
@@ -178,6 +180,7 @@ public sealed partial class MessengerViewModel
         }
         _pinnedBarIndex = 0;
         RefreshPinnedBar();
+        SaveHistoryPins(session!, chat, cacheGeneration);
     }
 
     /// <summary>
@@ -509,6 +512,7 @@ public sealed partial class MessengerViewModel
         }
 
         var token = session!.Lifetime.Token;
+        var cacheGeneration = HistoryCacheGeneration(session, chat);
         var (error, pinned) = await _messenger.GetPinnedMessagesAsync(chat.Id, token).WaitAsync(token);
         // Закрепы относятся ко всему чату и переживают замену окна истории.
         if (!IsOpen(session, chat, loadVersion))
@@ -545,6 +549,7 @@ public sealed partial class MessengerViewModel
             RefreshPinnedBar();
         }
         ApplyPinnedState();
+        SaveHistoryPins(session, chat, cacheGeneration);
         return true;
     }
 

@@ -211,7 +211,9 @@ public sealed partial class MessengerViewModel
         var floor = hasWindow && _olderHistory.HasMore ? Position(loaded[0]) : (DateTimeOffset.MinValue, 0L);
         var ceiling = hasWindow ? (loaded[^1].SentAt, loaded[^1].Id) : (DateTimeOffset.MaxValue, long.MaxValue);
         var followTail = _feedIncludesTail;
-        var firstUnread = !_feedLoaded && chat.UnreadCount > 0 ? chat.FirstUnreadMessageId : 0;
+        var firstUnread = _historyFromCache && !followTail ? _olderHistory.Cursor :
+            !_feedLoaded && chat.UnreadCount > 0 ? chat.FirstUnreadMessageId : 0;
+        var cacheGeneration = HistoryCacheGeneration(session, chat);
         var key = chat.IsPrivate ? await GetPrivateChatKeyAsync(chat).WaitAsync(token) : null;
         if (!isCurrent() || (chat.IsPrivate && key is null))
         {
@@ -237,6 +239,23 @@ public sealed partial class MessengerViewModel
             return false;
         }
 
+        var pageRange = HistoryRange(page, firstUnread);
+        if (_historyFromCache)
+        {
+            await PrepareHistoryAsync(session, chat, page, revision, isCurrent, token, prepared =>
+            {
+                SaveHistoryPage(session, chat, cacheGeneration, page, revision, pageRange);
+                ApplyNetworkHistory(session, chat, page, prepared, firstUnread);
+                if (reconnectFeed is not null && ReferenceEquals(_reconnectFeed, reconnectFeed))
+                {
+                    _reconnectFeed = null;
+                    reconnectFeed.TrySetResult();
+                }
+            }, key, pageRange);
+            return true;
+        }
+
+        var cachePages = new List<(List<HistoryRow> Rows, long Anchor)> { (page, firstUnread) };
         var latest = firstUnread == 0 ? page.MaxBy(Position) : null;
         var snapshot = page.ToDictionary(row => row.Id);
         var coversAll = firstUnread == 0 && page.Count < SnapshotPageSize;
@@ -272,6 +291,7 @@ public sealed partial class MessengerViewModel
             {
                 continue;
             }
+            cachePages.Add((window, anchor.Id));
 
             var position = Position(reference);
             var start = window.Count(row => Position(row).CompareTo(position) < 0) < SnapshotPageSize
@@ -308,6 +328,7 @@ public sealed partial class MessengerViewModel
             }
             if (bridgeError.IsSuccess && bridge.Count <= SnapshotPageSize && bridge.Any(row => row.Id == boundary.Id))
             {
+                // Страница перед границей используется только для проверки стыка.
                 tailConnected = true;
                 foreach (var row in bridge)
                 {
@@ -324,6 +345,8 @@ public sealed partial class MessengerViewModel
             IsHistoryUpdating = true;
             try
             {
+                foreach (var (cachePage, anchor) in cachePages)
+                    SaveHistoryPage(session, chat, cacheGeneration, cachePage, revision, HistoryRange(cachePage, anchor));
                 var chatUnchanged = session.Journal.ChatRevision(chat.Id, chat.IsPrivate) <= revision;
                 foreach (var existing in loaded.Where(item => covered.Contains(item.Id) && !snapshot.ContainsKey(item.Id)))
                 {
@@ -406,7 +429,7 @@ public sealed partial class MessengerViewModel
     private async Task PrepareHistoryAsync(RealtimeSession session, ChatItemViewModel chat,
         IEnumerable<HistoryRow> rows, long revision, Func<bool> isCurrent, CancellationToken token,
         Action<PreparedHistoryRow[]> apply, byte[]? key = null,
-        ((DateTimeOffset, long) Start, (DateTimeOffset, long) End)? updateRange = null)
+        ((DateTimeOffset, long) Start, (DateTimeOffset, long) End)? updateRange = null, bool cached = false)
     {
         const int parallelRows = 8;
         var candidates = rows.ToDictionary(row => row.Id);
@@ -470,7 +493,8 @@ public sealed partial class MessengerViewModel
                 {
                     return new(row, current, false, change);
                 }
-                if (!preferUpdate && current.EditedAt == editTime?.ToDateTimeOffset() && current.IsEdited == isEdited &&
+                if (!preferUpdate && (cached || !current.NeedsAttachmentResolution) &&
+                    current.EditedAt == editTime?.ToDateTimeOffset() && current.IsEdited == isEdited &&
                     current.Text == (row.Regular?.Text ?? PrivateMessageText(row.Private!)))
                 {
                     return new(row, current, false, change, RefreshQuote: true);
@@ -480,8 +504,11 @@ public sealed partial class MessengerViewModel
             var item = preferUpdate
                 ? await BuildUpdatedItemAsync(session, chat, change!.Payload!)
                 : row.Regular is { } regular
-                    ? await CreateMessageItemAsync(regular, session.UserId)
+                    ? await CreateMessageItemAsync(regular, session.UserId, cached)
                     : CreatePrivateMessageItem(row.Private!, session.UserId);
+            if (item is not null && cached && row.Regular?.Attachments.Any(attachment =>
+                attachment.Type != Proto.Shared.MessageAttachmentType.ForwardedMessage) == true)
+                item.NeedsAttachmentResolution = true;
             if (item is not null && preferUpdate)
             {
                 item.AppliedUpdateRevision = change!.Revision;
@@ -491,7 +518,7 @@ public sealed partial class MessengerViewModel
     }
 
     private void ApplyHistoryRows(RealtimeSession session, ChatItemViewModel chat, PreparedHistoryRow[] rows,
-        Func<long, bool> markRead)
+        Func<long, bool> markRead, bool cached = false)
     {
         foreach (var (row, item, deleted, change, refreshQuote) in rows)
         {
@@ -517,7 +544,8 @@ public sealed partial class MessengerViewModel
             var visible = existing ?? item;
             if (row.Regular is { } regular)
             {
-                _ = ConfirmOutgoingAsync(session, chat.Id, regular);
+                if (!cached)
+                    _ = ConfirmOutgoingAsync(session, chat.Id, regular);
                 foreach (var reader in regular.ReadBy)
                 {
                     visible.RegisterReader(reader);

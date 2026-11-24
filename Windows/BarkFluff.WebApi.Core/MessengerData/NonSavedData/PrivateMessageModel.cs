@@ -23,6 +23,8 @@ namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
         /// стоит показать плейсхолдером, а не прятать.
         /// </summary>
         public bool DecryptionFailed { get; set; } = false;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public Proto.Shared.EncryptedMessage? EncryptedSource { get; init; }
 
         public PrivateMessageModel() { }
     }

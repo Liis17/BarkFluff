@@ -276,6 +276,8 @@ public partial class App : Application
         builder.Services.AddSingleton<SqliteApplicationDataStore>();
         builder.Services.AddSingleton<IApplicationDataStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
         builder.Services.AddSingleton<IChatListCacheStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton<IMessageHistoryCacheStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton<MessageHistoryCache>();
         builder.Services.AddSingleton<ChatListCache>();
         builder.Services.AddSingleton<IChatDraftStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
         builder.Services.AddSingleton<IChatDraftRemote, ChatDraftRemote>();

@@ -214,6 +214,7 @@
     <x:String x:Key="Messenger_HistoryLoadFailed">Не удалось загрузить историю чата.</x:String>
     <x:String x:Key="Messenger_HistoryRetry">Повторить</x:String>
     <x:String x:Key="Messenger_HistoryMessageUnavailable">Сообщение недоступно. Возможно, оно было удалено.</x:String>
+    <x:String x:Key="Messenger_HistoryUnavailableOffline">Сообщение недоступно офлайн.</x:String>
     <x:String x:Key="Messenger_ActionFailed">Не удалось выполнить действие.</x:String>
     <x:String x:Key="Messenger_ClipboardFailed">Не удалось обратиться к буферу обмена.</x:String>
     <x:String x:Key="Messenger_Delivered">Доставлено</x:String>
@@ -547,5 +548,5 @@
     <x:String x:Key="Messenger_OutboxHistoryPending">Неотправленные сообщения ({0}). К последним сообщениям</x:String>
     <x:String x:Key="Messenger_OutboxHistoryFailed">Ошибка отправки. Неотправленные сообщения ({0}). К последним сообщениям</x:String>
     <x:String x:Key="Messenger_OfflineCached">Нет связи · список чатов из кэша</x:String>
-    <x:String x:Key="Settings_Storage_ClearChatCache">Очистить кэш списка чатов</x:String>
+    <x:String x:Key="Settings_Storage_ClearChatCache">Очистить кэш чатов и сообщений</x:String>
 </ResourceDictionary>

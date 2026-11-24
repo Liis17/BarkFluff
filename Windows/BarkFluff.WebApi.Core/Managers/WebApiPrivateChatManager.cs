@@ -347,6 +347,7 @@ namespace BarkFluff.WebApi.Core.Managers
                 IsEdited = message.IsEdited,
                 EditedAt = message.EditedAt,
                 IsDeleted = message.IsDeleted,
+                EncryptedSource = message,
             };
 
             // У удалённого сообщения сервер очищает шифротекст — расшифровывать нечего.

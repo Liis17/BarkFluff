@@ -26,8 +26,9 @@ public interface IChatListCacheStore
     long Size(ChatListScope scope);
 }
 
-public sealed class ChatListCache(IChatListCacheStore store)
+public sealed class ChatListCache(IChatListCacheStore store, MessageHistoryCache? history = null)
 {
+    internal MessageHistoryCache? History => history;
     private sealed class Work
     {
         public CachedChatList? Pending { get; set; }
@@ -38,7 +39,12 @@ public sealed class ChatListCache(IChatListCacheStore store)
     private Task _tail = Task.CompletedTask;
 
     public Task<CachedChatList> LoadAsync(ChatListScope scope) => Task.Run(() => store.Load(scope));
-    public Task<long> SizeAsync(ChatListScope scope) => Task.Run(() => store.Size(scope));
+    public async Task<long> SizeAsync(ChatListScope scope)
+    {
+        var listSize = Task.Run(() => store.Size(scope));
+        return await listSize.ConfigureAwait(false) +
+            (history is null ? 0 : await history.SizeAsync(scope).ConfigureAwait(false));
+    }
 
     public void ScheduleSave(ChatListScope scope, CachedChatList list)
     {
@@ -64,10 +70,17 @@ public sealed class ChatListCache(IChatListCacheStore store)
     public Task FlushAsync()
     {
         lock (_gate)
-            return _tail;
+            return history is null ? _tail : Task.WhenAll(_tail, history.FlushAsync());
     }
 
-    public Task<bool> ClearAsync(ChatListScope scope)
+    public async Task<bool> ClearAsync(ChatListScope scope)
+    {
+        var clearingHistory = history?.ClearAsync(scope);
+        var clearedList = await ClearListAsync(scope).ConfigureAwait(false);
+        return (clearingHistory is null || await clearingHistory.ConfigureAwait(false)) && clearedList;
+    }
+
+    private Task<bool> ClearListAsync(ChatListScope scope)
     {
         lock (_gate)
         {

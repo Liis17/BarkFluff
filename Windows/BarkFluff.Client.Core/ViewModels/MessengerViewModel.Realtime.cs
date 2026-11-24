@@ -11,6 +11,8 @@ public sealed partial class MessengerViewModel
 {
     private sealed class RealtimeSession(long userId, string node)
     {
+        internal readonly HashSet<string> ConfirmedHistoryTails = [];
+        internal bool CanWriteHistoryEvents = true;
         internal long UserId { get; } = userId;
         internal bool Loading { get; set; }
         internal bool CacheLoaded { get; set; }
@@ -137,6 +139,7 @@ public sealed partial class MessengerViewModel
 
     private void OnResyncRequested(RealtimeSession scope, bool immediate) => PostSession(scope, session =>
     {
+        session.ConfirmedHistoryTails.Clear();
         _notificationSettings?.RetryInitialLoad();
         BeginFeedCatchUp();
         if (immediate)
@@ -198,8 +201,12 @@ public sealed partial class MessengerViewModel
         if (update.Kind is MessageUpdateKind.Pin or MessageUpdateKind.Unpin or MessageUpdateKind.UnpinAll)
         {
             if (chat is not null && chat == SelectedChat && !chat.IsPrivate)
-            {
                 ApplyPinUpdate(session, update);
+            if (chat?.Definition.ChatType == ChatType.Regular && session.CanWriteHistoryEvents &&
+                     HistoryCacheGeneration(session, chat) is { } epoch &&
+                     session.Journal.Find(chat.Id, false, update.MessageId)?.Kind != MessageUpdateKind.Delete)
+            {
+                _chatCache!.History!.Schedule(CacheScope(session), epoch, new(chat.Id, [], PinChange: update));
             }
             return;
         }
@@ -224,6 +231,7 @@ public sealed partial class MessengerViewModel
             return;
         }
 
+        SaveHistoryEvent(session, chat, update, change.Payload);
         try
         {
             var applying = ApplyRecordedUpdateAsync(session, chat, update, change, existing, fromOutgoingDelivery);
@@ -325,6 +333,8 @@ public sealed partial class MessengerViewModel
                 {
                     content.Text = edited.Text;
                     RefreshPinnedBar();
+                    if (session.CanWriteHistoryEvents)
+                        SaveHistoryPins(session, chat, HistoryCacheGeneration(session, chat));
                 }
             }
         }

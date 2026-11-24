@@ -283,7 +283,8 @@ public sealed class MessengerHistoryTests
         var (api, chat, updates) = CreateChat(180);
         chat.CountUnread = 180;
         chat.FirstUnreadMessageId = 1;
-        var vm = await OpenAsync(api, updates);
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var vm = await OpenAsync(api, updates, dispatcher);
         var incoming = CreateMessage(181);
         api.Messages.Add(incoming);
         updates.Raise(new IncomingMessage("a", incoming));
@@ -297,22 +298,22 @@ public sealed class MessengerHistoryTests
         {
             vm.StartForwardMessageCommand.Execute(vm.Messages[0]);
             vm.ToggleForwardTargetCommand.Execute(vm.ForwardTargets.Single());
-            await vm.SubmitForwardCommand.ExecuteAsync(null);
+            await dispatcher.RunAsync(() => vm.SubmitForwardCommand.ExecuteAsync(null));
         }
         else
         {
             vm.DraftText = "send";
-            await vm.SendCommand.ExecuteAsync(null);
+            await dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
         }
 
         Assert.Equal(Enumerable.Range(132, 50).Select(id => (long)id), vm.Messages.Select(row => row.Id));
         Assert.Equal(MessageScrollTarget.Bottom, vm.ScrollRequest!.Target);
         api.Messages.Add(sent);
         response.SetResult((new(true), sent));
-        await MessengerTestDoubles.WaitForMessageAsync(vm, 182);
-        await vm.ShowOutgoingTailCommand.ExecuteAsync(null);
+        await MessengerTestDoubles.WaitForMessageAsync(vm, 182, dispatcher);
+        await dispatcher.RunAsync(() => vm.ShowOutgoingTailCommand.ExecuteAsync(null));
         Assert.Equal(182, vm.Messages[^1].Id);
-        vm.Reset();
+        dispatcher.Post(vm.Reset);
     }
 
     [Fact]
@@ -323,23 +324,25 @@ public sealed class MessengerHistoryTests
         api.SendOutgoing = (_, _) => Task.FromResult<(ErrorReturner, MessageModel?)>(++attempts == 1
             ? (new(false, errorResourceKey: "Messenger_UserUnavailable"), null)
             : (new(true), CreateMessage(181, sender: 1)));
-        var vm = await OpenAsync(api, updates);
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var vm = await OpenAsync(api, updates, dispatcher);
         vm.DraftText = "queued";
-        await vm.SendCommand.ExecuteAsync(null);
-        await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => vm.PendingMessages.SingleOrDefault()?.CanRetry == true);
+        await dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
+        await MessengerTestDoubles.WaitForOutgoingAsync(vm,
+            () => vm.PendingMessages.SingleOrDefault()?.CanRetry == true, dispatcher);
         Assert.Null(vm.OutgoingHistoryNotice);
 
-        await vm.NavigateToMessageAsync(1);
+        await dispatcher.RunAsync(() => vm.NavigateToMessageAsync(1));
         Assert.False(vm.IsOutgoingTailVisible);
         Assert.Equal("Messenger_OutboxHistoryFailed", vm.OutgoingHistoryNotice);
-        await vm.ShowOutgoingTailCommand.ExecuteAsync(null);
+        await dispatcher.RunAsync(() => vm.ShowOutgoingTailCommand.ExecuteAsync(null));
 
         Assert.True(vm.IsOutgoingTailVisible);
         Assert.Null(vm.OutgoingHistoryNotice);
-        await Assert.Single(vm.PendingMessages).RetryCommand.ExecuteAsync(null);
-        await MessengerTestDoubles.WaitForMessageAsync(vm, 181);
+        await dispatcher.RunAsync(() => Assert.Single(vm.PendingMessages).RetryCommand.ExecuteAsync(null));
+        await MessengerTestDoubles.WaitForMessageAsync(vm, 181, dispatcher);
         Assert.Equal(2, attempts);
-        vm.Reset();
+        dispatcher.Post(vm.Reset);
     }
 
     [Fact]
@@ -349,7 +352,8 @@ public sealed class MessengerHistoryTests
         chat.CountUnread = 180;
         chat.FirstUnreadMessageId = 1;
         api.Chats.Add(MessengerTestDoubles.CreateChat("b"));
-        var vm = await OpenAsync(api, updates);
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var vm = await OpenAsync(api, updates, dispatcher);
         var history = api.HistoryPage!;
         var tailRequests = 0;
         api.HistoryPage = (id, anchor, before, after) =>
@@ -377,15 +381,15 @@ public sealed class MessengerHistoryTests
         {
             vm.ToggleForwardTargetCommand.Execute(target);
         }
-        await vm.SubmitForwardCommand.ExecuteAsync(null);
+        await dispatcher.RunAsync(() => vm.SubmitForwardCommand.ExecuteAsync(null));
         await bothStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.Equal(new[] { "a", "b" }, sends.Order());
         Assert.Equal(1, tailRequests);
         release.SetResult();
-        await MessengerTestDoubles.WaitForMessageAsync(vm, 181);
+        await MessengerTestDoubles.WaitForMessageAsync(vm, 181, dispatcher);
         Assert.Equal(1, tailRequests);
         Assert.Equal(181, vm.Messages[^1].Id);
-        vm.Reset();
+        dispatcher.Post(vm.Reset);
     }
 
     [Theory]
@@ -395,7 +399,8 @@ public sealed class MessengerHistoryTests
     {
         var (api, _, updates) = CreateChat(1);
         api.Chats.Add(MessengerTestDoubles.CreateChat("b"));
-        var vm = await OpenAsync(api, updates);
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var vm = await OpenAsync(api, updates, dispatcher);
         var response = new TaskCompletionSource<(ErrorReturner, MessageModel?)>(TaskCreationOptions.RunContinuationsAsynchronously);
         var sending = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
         api.SendOutgoing = (_, token) =>
@@ -405,16 +410,16 @@ public sealed class MessengerHistoryTests
         };
         vm.StartForwardMessageCommand.Execute(vm.Messages[0]);
         vm.ToggleForwardTargetCommand.Execute(vm.ForwardTargets.Single(target => target.ChatId == "b"));
-        await vm.SubmitForwardCommand.ExecuteAsync(null);
+        await dispatcher.RunAsync(() => vm.SubmitForwardCommand.ExecuteAsync(null));
         var token = await sending.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+        dispatcher.Post(() => vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b"));
         if (resetSession)
         {
-            Assert.True(await vm.ClearOutgoingForLogoutAsync());
-            vm.Reset();
-            await vm.LoadAsync();
-            vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+            await dispatcher.RunAsync(async () => Assert.True(await vm.ClearOutgoingForLogoutAsync()));
+            dispatcher.Post(vm.Reset);
+            await dispatcher.RunAsync(() => vm.LoadAsync());
+            dispatcher.Post(() => vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b"));
             Assert.True(token.IsCancellationRequested);
         }
         response.SetResult((new(false, errorResourceKey: "Messenger_UserUnavailable"), null));
@@ -422,11 +427,12 @@ public sealed class MessengerHistoryTests
             Assert.Empty(vm.PendingMessages);
         else
         {
-            await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => vm.PendingMessages.SingleOrDefault()?.CanRetry == true);
+            await MessengerTestDoubles.WaitForOutgoingAsync(vm,
+                () => vm.PendingMessages.SingleOrDefault()?.CanRetry == true, dispatcher);
             Assert.Equal("Messenger_UserUnavailable", Assert.Single(vm.PendingMessages).Status);
         }
         Assert.Null(vm.ActionError);
-        vm.Reset();
+        dispatcher.Post(vm.Reset);
     }
 
     [Fact]
@@ -546,7 +552,7 @@ public sealed class MessengerHistoryTests
     [InlineData(true)]
     public async Task WindowJumpDuringSendStillClearsDraft(bool isPrivate)
     {
-        var dispatcher = new InlineUiDispatcher();
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
         var (api, chat, updates) = CreateChat(160, isPrivate);
         api.PrivateMessages.AddRange(Enumerable.Range(1, 160).Select(id => new PrivateMessageModel
         {
@@ -571,12 +577,10 @@ public sealed class MessengerHistoryTests
             vm.StartReplyMessageCommand.Execute(vm.Messages[^1]);
         }
         vm.DraftText = "send";
-        var sending = vm.SendCommand.ExecuteAsync(null);
+        var sending = dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
         if (!isPrivate)
             await writing.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Task navigation = Task.CompletedTask;
-        dispatcher.Post(() => navigation = vm.NavigateToMessageAsync(1));
-        await navigation;
+        await dispatcher.RunAsync(() => vm.NavigateToMessageAsync(1));
         Assert.Equal(1, vm.ScrollRequest?.MessageId);
 
         var sent = CreateMessage(161, sender: 1);
@@ -591,7 +595,7 @@ public sealed class MessengerHistoryTests
         release.TrySetResult();
         await sending;
         if (!isPrivate)
-            await MessengerTestDoubles.WaitForMessageAsync(vm, 161);
+            await MessengerTestDoubles.WaitForMessageAsync(vm, 161, dispatcher);
 
         dispatcher.Post(() =>
         {

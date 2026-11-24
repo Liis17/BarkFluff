@@ -98,10 +98,17 @@ public sealed partial class MessengerViewModel
         {
             using var reading = session!.Journal.ReadHistory(chat.Id, chat.IsPrivate);
             var revision = session.Journal.Revision;
+            var cacheGeneration = HistoryCacheGeneration(session, chat);
             using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(session.Lifetime.Token, window);
             var key = chat.IsPrivate ? await GetPrivateChatKeyAsync(chat).WaitAsync(lifetime.Token) : null;
             if (!IsCurrentWindow())
             {
+                return;
+            }
+            if (IsOffline)
+            {
+                if (older && (!chat.IsPrivate || key is not null))
+                    await ShowCachedHistoryAsync(session, chat, key, edge.Cursor, IsCurrentWindow, lifetime.Token, older: true);
                 return;
             }
 
@@ -136,6 +143,8 @@ public sealed partial class MessengerViewModel
 
                 await PrepareHistoryAsync(session, chat, page, revision, IsCurrentWindow, lifetime.Token, prepared =>
                 {
+                    var cacheRange = older ? (range.Item1, Position(reference)) : (Position(reference), range.Item2);
+                    SaveHistoryPage(session, chat, cacheGeneration, page.Append(reference), revision, cacheRange);
                     IsHistoryUpdating = true;
                     try
                     {
@@ -159,6 +168,9 @@ public sealed partial class MessengerViewModel
                 return;
             }
 
+            if (older && (!chat.IsPrivate || key is not null) &&
+                await ShowCachedHistoryAsync(session, chat, key, edge.Cursor, IsCurrentWindow, lifetime.Token, older: true))
+                return;
             edge.Failed = true;
         }
         catch (OperationCanceledException) when (!IsCurrentWindow())
@@ -259,6 +271,7 @@ public sealed partial class MessengerViewModel
         {
             using var reading = session!.Journal.ReadHistory(chat.Id, chat.IsPrivate);
             var revision = session.Journal.Revision;
+            var cacheGeneration = HistoryCacheGeneration(session, chat);
             using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(session.Lifetime.Token, window);
             var key = chat.IsPrivate ? await GetPrivateChatKeyAsync(chat).WaitAsync(lifetime.Token) : null;
             if (!IsCurrentRequest())
@@ -270,6 +283,13 @@ public sealed partial class MessengerViewModel
                 ShowReplacementError(missing: false);
                 return;
             }
+            if (IsOffline)
+            {
+                var shown = await ShowCachedHistoryAsync(session, chat, key, anchor, IsCurrentRequest, lifetime.Token, replace: true);
+                if (!shown && IsCurrentRequest() && anchor > 0)
+                    ActionError = _localization.GetString("Messenger_HistoryUnavailableOffline");
+                return;
+            }
 
             var (error, rows) = await GetHistoryPageAsync(chat, key, anchor, SnapshotPageSize,
                 anchor == 0 ? 0 : SnapshotPageSize, lifetime.Token);
@@ -279,6 +299,16 @@ public sealed partial class MessengerViewModel
             }
             if (!error.IsSuccess && (anchor != 0 || error.ErrorCode != 1))
             {
+                if (!IsMissingAnchor(error) &&
+                    await ShowCachedHistoryAsync(session, chat, key, anchor, IsCurrentRequest, lifetime.Token, replace: true))
+                    return;
+                if (!IsCurrentRequest())
+                    return;
+                if (anchor > 0 && !_isRealtimeConnected && !IsMissingAnchor(error))
+                {
+                    ActionError = _localization.GetString("Messenger_HistoryUnavailableOffline");
+                    return;
+                }
                 ShowReplacementError(IsMissingAnchor(error));
                 return;
             }
@@ -288,6 +318,7 @@ public sealed partial class MessengerViewModel
                 return;
             }
 
+            var range = HistoryRange(rows, anchor);
             await PrepareHistoryAsync(session, chat, rows, revision, IsCurrentRequest, lifetime.Token, prepared =>
             {
                 var visibleIds = prepared.Where(row => row.Item is not null).Select(row => row.Row.Id).ToHashSet();
@@ -297,6 +328,7 @@ public sealed partial class MessengerViewModel
                     return;
                 }
 
+                SaveHistoryPage(session, chat, cacheGeneration, rows, revision, range);
                 ResetHistoryWindow();
                 IsHistoryUpdating = true;
                 try
@@ -308,6 +340,7 @@ public sealed partial class MessengerViewModel
                         Messages.Remove(item);
                     }
                     ApplyHistoryRows(session, chat, prepared, id => WasPrivateHistoryRead(chat, id));
+                    _historyFromCache = false;
                     var refreshPins = !_feedLoaded && !chat.IsPrivate;
                     _feedLoaded = true;
                     _reconnectFeed?.TrySetResult();
@@ -322,7 +355,7 @@ public sealed partial class MessengerViewModel
                 {
                     IsHistoryUpdating = false;
                 }
-            }, key, HistoryRange(rows, anchor));
+            }, key, range);
         }
         catch (OperationCanceledException) when (!IsCurrentRequest())
         {

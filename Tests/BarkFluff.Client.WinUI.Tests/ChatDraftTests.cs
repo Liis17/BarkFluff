@@ -184,19 +184,20 @@ public sealed class ChatDraftTests
         using var database = await DraftDatabase.CreateAsync();
         var remote = new Remote();
         remote.Drafts["a"] = new() { Text = "sent", Revision = "original" };
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
         var vm = await OpenAsync(database.Store, remote, new(), new FakeMessengerService
         {
             SendResponse = () => Task.FromResult<(ErrorReturner, MessageModel?)>(
                 (new(true), CreateMessage(100, "a", 1, "sent")))
-        });
+        }, dispatcher);
 
         remote.Drafts["a"] = new() { Text = latest, Revision = "other-device" };
-        await vm.SendCommand.ExecuteAsync(null);
+        await dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
 
         Assert.Equal(deleted ? "" : latest, vm.DraftText);
         Assert.Equal(deleted ? new[] { "original", "other-device" } : new[] { "original" }, remote.DeleteRevisions);
         Assert.Equal(!deleted, remote.Drafts.ContainsKey("a"));
-        vm.Reset();
+        dispatcher.Post(vm.Reset);
         await vm.StopDraftsAsync();
     }
 
@@ -235,7 +236,7 @@ public sealed class ChatDraftTests
         var remote = new Remote();
         var writing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var dispatcher = new InlineUiDispatcher();
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
         var messenger = new FakeMessengerService
         {
             EditResponse = () => Task.FromResult<(ErrorReturner, MessageModel?)>(
@@ -249,7 +250,7 @@ public sealed class ChatDraftTests
         messenger.Messages.Add(CreateMessage(10, "a", 1, "message"));
         var vm = await OpenAsync(database.Store, remote, new(), messenger, dispatcher);
         vm.DraftText = "draft";
-        var pending = vm.SendCommand.ExecuteAsync(null);
+        var pending = dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
         await writing.Task.WaitAsync(TimeSpan.FromSeconds(5));
         dispatcher.Post(() =>
         {
@@ -261,11 +262,14 @@ public sealed class ChatDraftTests
         Assert.Equal("draft", vm.DraftText);
         Assert.Empty(remote.DeleteRevisions);
 
-        vm.StartEditMessageCommand.Execute(vm.Messages.Single(message => message.Id == 10));
-        vm.DraftText = "edited";
-        await vm.FlushDraftsAsync();
+        await dispatcher.RunAsync(() =>
+        {
+            vm.StartEditMessageCommand.Execute(vm.Messages.Single(message => message.Id == 10));
+            vm.DraftText = "edited";
+            return vm.FlushDraftsAsync();
+        });
         Assert.Equal("draft", database.Store.Load("node", 1)["a"].Text);
-        await vm.SendCommand.ExecuteAsync(null);
+        await dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
         Assert.Equal("draft", vm.DraftText);
         dispatcher.Post(vm.Reset);
         await vm.StopDraftsAsync();
@@ -280,7 +284,7 @@ public sealed class ChatDraftTests
         var writing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var messenger = new FakeMessengerService();
-        var dispatcher = new InlineUiDispatcher();
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
         messenger.OutgoingStore.AfterFirstSaveAsync = _ =>
         {
             writing.SetResult();
@@ -288,7 +292,7 @@ public sealed class ChatDraftTests
         };
         var vm = await OpenAsync(database.Store, remote, new(), messenger, dispatcher);
 
-        var pending = vm.SendCommand.ExecuteAsync(null);
+        var pending = dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
         await writing.Task.WaitAsync(TimeSpan.FromSeconds(5));
         dispatcher.Post(() =>
         {
@@ -298,8 +302,8 @@ public sealed class ChatDraftTests
         release.SetResult();
         await pending;
 
-        Assert.Equal("draft in b", vm.DraftText);
-        await vm.FlushDraftsAsync();
+        dispatcher.Post(() => Assert.Equal("draft in b", vm.DraftText));
+        await dispatcher.RunAsync(vm.FlushDraftsAsync);
         Assert.Equal(new[] { "original" }, remote.DeleteRevisions);
         Assert.False(database.Store.Load("node", 1).ContainsKey("a"));
         Assert.Equal("draft in b", database.Store.Load("node", 1)["b"].Text);

@@ -305,6 +305,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
 
         _feedLoaded = false;
+        _historyFromCache = false;
         _feedIncludesTail = true;
         _chatVersion++;
         RefreshOutgoing();
@@ -330,7 +331,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         if (newValue is not null)
         {
             ClearChatNotifications(newValue);
-            if (!IsOffline)
+            if (!IsOffline || _chatCache?.History is not null)
                 _ = LoadMessagesAsync(newValue, _chatVersion);
         }
     }
@@ -450,7 +451,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     private void MessageBecameVisible(MessageItemViewModel message)
     {
         var chat = SelectedChat;
-        if (!_feedLoaded || IsHistoryUpdating || chat is null || message.IsMine || message.IsReadByCurrentUser || !Messages.Contains(message))
+        if (IsOffline || !_feedLoaded || IsHistoryUpdating || chat is null || message.IsMine || message.IsReadByCurrentUser || !Messages.Contains(message))
         {
             return;
         }
@@ -481,17 +482,24 @@ public sealed partial class MessengerViewModel : ObservableObject
         }
 
         var window = _historyWindowLifetime.Token;
-        bool IsCurrentWindow() => IsOpenWindow(session, chat, loadVersion, window);
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _feedLoadCompletion = completion;
+        bool IsCurrentWindow() => _feedLoadCompletion == completion && IsOpenWindow(session, chat, loadVersion, window);
         try
         {
             using var reading = session!.Journal.ReadHistory(chat.Id, chat.IsPrivate);
-            var revision = session.Journal.Revision;
-            var firstUnread = chat.UnreadCount > 0 ? chat.FirstUnreadMessageId : 0;
-            _feedIncludesTail = firstUnread == 0;
             using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(session.Lifetime.Token, window);
             var token = lifetime.Token;
+            var generation = HistoryCacheGeneration(session, chat);
+            if (!_feedLoaded)
+                await ShowCachedHistoryAsync(session, chat, key, 0, IsCurrentWindow, token);
+            if (!IsCurrentWindow() || IsOffline)
+                return;
+
+            var revision = session.Journal.Revision;
+            var firstUnread = chat.UnreadCount > 0 ? chat.FirstUnreadMessageId : 0;
+            if (!_historyFromCache)
+                _feedIncludesTail = firstUnread == 0;
             var (error, rows) = await GetHistoryPageAsync(chat, key, firstUnread, SnapshotPageSize,
                 firstUnread > 0 ? SnapshotPageSize : 0, token);
             if (!IsCurrentWindow())
@@ -516,20 +524,12 @@ public sealed partial class MessengerViewModel : ObservableObject
                 return;
             }
 
+            var range = HistoryRange(rows, firstUnread);
             await PrepareHistoryAsync(session, chat, rows, revision, IsCurrentWindow, token, prepared =>
             {
-                IsHistoryUpdating = true;
-                try
-                {
-                    SetHistoryEdges(rows, firstUnread);
-                    ApplyHistoryRows(session, chat, prepared, id => chat.IsPrivate && (firstUnread == 0 || id < firstUnread));
-                    CompleteFeedLoad(firstUnread);
-                }
-                finally
-                {
-                    IsHistoryUpdating = false;
-                }
-            }, key, HistoryRange(rows, firstUnread));
+                SaveHistoryPage(session, chat, generation, rows, revision, range);
+                ApplyNetworkHistory(session, chat, rows, prepared, firstUnread);
+            }, key, range);
 
             if (IsCurrentWindow() && !chat.IsPrivate)
             {
@@ -875,7 +875,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             accountStatus, avatarFileId);
     }
 
-    private async Task<MessageItemViewModel> CreateMessageItemAsync(MessageModel message, long currentUserId)
+    private async Task<MessageItemViewModel> CreateMessageItemAsync(MessageModel message, long currentUserId, bool cached = false)
     {
         // Пересланные приходят отдельными вложениями — их может быть несколько, и каждое
         // рисуется своим блоком: схлопнуть пачку в один значит потерять всё, кроме первого.
@@ -887,7 +887,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             .ToArray();
         var attachments = await Task.WhenAll(message.Attachments
             .Where(attachment => attachment.Type != MessageAttachmentType.ForwardedMessage)
-            .Select(CreateAttachmentItemAsync));
+            .Select(attachment => CreateAttachmentItemAsync(attachment, cached)));
 
         return new MessageItemViewModel(
             this,
@@ -937,16 +937,16 @@ public sealed partial class MessengerViewModel : ObservableObject
             : message.Text;
 
 
-    private async Task<MessageAttachmentItemViewModel> CreateAttachmentItemAsync(AttachmentsModel attachment)
+    private async Task<MessageAttachmentItemViewModel> CreateAttachmentItemAsync(AttachmentsModel attachment, bool cached = false)
     {
-        var fileUrl = await ResolveFileUrlAsync(attachment.FileId);
+        var fileUrl = cached ? string.Empty : await ResolveFileUrlAsync(attachment.FileId);
         var previewUrl = attachment.PreviewUrl;
         if (attachment.Type == MessageAttachmentType.Gif && !string.IsNullOrWhiteSpace(fileUrl))
         {
             // Серверное превью GIF — JPEG. Для анимации ленте нужен оригинал.
             previewUrl = fileUrl;
         }
-        else if ((attachment.Type is MessageAttachmentType.Image or MessageAttachmentType.Video or MessageAttachmentType.Gif ||
+        else if (!cached && (attachment.Type is MessageAttachmentType.Image or MessageAttachmentType.Video or MessageAttachmentType.Gif ||
                   attachment.Type == MessageAttachmentType.Sticker && string.IsNullOrWhiteSpace(fileUrl))
             && string.IsNullOrWhiteSpace(previewUrl))
         {
@@ -1046,6 +1046,8 @@ public sealed partial class MessengerViewModel : ObservableObject
     private void OnRealtimeConnectionChanged(RealtimeSession scope, bool isConnected) =>
         PostSession(scope, session =>
         {
+            if (!isConnected)
+                session.ConfirmedHistoryTails.Clear();
             BeginFeedCatchUp();
             _isRealtimeConnected = isConnected;
             if (isConnected)
@@ -1488,6 +1490,7 @@ public sealed partial class MessageItemViewModel : ObservableObject
 
     internal DateTimeOffset? EditedAt { get; private set; }
     internal long AppliedUpdateRevision { get; set; }
+    internal bool NeedsAttachmentResolution { get; set; }
 
     internal void ApplyContent(MessageItemViewModel item)
     {
@@ -1495,6 +1498,7 @@ public sealed partial class MessageItemViewModel : ObservableObject
         IsEdited = item.IsEdited;
         EditedAt = item.EditedAt;
         AppliedUpdateRevision = item.AppliedUpdateRevision;
+        NeedsAttachmentResolution = item.NeedsAttachmentResolution;
         Reply = item.Reply;
         Forwards = item.Forwards;
         Attachments = item.Attachments;

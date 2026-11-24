@@ -83,14 +83,27 @@ public sealed class AuthenticationServiceSignInTests
         {
             Snapshot = new([ChatListCacheTests.Row("kept", "Cached"), ChatListCacheTests.Row("stale", "Stale")], [])
         };
-        var cache = new ChatListCache(memory);
+        await using var database = await MessageHistoryCacheTests.HistoryDatabase.OpenAsync();
+        var historyScope = ChatListScope.Create(node.Address, 42);
+        database.History.Write(historyScope, [MessageHistoryCacheTests.Tail("kept",
+            Enumerable.Range(1, 55).Select(id => MessageHistoryCacheTests.Row("kept", id)).ToArray()),
+            new("kept", [], Pins: [new BarkFluff.Proto.Shared.PinnedMessageInfo
+            {
+                Message = new BarkFluff.Proto.Shared.Message
+                {
+                    Id = 55, SenderId = 2, SentAt = new Google.Protobuf.WellKnownTypes.Timestamp { Seconds = 55 },
+                    Content = new BarkFluff.Proto.Shared.MessageContent { Text = "cached text" }
+                }
+            }])]);
+        var cache = new ChatListCache(memory, new MessageHistoryCache(database.History));
         var auth = new AuthenticationService(api, new TestClientSession(connection), store, cache);
         Assert.True(await auth.TryRestoreSessionAsync());
 
         var messenger = new FakeMessengerService { CurrentUserId = 42, CurrentNodeAddress = node.Address };
         messenger.Chats.Add(MessengerTestDoubles.CreateChat("kept", "Online"));
+        messenger.Messages.Add(MessageHistoryCacheTests.Row("kept", 60, "online").Regular!);
         var drafts = new ChatListCacheTests.MemoryDrafts();
-        var ui = new InlineUiDispatcher();
+        var ui = new InlineUiDispatcher(serializeContinuations: true);
         var navigation = new TestLoginNavigation();
         var vm = MessengerTestDoubles.CreateViewModel(messenger, dispatcher: ui, chatCache: cache,
             authentication: auth, draftStore: drafts, draftRemote: new ChatDraftTests.Remote { Offline = true },
@@ -107,14 +120,35 @@ public sealed class AuthenticationServiceSignInTests
         await waitingForNetwork.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         ChatItemViewModel retained = null!;
+        var offlineHistory = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var onlineHistory = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         ui.Post(() =>
         {
             Assert.True(vm.IsOffline);
             Assert.Equal(new[] { "kept", "stale" }, vm.VisibleChats.Select(item => item.Id));
             retained = vm.VisibleChats[0];
+            vm.Messages.CollectionChanged += (_, _) =>
+            {
+                if (vm.Messages.Any(message => message.Id == 55))
+                    offlineHistory.TrySetResult();
+                if (vm.Messages.Any(message => message.Id == 60))
+                    onlineHistory.TrySetResult();
+            };
             vm.SelectedChat = retained;
             Assert.Equal("saved draft", vm.DraftText);
         });
+        await offlineHistory.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Task paging = null!;
+        ui.Post(() => paging = vm.LoadOlderHistoryCommand.ExecuteAsync(null));
+        await paging.WaitAsync(TimeSpan.FromSeconds(5));
+        ui.Post(() =>
+        {
+            Assert.Equal(Enumerable.Range(1, 55).Select(id => (long)id), vm.Messages.Select(item => item.Id));
+            Assert.True(vm.Messages[^1].IsPinned);
+        });
+        ui.Post(() => paging = vm.NavigateToMessageAsync(999));
+        await paging.WaitAsync(TimeSpan.FromSeconds(5));
+        ui.Post(() => Assert.Equal("Messenger_HistoryUnavailableOffline", vm.ActionError));
 
         Task sending = null!;
         ui.Post(() => sending = vm.SendCommand.ExecuteAsync(null));
@@ -137,6 +171,7 @@ public sealed class AuthenticationServiceSignInTests
             });
             Assert.Null(store.Value);
             Assert.Empty(memory.Snapshot.Chats);
+            Assert.Equal(0, database.History.Size(historyScope));
             Assert.Empty(messenger.OutgoingStore.Load(OutgoingScope.Create(node.Address, 42)));
 
             node.RefreshStatus = "0";
@@ -153,14 +188,17 @@ public sealed class AuthenticationServiceSignInTests
             });
             return;
         }
+        await onlineHistory.Task.WaitAsync(TimeSpan.FromSeconds(5));
         ui.Post(() =>
         {
             Assert.False(vm.IsOffline);
             Assert.Same(retained, Assert.Single(vm.VisibleChats));
             Assert.Same(retained, vm.SelectedChat);
             Assert.Equal("Online", retained.Title);
+            Assert.Equal(60, Assert.Single(vm.Messages).Id);
             vm.Reset();
         });
+        await cache.FlushAsync();
     }
 
     [Theory]

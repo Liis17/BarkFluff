@@ -81,7 +81,8 @@ internal static class MessengerTestDoubles
             }, dispatcher);
     }
 
-    internal static Task WaitForOutgoingAsync(MessengerViewModel vm, Func<bool> condition) =>
+    internal static Task WaitForOutgoingAsync(MessengerViewModel vm, Func<bool> condition,
+        IUiDispatcher? dispatcher = null) =>
         ObserveAsync(condition, notify =>
         {
             System.ComponentModel.PropertyChangedEventHandler handler = (_, args) =>
@@ -91,7 +92,7 @@ internal static class MessengerTestDoubles
             };
             vm.PropertyChanged += handler;
             return () => vm.PropertyChanged -= handler;
-        });
+        }, dispatcher);
 
     private static async Task ObserveAsync(Func<bool> condition, Func<Action, Action> subscribe,
         IUiDispatcher? dispatcher = null)
@@ -157,14 +158,43 @@ internal static class MessengerTestDoubles
     };
 }
 
-internal sealed class InlineUiDispatcher : IUiDispatcher
+internal sealed class InlineUiDispatcher(bool serializeContinuations = false) : IUiDispatcher
 {
     private readonly object _gate = new();
+
+    public Task RunAsync(Func<Task> action)
+    {
+        Task task = Task.CompletedTask;
+        Post(() => task = action());
+        return task;
+    }
 
     public void Post(Action action)
     {
         lock (_gate)
-            action();
+        {
+            if (!serializeContinuations)
+            {
+                action();
+                return;
+            }
+            var previous = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(new DispatcherContext(this));
+            try
+            {
+                action();
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(previous);
+            }
+        }
+    }
+
+    private sealed class DispatcherContext(InlineUiDispatcher dispatcher) : SynchronizationContext
+    {
+        public override void Post(SendOrPostCallback callback, object? state) =>
+            dispatcher.Post(() => callback(state));
     }
 }
 

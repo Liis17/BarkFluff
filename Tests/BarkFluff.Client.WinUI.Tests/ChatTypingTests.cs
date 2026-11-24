@@ -40,12 +40,15 @@ public sealed class ChatTypingTests
         Assert.Equal(("a", TypingAction.Cancelled), fixture.Sent[^1]);
         vm.DraftText = "send";
         var count = fixture.Sent.Count;
-        await vm.SendCommand.ExecuteAsync(null);
+        await fixture.Ui.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
         Assert.Equal(count + 1, fixture.Sent.Count);
         Assert.Equal(("a", TypingAction.Cancelled), fixture.Sent[^1]);
 
-        vm.DraftText = "switch";
-        vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+        fixture.Ui.Post(() =>
+        {
+            vm.DraftText = "switch";
+            vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+        });
         Assert.Equal(("a", TypingAction.Cancelled), fixture.Sent[^1]);
         Assert.DoesNotContain(fixture.Sent, call => call.Chat == "b");
     }
@@ -269,6 +272,7 @@ public sealed class ChatTypingTests
     private sealed class Fixture : IDisposable, IUiDispatcher
     {
         private readonly Channel<Action> _posted = Channel.CreateUnbounded<Action>();
+        public readonly InlineUiDispatcher Ui = new(serializeContinuations: true);
         public readonly FakeTimeProvider Clock = new();
         public readonly FakeMessengerService Messenger = new();
         public readonly List<(string Chat, TypingAction Action)> Sent = [];
@@ -296,7 +300,7 @@ public sealed class ChatTypingTests
         {
             Messenger.Chats.Add(CreateChat("a", peerUserId: 2));
             Messenger.Chats.Add(CreateChat("b"));
-            var vm = CreateViewModel(Messenger, typing: Service, localization: new Resources(language));
+            var vm = CreateViewModel(Messenger, dispatcher: Ui, typing: Service, localization: new Resources(language));
             await vm.LoadAsync();
             return vm;
         }

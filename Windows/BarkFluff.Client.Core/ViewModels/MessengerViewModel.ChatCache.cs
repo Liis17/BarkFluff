@@ -196,6 +196,8 @@ public sealed partial class MessengerViewModel
         {
             session.CanWriteCache = false;
             session.CacheWriteScheduled = false;
+            session.CanWriteHistoryEvents = false;
+            session.ConfirmedHistoryTails.Clear();
             return _chatCache.ClearAsync(CacheScope(session));
         }
         return _messenger.CurrentUserId is { } userId

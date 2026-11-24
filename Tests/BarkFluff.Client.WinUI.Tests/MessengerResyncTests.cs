@@ -686,7 +686,8 @@ public sealed class MessengerResyncTests
     [InlineData(true)]
     public async Task Forward_IgnoresDeleteBeforeResponseAndChatSwitchDuringAttachmentLoad(bool switchChat)
     {
-        var (vm, api, updates) = await OpenAsync();
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var (vm, api, updates) = await OpenAsync(dispatcher: dispatcher);
         var other = MessengerTestDoubles.CreateChat("b");
         api.Chats.Add(other);
         updates.Resync();
@@ -706,8 +707,8 @@ public sealed class MessengerResyncTests
         }
         vm.StartForwardMessageCommand.Execute(vm.Messages[0]);
         vm.ToggleForwardTargetCommand.Execute(vm.ForwardTargets.Single(target => target.ChatId == "a"));
-        await vm.SubmitForwardCommand.ExecuteAsync(null);
-        await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => vm.PendingMessages.Count == 1);
+        await dispatcher.RunAsync(() => vm.SubmitForwardCommand.ExecuteAsync(null));
+        await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => vm.PendingMessages.Count == 1, dispatcher);
         if (!switchChat)
         {
             updates.Raise(new MessageUpdate("a", false, 3, MessageUpdateKind.Delete));
@@ -716,17 +717,20 @@ public sealed class MessengerResyncTests
         if (switchChat)
         {
             await resolving.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
-            vm.ScrollRequest = null;
+            dispatcher.Post(() =>
+            {
+                vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+                vm.ScrollRequest = null;
+            });
             attachment.SetResult("resolved");
         }
-        await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => vm.PendingMessages.Count == 0);
+        await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => vm.PendingMessages.Count == 0, dispatcher);
         Assert.DoesNotContain(vm.Messages, message => message.Id == 3);
         if (switchChat)
         {
             Assert.Null(vm.ScrollRequest);
         }
-        vm.Reset();
+        dispatcher.Post(vm.Reset);
     }
 
     [Theory]
@@ -835,7 +839,7 @@ public sealed class MessengerResyncTests
     [Fact]
     public async Task Send_EchoKeepsPreviewWhenOlderChatSnapshotCompletes()
     {
-        var dispatcher = new InlineUiDispatcher();
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
         var (vm, api, updates) = await OpenAsync(dispatcher: dispatcher);
         var snapshot = new TaskCompletionSource<(ErrorReturner, List<Chat>?)>();
         var oldChats = api.Chats.Select(chat => chat.Clone()).ToList();
@@ -845,7 +849,7 @@ public sealed class MessengerResyncTests
 
         updates.Resync();
         vm.DraftText = sent.Text;
-        await vm.SendCommand.ExecuteAsync(null);
+        await dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
         await MessengerTestDoubles.WaitForMessageAsync(vm, sent.MessageId, dispatcher);
         dispatcher.Post(() =>
         {

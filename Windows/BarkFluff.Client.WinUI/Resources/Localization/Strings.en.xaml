@@ -215,6 +215,7 @@
     <x:String x:Key="Messenger_HistoryLoadFailed">Could not load chat history.</x:String>
     <x:String x:Key="Messenger_HistoryRetry">Retry</x:String>
     <x:String x:Key="Messenger_HistoryMessageUnavailable">The original message is unavailable. It may have been deleted.</x:String>
+    <x:String x:Key="Messenger_HistoryUnavailableOffline">This message is unavailable offline.</x:String>
     <x:String x:Key="Messenger_ActionFailed">The action could not be completed.</x:String>
     <x:String x:Key="Messenger_ClipboardFailed">The clipboard is not available.</x:String>
     <x:String x:Key="Messenger_Delivered">Delivered</x:String>
@@ -547,5 +548,5 @@
     <x:String x:Key="Messenger_OutboxHistoryPending">Unsent messages ({0}). Go to latest messages</x:String>
     <x:String x:Key="Messenger_OutboxHistoryFailed">Send failed. Unsent messages ({0}). Go to latest messages</x:String>
     <x:String x:Key="Messenger_OfflineCached">Offline · cached chats</x:String>
-    <x:String x:Key="Settings_Storage_ClearChatCache">Clear chat list cache</x:String>
+    <x:String x:Key="Settings_Storage_ClearChatCache">Clear chat and message cache</x:String>
 </ResourceDictionary>

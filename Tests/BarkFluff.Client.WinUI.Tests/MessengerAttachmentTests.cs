@@ -142,7 +142,8 @@ public sealed class MessengerAttachmentTests : IDisposable
     public async Task RetryingQueuedAttachmentPreservesReadyFileCaptionAndReply()
     {
         var clock = new FakeTimeProvider();
-        var (vm, service) = await OpenChatAsync(clock);
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var (vm, service) = await OpenChatAsync(clock, dispatcher);
         vm.StartReplyMessageCommand.Execute(Assert.Single(vm.Messages));
         vm.DraftText = "caption";
         await AddAsync(vm, "ready.gif", "retry.pdf");
@@ -170,22 +171,22 @@ public sealed class MessengerAttachmentTests : IDisposable
             return SentAsync(chat, text);
         };
 
-        await vm.SendCommand.ExecuteAsync(null);
-        await WaitForOutgoingAsync(vm, () => vm.PendingMessages.SingleOrDefault()?.Progress == 40);
+        await dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
+        await WaitForOutgoingAsync(vm, () => vm.PendingMessages.SingleOrDefault()?.Progress == 40, dispatcher);
         var bubble = Assert.Single(vm.PendingMessages);
         Assert.True(bubble.IsUploading);
         Assert.Empty(vm.DraftText);
         Assert.Equal("caption", bubble.Text);
         Assert.Equal(0, sends);
         attempt.SetResult((new(false), null));
-        await WaitForOutgoingAsync(vm, () => bubble.Status == "Messenger_OutboxWaiting");
+        await WaitForOutgoingAsync(vm, () => bubble.Status == "Messenger_OutboxWaiting", dispatcher);
         clock.Advance(TimeSpan.FromSeconds(1));
-        await WaitForOutgoingAsync(vm, () => bubble.CanRetry);
+        await WaitForOutgoingAsync(vm, () => bubble.CanRetry, dispatcher);
         Assert.Equal("Messenger_AttachmentStorageFull", bubble.Status);
         Assert.Equal(0, sends);
 
-        await bubble.RetryCommand.ExecuteAsync(null);
-        await WaitForMessageAsync(vm, 51);
+        await dispatcher.RunAsync(() => bubble.RetryCommand.ExecuteAsync(null));
+        await WaitForMessageAsync(vm, 51, dispatcher);
         Assert.Equal(new[] { "ready.gif", "retry.pdf", "retry.pdf", "retry.pdf" }, uploads);
         Assert.Equal(1, sends);
         Assert.Empty(vm.AttachmentComposer.Files);
@@ -197,7 +198,8 @@ public sealed class MessengerAttachmentTests : IDisposable
     [InlineData("exit")]
     public async Task LeavingComposerDeletesTemporaryInputAndOnlyLogoutOrResetCancelsDelivery(string reason)
     {
-        var (vm, service) = await OpenChatAsync();
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var (vm, service) = await OpenChatAsync(dispatcher: dispatcher);
         await vm.AddAttachmentsAsync(_ => Task.FromResult<IReadOnlyList<AttachmentSourceFile>>(
             [new(_path, "изображение.png", IsTemporary: true)]));
         var response = new TaskCompletionSource<(ErrorReturner, string?)>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -213,33 +215,33 @@ public sealed class MessengerAttachmentTests : IDisposable
             sends++;
             return SentAsync(chat, text);
         };
-        await vm.SendCommand.ExecuteAsync(null);
+        await dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
         var uploadToken = await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var cancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var registration = uploadToken.Register(() => cancelled.TrySetResult());
 
         Task? exiting = null;
         if (reason == "reset")
-            vm.Reset();
+            dispatcher.Post(vm.Reset);
         else if (reason == "exit")
-            exiting = vm.ClearOutgoingForLogoutAsync();
+            exiting = dispatcher.RunAsync(() => vm.ClearOutgoingForLogoutAsync());
         else
-            vm.SelectedChat = vm.Chats.Single(c => c.Id == "b");
+            dispatcher.Post(() => vm.SelectedChat = vm.Chats.Single(c => c.Id == "b"));
         if (reason != "chat")
             await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(5));
         else
             Assert.False(uploadToken.IsCancellationRequested);
         Assert.Empty(vm.AttachmentComposer.Files);
         response.SetResult((new(true), "late-file-id"));
-        await (exiting ?? vm.CancelAttachmentsAsync());
+        await (exiting ?? dispatcher.RunAsync(vm.CancelAttachmentsAsync));
         if (reason == "chat")
         {
-            vm.SelectedChat = vm.Chats.Single(c => c.Id == "a");
-            await WaitForMessageAsync(vm, 51);
+            dispatcher.Post(() => vm.SelectedChat = vm.Chats.Single(c => c.Id == "a"));
+            await WaitForMessageAsync(vm, 51, dispatcher);
         }
         Assert.Equal(reason == "chat" ? 1 : 0, sends);
         Assert.False(File.Exists(_path));
-        vm.Reset();
+        dispatcher.Post(vm.Reset);
     }
 
     [Fact]
@@ -315,7 +317,8 @@ public sealed class MessengerAttachmentTests : IDisposable
     private static Task<(ErrorReturner, MessageModel?)> SentAsync(string chat, string text) =>
         Task.FromResult<(ErrorReturner, MessageModel?)>((new(true), MessengerTestDoubles.CreateMessage(51, chat, 1, text)));
 
-    private static async Task<(MessengerViewModel, FakeMessengerService)> OpenChatAsync(TimeProvider? clock = null)
+    private static async Task<(MessengerViewModel, FakeMessengerService)> OpenChatAsync(
+        TimeProvider? clock = null, InlineUiDispatcher? dispatcher = null)
     {
         var service = new FakeMessengerService();
         service.Chats.AddRange([
@@ -324,7 +327,7 @@ public sealed class MessengerAttachmentTests : IDisposable
             MessengerTestDoubles.CreateChat("private", chatType: ChatType.Private)
         ]);
         service.Messages.Add(MessengerTestDoubles.CreateMessage(50, "a", 2));
-        var vm = MessengerTestDoubles.CreateViewModel(service, timeProvider: clock);
+        var vm = MessengerTestDoubles.CreateViewModel(service, dispatcher: dispatcher, timeProvider: clock);
         await vm.LoadAsync();
         vm.SelectedChat = vm.Chats.Single(c => c.Id == "a");
         return (vm, service);

@@ -55,7 +55,8 @@ public sealed class MessengerVoiceTests
     public async Task VoiceSendsWithoutTextWithReplyAndSurvivesUploadAndSendFailures()
     {
         var recorder = new Recorder();
-        var (vm, service) = await OpenAsync(recorder);
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var (vm, service) = await OpenAsync(recorder, dispatcher: dispatcher);
         vm.StartReplyMessageCommand.Execute(Assert.Single(vm.Messages));
         Assert.True(vm.ShowVoiceMicrophone);
         var recording = vm.RecordVoiceCommand.ExecuteAsync(null);
@@ -85,9 +86,9 @@ public sealed class MessengerVoiceTests
                     ? (new(false, errorResourceKey: "Messenger_UserUnavailable"), null)
                     : (new(true), MessengerTestDoubles.CreateMessage(51, chat, 1, text)));
             };
-            await vm.SendCommand.ExecuteAsync(null);
+            await dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
             await MessengerTestDoubles.WaitForOutgoingAsync(vm, () =>
-                vm.PendingMessages.SingleOrDefault()?.Status == "Messenger_AttachmentReadFailed");
+                vm.PendingMessages.SingleOrDefault()?.Status == "Messenger_AttachmentReadFailed", dispatcher);
             var bubble = Assert.Single(vm.PendingMessages);
             Assert.True(bubble.CanRetry);
             Assert.Equal("voice.ogg", bubble.Details);
@@ -95,13 +96,13 @@ public sealed class MessengerVoiceTests
             Assert.Empty(vm.AttachmentComposer.Files);
             Assert.False(File.Exists(draft.Path));
 
-            await bubble.RetryCommand.ExecuteAsync(null);
-            await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => bubble.Status == "Messenger_UserUnavailable");
+            await dispatcher.RunAsync(() => bubble.RetryCommand.ExecuteAsync(null));
+            await MessengerTestDoubles.WaitForOutgoingAsync(vm, () => bubble.Status == "Messenger_UserUnavailable", dispatcher);
             Assert.True(bubble.CanRetry);
             Assert.Single(sends);
 
-            await bubble.RetryCommand.ExecuteAsync(null);
-            await MessengerTestDoubles.WaitForMessageAsync(vm, 51);
+            await dispatcher.RunAsync(() => bubble.RetryCommand.ExecuteAsync(null));
+            await MessengerTestDoubles.WaitForMessageAsync(vm, 51, dispatcher);
             Assert.Equal([("voice.ogg", UploadFileType.MessageAttachmentVoice), ("voice.ogg", UploadFileType.MessageAttachmentVoice)], uploads);
             Assert.Equal([("a", "", 50L, "voice-id"), ("a", "", 50L, "voice-id")], sends);
             Assert.Empty(vm.AttachmentComposer.Files);
@@ -109,7 +110,7 @@ public sealed class MessengerVoiceTests
         }
         finally
         {
-            await vm.CancelAttachmentsAsync();
+            await dispatcher.RunAsync(vm.CancelAttachmentsAsync);
         }
     }
 
@@ -380,7 +381,8 @@ public sealed class MessengerVoiceTests
     }
 
     private static async Task<(MessengerViewModel Vm, FakeMessengerService Service)> OpenAsync(
-        IVoiceRecorder? recorder = null, IVoicePlayer? player = null, TimeProvider? clock = null, bool withVoice = false)
+        IVoiceRecorder? recorder = null, IVoicePlayer? player = null, TimeProvider? clock = null, bool withVoice = false,
+        InlineUiDispatcher? dispatcher = null)
     {
         var service = new FakeMessengerService();
         service.Chats.AddRange([MessengerTestDoubles.CreateChat("a"), MessengerTestDoubles.CreateChat("b")]);
@@ -392,7 +394,8 @@ public sealed class MessengerVoiceTests
             service.FileUrl = id => Task.FromResult($"https://example.invalid/{id}.ogg");
         }
         service.Messages.Add(message);
-        var vm = MessengerTestDoubles.CreateViewModel(service, timeProvider: clock, voiceRecorder: recorder, voicePlayer: player);
+        var vm = MessengerTestDoubles.CreateViewModel(service, dispatcher: dispatcher, timeProvider: clock,
+            voiceRecorder: recorder, voicePlayer: player);
         await vm.LoadAsync();
         vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "a");
         return (vm, service);
