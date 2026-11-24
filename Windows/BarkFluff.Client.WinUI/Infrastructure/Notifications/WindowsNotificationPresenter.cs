@@ -93,6 +93,17 @@ internal sealed class WindowsNotificationPresenter : INotificationPresenter
     public void RemoveChat(MessageNotificationTarget target) => Enqueue(async manager =>
         await manager.RemoveByGroupAsync(MessageNotificationPayload.Group(target)));
 
+    public void ShowCall(Guid id, string title) => Enqueue(manager =>
+    {
+        var xml = new System.Xml.Linq.XElement("toast", new System.Xml.Linq.XAttribute("launch", "audioCall=1"),
+            new System.Xml.Linq.XElement("visual", new System.Xml.Linq.XElement("binding",
+                new System.Xml.Linq.XAttribute("template", "ToastGeneric"), new System.Xml.Linq.XElement("text", title))));
+        manager.Show(new AppNotification(xml.ToString()) { Group = id.ToString("N") });
+        return Task.CompletedTask;
+    });
+
+    public void RemoveCall(Guid id) => Enqueue(async manager => await manager.RemoveByGroupAsync(id.ToString("N")));
+
     public void RemoveAll() => Enqueue(async manager => await manager.RemoveAllAsync());
 
     private void Enqueue(Func<AppNotificationManager, Task> operation)

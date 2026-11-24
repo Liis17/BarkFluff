@@ -13,6 +13,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <TitleBar x:Name="AppTitleBar"
@@ -52,6 +53,33 @@
 
             <Frame x:Name="ContentFrame" Navigated="OnContentFrameNavigated" />
         </NavigationView>
+
+        <Border x:Name="CallPanel" Grid.Row="2" Visibility="Collapsed" Padding="12"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+            <StackPanel Spacing="6">
+                <Grid x:Name="CallMediaHost" Width="1" Height="1" IsHitTestVisible="False" />
+                <TextBlock x:Name="CallPeer" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock x:Name="CallStatus" AutomationProperties.LiveSetting="Polite" />
+                    <TextBlock x:Name="CallDuration" />
+                </StackPanel>
+                <VariableSizedWrapGrid x:Name="CallControls" Orientation="Horizontal">
+                    <Button x:Name="CallMute" Margin="0,0,8,4" Click="OnCallMute" />
+                    <ComboBox x:Name="CallMicrophone" Margin="0,0,8,4" PlaceholderText="{StaticResource Calls_Microphone}"
+                              AutomationProperties.Name="{StaticResource Calls_Microphone}" MaxWidth="220"
+                              DisplayMemberPath="Label" SelectionChanged="OnCallDeviceChanged" />
+                    <ComboBox x:Name="CallSpeaker" Margin="0,0,8,4" PlaceholderText="{StaticResource Calls_Speaker}"
+                              AutomationProperties.Name="{StaticResource Calls_Speaker}" MaxWidth="220"
+                              DisplayMemberPath="Label" SelectionChanged="OnCallDeviceChanged" />
+                </VariableSizedWrapGrid>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="CallAccept" Content="{StaticResource Calls_Accept}" Click="OnCallAccept" />
+                    <Button x:Name="CallEnd" Click="OnCallEnd" />
+                    <Button x:Name="CallDismiss" Content="{StaticResource Calls_Dismiss}" Click="OnCallDismiss" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
 
         <tb:TaskbarIcon x:Name="TrayIcon"
                         ContextMenuMode="PopupMenu"

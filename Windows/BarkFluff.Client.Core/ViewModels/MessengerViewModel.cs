@@ -1,6 +1,7 @@
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.ViewModels.Settings;
 using BarkFluff.Client.Core.Services;
+using BarkFluff.Client.Core.Services.Calls;
 using BarkFluff.Client.Core.Infrastructure.Localization;
 using BarkFluff.Client.Core.Infrastructure.Presence;
 using BarkFluff.Client.Core.Infrastructure.Threading;
@@ -58,10 +59,16 @@ public sealed partial class MessengerViewModel : ObservableObject
         IChatDraftRemote? draftRemote = null,
         ChatListCache? chatCache = null,
         IAuthenticationService? authentication = null,
-        IOnboardingNavigationService? navigation = null)
+        IOnboardingNavigationService? navigation = null,
+        AudioCallService? calls = null,
+        CallSignaling? callSignaling = null)
     {
         _messenger = messenger;
         _chatCache = chatCache;
+        _calls = calls;
+        _callSignaling = callSignaling;
+        if (calls is not null)
+            calls.Changed += OnAudioCallChanged;
         _authentication = authentication;
         _navigation = navigation;
         _draftStore = draftStore;
@@ -138,6 +145,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedChat), nameof(IsChatPlaceholderVisible))]
     [NotifyPropertyChangedFor(nameof(IsPresenceLabelVisible), nameof(IsChatHeaderReconnectingVisible), nameof(IsChatListReconnectingVisible))]
+    [NotifyPropertyChangedFor(nameof(ShowAudioCall), nameof(CanStartAudioCall))]
     private ChatItemViewModel? _selectedChat;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowVoiceMicrophone), nameof(ShowComposerSend))]
     private string _draftText = string.Empty;
@@ -201,6 +209,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             await _realtimeMessenger.StartAsync(token);
             if (IsCurrent(session))
             {
+                _calls?.Start(_callSignaling?.Open());
                 await RefreshChatsAsync(session, reportError: true, token);
             }
         }

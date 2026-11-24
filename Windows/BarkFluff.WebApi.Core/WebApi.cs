@@ -688,6 +688,28 @@ namespace BarkFluff.WebApi.Core
             => await OnlinerManager.ChangeUsersInSubscription(userIds, globalParam);
         #endregion
 
+        public Task<Proto.Calls.InitiateCallResponse> InitiateAudioCallAsync(long userId, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.InitiateCallAsync(
+                new Proto.Calls.InitiateCallRequest { CalleeUserId = userId, MediaType = Proto.Calls.CallMediaType.CallMediaAudio },
+                deadline: DateTime.UtcNow.AddSeconds(15), cancellationToken: ct), parameters, ct, retry: false);
+
+        public Task<Proto.Calls.AcceptCallResponse> AcceptCallAsync(string callId, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.AcceptCallAsync(new Proto.Calls.AcceptCallRequest { CallId = callId },
+                deadline: DateTime.UtcNow.AddSeconds(15), cancellationToken: ct), parameters, ct);
+
+        public async Task FinishCallAsync(string callId, bool reject, GlobalParam parameters, CancellationToken ct)
+        {
+            if (reject)
+                await CallsManager.InvokeAsync(client => client.RejectCallAsync(new Proto.Calls.RejectCallRequest { CallId = callId },
+                    deadline: DateTime.UtcNow.AddSeconds(10), cancellationToken: ct), parameters, ct, retry: false);
+            else
+                await CallsManager.InvokeAsync(client => client.EndCallAsync(new Proto.Calls.EndCallRequest { CallId = callId },
+                    deadline: DateTime.UtcNow.AddSeconds(10), cancellationToken: ct), parameters, ct, retry: false);
+        }
+
+        public IAsyncEnumerable<Proto.Calls.CallEvent> ReadCallEventsAsync(GlobalParam parameters, CancellationToken ct)
+            => CallsManager.ReadCallEventsAsync(parameters, ct);
+
         #region Звонки (делегирование к CallsManager)
         /// <summary>
         /// Сигнализация звонков. Медиа библиотека не ведёт: в ответах приходят

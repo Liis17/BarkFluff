@@ -9,6 +9,8 @@ using BarkFluff.Client.WinUI.Infrastructure;
 using BarkFluff.Client.WinUI.Infrastructure.Appearance;
 using BarkFluff.Client.WinUI.Infrastructure.Dialogs;
 using BarkFluff.Client.WinUI.Infrastructure.Localization;
+using BarkFluff.Client.Core.Services.Calls;
+using BarkFluff.Client.WinUI.Infrastructure.Calls;
 using BarkFluff.Client.WinUI.Infrastructure.Notifications;
 using BarkFluff.Client.WinUI.Infrastructure.Threading;
 
@@ -262,6 +264,10 @@ public partial class App : Application
         }
     }
 
+    internal void ShowCallNotification(Guid id, string title) => _notificationPresenter.ShowCall(id, title);
+
+    internal void RemoveCallNotification(Guid id) => _notificationPresenter.RemoveCall(id);
+
     internal Task StopNotificationsAsync()
     {
         _notificationWindow = null;
@@ -328,6 +334,11 @@ public partial class App : Application
         builder.Services.AddSingleton<PasswordRecoveryViewModel>();
         builder.Services.AddSingleton<IVoiceRecorder, WindowsVoiceRecorder>();
         builder.Services.AddSingleton<IVoicePlayer, WindowsVoicePlayer>();
+        builder.Services.AddSingleton<WebViewCallMedia>();
+        builder.Services.AddSingleton<ICallMedia>(services => services.GetRequiredService<WebViewCallMedia>());
+        builder.Services.AddSingleton<CallSignaling>();
+        builder.Services.AddSingleton(services => new AudioCallService(services.GetRequiredService<ICallMedia>(),
+            services.GetRequiredService<IUiDispatcher>(), TimeProvider.System));
         builder.Services.AddSingleton<MessengerViewModel>();
         builder.Services.AddSingleton<ProfileViewModel>();
         builder.Services.AddSingleton<SettingsSecurityViewModel>();

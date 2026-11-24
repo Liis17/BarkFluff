@@ -36,6 +36,7 @@ public sealed partial class MainWindow : Window
     {
         _viewModel = viewModel;
         InitializeComponent();
+        InitializeCalls();
         ApplySavedWindowBounds();
 
         ExtendsContentIntoTitleBar = true;
@@ -48,6 +49,7 @@ public sealed partial class MainWindow : Window
         {
             _isWindowActive = args.WindowActivationState != WindowActivationState.Deactivated;
             UpdateNotificationWindowState();
+            UpdateCallNotification();
         };
         AppWindow.Closing += OnAppWindowClosing;
         AppWindow.Changed += OnAppWindowChanged;
@@ -225,6 +227,7 @@ public sealed partial class MainWindow : Window
                 _ = messenger.LeaveMessengerAsync();
             this.Hide();
             UpdateNotificationWindowState();
+            UpdateCallNotification();
             return;
         }
 
@@ -240,6 +243,7 @@ public sealed partial class MainWindow : Window
 
     private async Task CloseAfterSavingWindowSizeAsync()
     {
+        var callCleanup = _calls.StopAsync();
         var messenger = App.Services.GetRequiredService<MessengerViewModel>();
         var attachments = messenger.CancelAttachmentsAsync();
         var drafts = messenger.StopDraftsAsync();
@@ -266,7 +270,7 @@ public sealed partial class MainWindow : Window
             try
             {
                 var typing = App.Services.GetRequiredService<IChatTypingService>();
-                await Task.WhenAll(attachments, drafts, cache, typing.StopAsync(), CleanupLoginForExitAsync(),
+                await Task.WhenAll(callCleanup, attachments, drafts, cache, typing.StopAsync(), CleanupLoginForExitAsync(),
                     ((App)Application.Current).StopNotificationsAsync()).WaitAsync(TimeSpan.FromSeconds(3));
             }
             catch (TimeoutException)

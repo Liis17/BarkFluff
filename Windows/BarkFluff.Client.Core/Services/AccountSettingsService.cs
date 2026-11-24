@@ -1,4 +1,5 @@
 using BarkFluff.Client.Core.Models;
+using BarkFluff.Client.Core.Services.Calls;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData;
@@ -15,6 +16,7 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
     private readonly IPrivateChatKeyStore _privateChatKeyStore;
     private readonly MessengerViewModel _messengerViewModel;
     private readonly IOnboardingNavigationService _navigation;
+    private readonly AudioCallService? _audioCalls;
 
     public AccountSettingsService(
         WebApiClient webApi,
@@ -24,7 +26,8 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
         ISecureSessionStore secureSessionStore,
         IPrivateChatKeyStore privateChatKeyStore,
         MessengerViewModel messengerViewModel,
-        IOnboardingNavigationService navigation)
+        IOnboardingNavigationService navigation,
+        AudioCallService? audioCalls = null)
         : base(webApi, session)
     {
         _realtimeMessenger = realtimeMessenger;
@@ -33,6 +36,7 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
         _privateChatKeyStore = privateChatKeyStore;
         _messengerViewModel = messengerViewModel;
         _navigation = navigation;
+        _audioCalls = audioCalls;
     }
 
     public async Task<(string? ErrorKey, AccountProfile? Profile)> GetProfileAsync(CancellationToken cancellationToken = default)
@@ -113,6 +117,9 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
     /// </summary>
     public async Task<string?> LogoutAsync(CancellationToken cancellationToken = default)
     {
+        if (_audioCalls is not null)
+            await _audioCalls.StopAsync();
+
         var draftCleanup = _messengerViewModel.StopDraftsForLogoutAsync();
         var outgoingCleanup = _messengerViewModel.ClearOutgoingForLogoutAsync();
         var cacheCleanup = _messengerViewModel.ClearChatCacheAsync();

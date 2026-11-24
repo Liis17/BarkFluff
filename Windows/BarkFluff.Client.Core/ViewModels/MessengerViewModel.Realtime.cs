@@ -104,6 +104,8 @@ public sealed partial class MessengerViewModel
     private void EndRealtimeSession()
     {
         var session = _realtimeSession;
+        _calls?.Stop();
+        _lookupCallId = Guid.Empty;
         ResetSearch();
         _ = CancelAttachmentsAsync();
         _stickerFrames?.EndSession();

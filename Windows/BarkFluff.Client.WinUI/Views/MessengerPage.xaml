@@ -639,19 +639,26 @@
                                    Visibility="{x:Bind ViewModel.IsChatHeaderReconnectingVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     </StackPanel>
                 </Button>
-                <Button Grid.Column="1"
-                        VerticalAlignment="Center"
-                        AutomationProperties.Name="{StaticResource Messenger_ChatOptions}"
-                        ToolTipService.ToolTip="{StaticResource Messenger_ChatOptions}">
-                    <FontIcon FontSize="16" Glyph="&#xE712;" />
-                    <Button.Flyout>
-                        <MenuFlyout>
-                            <MenuFlyoutItem Text="{x:Bind ViewModel.SelectedChat.MuteMenuHeader, Mode=OneWay}"
-                                            Command="{x:Bind ViewModel.ToggleChatMuteCommand}"
-                                            CommandParameter="{x:Bind ViewModel.SelectedChat, Mode=OneWay}" />
-                        </MenuFlyout>
-                    </Button.Flyout>
-                </Button>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="4">
+                    <Button AutomationProperties.Name="{StaticResource Calls_Start}"
+                            ToolTipService.ToolTip="{StaticResource Calls_Start}"
+                            Command="{x:Bind ViewModel.StartAudioCallCommand}"
+                            IsEnabled="{x:Bind ViewModel.CanStartAudioCall, Mode=OneWay}"
+                            Visibility="{x:Bind ViewModel.ShowAudioCall, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <FontIcon FontSize="16" Glyph="&#xE717;" />
+                    </Button>
+                    <Button AutomationProperties.Name="{StaticResource Messenger_ChatOptions}"
+                            ToolTipService.ToolTip="{StaticResource Messenger_ChatOptions}">
+                        <FontIcon FontSize="16" Glyph="&#xE712;" />
+                        <Button.Flyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="{x:Bind ViewModel.SelectedChat.MuteMenuHeader, Mode=OneWay}"
+                                                Command="{x:Bind ViewModel.ToggleChatMuteCommand}"
+                                                CommandParameter="{x:Bind ViewModel.SelectedChat, Mode=OneWay}" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
             </Grid>
 
             <!--  Плашка закрепа: клик уводит к закрепу и перелистывает на следующий, крестик открепляет.  -->
