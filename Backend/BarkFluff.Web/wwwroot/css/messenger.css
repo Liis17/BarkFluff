@@ -31,6 +31,8 @@
             --blob2: #ecddd1;
             --scrollbar: rgba(0,0,0,0.10);
             --separator-bg: rgba(255,255,255,0.82);
+            --media-placeholder: rgba(0, 0, 0, 0.06);
+            --skeleton-shine: rgba(255, 255, 255, 0.6);
             --profile-bg: #faf8f5;
             --profile-info-bg: #eee4dd;
             --logo-gradient: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
@@ -74,6 +76,8 @@
             --blob2: rgba(45, 25, 10, 0.45);
             --scrollbar: rgba(255,255,255,0.07);
             --separator-bg: rgba(28,25,20,0.92);
+            --media-placeholder: rgba(255, 255, 255, 0.08);
+            --skeleton-shine: rgba(255, 255, 255, 0.10);
             --profile-bg: #1c1916;
             --profile-info-bg: rgba(255, 255, 255, 0.045);
             --logo-gradient: linear-gradient(135deg, #f0e8e0 0%, #c0a080 100%);
@@ -114,6 +118,8 @@
             --blob2: rgba(55, 38, 130, 0.42);
             --scrollbar: rgba(255,255,255,0.06);
             --separator-bg: rgba(18,21,38,0.92);
+            --media-placeholder: rgba(255, 255, 255, 0.08);
+            --skeleton-shine: rgba(255, 255, 255, 0.10);
             --profile-bg: #12152a;
             --profile-info-bg: rgba(255, 255, 255, 0.05);
             --logo-gradient: linear-gradient(135deg, #e8e4ff 0%, #a090ff 100%);
@@ -129,6 +135,33 @@
             padding: 0;
             box-sizing: border-box;
             font-family: 'Inter', sans-serif;
+        }
+
+        /* === SKELETON (заглушки загрузки) === */
+        /* Фон — токен темы; shimmer — псевдоэлемент, двигается только через transform. Декоративно: aria-hidden в разметке. */
+        .skeleton {
+            position: relative;
+            overflow: hidden;
+            background: var(--media-placeholder);
+            border-radius: 8px;
+        }
+
+        .skeleton::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, var(--skeleton-shine), transparent);
+            transform: translateX(-100%);
+            animation: skeleton-shimmer 1.4s linear infinite;
+        }
+
+        @keyframes skeleton-shimmer {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(100%); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .skeleton::after { animation: none; display: none; }
         }
 
         body {
@@ -425,6 +458,24 @@
             width: 100%;
         }
 
+        /* Скелетон списка до первого ответа: строка той же высоты и отступов, что .chat-item */
+        .chat-skeleton-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            height: var(--chat-row-height);
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .chat-skeleton-avatar { width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0; }
+        .chat-skeleton-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+        .chat-skeleton-name { display: block; width: 45%; height: 12px; border-radius: 6px; }
+        .chat-skeleton-text { display: block; width: 75%; height: 10px; border-radius: 5px; }
+
+        html.sidebar-compact .chat-skeleton-row { justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
+        html.sidebar-compact .chat-skeleton-info { display: none; }
+
         .chat-list::-webkit-scrollbar { width: 4px; }
         .chat-list::-webkit-scrollbar-track { background: transparent; }
         .chat-list::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 2px; }
@@ -450,6 +501,9 @@
 
         .chat-item:hover { background: rgba(0, 0, 0, 0.04); }
         .chat-item.active { background: rgba(140, 53, 28, 0.08); }
+
+        /* Переезд строки при изменении порядка: класс ставит chat-list.js и снимает таймером; у новых строк его нет */
+        .chat-item.is-moving { transition: transform 220ms var(--ease-out), background 0.15s; }
 
         .chat-avatar {
             width: 50px;
@@ -502,12 +556,39 @@
         }
 
         .chat-name {
+            display: flex;
+            align-items: center;
+            min-width: 0;
             font-size: 15px;
             font-weight: 600;
             white-space: nowrap;
             overflow: hidden;
+        }
+
+        .chat-name-text {
+            min-width: 0;
+            overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        .chat-name .chat-lock,
+        .chat-name .bot-badge { flex-shrink: 0; }
+
+        /* Основной бейдж пользователя рядом с именем; пустой слот места не занимает. */
+        .user-badge-slot {
+            display: inline-flex;
+            flex-shrink: 0;
+            margin-left: 4px;
+            vertical-align: -3px;
+        }
+        .user-badge-slot:empty { display: none; }
+        .user-badge-mini {
+            display: block;
+            width: 16px;
+            height: 16px;
+            object-fit: contain;
+        }
+        .chat-header-name .user-badge-mini { width: 18px; height: 18px; }
 
         .bot-badge {
             display: inline-flex;
@@ -576,6 +657,14 @@
         .chat-unread.visible { display: block; }
         .chat-unread.muted { background: var(--text-sub); }
 
+        /* Pop бейджа при росте счётчика: класс unread-up ставит chat-list.js на строку */
+        .chat-item.unread-up .chat-unread { animation: chatUnreadPop 200ms var(--ease-out); }
+        @keyframes chatUnreadPop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+
         .search-results {
             display: none;
             flex: 1;
@@ -643,6 +732,12 @@
         .search-more:hover:not(:disabled) { background: rgba(0, 0, 0, 0.04); }
         .search-more:disabled { color: var(--text-sub); cursor: default; }
         .search-section-note { padding: 4px 16px 12px; font-size: 13px; color: var(--text-sub); }
+        /* Строки, дописанные «Показать ещё» (класс ставит search.js), плавно проявляются; первая страница и перерисовки — без анимации */
+        .search-hit-enter { animation: searchHitIn 150ms var(--ease-out); }
+        @keyframes searchHitIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
 
         .search-filters { padding: 0 16px 8px; }
         .search-filters[hidden],
@@ -684,6 +779,20 @@
             background: var(--input-bg);
             max-height: 320px;
             overflow-y: auto;
+        }
+        /* Фильтры поиска: вход opacity + сдвиг через @starting-style (как баннеры), скрытие мгновенное по [hidden] */
+        :root { --search-enter-from: translateY(-4px); }
+        .search-filters,
+        .search-filter-panel { transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out); }
+        @starting-style {
+            .search-filters:not([hidden]),
+            .search-filter-panel:not([hidden]) { opacity: 0; transform: var(--search-enter-from); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            :root { --search-enter-from: none; }
+            .search-filters,
+            .search-filter-panel { transition: opacity 120ms var(--ease-out); }
+            .search-hit-enter { animation-duration: 120ms; }
         }
         .search-filter-option {
             padding: 8px 10px;
@@ -744,7 +853,6 @@
         .chat-area > .chat-header,
         .chat-area > .pinned-bar,
         .chat-area > .chat-empty,
-        .chat-area > .loading-messages,
         .chat-area > .messages-area-wrap,
         .chat-area > .input-bar {
             position: relative;
@@ -941,6 +1049,27 @@
         .chat-header-status { font-size: 12px; color: var(--text-sub); }
         .chat-header-status.online { color: var(--online-color); }
 
+        /* Точки после «печатает…» (presence.js; многоточие в строке заменено ими). Декоративные, aria-hidden */
+        .chat-header-status .typing-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            margin-left: 4px;
+        }
+        .typing-dots > span {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: typingDot 1.2s ease-in-out infinite;
+        }
+        .typing-dots > span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots > span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingDot {
+            0%, 60%, 100% { opacity: 0.25; }
+            30% { opacity: 1; }
+        }
+
         /* --- Calls UI --- */
         .chat-header-actions { display: flex; gap: 4px; flex-shrink: 0; }
         .btn-call {
@@ -992,7 +1121,7 @@
             display: flex; align-items: center; justify-content: center;
             transition: transform .15s, filter .15s;
         }
-        .call-round-btn svg { width: 26px; height: 26px; }
+        .call-round-btn .bf-icon { width: 26px; height: 26px; }
         .call-round-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
         .call-btn-accept { background: #2e9e5b; }
         .call-btn-reject, .call-ctl-end { background: #e8412a; }
@@ -1124,7 +1253,7 @@
         }
         .call-vt-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .call-vt-icon { color: #c9c9d1; flex: none; }
-        .call-vt-icon svg, .call-vt-muted svg { width: 13px; height: 13px; display: block; }
+        .call-vt-icon .bf-icon, .call-vt-muted .bf-icon { width: 13px; height: 13px; display: block; }
         .call-vt-muted { display: none; flex: none; color: #ff7a66; }
         .call-vt.mute .call-vt-muted { display: block; }
         .call-vt.small .call-vt-pill { left: 6px; bottom: 6px; height: 24px; font-size: 11px; }
@@ -1169,7 +1298,7 @@
         .call-member-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .call-member-name { font-size: 14px; font-weight: 650; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .call-member-muted { display: none; color: #ff7a66; }
-        .call-member-muted svg { width: 15px; height: 15px; display: block; }
+        .call-member-muted .bf-icon { width: 15px; height: 15px; display: block; }
         .call-member.mute .call-member-muted { display: block; }
 
         /* Эквалайзер «говорит»: пять полосок, высоту задаёт JS по уровню голоса. */
@@ -1218,15 +1347,15 @@
             display: flex; align-items: center; justify-content: center;
             transition: background .16s ease, color .16s ease;
         }
-        .call-ctl svg { width: 20px; height: 20px; }
+        .call-ctl .bf-icon { width: 20px; height: 20px; }
         .call-ctl:hover { filter: brightness(1.18); }
         .call-ctl.active { background: #f0f0f2; color: #141418; }
         .call-ctl-end { width: 64px; border-radius: 999px; background: #e8412a; color: #fff; }
-        .call-ctl-end svg { width: 24px; height: 24px; }
+        .call-ctl-end .bf-icon { width: 24px; height: 24px; }
         .call-ctl-end:hover { background: #f2543d; }
         /* Спиннер «применяю качество» поверх кнопки качества. */
         @keyframes spin { to { transform: rotate(360deg); } }
-        .call-ctl.busy svg { opacity: .3; }
+        .call-ctl.busy .bf-icon { opacity: .3; }
         .call-ctl.busy::after {
             content: ''; position: absolute; top: 50%; left: 50%; margin: -12px 0 0 -12px;
             width: 24px; height: 24px; border: 2px solid rgba(255,255,255,0.35);
@@ -1292,7 +1421,7 @@
             width: 26px; height: 48px; margin: 0 4px 0 -8px; padding: 0; border: 0; background: transparent;
             color: inherit; opacity: .6; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
-        .call-ctl-caret svg { width: 12px; height: 12px; }
+        .call-ctl-caret .bf-icon { width: 12px; height: 12px; }
         .call-ctl-caret:hover { opacity: 1; }
         .call-ctl-menu {
             display: block; position: absolute; left: 50%; bottom: 64px;
@@ -1708,9 +1837,21 @@
             cursor: pointer;
         }
         .attach-video-wrap video {
+            position: absolute;
+            inset: 0;
             width: 100%;
-            max-height: 300px;
-            display: block;
+            height: 100%;
+            object-fit: cover;
+        }
+        /* Картинки ленты: пока грузятся, видна заглушка контейнера, затем плавное появление */
+        .attach-image-grid img,
+        .msg-sender-avatar img { transition: opacity 180ms var(--ease-out); }
+        .attach-image-grid img.is-media-pending,
+        .msg-sender-avatar img.is-media-pending { opacity: 0; }
+        .attach-image-grid:has(> img.is-media-pending) { background: var(--media-placeholder); }
+        @media (prefers-reduced-motion: reduce) {
+            .attach-image-grid img,
+            .msg-sender-avatar img { transition: none; }
         }
         .video-play-overlay {
             position: absolute;
@@ -1721,7 +1862,7 @@
             background: rgba(0,0,0,0.25);
             pointer-events: none;
         }
-        .video-play-overlay span {
+        .video-play-disc {
             width: 48px; height: 48px;
             background: rgba(0,0,0,0.6);
             border-radius: 50%;
@@ -1844,12 +1985,6 @@
             width: 14px;
             height: 12px;
             display: block;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 1.8;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            overflow: visible;
         }
 
         .msg-status-icon--read { width: 20px; }
@@ -1936,15 +2071,47 @@
             line-height: 1.35;
         }
 
+        /* Поверх верха ленты: не участвует в потоке, высоту области сообщений не меняет */
         .loading-messages {
-            text-align: center;
-            padding: 12px;
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            z-index: 2;
+            transform: translateX(-50%);
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: var(--separator-bg);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             color: var(--text-sub);
-            font-size: 13px;
-            display: none;
+            font-size: 12px;
+            line-height: 1.35;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s var(--ease-out), visibility 0.15s;
         }
 
-        .loading-messages.visible { display: block; }
+        .loading-messages.visible { opacity: 1; visibility: visible; }
+
+        /* Скелетон ленты при открытии чата: колонка как у .messages-inner, пузыри чередуются слева и справа */
+        .messages-skeleton {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-top: 6px;
+        }
+
+        .messages-skeleton-row { display: flex; }
+        .messages-skeleton-row.outgoing { justify-content: flex-end; }
+
+        .messages-skeleton-bubble {
+            display: block;
+            height: 44px;
+            border-radius: 16px 16px 16px 4px;
+        }
+
+        .messages-skeleton-row.outgoing .messages-skeleton-bubble { border-radius: 16px 16px 4px 16px; }
 
         /* === INPUT BAR === */
 
@@ -2071,7 +2238,7 @@
         .attach-dialog {
             background: var(--dialog-bg); border-radius: 18px; width: 540px; max-width: 95vw;
             max-height: 88vh; display: flex; flex-direction: column; overflow: hidden;
-            box-shadow: 0 12px 48px rgba(0,0,0,0.25); animation: fadeScaleIn 0.2s ease-out;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.25);
             border: 1px solid var(--card-border);
         }
         .attach-dialog-header {
@@ -2277,7 +2444,6 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            animation: fadeScaleIn 0.2s ease-out;
         }
 
         .profile-close {
@@ -2410,6 +2576,7 @@
         }
 
         .sp-grid img:hover { background: rgba(0, 0, 0, 0.06); }
+        .sp-skeleton { display: block; width: 100%; aspect-ratio: 1; border-radius: 12px; }
 
         .sp-status {
             grid-column: 1 / -1;
@@ -2495,11 +2662,8 @@
         .profile-action-btn.icon-only { flex: 0 0 44px; width: 44px; }
 
         .profile-action-btn .bf-icon,
-        .profile-action-btn svg,
         .profile-info-copy .bf-icon,
-        .profile-info-copy svg,
-        .profile-info-icon .bf-icon,
-        .profile-info-icon svg {
+        .profile-info-icon .bf-icon {
             width: 20px;
             height: 20px;
             display: block;
@@ -2641,28 +2805,93 @@
         .profile-details-card .profile-info-item.no-copy .profile-info-text {
             grid-column: 2 / 4;
         }
+        .profile-primary-badge {
+            display: inline-flex;
+            margin-left: 6px;
+            padding: 2px;
+            border: none;
+            border-radius: 6px;
+            background: none;
+            vertical-align: -3px;
+            cursor: pointer;
+        }
+        .profile-primary-badge .user-badge-mini { width: 22px; height: 22px; }
+
+        .profile-badges-card {
+            margin: 0 30px 14px;
+            padding: 14px 18px;
+            border-radius: 18px;
+            background: var(--profile-info-bg);
+        }
+        .profile-badges-card[hidden] { display: none; }
+
+        .profile-badges-title {
+            margin-bottom: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-sub);
+        }
+
         .profile-badges {
             display: flex;
             gap: 8px;
-            flex-wrap: wrap;
-            justify-content: center;
+            overflow-x: auto;
         }
 
         .profile-badge {
             display: flex;
+            flex-shrink: 0;
             align-items: center;
-            gap: 4px;
-            padding: 4px 10px;
-            background: rgba(140, 53, 28, 0.08);
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: none;
             border-radius: 12px;
-            font-size: 12px;
-            color: var(--primary);
-            font-weight: 500;
+            background: rgba(140, 53, 28, 0.08);
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .profile-badge:hover { background: rgba(140, 53, 28, 0.16); }
+        .profile-badge .user-badge-mini { width: 32px; height: 32px; }
+
+        .profile-primary-badge:focus-visible,
+        .profile-badge:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
         }
 
-        .profile-badge img {
-            width: 16px;
-            height: 16px;
+        .badge-viewer-overlay { z-index: 95; }
+
+        .badge-viewer-panel {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            width: 320px;
+            max-width: 92vw;
+            padding: 44px 24px 28px;
+            border-radius: 24px;
+            background: var(--profile-bg);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.28);
+            text-align: center;
+            animation: fadeScaleIn 0.2s ease-out;
+        }
+
+        .badge-viewer-image {
+            width: 160px;
+            height: 160px;
+            margin-bottom: 8px;
+            object-fit: contain;
+        }
+        .badge-viewer-name { font-size: 18px; font-weight: 700; color: var(--text-main); }
+        .badge-viewer-desc { font-size: 14px; color: var(--text-sub); line-height: 1.4; }
+        .badge-viewer-date { font-size: 13px; color: var(--text-sub); }
+        .badge-viewer-panel [hidden] { display: none; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .badge-viewer-panel { animation: none; }
         }
 
         .profile-media-section {
@@ -2913,11 +3142,18 @@
 
         .group-member-name {
             flex: 1;
+            display: flex;
+            align-items: center;
+            min-width: 0;
             font-size: 14px;
             color: var(--text-main);
+            white-space: nowrap;
+        }
+
+        .group-member-name-text {
+            min-width: 0;
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap;
         }
 
         .group-member-remove {
@@ -2993,7 +3229,6 @@
             display: flex;
             flex-direction: column;
             box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
-            animation: fadeScaleIn 0.2s ease-out;
         }
 
         @keyframes fadeScaleIn {
@@ -3021,7 +3256,7 @@
             display: none;
         }
 
-        .sd-back.visible { display: block; }
+        .sd-back.visible { display: block; animation: sdBackIn 150ms var(--ease-out); }
         .sd-back:hover { background: rgba(0, 0, 0, 0.06); }
 
         .sd-title {
@@ -3057,6 +3292,32 @@
         .sd-body {
             flex: 1;
             overflow-y: auto;
+        }
+
+        /* Переход между экранами настроек: направление ставит settings.js (navigate — вперёд, goBack — назад).
+           Первое открытие класса не получает. Высота диалога по содержимому не анимируется. */
+        @keyframes sdSlideForward {
+            from { opacity: 0; transform: translateX(16px); }
+            to   { opacity: 1; transform: none; }
+        }
+        @keyframes sdSlideBack {
+            from { opacity: 0; transform: translateX(-16px); }
+            to   { opacity: 1; transform: none; }
+        }
+        @keyframes sdBackIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to   { opacity: 1; transform: none; }
+        }
+        @keyframes sdFadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        .sd-body.sd-slide-forward { animation: sdSlideForward 200ms var(--ease-out); }
+        .sd-body.sd-slide-back { animation: sdSlideBack 200ms var(--ease-out); }
+        @media (prefers-reduced-motion: reduce) {
+            .sd-body.sd-slide-forward,
+            .sd-body.sd-slide-back,
+            .sd-back.visible { animation: sdFadeIn 120ms var(--ease-out); }
         }
 
         /* Profile block (avatar + name) at top of main menu */
@@ -3159,7 +3420,7 @@
         }
 
         .btn-logout-settings:hover { background: rgba(220, 38, 38, 0.12); }
-        .btn-logout-settings svg { flex-shrink: 0; }
+        .btn-logout-settings .bf-icon { width: 18px; height: 18px; }
 
         /* Sub-view: form fields */
         .sd-form { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
@@ -3215,6 +3476,17 @@
 
         .sd-storage-bar { height: 6px; margin: 10px 0 16px; border-radius: 3px; background: var(--card-border); overflow: hidden; }
         .sd-storage-bar > div { height: 100%; background: var(--primary); }
+
+        /* Заглушки экранов настроек: повторяют строки бейджей, сессий и переключателей */
+        .sd-badge-skeleton { cursor: default; }
+        .sd-badge-skeleton-icon { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+        .sd-badge-skeleton-name { display: block; width: 45%; height: 13px; }
+        .sd-badge-skeleton-desc { display: block; width: 70%; height: 11px; }
+        .sd-skeleton-line { display: block; height: 13px; }
+        .sd-skeleton-line-title { width: 45%; }
+        .sd-skeleton-line-meta { width: 65%; height: 11px; margin-top: 8px; }
+        .sd-skeleton-switch { width: 40px; height: 22px; border-radius: 11px; flex-shrink: 0; }
+        .sd-skeleton-poster { display: block; height: 96px; border-radius: 0; }
 
         /* Подключение устройства по QR (fast-auth-link.js) */
         .fal-video { display: block; width: 100%; max-height: 320px; margin: 12px 0; border-radius: 12px; background: #000; object-fit: cover; }
@@ -3494,6 +3766,7 @@
             border: 1px solid var(--card-border);
         }
         .sd-bg-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .sd-bg-card > .skeleton { position: absolute; inset: 0; border-radius: 0; }
         .sd-bg-card-add {
             display: flex;
             align-items: center;
@@ -3900,7 +4173,7 @@
             cursor: pointer;
             transition: background 0.15s, color 0.15s, border-color 0.15s;
         }
-        .ie-tool-btn svg { width: 18px; height: 18px; display: block; }
+        .ie-tool-btn .bf-icon { width: 18px; height: 18px; display: block; }
         .ie-tool-btn:hover { background: var(--primary-alpha); color: var(--text-main); }
         .ie-tool-btn.active {
             background: var(--primary-alpha);
@@ -4310,7 +4583,7 @@
         }
 
         .newchat-menu button:hover { background: rgba(0, 0, 0, 0.06); }
-        .newchat-menu button svg { width: 18px; height: 18px; flex-shrink: 0; }
+        .newchat-menu button .bf-icon { width: 18px; height: 18px; flex-shrink: 0; }
 
         .newchat-dialog { max-width: 420px; display: flex; flex-direction: column; }
 
@@ -4369,6 +4642,7 @@
         .cmdpalette-overlay { align-items: flex-start; padding-top: 12vh; }
 
         .cmdpalette-dialog {
+            transform-origin: top center;
             width: 92%;
             max-width: 560px;
             max-height: 70vh;
@@ -4427,17 +4701,29 @@
             background: var(--dialog-bg);
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
             border: 1px solid var(--card-border);
-            display: none;
+            display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             font-size: 20px;
             color: var(--text-main);
-            transition: box-shadow 0.2s, transform 0.15s;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: scale(0.9);
+            transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms, box-shadow 0.2s;
         }
 
-        .scroll-to-bottom-btn.visible { display: flex; }
-        .scroll-to-bottom-btn:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24); transform: scale(1.05); }
+        /* Скрытая кнопка не видна, не кликается и выпадает из фокуса (visibility) — как .newchat-menu */
+        .scroll-to-bottom-btn.visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: scale(1);
+            transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out), visibility 0s linear, box-shadow 0.2s;
+        }
+        .scroll-to-bottom-btn:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24); }
+        .scroll-to-bottom-btn.visible:hover { transform: scale(1.05); }
 
         .scroll-to-bottom-btn .scroll-badge {
             position: absolute;
@@ -4875,6 +5161,16 @@
             border-left: 3px solid var(--primary);
         }
         .edit-preview-bar.visible { display: flex; }
+        /* Вход панелей: opacity + сдвиг; выход без анимации (display: none сразу) */
+        .reply-preview-bar,
+        .edit-preview-bar { transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out); }
+        @starting-style {
+            .reply-preview-bar.visible,
+            .edit-preview-bar.visible {
+                opacity: 0;
+                transform: var(--bar-enter-from);
+            }
+        }
         .edit-preview-bar .rpb-content { flex: 1; min-width: 0; }
         .edit-preview-bar .rpb-author {
             font-size: 12px;
@@ -4995,7 +5291,6 @@
             flex-direction: column;
             overflow: hidden;
             box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
-            animation: fadeScaleIn 0.2s ease-out;
         }
         .forward-modal-header {
             display: flex;
@@ -5147,6 +5442,44 @@
         }
         .msg-group.swiping { transition: none; }
 
+        /* Появление живого сообщения, удаление (feed.js removeMessage) и подсветка правки.
+           Анимируются только opacity и transform; height — лишь у схлопывания удаляемого узла. */
+        @keyframes msgEnter {
+            from { opacity: 0; transform: translateY(8px); }
+        }
+        @keyframes msgEnterOutgoing {
+            from { opacity: 0; transform: translateY(8px) scale(0.98); }
+        }
+        @keyframes msgFadeIn {
+            from { opacity: 0; }
+        }
+        .msg-group.msg-enter { animation: msgEnter 200ms var(--ease-out); }
+        .msg-group.outgoing.msg-enter {
+            animation-name: msgEnterOutgoing;
+            transform-origin: right bottom;
+        }
+        .msg-group.msg-leaving {
+            opacity: 0;
+            transform: scale(0.98);
+            pointer-events: none;
+            transition: opacity 140ms var(--ease-out), transform 140ms var(--ease-out);
+        }
+        .msg-group.msg-collapsing {
+            overflow: hidden;
+            transition: height 160ms var(--ease-out), margin 160ms var(--ease-out);
+        }
+        .msg-group.edited-flash .msg-bubble { animation: msgHighlight 600ms ease-out; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .msg-group,
+            .msg-group.msg-leaving,
+            .msg-group.msg-collapsing { transition: none; }
+            .msg-group.msg-enter,
+            .msg-group.outgoing.msg-enter { animation: msgFadeIn 120ms var(--ease-out); }
+            .msg-group.highlight .msg-bubble,
+            .msg-group.edited-flash .msg-bubble { animation: none; background-color: var(--primary-alpha); }
+        }
+
         /* iOS callout suppression on bubbles (don't break document download) */
         .msg-bubble {
             -webkit-touch-callout: none;
@@ -5285,6 +5618,19 @@
         }
         .pinned-bar.hidden { display: none; }
 
+        /* Баннеры над лентой (закреп, звонок, только чтение): вход opacity + сдвиг, выход мгновенный ([hidden]/.hidden) */
+        .pinned-bar,
+        .chat-readonly-banner,
+        .chat-call-banner { transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out); }
+        @starting-style {
+            .pinned-bar:not(.hidden),
+            .chat-readonly-banner:not([hidden]),
+            .chat-call-banner:not([hidden]) {
+                opacity: 0;
+                transform: var(--banner-enter-from);
+            }
+        }
+
         .pinned-bar-counter {
             font-size: 11px;
             color: var(--text-sub);
@@ -5301,6 +5647,11 @@
             overflow: hidden;
         }
         .pinned-bar-preview:hover .pinned-bar-author { color: var(--primary); }
+        /* Кроссфейд превью при переключении между закреплёнными (класс ставит pinned.js по клику) */
+        .pinned-bar-preview.is-switching { animation: pinnedSwitch 150ms var(--ease-out); }
+        @keyframes pinnedSwitch {
+            from { opacity: 0; transform: translateY(4px); }
+        }
 
         .pinned-bar-author {
             font-size: 12px;
@@ -5371,7 +5722,78 @@
             flex-direction: column;
             overflow: hidden;
             box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
-            animation: fadeScaleIn 0.2s ease-out;
+        }
+
+        /* ===== Вход и выход оверлеев (BF.utils.openOverlay/closeOverlay) =====
+           .visible включает вход и снимается при закрытии сразу; .is-closing держит оверлей
+           на время выхода (display, без кликов). Конец выхода — utils.js: transitionend или таймер.
+           Новые оверлеи, открываемые через openOverlay, добавляются сюда по своему классу. */
+        :root {
+            --overlay-enter: 180ms;
+            --overlay-exit: 140ms;
+            --overlay-panel-enter: 200ms;
+            --overlay-panel-exit: 140ms;
+            --overlay-panel-from: scale(0.96) translateY(4px);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --overlay-enter: 120ms;
+                --overlay-exit: 120ms;
+                --overlay-panel-enter: 120ms;
+                --overlay-panel-exit: 120ms;
+                --overlay-panel-from: none;
+            }
+        }
+
+        .confirm-overlay, .settings-overlay, .profile-overlay, .overlay, .forward-modal-overlay,
+        .attach-overlay, .ie-overlay, .sd-crop-overlay {
+            transition: opacity var(--overlay-exit) var(--ease-out);
+        }
+        .confirm-overlay.visible, .settings-overlay.visible, .profile-overlay.visible, .overlay.visible,
+        .forward-modal-overlay.visible, .attach-overlay.visible, .ie-overlay.visible, .sd-crop-overlay.visible {
+            opacity: 1;
+            transition: opacity var(--overlay-enter) var(--ease-out);
+        }
+        .confirm-overlay.is-closing, .settings-overlay.is-closing, .profile-overlay.is-closing, .overlay.is-closing,
+        .forward-modal-overlay.is-closing, .attach-overlay.is-closing, .ie-overlay.is-closing, .sd-crop-overlay.is-closing {
+            display: flex;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .confirm-dialog, .settings-dialog, .profile-panel, .dialog, .forward-modal, .attach-dialog,
+        .ie-dialog, .sd-crop-dialog {
+            transition: opacity var(--overlay-panel-exit) var(--ease-out), transform var(--overlay-panel-exit) var(--ease-out);
+        }
+        .confirm-overlay.visible > .confirm-dialog, .settings-overlay.visible > .settings-dialog,
+        .profile-overlay.visible > .profile-panel, .overlay.visible > .dialog,
+        .forward-modal-overlay.visible > .forward-modal, .attach-overlay.visible > .attach-dialog,
+        .ie-overlay.visible > .ie-dialog, .sd-crop-overlay.visible > .sd-crop-dialog {
+            opacity: 1;
+            transform: none;
+            transition: opacity var(--overlay-panel-enter) var(--ease-out), transform var(--overlay-panel-enter) var(--ease-out);
+        }
+        .confirm-overlay.is-closing > .confirm-dialog, .settings-overlay.is-closing > .settings-dialog,
+        .profile-overlay.is-closing > .profile-panel, .overlay.is-closing > .dialog,
+        .forward-modal-overlay.is-closing > .forward-modal, .attach-overlay.is-closing > .attach-dialog,
+        .ie-overlay.is-closing > .ie-dialog, .sd-crop-overlay.is-closing > .sd-crop-dialog {
+            opacity: 0;
+            transform: var(--overlay-panel-from);
+        }
+
+        @starting-style {
+            .confirm-overlay.visible, .settings-overlay.visible, .profile-overlay.visible, .overlay.visible,
+            .forward-modal-overlay.visible, .attach-overlay.visible, .ie-overlay.visible, .sd-crop-overlay.visible {
+                opacity: 0;
+            }
+            .confirm-overlay.visible > .confirm-dialog, .settings-overlay.visible > .settings-dialog,
+            .profile-overlay.visible > .profile-panel, .overlay.visible > .dialog,
+            .forward-modal-overlay.visible > .forward-modal, .attach-overlay.visible > .attach-dialog,
+            .ie-overlay.visible > .ie-dialog, .sd-crop-overlay.visible > .sd-crop-dialog {
+                opacity: 0;
+                transform: var(--overlay-panel-from);
+            }
         }
 
         /* === FOLDER EDIT MODAL === */
@@ -5574,6 +5996,9 @@
         .call-history-name { font-size: 15px; font-weight: 600; color: var(--text-main); }
         .call-history-meta { font-size: 13px; color: var(--text-sub); }
         .call-history-item.missed .call-history-meta { color: var(--error); }
+        .call-history-skeleton { display: flex; flex-direction: column; gap: 6px; padding: 10px 20px; }
+        .call-history-skeleton-name { display: block; width: 40%; height: 14px; }
+        .call-history-skeleton-meta { display: block; width: 65%; height: 12px; }
         .call-history-empty {
             text-align: center;
             color: var(--text-sub);
@@ -5660,4 +6085,34 @@
                 transform: translateX(-50%);
                 transition: opacity 120ms var(--ease-out);
             }
+        }
+
+        /* Панели, баннеры, кнопка «вниз», переезд строк, pop бейджа и «печатает»: без движения, только короткий opacity */
+        :root {
+            --bar-enter-from: translateY(6px);
+            --banner-enter-from: translateY(-4px);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --bar-enter-from: none;
+                --banner-enter-from: none;
+            }
+            .reply-preview-bar,
+            .edit-preview-bar,
+            .pinned-bar,
+            .chat-readonly-banner,
+            .chat-call-banner { transition: opacity 120ms var(--ease-out); }
+            .pinned-bar-preview.is-switching { animation: none; }
+            .chat-item.is-moving { transition: background 0.15s; }
+            .chat-item.unread-up .chat-unread { animation: none; }
+            .typing-dots > span { animation: none; opacity: 0.6; }
+            .scroll-to-bottom-btn,
+            .scroll-to-bottom-btn.visible { transform: none; transition: opacity 120ms var(--ease-out), visibility 0s linear 120ms, box-shadow 0.2s; }
+            .scroll-to-bottom-btn.visible { transition: opacity 120ms var(--ease-out), visibility 0s linear, box-shadow 0.2s; }
+        }
+
+        /* Мобильный сайдбар переключается без скольжения; открытие и закрытие списка идут по тем же классам */
+        @media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+            .sidebar,
+            .chat-area { transition: none; }
         }

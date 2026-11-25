@@ -180,7 +180,7 @@
                                         if (att.type === 'VIDEO') {
                                             var play = document.createElement('span');
                                             play.className = 'profile-video-play';
-                                            play.textContent = '▶';
+                                            play.innerHTML = BF.icons.html('play');
                                             tile.appendChild(play);
                                         }
                                         tile.addEventListener('click', function () {
@@ -241,7 +241,7 @@
                                 BF.files.bindResilientLink(el, att.fileId);
                                 el.rel = 'noopener';
                                 var icon = document.createElement('span');
-                                icon.textContent = '\u{1F4C4}';
+                                icon.innerHTML = BF.icons.html('document');
                                 el.appendChild(icon);
                                 el.appendChild(
                                     document.createTextNode(' ' + (att.fileName || BF.i18n.t('attachment.file')))

@@ -15,7 +15,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="64dp"
-            app:navigationIcon="@drawable/ic_back"
+            app:navigationIcon="@drawable/icon_back"
             app:title="@string/storage_settings_title"
             app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
             app:titleTextColor="@color/profile_settings_on_surface" />
@@ -46,7 +46,7 @@
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_storage"
+                    android:src="@drawable/icon_storage_data"
                     app:tint="@color/profile_settings_primary" />
                 <TextView
                     android:layout_width="wrap_content"
@@ -147,7 +147,7 @@
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_smartphone"
+                    android:src="@drawable/icon_default_phone"
                     app:tint="@color/profile_settings_primary" />
                 <TextView
                     android:layout_width="wrap_content"
@@ -242,7 +242,7 @@
                         android:layout_width="22dp"
                         android:layout_height="22dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_image_placeholder"
+                        android:src="@drawable/icon_image"
                         app:tint="#3AA655" />
                     <TextView
                         android:layout_width="0dp"
@@ -276,7 +276,7 @@
                         android:layout_width="22dp"
                         android:layout_height="22dp"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_chat_bubble"
+                        android:src="@drawable/icon_messages"
                         app:tint="#F39C12" />
                     <TextView
                         android:layout_width="0dp"

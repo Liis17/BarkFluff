@@ -12,7 +12,7 @@
         android:layout_height="48dp"
         android:contentDescription="@null"
         android:importantForAccessibility="no"
-        android:src="@drawable/ic_sticker"
+        android:src="@drawable/icon_sticker"
         app:tint="?attr/colorOnSurfaceVariant" />
 
     <TextView

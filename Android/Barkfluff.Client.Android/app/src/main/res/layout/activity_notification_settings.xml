@@ -15,7 +15,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="64dp"
-            app:navigationIcon="@drawable/ic_back"
+            app:navigationIcon="@drawable/icon_back"
             app:title="@string/notification_settings_title"
             app:titleTextAppearance="@style/TextAppearance.Barkfluff.Settings2A.Title"
             app:titleTextColor="@color/profile_settings_on_surface" />
@@ -48,7 +48,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_notifications"
+                    android:src="@drawable/icon_notifications"
                     app:tint="@color/profile_settings_icon" />
 
                 <LinearLayout
@@ -101,7 +101,7 @@
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_info"
+                android:src="@drawable/icon_info"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <TextView

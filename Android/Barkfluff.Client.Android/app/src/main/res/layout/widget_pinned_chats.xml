@@ -34,7 +34,7 @@
         android:layout_height="28dp"
         android:contentDescription="@string/cd_refresh"
             android:padding="4dp"
-            android:src="@drawable/ic_refresh" />
+            android:src="@drawable/icon_refresh" />
     </LinearLayout>
 
     <TextView

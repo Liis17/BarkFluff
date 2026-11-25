@@ -82,7 +82,7 @@ class ImagePagerAdapter(
                 onSuccess = { progress.visibility = View.GONE },
                 onError = {
                     progress.visibility = View.GONE
-                    photoView.setImageResource(R.drawable.ic_image_placeholder)
+                    photoView.setImageResource(R.drawable.icon_image)
                 }
             )
         }

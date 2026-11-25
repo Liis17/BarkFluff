@@ -12,7 +12,7 @@
         android:layout_height="?attr/actionBarSize"
         android:background="@color/profile_settings_background"
         app:layout_constraintTop_toTopOf="parent"
-        app:navigationIcon="@drawable/ic_arrow_back"
+        app:navigationIcon="@drawable/icon_back"
         app:title="@string/widget_settings_title" />
 
     <androidx.core.widget.NestedScrollView
@@ -69,7 +69,7 @@
                         android:layout_marginTop="2dp"
                         android:contentDescription="@null"
                         android:importantForAccessibility="no"
-                        android:src="@drawable/ic_widgets"
+                        android:src="@drawable/icon_widgets"
                         app:tint="@color/profile_settings_icon" />
 
                     <TextView

@@ -560,7 +560,9 @@
             name: badge ? badge.getName() : '',
             description: badge ? badge.getDescription() : '',
             imageUrl: badge ? mediaUrl(badge.getImageUrl()) : '',
+            miniImageUrl: badge && badge.getMiniImageUrl ? mediaUrl(badge.getMiniImageUrl()) : '',
             priority: b.getPriority(),
+            assignedAt: tsToMs(b.getAssignedDate()),
             isPrimary: b.getIsPrimary()
         };
     }

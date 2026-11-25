@@ -404,7 +404,7 @@ class M3ContextMenu private constructor(
 
             if (item.checked == true) {
                 row.addView(ImageView(context).apply {
-                    setImageResource(R.drawable.ic_check)
+                    setImageResource(R.drawable.icon_check)
                     imageTintList = ColorStateList.valueOf(
                         MaterialColors.getColor(row, androidx.appcompat.R.attr.colorPrimary)
                     )

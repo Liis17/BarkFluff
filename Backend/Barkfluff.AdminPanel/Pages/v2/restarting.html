@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Перезапуск админ-панели</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
         .wait-card {
@@ -45,11 +46,11 @@
         <h1>Админ-панель перезапускается</h1>
         <p>Пожалуйста, подождите...</p>
         <span class="hint">
-            <span class="msr size-18">refresh</span>
+            <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/refresh.svg);" aria-hidden="true"></span>
             Проверка доступности каждые 3 секунды
         </span>
         <div class="timer-chip">
-            <span class="msr size-18">schedule</span>
+            <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/scheduled.svg);" aria-hidden="true"></span>
             <span id="timer">0</span> сек
         </div>
     </div>

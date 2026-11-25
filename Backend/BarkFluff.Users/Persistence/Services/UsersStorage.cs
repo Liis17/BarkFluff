@@ -180,7 +180,7 @@ public class UsersStorage
     /// <param name="pageSize">Размер страницы</param>
     /// <param name="similarityThreshold">Порог схожести (от 0 до 1, рекомендуется 0.3)</param>
     /// <returns>Список пользователей и общее количество найденных пользователей</returns>
-    public async Task<(List<User> Users, int TotalCount)> SearchUsersByTrigram(string searchTerm, int skip = 0, int pageSize = 10, double similarityThreshold = 0.3, long? currentUserId = null, bool respectSearchVisibility = true, bool excludeBots = false, AccountStatus? statusFilter = AccountStatus.Active)
+    public async Task<(List<User> Users, int TotalCount)> SearchUsersByTrigram(string searchTerm, int skip = 0, int pageSize = 10, double similarityThreshold = 0.3, long? currentUserId = null, bool respectSearchVisibility = true, bool excludeBots = false, IReadOnlyCollection<AccountStatus>? statusFilters = null)
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -196,6 +196,7 @@ public class UsersStorage
             ? @" AND (p.""SearchVisible"" IS NULL OR p.""SearchVisible"" = true OR u.""Id"" = @currentUserId)"
             : string.Empty;
         var botFilter = excludeBots ? @" AND u.""IsBot"" = false" : string.Empty;
+        var statusValues = statusFilters?.Select(status => (int)status).ToArray();
 
         // Один запрос: данные + общий счёт через оконную функцию COUNT(*) OVER().
         // Убирает второй тяжёлый trigram-скан и прежний баг, когда ExecuteSqlRawAsync
@@ -214,7 +215,7 @@ public class UsersStorage
                OR similarity(u.""LastName"", @searchTerm) > @threshold
                OR similarity(u.""Username"", @searchTerm) > @threshold)
             AND u.""IsDraft"" = false
-            AND (@statusFilter IS NULL OR u.""AccountStatus"" = @statusFilter)" + privacyFilter + botFilter + @"
+            AND (@statusFilters IS NULL OR u.""AccountStatus"" = ANY(@statusFilters))" + privacyFilter + botFilter + @"
             ORDER BY GREATEST(
                 similarity(u.""FirstName"", @searchTerm),
                 similarity(u.""LastName"", @searchTerm),
@@ -229,7 +230,7 @@ public class UsersStorage
                 new NpgsqlParameter("@pageSize", pageSize),
                 new NpgsqlParameter("@skip", skip),
                 new NpgsqlParameter("@currentUserId", (object?)currentUserId ?? DBNull.Value),
-                new NpgsqlParameter("@statusFilter", NpgsqlDbType.Integer) { Value = statusFilter.HasValue ? (int)statusFilter.Value : DBNull.Value })
+                new NpgsqlParameter("@statusFilters", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = (object?)statusValues ?? DBNull.Value })
             .ToListAsync();
 
         // COUNT(*) OVER() одинаков во всех строках; при пустой выдаче — 0.
@@ -780,11 +781,12 @@ public class UsersStorage
                postgresException.ConstraintName == "IX_UserBadges_UserId_Primary";
     }
 
-    public async Task<(List<User> Users, int TotalCount)> GetAllUsersDescending(int offset, int size, AccountStatus? statusFilter = null)
+    /// <param name="statusFilters">Набор статусов в выборке; null — без фильтра по статусу. Применяется до Skip/Take и в total.</param>
+    public async Task<(List<User> Users, int TotalCount)> GetAllUsersDescending(int offset, int size, IReadOnlyCollection<AccountStatus>? statusFilters = null)
     {
         var query = _usersContext.Users
             .Include(u => u.Contact)
-            .Where(u => !u.IsDraft && !u.IsBot && (!statusFilter.HasValue || u.AccountStatus == statusFilter.Value))
+            .Where(u => !u.IsDraft && !u.IsBot && (statusFilters == null || statusFilters.Contains(u.AccountStatus)))
             .OrderByDescending(u => u.Id);
 
         var totalCount = await query.CountAsync();

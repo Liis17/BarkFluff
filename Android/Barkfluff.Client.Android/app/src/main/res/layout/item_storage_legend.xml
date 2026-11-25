@@ -12,7 +12,7 @@
         android:layout_width="22dp"
         android:layout_height="22dp"
         android:importantForAccessibility="no"
-        android:src="@drawable/ic_file"
+        android:src="@drawable/icon_document"
         app:tint="@color/profile_settings_primary" />
 
     <TextView

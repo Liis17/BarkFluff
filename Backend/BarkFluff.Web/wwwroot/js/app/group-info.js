@@ -1,6 +1,6 @@
 /**
  * Group information overlay: members, title, avatar and chat media.
- * Requires: BF.api, BF.files
+ * Requires: BF.api, BF.files, BF.userBadges
  * Exposes: BF.groupInfo
  */
 (function () {
@@ -79,16 +79,19 @@
 
                     var memberName = document.createElement('div');
                     memberName.className = 'group-member-name';
-                    memberName.textContent =
+                    var memberNameText = document.createElement('span');
+                    memberNameText.className = 'group-member-name-text';
+                    memberNameText.textContent =
                         member.userId === deps.getMyUserId()
                             ? BF.i18n.t('group.member.you', { name: fullName })
                             : fullName;
+                    memberName.appendChild(memberNameText);
                     row.appendChild(memberName);
 
                     if (member.userId !== deps.getMyUserId()) {
                         var removeButton = document.createElement('button');
                         removeButton.className = 'group-member-remove';
-                        removeButton.innerHTML = '&times;';
+                        removeButton.innerHTML = BF.icons.html('close');
                         removeButton.title = BF.i18n.t('common.delete');
                         removeButton.addEventListener('click', function () {
                             confirmRemoveMember(member, fullName);
@@ -103,12 +106,13 @@
                             if (!user) return;
                             if (BF.utils.isRestrictedUser(user)) {
                                 fullName = BF.utils.restrictedUserName(user);
-                                memberName.textContent =
+                                memberNameText.textContent =
                                     member.userId === deps.getMyUserId()
                                         ? BF.i18n.t('group.member.you', { name: fullName })
                                         : fullName;
                                 return;
                             }
+                            memberName.appendChild(BF.userBadges.createSlot(member.userId));
                             var picture = user.profilePicturePreview || user.profilePicture;
                             if (picture) {
                                 var image = document.createElement('img');

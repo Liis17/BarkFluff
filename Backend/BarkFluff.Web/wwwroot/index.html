@@ -1113,11 +1113,6 @@
         /* hidden-атрибут должен побеждать display:flex/inline-flex на кнопках/секциях модалки */
         .reg-dialog [hidden] { display: none !important; }
 
-        @keyframes fadeScaleIn {
-            from { opacity: 0; transform: scale(0.96); }
-            to   { opacity: 1; transform: scale(1); }
-        }
-
         .reg-dialog {
             background: var(--card-bg);
             backdrop-filter: blur(28px);
@@ -1131,7 +1126,53 @@
             flex-direction: column;
             overflow: hidden;
             box-shadow: var(--card-shadow);
-            animation: fadeScaleIn 0.2s ease-out;
+        }
+
+        /* Вход и выход модалки через BF.utils.openOverlay/closeOverlay (utils.js, класс .is-closing).
+           Значения совпадают с messenger.css; без prefers-reduced-motion панель смещается, с ним — только opacity. */
+        :root {
+            --overlay-enter: 180ms;
+            --overlay-exit: 140ms;
+            --overlay-panel-enter: 200ms;
+            --overlay-panel-exit: 140ms;
+            --overlay-panel-from: scale(0.96) translateY(4px);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --overlay-enter: 120ms;
+                --overlay-exit: 120ms;
+                --overlay-panel-enter: 120ms;
+                --overlay-panel-exit: 120ms;
+                --overlay-panel-from: none;
+            }
+        }
+        .reg-overlay {
+            transition: opacity var(--overlay-exit) var(--ease-out);
+        }
+        .reg-overlay.visible {
+            opacity: 1;
+            transition: opacity var(--overlay-enter) var(--ease-out);
+        }
+        .reg-overlay.is-closing {
+            display: flex;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .reg-dialog {
+            transition: opacity var(--overlay-panel-exit) var(--ease-out), transform var(--overlay-panel-exit) var(--ease-out);
+        }
+        .reg-overlay.visible > .reg-dialog {
+            opacity: 1;
+            transform: none;
+            transition: opacity var(--overlay-panel-enter) var(--ease-out), transform var(--overlay-panel-enter) var(--ease-out);
+        }
+        .reg-overlay.is-closing > .reg-dialog {
+            opacity: 0;
+            transform: var(--overlay-panel-from);
+        }
+        @starting-style {
+            .reg-overlay.visible { opacity: 0; }
+            .reg-overlay.visible > .reg-dialog { opacity: 0; transform: var(--overlay-panel-from); }
         }
 
         .reg-header {
@@ -1454,9 +1495,9 @@
 
     <!-- Theme Switcher -->
     <div class="theme-switcher" role="group" data-i18n-aria-label="theme.title" aria-label="Цветовая схема">
-        <button class="theme-btn" data-theme-val="light"  data-i18n-title="theme.light.full" data-i18n-aria-label="theme.light" title="Светлая тема"   aria-label="Светлая">☀️</button>
-        <button class="theme-btn" data-theme-val="dark"   data-i18n-title="theme.dark.full" data-i18n-aria-label="theme.dark" title="Тёмная тема"    aria-label="Тёмная">🌙</button>
-        <button class="theme-btn" data-theme-val="midnight" data-i18n-title="theme.midnight" data-i18n-aria-label="theme.midnight" title="Полночь"      aria-label="Полночь">✨</button>
+        <button class="theme-btn" data-theme-val="light"  data-i18n-title="theme.light.full" data-i18n-aria-label="theme.light" title="Светлая тема"   aria-label="Светлая"><span class="bf-icon" data-bf-icon="theme-light" aria-hidden="true"></span></button>
+        <button class="theme-btn" data-theme-val="dark"   data-i18n-title="theme.dark.full" data-i18n-aria-label="theme.dark" title="Тёмная тема"    aria-label="Тёмная"><span class="bf-icon" data-bf-icon="theme-dark" aria-hidden="true"></span></button>
+        <button class="theme-btn" data-theme-val="midnight" data-i18n-title="theme.midnight" data-i18n-aria-label="theme.midnight" title="Полночь"      aria-label="Полночь"><span class="bf-icon" data-bf-icon="theme-midnight" aria-hidden="true"></span></button>
     </div>
 
     <!-- Main Page -->
@@ -1500,7 +1541,7 @@
 
                     <button type="submit" class="btn-primary" id="nodeConnectBtn">
                         <span class="btn-label" data-i18n="node.connect">Подключиться</span>
-                        <span class="btn-arrow">→</span>
+                        <span class="btn-arrow"><span class="bf-icon" data-bf-icon="arrow-right" aria-hidden="true"></span></span>
                         <div class="btn-spinner"></div>
                     </button>
                 </form>
@@ -1532,7 +1573,7 @@
                             <input type="password" class="form-input" id="passwordInput"
                                    data-i18n-placeholder="auth.password.placeholder" placeholder="Введите пароль"
                                    autocomplete="current-password" aria-describedby="passwordError" disabled>
-                            <button type="button" class="pw-toggle" id="pwToggle" data-i18n-aria-label="auth.showPassword" aria-label="Показать пароль" tabindex="-1">👁</button>
+                            <button type="button" class="pw-toggle" id="pwToggle" data-i18n-aria-label="auth.showPassword" aria-label="Показать пароль" tabindex="-1"><span class="bf-icon" data-bf-icon="password-visible" aria-hidden="true"></span></button>
                         </div>
                         <div class="form-error" id="passwordError" role="alert" aria-live="polite"></div>
                     </div>
@@ -1580,7 +1621,7 @@
 
                     <button type="submit" class="btn-primary" id="signInBtn">
                         <span class="btn-label" data-i18n="loginFlow.continue">Продолжить</span>
-                        <span class="btn-arrow">→</span>
+                        <span class="btn-arrow"><span class="bf-icon" data-bf-icon="arrow-right" aria-hidden="true"></span></span>
                         <div class="btn-spinner"></div>
                     </button>
                 </form>
@@ -1591,14 +1632,14 @@
                     <p data-i18n="auth.noAccount">Нет аккаунта?</p>
                     <button class="btn-secondary" id="toRegisterBtn">
                         <span data-i18n="auth.register">Зарегистрироваться</span>
-                        <span class="btn-arrow">→</span>
+                        <span class="btn-arrow"><span class="bf-icon" data-bf-icon="arrow-right" aria-hidden="true"></span></span>
                     </button>
                 </div>
             </div>
 
             <!-- WELCOME SECTION -->
             <div id="welcomeSection" class="section hidden" role="region" data-i18n-aria-label="auth.success" aria-label="Успешный вход">
-                <div class="welcome-icon" aria-hidden="true">✓</div>
+                <div class="welcome-icon" aria-hidden="true"><span class="bf-icon" data-bf-icon="check" aria-hidden="true"></span></div>
                 <h2 class="welcome-title" data-i18n="auth.signedIn">Вы вошли в аккаунт</h2>
                 <p class="welcome-subtitle" data-i18n="auth.signedIn.subtitle">Веб-версия мессенджера скоро будет доступна</p>
             </div>
@@ -1633,7 +1674,7 @@
                 <div class="reg-head-text">
                     <div class="reg-title" id="legalTitle" data-i18n="legal.terms">Пользовательское соглашение</div>
                 </div>
-                <button type="button" class="reg-close" id="legalClose" data-i18n-aria-label="common.close" aria-label="Закрыть">×</button>
+                <button type="button" class="reg-close" id="legalClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
             <div class="legal-tabs" role="tablist">
                 <button type="button" class="legal-tab active" data-doc="terms" data-i18n="legal.tab.terms">Соглашение</button>
@@ -1647,12 +1688,12 @@
     <div class="reg-overlay" id="registerOverlay" role="dialog" aria-modal="true" data-i18n-aria-label="register.title" aria-label="Регистрация">
         <div class="reg-dialog">
             <div class="reg-header">
-                <button type="button" class="reg-back" id="regBack" data-i18n-aria-label="common.back" aria-label="Назад" hidden>←</button>
+                <button type="button" class="reg-back" id="regBack" data-i18n-aria-label="common.back" aria-label="Назад" hidden><span class="bf-icon" data-bf-icon="back" aria-hidden="true"></span></button>
                 <div class="reg-head-text">
                     <div class="reg-title" id="regTitle" data-i18n="register.createAccount">Создать аккаунт</div>
                     <div class="reg-step-label" id="regStepLabel">Шаг 1 из 9</div>
                 </div>
-                <button type="button" class="reg-close" id="regClose" data-i18n-aria-label="common.close" aria-label="Закрыть">×</button>
+                <button type="button" class="reg-close" id="regClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
             <div class="reg-progress"><div class="reg-progress-bar" id="regProgressBar"></div></div>
 
@@ -1715,7 +1756,7 @@
                         <label class="form-label" for="regPassword" data-i18n="common.password">Пароль</label>
                         <div class="input-wrap">
                             <input type="password" class="form-input" id="regPassword" data-i18n-placeholder="register.password.placeholder" placeholder="Минимум 8 символов" autocomplete="new-password">
-                            <button type="button" class="pw-toggle" id="regPwToggle" data-i18n-aria-label="auth.showPassword" aria-label="Показать пароль" tabindex="-1">👁</button>
+                            <button type="button" class="pw-toggle" id="regPwToggle" data-i18n-aria-label="auth.showPassword" aria-label="Показать пароль" tabindex="-1"><span class="bf-icon" data-bf-icon="password-visible" aria-hidden="true"></span></button>
                         </div>
                         <div class="reg-strength"><div class="reg-strength-bar" id="regStrengthBar"></div></div>
                         <div class="reg-strength-label" id="regStrengthLabel"></div>
@@ -1776,7 +1817,7 @@
                 </div>
 
                 <div class="reg-step reg-step-complete" data-step="9" hidden>
-                    <div class="welcome-icon" aria-hidden="true">✓</div>
+                    <div class="welcome-icon" aria-hidden="true"><span class="bf-icon" data-bf-icon="check" aria-hidden="true"></span></div>
                     <h2 class="welcome-title" data-i18n="register.accountCreated">Аккаунт создан!</h2>
                     <p class="welcome-subtitle" id="regCompleteName"></p>
                 </div>
@@ -1787,7 +1828,7 @@
                 <button type="button" class="btn-secondary reg-skip" id="regSkip" data-i18n="common.skip" hidden>Пропустить</button>
                 <button type="button" class="btn-primary reg-next" id="regNext">
                     <span class="btn-label" id="regNextLabel" data-i18n="common.next.step">Далее</span>
-                    <span class="btn-arrow">→</span>
+                    <span class="btn-arrow"><span class="bf-icon" data-bf-icon="arrow-right" aria-hidden="true"></span></span>
                     <div class="btn-spinner"></div>
                 </button>
             </div>
@@ -1882,7 +1923,7 @@
     pwToggle.addEventListener('click', () => {
         const show = pwInput.type === 'password';
         pwInput.type = show ? 'text' : 'password';
-        pwToggle.textContent = show ? '🙈' : '👁';
+        pwToggle.innerHTML = BF.icons.html(show ? 'password-hidden' : 'password-visible');
     });
 
     /* ═══════════════════════════════════════════════════

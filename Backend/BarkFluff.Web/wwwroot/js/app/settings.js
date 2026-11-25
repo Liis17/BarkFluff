@@ -61,6 +61,9 @@
 
         document.querySelector('#sdClose').addEventListener('click', close);
         backBtn.addEventListener('click', goBack);
+        body.addEventListener('animationend', function (e) {
+            if (e.target === body) clearSlide();
+        });
         overlay.addEventListener('click', function (e) {
             if (e.target === overlay) close();
         });
@@ -97,6 +100,8 @@
         var target = view || 'main';
         viewStack = target === 'main' ? [] : ['main'];
         currentUser = null;
+        // Первое открытие без перехода: остаток класса от прерванного перехода (оверлей закрыт) не должен сработать.
+        clearSlide();
         showView(target);
         BF.utils.openOverlay(overlay);
     }
@@ -108,8 +113,21 @@
         viewStack = [];
     }
 
+    // Направление перехода содержимого #sdBody: класс перезапускает keyframes (reflow), снимается по animationend.
+    var SLIDE_FORWARD = 'sd-slide-forward';
+    var SLIDE_BACK = 'sd-slide-back';
+    function clearSlide() {
+        body.classList.remove(SLIDE_FORWARD, SLIDE_BACK);
+    }
+    function playSlide(cls) {
+        clearSlide();
+        void body.offsetWidth;
+        body.classList.add(cls);
+    }
+
     function goBack() {
         viewStack.pop();
+        playSlide(SLIDE_BACK);
         if (viewStack.length === 0) {
             showView('main');
         } else {
@@ -119,6 +137,7 @@
 
     function navigate(name) {
         viewStack.push(name);
+        playSlide(SLIDE_FORWARD);
         showView(name);
     }
 
@@ -200,6 +219,27 @@
             if (d && d.user) currentUser = d.user;
             return currentUser;
         });
+    }
+
+    // Заглушки экранов на время загрузки: строки повторяют форму реальных; текст загрузки виден только скринридеру.
+    var SKELETON_BADGE_ROW =
+        '<div class="sd-badge-item sd-badge-skeleton" aria-hidden="true"><span class="skeleton sd-badge-skeleton-icon"></span>' +
+        '<span class="sd-badge-info"><span class="skeleton sd-badge-skeleton-name"></span>' +
+        '<span class="skeleton sd-badge-skeleton-desc"></span></span></div>';
+    var SKELETON_SESSION_ROW =
+        '<div class="session-item" aria-hidden="true"><span class="session-info">' +
+        '<span class="skeleton sd-skeleton-line sd-skeleton-line-title"></span>' +
+        '<span class="skeleton sd-skeleton-line sd-skeleton-line-meta"></span></span></div>';
+    var SKELETON_TOGGLE_ROW =
+        '<div class="sd-toggle-row" aria-hidden="true"><span class="sd-toggle-info">' +
+        '<span class="skeleton sd-skeleton-line sd-skeleton-line-title"></span>' +
+        '<span class="skeleton sd-skeleton-line sd-skeleton-line-meta"></span></span>' +
+        '<span class="skeleton sd-skeleton-switch"></span></div>';
+
+    function skeletonRows(count, rowHtml) {
+        var html = '<span class="sr-only">' + BF.utils.escapeHtml(BF.i18n.t('common.loading')) + '</span>';
+        for (var i = 0; i < count; i++) html += rowHtml;
+        return html;
     }
 
     function makeToggleRow(title, desc, initial, onChange) {
@@ -296,7 +336,7 @@
         unameEl.className = 'sd-user-username';
         var arrowEl = document.createElement('div');
         arrowEl.className = 'sd-user-arrow';
-        arrowEl.textContent = '›';
+        arrowEl.innerHTML = BF.icons.html('chevron-right');
         userInfo.appendChild(nameEl);
         userInfo.appendChild(unameEl);
         profileBlock.appendChild(avatarEl);
@@ -310,6 +350,7 @@
             // Update avatar
             profileBlock.replaceChild(renderAvatarEl(user, 'sd-avatar'), avatarEl);
             nameEl.textContent = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || '';
+            nameEl.appendChild(BF.userBadges.createSlot(myUserId));
             unameEl.textContent = user.username ? '@' + user.username : '';
         });
 
@@ -476,7 +517,7 @@
                 '<span class="sd-item-icon">' + ICONS.server + '</span>' +
                 '<span class="sd-item-label">' +
                 BF.utils.escapeHtml((nodeMeta && nodeMeta.name) || BF.node.origin() || '') +
-                '</span><span class="sd-item-arrow">›</span>';
+                '</span><span class="sd-item-arrow">' + BF.icons.html('chevron-right') + '</span>';
             makeActivatable(nodeRow, switchNode);
             secNode.appendChild(nodeRow);
             body.appendChild(secNode);
@@ -487,11 +528,7 @@
         logoutBtn.className = 'btn-logout-settings';
         logoutBtn.id = 'settingsLogoutBtn';
         logoutBtn.innerHTML =
-            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-            '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>' +
-            '<polyline points="16 17 21 12 16 7"/>' +
-            '<line x1="21" y1="12" x2="9" y2="12"/>' +
-            '</svg>' +
+            BF.icons.html('logout') +
             '<span>' + BF.utils.escapeHtml(BF.i18n.t('settings.logout')) + '</span>';
         logoutBtn.addEventListener('click', function () {
             BF.utils.openOverlay(confirmOverlay);
@@ -536,7 +573,7 @@
             row.innerHTML =
                 '<span class="sd-item-icon">' + item.icon + '</span>' +
                 '<span class="sd-item-label">' + item.label + '</span>' +
-                '<span class="sd-item-arrow">›</span>';
+                '<span class="sd-item-arrow">' + BF.icons.html('chevron-right') + '</span>';
             makeActivatable(row, function () { navigate(item.view); });
             sec.appendChild(row);
         });
@@ -554,7 +591,7 @@
         body.appendChild(hint);
         body.appendChild(list);
         body.appendChild(status);
-        list.textContent = BF.i18n.t('common.loadingShort');
+        list.innerHTML = skeletonRows(3, SKELETON_BADGE_ROW);
 
         var badges = [];
         var saving = false;
@@ -616,7 +653,8 @@
                     badges.forEach(function (b) {
                         b.isPrimary = b.id === primaryId;
                     });
-                    currentUser = null; // профиль с бейджами перечитается при следующем открытии
+                    // Значок рядом с именем в списках и шапках обновляется сразу.
+                    BF.userBadges.set(myUserId, badges);
                 })
                 .catch(function () {
                     status.textContent = BF.i18n.t('common.error');
@@ -631,8 +669,11 @@
         BF.api
             .getUserBadges(myUserId)
             .then(function (data) {
+                BF.userBadges.set(myUserId, data.badges);
                 if (body.dataset.view !== 'badges') return;
-                badges = data.badges;
+                badges = data.badges.map(function (b) {
+                    return Object.assign({}, b);
+                });
                 draw();
             })
             .catch(function () {
@@ -1021,7 +1062,7 @@
 
     function renderSessions() {
         titleEl.textContent = BF.i18n.t('settings.sessions');
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
+        body.innerHTML = skeletonRows(3, SKELETON_SESSION_ROW);
 
         var currentDeviceId = BF.device ? BF.device.getDeviceId() : null;
 
@@ -1146,7 +1187,7 @@
     // --- Privacy ---
     function renderPrivacy() {
         titleEl.textContent = BF.i18n.t('settings.privacy');
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
+        body.innerHTML = skeletonRows(4, SKELETON_TOGGLE_ROW);
 
         BF.api.getPrivacySettings().then(function (data) {
             var s = data.settings || {
@@ -1240,7 +1281,9 @@
     // --- Personalization (poster + chat backgrounds) ---
     function renderPersonalization() {
         titleEl.textContent = BF.i18n.t('settings.section.personalization');
-        body.innerHTML = '<div class="sd-hint" style="padding:20px">' + BF.i18n.t('common.loadingShort') + '</div>';
+        body.innerHTML =
+            '<div class="sd-profile-preview" aria-hidden="true"><span class="skeleton sd-skeleton-poster"></span></div>' +
+            skeletonRows(3, SKELETON_TOGGLE_ROW);
 
         var p = Promise.all([loadCurrentUser(), BF.api.getPersonalization()]);
         p.then(function (results) {
@@ -1553,7 +1596,7 @@
                 var rm = document.createElement('button');
                 rm.type = 'button';
                 rm.className = 'sd-bg-card-remove';
-                rm.textContent = '×';
+                rm.innerHTML = BF.icons.html('close');
                 rm.title = BF.i18n.t('personalization.removeFromCollection');
                 rm.addEventListener('click', function (e) {
                     e.stopPropagation();
@@ -1576,7 +1619,7 @@
 
             var add = document.createElement('div');
             add.className = 'sd-bg-card sd-bg-card-add';
-            add.textContent = '+';
+            add.innerHTML = BF.icons.html('add');
             add.title = BF.i18n.t('personalization.addBackground');
             add.addEventListener('click', function () { bgInput.click(); });
             grid.appendChild(add);

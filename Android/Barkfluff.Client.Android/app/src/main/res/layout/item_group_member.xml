@@ -52,15 +52,34 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/memberName"
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="@color/profile_text"
-            android:textSize="15sp"
-            tools:text="Анна Соколова" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/memberName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/profile_text"
+                android:textSize="15sp"
+                tools:text="Анна Соколова" />
+
+            <ImageView
+                android:id="@+id/memberPrimaryBadge"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:scaleType="fitCenter"
+                android:visibility="gone"
+                tools:src="@drawable/icon_verified"
+                tools:visibility="visible" />
+
+        </LinearLayout>
 
         <TextView
             android:id="@+id/memberSubtitle"
@@ -83,7 +102,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/group_remove_member"
         android:padding="8dp"
-        android:src="@drawable/ic_more_vert"
+        android:src="@drawable/icon_more"
         app:tint="@color/profile_text_dim" />
 
 </LinearLayout>

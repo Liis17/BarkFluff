@@ -36,9 +36,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Pages\favicon.ico">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="Pages\v2\badges.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

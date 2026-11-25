@@ -153,7 +153,13 @@
     function resyncCurrentChatTail() {
         var chatId = deps.getCurrentChatId();
         if (!chatId) return Promise.resolve(true);
-        if (BF.feed.isLoadingOlder() || loadingMessages.classList.contains('visible')) return Promise.resolve(false);
+        // Начальная загрузка открытого чата идёт со скелетоном ленты (см. main.js openChat), а не с #loadingMessages.
+        if (
+            BF.feed.isLoadingOlder() ||
+            loadingMessages.classList.contains('visible') ||
+            document.querySelector('.messages-skeleton-wrap')
+        )
+            return Promise.resolve(false);
         if (deps.getCurrentChatType() === 1) return deps.reloadPrivateChat();
         return BF.api
             .getChatInfo(chatId)

@@ -13,7 +13,7 @@
         android:background="?attr/colorSurface"
         app:title="@string/pinned_title"
         app:titleCentered="false"
-        app:navigationIcon="@drawable/ic_arrow_back"
+        app:navigationIcon="@drawable/icon_back"
         app:menu="@menu/menu_pinned_messages"
         app:layout_constraintTop_toTopOf="parent" />
 

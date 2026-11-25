@@ -26,6 +26,7 @@
     var messagesInner;
     var inputBar;
     var loadingMessages;
+    var feedSkeleton;
     var messageInput;
     var sendButton;
     var scrollToBottomButton;
@@ -166,6 +167,7 @@
         chatHeader.classList.add('visible');
         messagesArea.parentElement.classList.add('visible');
         messagesArea.classList.add('visible');
+        feedSkeleton.clear();
         messagesInner.innerHTML = '';
         inputBar.classList.remove('visible');
         inputBar.classList.add('private-chat');
@@ -184,9 +186,11 @@
                     if (deps.setChatReadOnly) deps.setChatReadOnly(peer);
                     if (peerIsRestricted) {
                         var name = BF.utils.restrictedUserName(peer);
-                        chatHeaderName.textContent = '\u{1F512} ' + name;
+                        chatHeaderName.replaceChildren(BF.icons.element('private'), ' ' + name);
                         chatHeaderAvatar.replaceChildren();
                         chatHeaderAvatar.textContent = name[0] || '?';
+                    } else {
+                        chatHeaderName.appendChild(BF.userBadges.createSlot(privatePeer.userId));
                     }
                     deps.setChatTabContext(
                         peerIsRestricted ? BF.utils.restrictedUserName(peer) : deps.chatTabTitle(peer),
@@ -198,7 +202,10 @@
                 .catch(function () {});
         }
 
-        chatHeaderName.textContent = '\u{1F512} ' + (chat.title || BF.i18n.t('newchat.mode.private'));
+        chatHeaderName.replaceChildren(
+            BF.icons.element('private'),
+            ' ' + (chat.title || BF.i18n.t('newchat.mode.private'))
+        );
         if (chat.picture) chatHeaderAvatar.innerHTML = '<img src="' + deps.escapeHtml(chat.picture) + '" alt="">';
         else chatHeaderAvatar.textContent = (chat.title || '?')[0].toUpperCase();
         chatHeaderStatus.hidden = false;
@@ -311,6 +318,7 @@
         deps.setCurrentChatId(null);
         deps.setCurrentChatType(0);
         deps.setMessages([]);
+        feedSkeleton.clear();
         messagesInner.innerHTML = '';
         chatHeader.classList.remove('visible');
         messagesArea.classList.remove('visible');
@@ -323,7 +331,9 @@
     function loadMessages(chat) {
         var chatId = chat.id;
         messagesInner.innerHTML = '';
-        loadingMessages.classList.add('visible');
+        feedSkeleton.schedule(function () {
+            return chatId === deps.getCurrentChatId();
+        });
         return BF.api
             .listPrivateMessages(chatId, 0, 50, 0)
             .then(function (data) {
@@ -345,7 +355,7 @@
                 return false;
             })
             .finally(function () {
-                loadingMessages.classList.remove('visible');
+                if (chatId === deps.getCurrentChatId()) feedSkeleton.clear();
             });
     }
 
@@ -393,7 +403,7 @@
                         })
                     ) {
                         messages.push(message);
-                        deps.appendMessageToView(message).then(deps.scrollToBottom);
+                        deps.appendMessageToView(message, null, { animate: true }).then(deps.scrollToBottom);
                     }
                     var chats = deps.getChats();
                     var chatIndex = chats.findIndex(function (item) {
@@ -469,7 +479,7 @@
             var message = toUiMessage(chatId, encryptedMessage, text);
             var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
             currentMessages.push(message);
-            deps.appendMessageToView(message).then(function () {
+            deps.appendMessageToView(message, null, { animate: true }).then(function () {
                 if (isAtBottom) deps.scrollToBottom();
                 else if (scrollToBottomButton) scrollToBottomButton.classList.add('visible');
             });
@@ -494,7 +504,7 @@
         var index = findLoadedIndex(messageId);
         if (index < 0) return;
         deps.getMessages().splice(index, 1);
-        deps.renderMessages();
+        BF.feed.removeMessage(messageId);
     }
 
     function handleEdit(chatId, encryptedMessage) {
@@ -507,8 +517,14 @@
             if (chatId !== deps.getCurrentChatId()) return;
             var index = findLoadedIndex(encryptedMessage.id);
             if (index < 0) return;
-            deps.getMessages()[index] = toUiMessage(chatId, encryptedMessage, text);
-            deps.renderMessages();
+            var updated = toUiMessage(chatId, encryptedMessage, text);
+            deps.getMessages()[index] = updated;
+            var oldEl = BF.feed.findGroup(updated.id);
+            if (!oldEl) return;
+            BF.feed.buildElement(updated).then(function (newEl) {
+                newEl.dataset.date = oldEl.dataset.date;
+                BF.feed.replaceElement(oldEl, newEl, { flash: true });
+            });
         });
     }
 
@@ -557,6 +573,7 @@
         messagesInner = $('#messagesInner');
         inputBar = $('#inputBar');
         loadingMessages = $('#loadingMessages');
+        feedSkeleton = BF.utils.createFeedSkeleton(messagesInner);
         messageInput = $('#messageInput');
         sendButton = $('#sendBtn');
         scrollToBottomButton = $('#scrollToBottomBtn');

@@ -80,6 +80,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import com.barkfluff.client.R
+import com.barkfluff.client.badges.PrimaryBadgeIcon
 import com.barkfluff.client.domain.model.AccountStatus
 import com.barkfluff.client.view.AvatarView
 
@@ -206,7 +207,7 @@ internal fun SearchHeader(
                         }
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_arrow_back),
+                        painter = painterResource(R.drawable.icon_back),
                         contentDescription = null,
                         modifier = Modifier.size(24.dp)
                     )
@@ -224,7 +225,7 @@ internal fun SearchHeader(
                             }
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_close),
+                            painter = painterResource(R.drawable.icon_close),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
@@ -257,7 +258,7 @@ private fun SearchPhaseContent(
 ) {
     when (phase) {
         SearchPhase.Idle -> SearchMessageState(
-            icon = R.drawable.ic_search,
+            icon = R.drawable.icon_search,
             title = if (isPrivateMode) {
                 stringResourceCompat(R.string.search_private_title)
             } else {
@@ -271,7 +272,7 @@ private fun SearchPhaseContent(
         )
 
         SearchPhase.TooShort -> SearchMessageState(
-            icon = R.drawable.ic_search,
+            icon = R.drawable.icon_search,
             title = stringResourceCompat(R.string.search_users_title),
             description = stringResourceCompat(R.string.search_too_short)
         )
@@ -286,7 +287,7 @@ private fun SearchPhaseContent(
         )
 
         SearchPhase.Empty -> SearchMessageState(
-            icon = R.drawable.ic_search,
+            icon = R.drawable.icon_search,
             title = stringResourceCompat(R.string.search_nothing_found),
             description = stringResourceCompat(R.string.search_try_different)
         )
@@ -334,12 +335,21 @@ private fun SearchResults(
             ) {
                 ListItem(
                     headlineContent = {
-                        Text(
-                            text = displayName,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = displayName,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            if (!restricted) {
+                                PrimaryBadgeIcon(
+                                    userId = user.userData.userId,
+                                    modifier = Modifier.padding(start = 4.dp)
+                                )
+                            }
+                        }
                     },
                     supportingContent = if (displayUsername.isBlank()) null else {
                         {
@@ -595,7 +605,7 @@ internal fun SearchErrorState(onRetry: () -> Unit) {
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_info),
+                        painter = painterResource(R.drawable.icon_info),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.size(32.dp)

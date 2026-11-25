@@ -88,7 +88,7 @@
                             android:layout_height="match_parent"
                             android:contentDescription="@null"
                             android:padding="10dp"
-                            android:src="@drawable/ic_storage"
+                            android:src="@drawable/icon_server"
                             app:tint="?attr/colorOnPrimaryContainer" />
 
                     </FrameLayout>
@@ -180,7 +180,7 @@
                     app:boxStrokeWidthFocused="0dp"
                     app:errorEnabled="true"
                     app:hintEnabled="false"
-                    app:startIconDrawable="@drawable/ic_person"
+                    app:startIconDrawable="@drawable/icon_personal"
                     app:startIconTint="?attr/colorPrimary">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -239,7 +239,7 @@
                     app:endIconTint="?attr/colorPrimary"
                     app:errorEnabled="true"
                     app:hintEnabled="false"
-                    app:startIconDrawable="@drawable/ic_lock"
+                    app:startIconDrawable="@drawable/icon_lock"
                     app:startIconTint="?attr/colorPrimary">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -324,7 +324,7 @@
                     android:textColor="?attr/colorOnPrimary"
                     app:backgroundTint="?attr/colorPrimary"
                     app:cornerRadius="@dimen/shape_corner_full"
-                    app:icon="@drawable/ic_arrow_forward"
+                    app:icon="@drawable/icon_arrow_right"
                     app:iconGravity="textEnd"
                     app:iconPadding="10dp"
                     app:iconTint="?attr/colorOnPrimary" />

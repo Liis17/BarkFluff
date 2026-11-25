@@ -245,11 +245,11 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
 
     private fun buildControls() {
         controlBar.removeAllViews()
-        micButton = addControl(R.drawable.ic_mic, getString(R.string.call_control_microphone)) { toggleMicrophone() }
-        cameraButton = addControl(R.drawable.ic_video, getString(R.string.call_control_camera)) { toggleCamera() }
-        addControl(R.drawable.ic_call_end, getString(R.string.call_control_end), big = true) { endCallAndClose() }
-        screenButton = addControl(R.drawable.ic_screen_share, getString(R.string.call_control_screen_share)) { startScreenShare() }
-        addControl(R.drawable.ic_more_vert, getString(R.string.call_control_more)) { showMoreSheet() }
+        micButton = addControl(R.drawable.icon_voice, getString(R.string.call_control_microphone)) { toggleMicrophone() }
+        cameraButton = addControl(R.drawable.icon_video, getString(R.string.call_control_camera)) { toggleCamera() }
+        addControl(R.drawable.icon_call_end, getString(R.string.call_control_end), big = true) { endCallAndClose() }
+        screenButton = addControl(R.drawable.icon_screen_share, getString(R.string.call_control_screen_share)) { startScreenShare() }
+        addControl(R.drawable.icon_more, getString(R.string.call_control_more)) { showMoreSheet() }
     }
 
     private fun addControl(icon: Int, label: String, big: Boolean = false, onClick: () -> Unit): ImageView {
@@ -625,7 +625,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         val cameraOn = local?.cameraEnabled ?: false
         val screenOn = local?.screenTrack != null
 
-        micButton.setImageResource(if (micOn) R.drawable.ic_mic else R.drawable.ic_mic_off)
+        micButton.setImageResource(if (micOn) R.drawable.icon_voice else R.drawable.icon_voice_off)
         applyButtonState(micButton, active = !micOn)
         micButton.contentDescription = getString(if (micOn) R.string.call_mic_disable else R.string.call_mic_enable)
 
@@ -717,17 +717,17 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         val dialog = BottomSheetDialog(this)
         val content = sheetContainer(getString(R.string.call_more_title)).apply {
             if (lastParticipants.firstOrNull { it.isLocal }?.cameraEnabled == true) {
-                addView(sheetButton(getString(R.string.call_flip_camera), R.drawable.ic_camera) {
+                addView(sheetButton(getString(R.string.call_flip_camera), R.drawable.icon_photography) {
                     dialog.dismiss(); flipCamera()
                 })
             }
-            addView(sheetButton(getString(R.string.call_audio_route), R.drawable.ic_tune) {
+            addView(sheetButton(getString(R.string.call_audio_route), R.drawable.icon_tune) {
                 dialog.dismiss(); showAudioRouteSheet()
             })
-            addView(sheetButton(getString(R.string.call_voice_quality), R.drawable.ic_tune) {
+            addView(sheetButton(getString(R.string.call_voice_quality), R.drawable.icon_tune) {
                 dialog.dismiss(); showAudioQualitySheet()
             })
-            addView(sheetButton(getString(R.string.call_remote_video_quality), R.drawable.ic_tune) {
+            addView(sheetButton(getString(R.string.call_remote_video_quality), R.drawable.icon_tune) {
                 dialog.dismiss(); showVideoQualitySheet()
             })
         }
@@ -744,7 +744,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         val dialog = BottomSheetDialog(this)
         val content = sheetContainer(getString(R.string.call_audio_route)).apply {
             devices.forEach { device ->
-                addView(sheetButton(audioDeviceLabel(device), R.drawable.ic_tune) {
+                addView(sheetButton(audioDeviceLabel(device), R.drawable.icon_tune) {
                     dialog.dismiss()
                     callEngine.selectAudioDevice(device)
                 })
@@ -758,7 +758,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         val dialog = BottomSheetDialog(this)
         val content = sheetContainer(getString(R.string.call_voice_quality)).apply {
             audioQualityOptions().forEach { (title, quality) ->
-                addView(sheetButton(title, R.drawable.ic_tune) {
+                addView(sheetButton(title, R.drawable.icon_tune) {
                     dialog.dismiss()
                     setAudioQuality(quality)
                 })
@@ -772,7 +772,7 @@ class CallActivity : AppCompatActivity(), LiveKitCallEngine.Listener {
         val dialog = BottomSheetDialog(this)
         val content = sheetContainer(getString(R.string.call_remote_video_quality)).apply {
             videoQualityOptions().forEach { (title, quality) ->
-                addView(sheetButton(title, R.drawable.ic_tune) {
+                addView(sheetButton(title, R.drawable.icon_tune) {
                     dialog.dismiss()
                     setRemoteVideoQuality(quality)
                 })

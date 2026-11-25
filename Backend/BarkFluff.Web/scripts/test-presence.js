@@ -11,7 +11,18 @@ function makeEl(userId) {
     var names = new Set();
     return {
         userId: userId,
-        textContent: '',
+        _text: '',
+        markup: '', // дочерняя разметка: как в DOM, присвоение textContent её заменяет
+        get textContent() {
+            return this._text;
+        },
+        set textContent(value) {
+            this._text = value;
+            this.markup = '';
+        },
+        insertAdjacentHTML: function (position, html) {
+            this.markup += html;
+        },
         classList: {
             add: function (name) {
                 names.add(name);
@@ -49,6 +60,7 @@ function createHarness(options) {
     var BF = {
         i18n: {
             t: function (key, params) {
+                if (key === 'status.typing' && options.typingText) return options.typingText;
                 return params ? key + ' ' + JSON.stringify(params) : key;
             },
             tp: function (key, count) {
@@ -232,6 +244,18 @@ async function main() {
         h.typing(5, 2); // «перестал печатать»
         assert.equal(h.pendingTimers(), 0);
         assert.equal(h.header.textContent, 'status.online');
+    });
+
+    await test('typing shows three decorative dots in place of the ellipsis; leaving typing removes them', function () {
+        var h = createHarness({ typingText: 'печатает…' });
+        h.status(5, 'online', 1);
+        h.typing(5, 1);
+        assert.equal(h.header.textContent, 'печатает', 'the ellipsis is replaced by the animated dots, not doubled');
+        assert.match(h.header.markup, /^<span class="typing-dots" aria-hidden="true">/);
+        assert.equal((h.header.markup.match(/<span><\/span>/g) || []).length, 3);
+        h.flushTimers(6000);
+        assert.equal(h.header.textContent, 'status.online');
+        assert.equal(h.header.markup, '', 'the dots disappear with the status');
     });
 
     await test('a status update does not overwrite the typing indicator', function () {

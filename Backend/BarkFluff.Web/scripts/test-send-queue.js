@@ -25,6 +25,9 @@ function makeEl(id) {
         scrollTop: 0,
         clientHeight: 0,
         listeners: {},
+        querySelectorAll: function () {
+            return this.images || [];
+        },
         addEventListener: function (type, callback) {
             this.listeners[type] = callback;
         },
@@ -57,6 +60,7 @@ function createHarness(options) {
         messages: options.messages || [],
         storedEntries: options.storedEntries || [],
         putResult: options.putResult === undefined ? true : options.putResult,
+        appendOptions: [],
         sendResult:
             options.sendResult ||
             function () {
@@ -82,7 +86,8 @@ function createHarness(options) {
         buildElementResult: options.buildElementResult,
         groupEls: groupEls,
         snapshots: {},
-        storedFiles: options.storedFiles || {}
+        storedFiles: options.storedFiles || {},
+        imageSizes: options.imageSizes || {}
     };
     var BF = {
         i18n: {
@@ -140,8 +145,9 @@ function createHarness(options) {
             removeElement: function (el) {
                 calls.push(['removeElement', el.id]);
             },
-            append: function (msg) {
+            append: function (msg, separatorKey, options) {
                 calls.push(['append', msg.id]);
+                state.appendOptions.push(options);
                 return Promise.resolve();
             },
             scrollToBottom: function () {
@@ -169,6 +175,13 @@ function createHarness(options) {
             getUploadStatus: function (fileId) {
                 calls.push(['getUploadStatus', fileId]);
                 return state.uploadStatusResult(fileId);
+            },
+            getCachedFileUrl: function () {
+                return null;
+            },
+            getFileUrls: function (fileIds) {
+                calls.push(['getFileUrls', plain(fileIds)]);
+                return Promise.resolve([]);
             },
             matchesPendingUpload: function (upload, f) {
                 calls.push(['matchesPendingUpload', f.name]);
@@ -258,6 +271,27 @@ function createHarness(options) {
             }
         };
     }
+    function FakeImage() {
+        var image = this;
+        var src = '';
+        this.naturalWidth = 0;
+        this.naturalHeight = 0;
+        Object.defineProperty(this, 'src', {
+            get: function () {
+                return src;
+            },
+            set: function (url) {
+                src = url;
+                var size = state.imageSizes[url] || { width: 0, height: 0 };
+                if (size === 'stall') return;
+                Promise.resolve().then(function () {
+                    image.naturalWidth = size.width;
+                    image.naturalHeight = size.height;
+                    if (image.onload) image.onload();
+                });
+            }
+        });
+    }
     function FakeAbortController() {
         this.aborted = false;
         this.signal = {};
@@ -283,6 +317,7 @@ function createHarness(options) {
             }
         },
         AbortController: FakeAbortController,
+        Image: FakeImage,
         setTimeout: function (callback, ms) {
             var id = nextTimer++;
             timers.push({ id: id, callback: callback, ms: ms });
@@ -358,6 +393,10 @@ function createHarness(options) {
     };
 }
 
+function holdSend() {
+    return new Promise(function () {});
+}
+
 async function test(name, fn) {
     await fn();
     console.log('PASS: ' + name);
@@ -370,6 +409,7 @@ async function main() {
         var h = createHarness({ canSend: false, text: 'hello' });
         h.BF.sendQueue.sendMessage();
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, 'hello');
+        await settle();
         assert.deepEqual(h.calls(), []);
     });
 
@@ -517,6 +557,11 @@ async function main() {
             h.calls().filter((c) => c[0] === 'append'),
             [['append', localId]]
         );
+        assert.deepEqual(
+            h.state.appendOptions.map((options) => !!(options && options.animate)),
+            [true],
+            'an own send enters the feed with animation'
+        );
         assert.equal(h.els['#sendBtn'].disabled, true);
         await settle();
         assert.equal(h.state.messages.length, 1);
@@ -590,12 +635,14 @@ async function main() {
     await test('sendMessageWithFiles is a no-op while editing', async function () {
         var h = createHarness({ edit: { messageId: 1 } });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        await settle();
         assert.deepEqual(h.calls(), []);
     });
 
     await test('a storage failure for a file send releases the object URLs and shows a toast', async function () {
         var h = createHarness({ putResult: false });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, 'caption');
+        await settle();
         assert.deepEqual(
             h.calls().filter((c) => c[0] === 'createObjectURL' || c[0] === 'revokeObjectURL' || c[0] === 'toast'),
             [
@@ -624,6 +671,7 @@ async function main() {
             }
         });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png'), file('b.png')], false, 'caption');
+        await settle();
         assert.equal(h.state.messages.length, 1);
         assert.equal(h.state.messages[0].content.attachments.length, 2);
         await settle();
@@ -651,28 +699,31 @@ async function main() {
     });
 
     await test('a document attachment does not create an object-URL preview even for an image mime type', async function () {
-        var h = createHarness();
+        var h = createHarness({ sendResult: holdSend });
         h.BF.sendQueue.sendMessageWithFiles([file('report.png')], true, '');
+        await settle();
         assert.equal(h.has('createObjectURL'), false);
         assert.equal(h.state.messages[0].content.attachments[0].type, 'DOCUMENT');
     });
 
     await test('a non-image upload type is sent as DOCUMENT and keeps its preview off', async function () {
-        var h = createHarness({ uploadType: 99 });
+        var h = createHarness({ sendResult: holdSend,  uploadType: 99 });
         h.BF.sendQueue.sendMessageWithFiles([file('a.bin')], false, '');
+        await settle();
         assert.equal(h.has('createObjectURL'), false);
         assert.equal(h.state.messages[0].content.attachments[0].type, 'DOCUMENT');
     });
 
     await test('a file caption is trimmed before it becomes the pending message text', async function () {
-        var h = createHarness();
+        var h = createHarness({ sendResult: holdSend });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '  hi  ');
+        await settle();
         assert.equal(h.state.messages[0].content.text, 'hi');
     });
 
     await test('two uploads that resolve to the same fileId are only recorded once', async function () {
         var sentPayload;
-        var h = createHarness({
+        var h = createHarness({ sendResult: holdSend, 
             uploadResult: function () {
                 return Promise.resolve('shared-file-id');
             },
@@ -682,6 +733,7 @@ async function main() {
             }
         });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png'), file('b.png')], false, '');
+        await settle();
         await settle();
         assert.deepEqual(plain(sentPayload.fileIds), ['shared-file-id']);
     });
@@ -694,6 +746,7 @@ async function main() {
             }
         });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        await settle();
         await settle();
         assert.deepEqual(
             h.calls().filter((c) => c[0] === 'pendingSends.put'),
@@ -714,6 +767,7 @@ async function main() {
         });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
         await settle();
+        await settle();
         assert.equal(h.state.messages[0].pendingState, 'processing');
         assert.equal(h.els['#sendBtn'].disabled, false);
         assert.equal(h.has('api.sendMessage'), false);
@@ -726,6 +780,7 @@ async function main() {
             }
         });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        await settle();
         await settle();
         assert.equal(h.state.messages[0].pendingState, 'failed');
         assert.equal(h.has('api.sendMessage'), false);
@@ -1034,6 +1089,7 @@ async function main() {
             }
         });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, 'caption');
+        await settle();
         var localId = h.state.messages[0].id;
         h.groupEls[localId] = makeEl('el-' + localId);
         await settle();
@@ -1082,6 +1138,7 @@ async function main() {
             }
         });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        await settle();
         var localId = h.state.messages[0].id;
         h.groupEls[localId] = makeEl('el-' + localId);
         await settle(); // let uploadFile() actually run so `release` is captured
@@ -1437,6 +1494,7 @@ async function main() {
         });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png'), file('b.png')], false, '');
         await settle();
+        await settle();
         assert.equal(h.state.messages[0].pendingState, 'failed');
         var localId = h.state.messages[0].id;
         h.clear();
@@ -1461,6 +1519,7 @@ async function main() {
             }
         });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        await settle();
         var localId = h.state.messages[0].id;
         await settle();
         assert.equal(h.state.messages[0].pendingState, 'failed');
@@ -1633,8 +1692,9 @@ async function main() {
     });
 
     await test('reconciling releases the object-URL preview after successfully swapping in the real element', async function () {
-        var h = createHarness();
+        var h = createHarness({ sendResult: holdSend });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        await settle();
         var localId = h.state.messages[0].id;
         h.groupEls[localId] = makeEl('el-' + localId);
         var msg = {
@@ -1654,8 +1714,9 @@ async function main() {
     });
 
     await test('reconciling with a detached DOM element skips the replace but still releases the preview', async function () {
-        var h = createHarness();
+        var h = createHarness({ sendResult: holdSend });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        await settle();
         var localId = h.state.messages[0].id;
         var detached = makeEl('el-' + localId);
         detached.isConnected = false;
@@ -1732,6 +1793,11 @@ async function main() {
         assert.deepEqual(
             h.calls().filter((c) => c[0] === 'append'),
             [['append', 900]]
+        );
+        assert.deepEqual(
+            h.state.appendOptions.map((options) => !!(options && options.animate)),
+            [false],
+            'a confirmation that has no placeholder is not animated'
         );
         assert.deepEqual(
             h.calls().filter((c) => c[0] === 'scrollToBottom'),
@@ -1828,6 +1894,7 @@ async function main() {
     await test('a file send keeps its files in BF.pendingFiles until the server echo settles it', async function () {
         var h = createHarness({ pendingFiles: true });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        await settle();
         var put = h.calls().filter((c) => c[0] === 'pendingFiles.put');
         assert.equal(put.length, 1);
         assert.equal(put[0][2], 1);
@@ -1854,6 +1921,7 @@ async function main() {
             }
         });
         h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        await settle();
         var operationId = h.calls().find((c) => c[0] === 'pendingFiles.put')[1];
         h.BF.sendQueue.cancelPendingSend('pending-send-' + operationId);
         assert.deepEqual(
@@ -1872,6 +1940,7 @@ async function main() {
             }
         });
         before.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, 'cap');
+        await settle();
         await settle();
         var operationId = before.calls().find((c) => c[0] === 'pendingFiles.put')[1];
         var stored = before.state.snapshots[operationId];
@@ -2003,6 +2072,112 @@ async function main() {
         await settle();
         assert.equal(h.els['#fileInput'].calls[0], 'click');
         assert.equal(h.has('retryUpload'), false);
+    });
+
+    // --- local image sizes and media readiness before a server echo swaps the element ---
+
+    await test('a local image takes its size from the file before the pending message is shown', async function () {
+        var h = createHarness({ sendResult: holdSend, imageSizes: { 'blob:a.png': { width: 640, height: 480 } } });
+        h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        assert.equal(h.state.messages.length, 0);
+        await settle();
+        assert.equal(h.state.messages.length, 1);
+        var attachment = h.state.messages[0].content.attachments[0];
+        assert.equal(attachment.imageWidth, 640);
+        assert.equal(attachment.imageHeight, 480);
+        assert.equal(h.calls().filter((c) => c[0] === 'createObjectURL').length, 1);
+    });
+
+    await test('a size probe that does not finish in time sends the message without a size', async function () {
+        var h = createHarness({ sendResult: holdSend, imageSizes: { 'blob:a.png': 'stall' } });
+        h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        await settle();
+        assert.equal(h.state.messages.length, 0);
+        h.flushTimers(150);
+        await settle();
+        assert.equal(h.state.messages.length, 1);
+        assert.equal(h.state.messages[0].content.attachments[0].imageWidth, undefined);
+    });
+
+    // Отправка картинки подтверждается эхом сервера; декодирование нового элемента задаёт тест.
+    async function confirmImageSend(decode) {
+        var h = createHarness({
+            sendResult: holdSend,
+            buildElementResult: function () {
+                var built = makeEl('built');
+                built.images = [{ decode: decode }];
+                return Promise.resolve(built);
+            }
+        });
+        h.BF.sendQueue.sendMessageWithFiles([file('a.png')], false, '');
+        await settle();
+        var localId = h.state.messages[0].id;
+        h.localId = localId;
+        h.groupEls[localId] = makeEl('el-' + localId);
+        h.BF.sendQueue.reconcilePendingUpload('chat-a', {
+            id: 900,
+            senderId: 1,
+            sentAt: 1,
+            clientOperationId: h.state.messages[0].clientOperationId,
+            content: {}
+        });
+        return h;
+    }
+
+    function previewReleases(h) {
+        return h.calls().filter((c) => c[0] === 'revokeObjectURL');
+    }
+
+    await test('a server echo swaps the pending element in only after the new image is decoded', async function () {
+        var resolveDecode;
+        var h = await confirmImageSend(function () {
+            return new Promise(function (resolve) {
+                resolveDecode = resolve;
+            });
+        });
+        await settle();
+        assert.equal(h.has('replaceElement'), false);
+        assert.deepEqual(previewReleases(h), []);
+        resolveDecode();
+        await settle();
+        assert.equal(h.has('replaceElement'), true);
+        assert.deepEqual(previewReleases(h), [['revokeObjectURL', 'blob:a.png']]);
+    });
+
+    await test('a failed image decode does not block the swap and still releases the preview', async function () {
+        var h = await confirmImageSend(function () {
+            return Promise.reject(new Error('decode failed'));
+        });
+        await settle();
+        assert.equal(h.has('replaceElement'), true);
+        assert.deepEqual(previewReleases(h), [['revokeObjectURL', 'blob:a.png']]);
+    });
+
+    await test('a decode that never finishes is abandoned after the timeout, then the swap happens', async function () {
+        var h = await confirmImageSend(function () {
+            return new Promise(function () {});
+        });
+        await settle();
+        assert.equal(h.has('replaceElement'), false);
+        h.flushTimers(3000);
+        await settle();
+        assert.equal(h.has('replaceElement'), true);
+        assert.deepEqual(previewReleases(h), [['revokeObjectURL', 'blob:a.png']]);
+    });
+
+    await test('an element removed while its image decodes is not swapped, but the preview is released', async function () {
+        var resolveDecode;
+        var h = await confirmImageSend(function () {
+            return new Promise(function (resolve) {
+                resolveDecode = resolve;
+            });
+        });
+        await settle();
+        h.groupEls[h.localId].isConnected = false;
+        resolveDecode();
+        await settle();
+        assert.equal(h.has('replaceElement'), false);
+        assert.deepEqual(previewReleases(h), [['revokeObjectURL', 'blob:a.png']]);
     });
 }
 

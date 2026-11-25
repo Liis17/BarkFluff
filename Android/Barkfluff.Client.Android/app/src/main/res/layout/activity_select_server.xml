@@ -158,7 +158,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_link"
+                            android:src="@drawable/icon_link"
                             app:tint="?attr/colorPrimary" />
 
                         <LinearLayout
@@ -189,7 +189,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:contentDescription="@null"
-                            android:src="@drawable/ic_arrow_down"
+                            android:src="@drawable/icon_arrow_down"
                             app:tint="?attr/colorPrimary" />
 
                     </LinearLayout>
@@ -217,7 +217,7 @@
                             app:boxCornerRadiusTopStart="@dimen/shape_corner_large_increased"
                             app:helperText="@string/server_custom_address_helper"
                             app:hintTextColor="?attr/colorPrimary"
-                            app:startIconDrawable="@drawable/ic_location"
+                            app:startIconDrawable="@drawable/icon_location"
                             app:startIconTint="?attr/colorPrimary">
 
                             <com.google.android.material.textfield.TextInputEditText
@@ -241,7 +241,7 @@
                             android:textColor="?attr/colorOnPrimary"
                             app:backgroundTint="?attr/colorPrimary"
                             app:cornerRadius="@dimen/shape_corner_large_increased"
-                            app:icon="@drawable/ic_arrow_forward"
+                            app:icon="@drawable/icon_arrow_right"
                             app:iconGravity="textEnd"
                             app:iconPadding="10dp"
                             app:iconTint="?attr/colorOnPrimary" />
@@ -299,7 +299,7 @@
                     android:layout_height="20dp"
                     android:layout_marginTop="1dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_info"
+                    android:src="@drawable/icon_info"
                     app:tint="?attr/colorPrimary" />
 
                 <TextView

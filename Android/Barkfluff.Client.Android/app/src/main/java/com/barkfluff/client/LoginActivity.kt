@@ -479,7 +479,7 @@ class LoginActivity : AppCompatActivity() {
             passwordStage -> getString(R.string.btn_login)
             else -> getString(R.string.login_flow_continue)
         }
-        binding.loginButton.icon = if (isLoading) null else getDrawable(R.drawable.ic_arrow_forward)
+        binding.loginButton.icon = if (isLoading) null else getDrawable(R.drawable.icon_arrow_right)
         binding.loginButton.isEnabled = !isLoading
         if (!passwordStage) binding.passwordInputLayout.error = null
     }

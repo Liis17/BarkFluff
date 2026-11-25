@@ -55,6 +55,6 @@
           android:background="?attr/selectableItemBackgroundBorderless"
           android:contentDescription="@string/cd_close"
         android:padding="12dp"
-        android:src="@drawable/ic_close"
+        android:src="@drawable/icon_close"
         app:tint="?attr/colorOnSurfaceVariant" />
 </LinearLayout>

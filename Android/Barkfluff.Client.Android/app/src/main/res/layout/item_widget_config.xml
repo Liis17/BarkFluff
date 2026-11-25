@@ -25,7 +25,7 @@
             android:layout_height="24dp"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
-            android:src="@drawable/ic_widgets"
+            android:src="@drawable/icon_widgets"
             app:tint="@color/profile_settings_icon" />
 
         <LinearLayout
@@ -62,7 +62,7 @@
             android:layout_height="20dp"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
-            android:src="@drawable/ic_chevron_right"
+            android:src="@drawable/icon_chevron_right"
             app:tint="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
 

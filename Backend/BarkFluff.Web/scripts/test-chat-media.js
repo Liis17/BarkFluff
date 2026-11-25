@@ -68,6 +68,7 @@ function createHarness() {
     var overlays = [];
     var state = { chatId: 7 };
     var BF = {
+        icons: { html: function () { return ''; } },
         api: {
             // Каждый вызов — отложенный ответ, которым тест управляет вручную.
             listChatAttachments: function (chatId, type, offset, limit, query) {

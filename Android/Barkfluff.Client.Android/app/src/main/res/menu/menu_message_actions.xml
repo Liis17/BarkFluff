@@ -2,22 +2,22 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/action_reply"
-        android:icon="@drawable/ic_reply"
+        android:icon="@drawable/icon_reply"
         android:title="@string/msg_action_reply" />
     <item
         android:id="@+id/action_edit"
-        android:icon="@drawable/ic_edit"
+        android:icon="@drawable/icon_edit"
         android:title="@string/msg_action_edit" />
     <item
         android:id="@+id/action_delete"
-        android:icon="@drawable/ic_delete"
+        android:icon="@drawable/icon_delete"
         android:title="@string/btn_delete" />
     <item
         android:id="@+id/action_forward"
-        android:icon="@drawable/ic_forward"
+        android:icon="@drawable/icon_forward"
         android:title="@string/msg_action_forward" />
     <item
         android:id="@+id/action_pin"
-        android:icon="@drawable/ic_pin"
+        android:icon="@drawable/icon_pin"
         android:title="@string/message_pin" />
 </menu>

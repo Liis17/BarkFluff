@@ -196,14 +196,16 @@ public sealed class UsersEndpointsTests : IDisposable
     [Theory]
     [InlineData("blocked", AccountStatus.Blocked)]
     [InlineData("pending_deletion", AccountStatus.PendingDeletion)]
+    [InlineData("deleted", AccountStatus.Deleted)]
     public async Task Search_FiltersInUsersAndReturnsRestrictionDetails(string status, AccountStatus expectedStatus)
     {
         var response = await _client.GetAsync($"/api/users?query=alice&status={status}&offset=5&size=20");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(_lastSearchRequest);
-        Assert.True(_lastSearchRequest!.HasStatusFilter);
-        Assert.Equal(expectedStatus, _lastSearchRequest.StatusFilter);
+        Assert.Equal(new[] { expectedStatus }, _lastSearchRequest!.StatusFilters);
+        Assert.Equal(5, _lastSearchRequest.Offset);
+        Assert.Equal(20, _lastSearchRequest.Size);
         Assert.Equal(5, _lastSearchRequest.Offset);
         Assert.Equal(20, _lastSearchRequest.Size);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -212,6 +214,29 @@ public sealed class UsersEndpointsTests : IDisposable
         Assert.Equal(expectedStatus.ToString(), user.GetProperty("accountStatus").GetString());
         Assert.Equal("Server policy", user.GetProperty("restrictionReason").GetString());
         Assert.True(user.GetProperty("restrictedAt").ValueKind == JsonValueKind.String);
+    }
+
+    [Theory]
+    [InlineData("/api/users?query=alice")]
+    [InlineData("/api/users?query=alice&status=")]
+    [InlineData("/api/users?query=alice&status=all")]
+    public async Task Search_AllStatusExcludesDeletedAccounts(string url)
+    {
+        var response = await _client.GetAsync(url);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(_lastSearchRequest);
+        Assert.False(_lastSearchRequest!.HasStatusFilter);
+        Assert.Equal(new[] { AccountStatus.Active, AccountStatus.Blocked }, _lastSearchRequest.StatusFilters);
+    }
+
+    [Fact]
+    public async Task Search_RejectsUnknownStatusWithoutCallingUsers()
+    {
+        var response = await _client.GetAsync("/api/users?query=alice&status=unknown");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Null(_lastSearchRequest);
     }
 
     [Fact]
@@ -237,7 +262,7 @@ public sealed class UsersEndpointsTests : IDisposable
             .Setup(client => client.SearchUsersServerAsync(It.IsAny<SearchUsersServerRequest>(), It.IsAny<Metadata>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
             .Callback((SearchUsersServerRequest request, Metadata _, DateTime? __, CancellationToken ___) => _lastSearchRequest = request)
             .Returns((SearchUsersServerRequest request, Metadata _, DateTime? __, CancellationToken ___) =>
-                UnaryCall(CreateSearchResponse(request.HasStatusFilter ? request.StatusFilter : AccountStatus.Blocked)));
+                UnaryCall(CreateSearchResponse(request.StatusFilters.FirstOrDefault(AccountStatus.Blocked))));
 
         _usersClient
             .Setup(client => client.GetUserContactsAsync(It.IsAny<GetUserContactsRequest>(), It.IsAny<Metadata>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))

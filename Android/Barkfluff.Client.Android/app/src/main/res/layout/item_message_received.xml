@@ -21,7 +21,7 @@
         android:layout_gravity="start|center_vertical"
         android:contentDescription="@string/cd_select_message"
         android:visibility="gone"
-        tools:src="@drawable/ic_action_select"
+        tools:src="@drawable/icon_select"
         tools:visibility="visible" />
 
     <LinearLayout
@@ -76,6 +76,16 @@
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="Имя пользователя" />
+
+            <ImageView
+                android:id="@+id/senderPrimaryBadge"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:scaleType="fitCenter"
+                android:visibility="gone"
+                tools:src="@drawable/icon_verified"
+                tools:visibility="visible" />
 
         </LinearLayout>
 

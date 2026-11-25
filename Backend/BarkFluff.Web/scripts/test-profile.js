@@ -22,12 +22,29 @@ function makeEl(id) {
         addEventListener: function (type, callback) {
             this.listeners[type] = callback;
         },
+        attributes: {},
+        parentNode: null,
         appendChild: function (child) {
+            child.parentNode = this;
             this.children.push(child);
             return child;
         },
+        removeChild: function (child) {
+            this.children = this.children.filter(function (c) {
+                return c !== child;
+            });
+            child.parentNode = null;
+            return child;
+        },
         replaceChildren: function () {
-            this.children = Array.from(arguments);
+            var self = this;
+            this.children = [];
+            Array.from(arguments).forEach(function (child) {
+                self.appendChild(child);
+            });
+        },
+        setAttribute: function (name, value) {
+            this.attributes[name] = String(value);
         },
         insertAdjacentHTML: function (where, markup) {
             this.inserted.push(markup);
@@ -56,6 +73,7 @@ function createHarness(options) {
         'profileStatus',
         'profileBio',
         'profileBadges',
+        'profileBadgesCard',
         'profileRegDate',
         'profileMediaContent',
         'profileUserId',
@@ -72,14 +90,25 @@ function createHarness(options) {
     var copyBtn = makeEl('copyBtn');
     copyBtn.dataset.copy = 'profileUserId';
     var log = { opened: [], closed: [], media: [], background: [], toasts: [], callButtons: [], sounds: [], clipboard: [] };
-    var users = {};
     var pendingUsers = [];
+    var badgesByUser = (options && options.badges) || {};
+    log.badgeRequests = [];
+    log.viewed = [];
     var BF = {
         api: {
             getUser: function (userId) {
                 return new Promise(function (resolve) {
                     pendingUsers.push({ userId: userId, resolve: resolve });
                 });
+            },
+            getUserBadges: function (userId) {
+                log.badgeRequests.push(userId);
+                return Promise.resolve({ badges: badgesByUser[userId] || [] });
+            }
+        },
+        icons: {
+            html: function () {
+                return '';
             }
         },
         files: {
@@ -110,7 +139,8 @@ function createHarness(options) {
             },
             formatLastSeen: function (ts) {
                 return 'lastSeen:' + ts;
-            }
+            },
+            escapeHtml: String
         },
         chatMedia: {
             createPanels: function () {
@@ -163,6 +193,10 @@ function createHarness(options) {
         Promise: Promise
     });
     context.window = context;
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '../wwwroot/js/app/user-badges.js'), 'utf8'), context);
+    BF.userBadges.showViewer = function (badge) {
+        log.viewed.push(badge.id);
+    };
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../wwwroot/js/app/profile.js'), 'utf8'), context);
     var onlineIds = (options && options.online) || [];
     var entries = (options && options.entries) || {};
@@ -216,8 +250,7 @@ async function main() {
             firstName: 'Ann',
             lastName: 'Lee',
             bio: 'hello',
-            registrationDate: 0,
-            badges: [{ name: 'Early', imageUrl: 'https://b/1.png' }, { name: 'Plain' }]
+            registrationDate: 0
         });
         await settle();
         assert.equal(h.els['#profileName'].textContent, 'Ann Lee');
@@ -229,7 +262,6 @@ async function main() {
         assert.match(h.els['#profileStatus'].className, /online/);
         assert.equal(h.els['#profileUserId'].textContent, 5);
         assert.equal(h.els['#profileChatId'].textContent, 7);
-        assert.equal(h.els['#profileBadges'].children.length, 2);
         assert.deepEqual(h.log.callButtons, [true]);
         assert.deepEqual(JSON.parse(JSON.stringify(h.log.media)), [['tab', 'media'], ['render', 'media']]);
         assert.deepEqual(h.log.opened, ['profileOverlay']);
@@ -258,8 +290,7 @@ async function main() {
             profilePicture: 'https://example.test/avatar.png',
             profilePosterFileId: 4,
             bio: 'private bio',
-            registrationDate: 1234,
-            badges: [{ name: 'Private badge' }]
+            registrationDate: 1234
         });
         await settle();
         assert.equal(h.els['#profileName'].textContent, 'accountRestriction.userBlocked');
@@ -268,8 +299,65 @@ async function main() {
         assert.equal(h.els['#profileStatus'].hidden, true);
         assert.equal(h.els['#profileRegDate'].textContent, '—');
         assert.equal(h.els['#profileBadges'].children.length, 0);
+        assert.equal(h.els['#profileBadgesCard'].hidden, true);
+        assert.deepEqual(h.log.badgeRequests, [], 'badges of a restricted account are not requested');
         assert.equal(h.els['#profileAvatar'].children.length, 0, 'restricted avatars use the text placeholder');
         assert.deepEqual(h.log.callButtons, [false]);
+    });
+
+    await test('the primary badge sits next to the name, the other badges fill the card and open the viewer', async function () {
+        var h = createHarness({
+            badges: {
+                5: [
+                    { id: 1, name: 'Early', imageUrl: 'https://b/1.png', miniImageUrl: 'https://b/1m.png', isPrimary: false },
+                    { id: 2, name: 'Dev', imageUrl: 'https://b/2.png', miniImageUrl: '', isPrimary: true },
+                    { id: 3, name: 'Tester', imageUrl: 'https://b/3.png', miniImageUrl: 'https://b/3m.png', isPrimary: false }
+                ]
+            }
+        });
+        h.BF.profile.open(5);
+        h.answer(0, { id: 5, username: 'ann', firstName: 'Ann' });
+        await settle();
+        assert.deepEqual(h.log.badgeRequests, [5]);
+        var nameChildren = h.els['#profileName'].children;
+        assert.equal(nameChildren.length, 1);
+        assert.equal(nameChildren[0].className, 'profile-primary-badge');
+        assert.equal(nameChildren[0].children[0].src, 'https://b/2.png', 'without a mini image the full one is used');
+        var others = h.els['#profileBadges'].children;
+        assert.deepEqual(
+            others.map(function (el) {
+                return el.attributes['aria-label'];
+            }),
+            ['Early', 'Tester']
+        );
+        assert.equal(others[0].children[0].src, 'https://b/1m.png');
+        assert.equal(h.els['#profileBadgesCard'].hidden, false);
+        others[1].listeners.click();
+        nameChildren[0].listeners.click();
+        assert.deepEqual(h.log.viewed, [3, 2]);
+
+        // Повторное открытие показывает кеш сразу и перечитывает список; значок не дублируется.
+        h.BF.profile.open(5);
+        h.answer(1, { id: 5, username: 'ann', firstName: 'Ann' });
+        await settle();
+        assert.deepEqual(h.log.badgeRequests, [5, 5]);
+        assert.equal(h.els['#profileName'].children.length, 1);
+    });
+
+    await test('a profile with only a primary badge or without badges hides the badges card', async function () {
+        var h = createHarness({ badges: { 3: [{ id: 9, name: 'Solo', imageUrl: 'https://b/9.png', isPrimary: true }] } });
+        h.BF.profile.open(3);
+        h.answer(0, { id: 3, username: 'solo' });
+        await settle();
+        assert.equal(h.els['#profileName'].children.length, 1);
+        assert.equal(h.els['#profileBadgesCard'].hidden, true);
+
+        var none = createHarness();
+        none.BF.profile.open(4);
+        none.answer(0, { id: 4, username: 'none' });
+        await settle();
+        assert.equal(none.els['#profileName'].children.length, 0);
+        assert.equal(none.els['#profileBadgesCard'].hidden, true);
     });
 
     await test('an offline user shows the last seen time', async function () {

@@ -13,6 +13,14 @@
         return document.querySelector(selector);
     }
 
+    // Сетка фонов: карточки той же формы (9:16); текст загрузки виден только скринридеру.
+    function skeletonHtml() {
+        var html = '<span class="sr-only">' + BF.utils.escapeHtml(BF.i18n.t('common.loading')) + '</span>';
+        for (var i = 0; i < 6; i++)
+            html += '<div class="sd-bg-card" aria-hidden="true"><span class="skeleton"></span></div>';
+        return html;
+    }
+
     function open(chatId, title) {
         if (!chatId) return;
         var u = BF.utils;
@@ -22,7 +30,7 @@
         selectorTitle.textContent = BF.i18n.t('chat.background.for', {
             title: title || BF.i18n.t('common.chat').toLowerCase()
         });
-        grid.innerHTML = '<div class="sd-hint">' + u.escapeHtml(BF.i18n.t('common.loadingShort')) + '</div>';
+        grid.innerHTML = skeletonHtml();
         u.openOverlay(overlay);
 
         BF.api

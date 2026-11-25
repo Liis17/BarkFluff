@@ -21,6 +21,7 @@ import coil.imageLoader
 import coil.load
 import coil.dispose
 import com.barkfluff.client.R
+import com.barkfluff.client.badges.PrimaryBadgeView
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
 import com.google.android.material.card.MaterialCardView
@@ -130,7 +131,7 @@ class MessageAdapter(
             }
             val previousSelection = indicator.getTag(R.id.tag_message_selection_checked) as? Boolean
             indicator.setImageResource(
-                if (item.isSelected) R.drawable.ic_action_select else R.drawable.ic_circle_outline
+                if (item.isSelected) R.drawable.icon_select else R.drawable.ic_circle_outline
             )
             indicator.setTag(R.id.tag_message_selection_checked, item.isSelected)
             if (!ValueAnimator.areAnimatorsEnabled()) {
@@ -784,6 +785,7 @@ class MessageAdapter(
             val senderAvatarFileId = resolved?.second ?: item.senderAvatarFileId
 
             binding.senderNameTextView.text = senderName
+            PrimaryBadgeView.bind(binding.senderPrimaryBadge, item.senderId)
 
             if (!senderAvatarFileId.isNullOrBlank()) {
                 AvatarLoader.loadByFileId(
@@ -1415,7 +1417,7 @@ class MessageAdapter(
                 playIcon.visibility = if (isVideo) View.VISIBLE else View.GONE
                 thumbnail.load(uri) {
                     crossfade(150)
-                    error(R.drawable.ic_image_placeholder)
+                    error(R.drawable.icon_image)
                 }
                 row.addView(cellView)
                 itemIndex++
@@ -1547,12 +1549,12 @@ class MessageAdapter(
                 if (seeded != null) {
                     thumbnail.setImageBitmap(seeded)
                 } else {
-                    thumbnail.setImageResource(R.drawable.ic_image_placeholder)
+                    thumbnail.setImageResource(R.drawable.icon_image)
                     if (localFile.isFile) {
                         thumbnail.load(localFile) {
                             memoryCacheKey(memoryKey)
                             crossfade(150)
-                            error(R.drawable.ic_image_placeholder)
+                            error(R.drawable.icon_image)
                         }
                     }
                 }
@@ -1710,7 +1712,7 @@ class MessageAdapter(
         val progress = cellView.findViewById<com.google.android.material.progressindicator.CircularProgressIndicator>(R.id.mediaDownloadProgress)
         // Только что отправленное вложение уже лежит в памяти — показываем его без кадра-заглушки.
         val seeded = ImageLoadHelper.peekMemory(thumbnail.context, attachment.fileId)
-        if (seeded != null) thumbnail.setImageBitmap(seeded) else thumbnail.setImageResource(R.drawable.ic_image_placeholder)
+        if (seeded != null) thumbnail.setImageBitmap(seeded) else thumbnail.setImageResource(R.drawable.icon_image)
         downloadIcon.visibility = if (seeded != null) View.GONE else View.VISIBLE
         cellView.contentDescription = thumbnail.context.getString(R.string.cd_download_file)
         viewOperations.launch(thumbnail) {
@@ -2170,7 +2172,7 @@ class MessageAdapter(
         isPlaying: Boolean
     ) {
         binding.playPauseButton.setImageResource(
-            if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
+            if (isPlaying) R.drawable.icon_pause else R.drawable.icon_play
         )
         binding.playPauseButton.contentDescription = binding.root.context.getString(if (isPlaying) R.string.cd_pause else R.string.cd_play)
     }
@@ -2193,14 +2195,14 @@ class MessageAdapter(
                 imageView = binding.videoThumbnail,
                 fileId = thumbnailFileId.ifBlank { fileId },
                 getUrlCallback = { thumbnailUrl },
-                onError = { binding.videoThumbnail.setImageResource(R.drawable.ic_image_placeholder) }
+                onError = { binding.videoThumbnail.setImageResource(R.drawable.icon_image) }
             )
         } else if (thumbnailFileId.isNotBlank()) {
             ImageLoadHelper.loadByFileId(
                 imageView = binding.videoThumbnail,
                 fileId = thumbnailFileId,
                 getUrlCallback = { attachmentLoader.url(thumbnailFileId) },
-                onError = { binding.videoThumbnail.setImageResource(R.drawable.ic_image_placeholder) }
+                onError = { binding.videoThumbnail.setImageResource(R.drawable.icon_image) }
             )
         }
 
@@ -2384,7 +2386,7 @@ class MessageAdapter(
             items = listOf(M3ContextMenu.Item(
                 id = R.id.action_delete_doc_from_cache,
                 title = context.getString(R.string.file_remove_from_cache),
-                icon = R.drawable.ic_action_delete,
+                icon = R.drawable.icon_delete,
                 danger = true,
             )),
             alignEnd = true,

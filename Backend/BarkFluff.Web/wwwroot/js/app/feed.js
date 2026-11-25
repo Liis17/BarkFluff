@@ -22,21 +22,31 @@
     var liveRegion;
 
     var MAX_MESSAGES = 200; // скользящее окно ленты: сколько сообщений держим в DOM
+    var STICK_TO_BOTTOM_PX = 32; // расстояние до низа, при котором лента считается прилипшей
     var isLoadingOlder = false;
     var noMoreOlder = false;
     var isLoadingNewer = false;
     var hasNewerGap = false; // хвост буфера обрезан — окно не доходит до конца чата
     var isJumpingToTail = false;
     var isJumpingToMessage = false;
+    var stickToBottom = false; // пользователь у нижнего края (обновляет onScroll и scrollToBottom)
     var resyncSeparatorId = null; // id первого сообщения после resync-пропуска (разделитель «Новые сообщения»)
     var newMessagesBelowCount = 0;
     var roverId = null; // сообщение с tabindex=0 (roving tabindex)
     var busyCount = 0;
     var announceQueue = [];
     var announceTimer = null;
+    var LEAVE_FADE_MS = 140; // выход удаляемого сообщения: opacity и scale
+    var LEAVE_COLLAPSE_MS = 160; // схлопывание высоты удаляемого сообщения
+    var EDIT_FLASH_MS = 600; // подсветка пузыря после правки
+    var pendingRemovals = new Map(); // id → Promise удаления, пока узел ещё анимируется
 
     function $(selector) {
         return document.querySelector(selector);
+    }
+
+    function prefersReducedMotion() {
+        return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
 
     // Состояние окна при открытии другого чата.
@@ -45,6 +55,7 @@
         hasNewerGap = false;
         isLoadingNewer = false;
         isJumpingToTail = false;
+        stickToBottom = false;
         resyncSeparatorId = null;
         roverId = null;
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
@@ -316,6 +327,14 @@
             jumpToLiveTail();
             return;
         }
+        stickToBottom = true;
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+
+    // Пользователь был у нижнего края: картинки, баннеры и панели над полем ввода меняют высоту области —
+    // держим низ. Прыжки и подгрузка старых ведут позицию сами, поэтому здесь их пропускаем.
+    function keepStuckToBottom() {
+        if (!stickToBottom || isJumpingToMessage || isJumpingToTail || isLoadingOlder) return;
         messagesArea.scrollTop = messagesArea.scrollHeight;
     }
 
@@ -415,7 +434,9 @@
         };
     }
 
-    function appendMessageToView(msg, separatorKey) {
+    // options.animate — живое сообщение (своя отправка или realtime): узел появляется анимацией.
+    // Без него (resync, подгрузка окна) узел встаёт сразу.
+    function appendMessageToView(msg, separatorKey, options) {
         // Хвост буфера обрезан — сообщение лежит за пределами загруженного окна. Не рисуем его
         // и убираем из массива, чтобы тот остался непрерывным: пользователь увидит сообщение,
         // когда вернётся к живому хвосту (кнопка «вниз» или прокрутка).
@@ -427,10 +448,18 @@
             if (gapIdx >= 0) messages.splice(gapIdx, 1);
             return Promise.resolve();
         }
-        return appendMessageElement(msg, separatorKey);
+        return appendMessageElement(msg, separatorKey, options);
     }
 
-    function appendMessageElement(msg, separatorKey) {
+    // Класс снимается по animationend самого узла: анимации потомков (картинки, подсветка) тоже всплывают.
+    function playEnter(el) {
+        el.classList.add('msg-enter');
+        el.addEventListener('animationend', function (e) {
+            if (e.target === el) el.classList.remove('msg-enter');
+        });
+    }
+
+    function appendMessageElement(msg, separatorKey, options) {
         var messages = deps.getMessages();
         var currentChatInfo = deps.getCurrentChatInfo();
         var previous = messages.length > 1 ? messages[messages.length - 2] : null;
@@ -462,13 +491,21 @@
                 if (separatorKey) messagesInner.appendChild(makeUnreadSeparator(separatorKey));
                 el.dataset.date = msgDate;
                 messagesInner.appendChild(el);
+                if (options && options.animate) playEnter(el);
                 syncRover();
             });
         });
     }
 
+    // Сообщения ленты без уходящих при удалении: они уже не участвуют в навигации и поиске по id.
+    function articleNodes() {
+        return Array.prototype.filter.call(messagesInner.querySelectorAll('.msg-group'), function (node) {
+            return !node.classList.contains('msg-leaving');
+        });
+    }
+
     function findMessageGroup(messageId) {
-        return Array.prototype.find.call(messagesInner.querySelectorAll('.msg-group'), function (node) {
+        return Array.prototype.find.call(articleNodes(), function (node) {
             return String(node.dataset.msgId) === String(messageId);
         });
     }
@@ -510,17 +547,17 @@
     function articleSibling(el, forward) {
         var node = forward ? el.nextElementSibling : el.previousElementSibling;
         for (; node; node = forward ? node.nextElementSibling : node.previousElementSibling) {
-            if (node.classList.contains('msg-group')) return node;
+            if (node.classList.contains('msg-group') && !node.classList.contains('msg-leaving')) return node;
         }
         return null;
     }
 
     function firstArticle() {
-        return messagesInner.querySelector('.msg-group');
+        return articleNodes()[0] || null;
     }
 
     function lastArticle() {
-        var list = messagesInner.querySelectorAll('.msg-group');
+        var list = articleNodes();
         return list[list.length - 1] || null;
     }
 
@@ -539,7 +576,7 @@
     // Roving tabindex: tabindex=0 только у одного сообщения, у остальных атрибута нет —
     // иначе клик мышью по любому сообщению уводил бы в него фокус.
     function syncRover() {
-        var list = messagesInner.querySelectorAll('.msg-group');
+        var list = articleNodes();
         var rover = null;
         for (var i = 0; i < list.length; i++) {
             if (String(list[i].dataset.msgId) === roverId) rover = list[i];
@@ -561,12 +598,21 @@
     }
 
     // Замена узла сообщения (pending → серверное, правка, перегруппировка) с сохранением ровера и фокуса.
-    function replaceElement(oldEl, newEl) {
+    // options.flash — короткая подсветка пузыря (правка); подтверждение отправки её не получает.
+    function replaceElement(oldEl, newEl, options) {
         var hadFocus = oldEl.contains(document.activeElement);
         if (String(oldEl.dataset.msgId) === roverId) roverId = String(newEl.dataset.msgId);
         oldEl.replaceWith(newEl);
         if (hadFocus) focusArticle(newEl, false);
         else syncRover();
+        if (options && options.flash) flashEdited(newEl);
+    }
+
+    function flashEdited(el) {
+        el.classList.add('edited-flash');
+        setTimeout(function () {
+            el.classList.remove('edited-flash');
+        }, EDIT_FLASH_MS);
     }
 
     function removeElement(el) {
@@ -576,6 +622,104 @@
         el.remove();
         if (neighbor) focusArticle(neighbor, false);
         else syncRover();
+    }
+
+    // Перерисовка одного сообщения на месте: группировка и подпись отправителя зависят от соседей.
+    function rebuildInView(msg) {
+        return buildMessageViewElement(msg).then(function (replacement) {
+            var el = findMessageGroup(msg.id);
+            if (!el || !el.isConnected) return;
+            replacement.dataset.date = el.dataset.date;
+            replaceElement(el, replacement);
+        });
+    }
+
+    // Удаление одного сообщения без перерисовки ленты. Буфер (`messages`) вызывающий уже обновил.
+    // Сначала узел гаснет и схлопывается (фокус уже на соседе), затем уходит через removeElement,
+    // соседи перестраиваются, осиротевшие разделители убираются. Промис резолвится после фактического удаления.
+    // Повторный вызов для узла, который уже удаляется, возвращает тот же промис; для отсутствующего — no-op.
+    function removeMessage(messageId) {
+        var key = String(messageId);
+        if (pendingRemovals.has(key)) return pendingRemovals.get(key);
+        var el = findMessageGroup(messageId);
+        if (!el) return Promise.resolve();
+        beginLeave(el);
+        var done = animateLeave(el).then(function () {
+            return finishRemoval(el, key);
+        });
+        pendingRemovals.set(key, done);
+        return done;
+    }
+
+    // Уходящий узел сразу выпадает из фокуса и из навигации: фокус переходит на соседа.
+    function beginLeave(el) {
+        var neighbor = articleSibling(el, true) || articleSibling(el, false);
+        var hadFocus = el.contains(document.activeElement);
+        el.classList.remove('msg-enter');
+        el.classList.add('msg-leaving');
+        el.setAttribute('aria-hidden', 'true');
+        if (hadFocus && neighbor) {
+            focusArticle(neighbor, false);
+            return;
+        }
+        if (String(el.dataset.msgId) === roverId) roverId = neighbor ? String(neighbor.dataset.msgId) : null;
+        syncRover();
+    }
+
+    // Выход (opacity/scale), затем схлопывание высоты одного узла. Промис резолвится всегда:
+    // конец каждого перехода — transitionend или запасной таймер.
+    function animateLeave(el) {
+        if (prefersReducedMotion()) return Promise.resolve();
+        return new Promise(function (resolve) {
+            onTransitionEnd(el, 'opacity', LEAVE_FADE_MS, function () {
+                if (!el.isConnected) return resolve();
+                collapse(el, resolve);
+            });
+        });
+    }
+
+    function collapse(el, done) {
+        var height = el.offsetHeight; // единственное измерение высоты в анимации удаления
+        el.style.height = height + 'px';
+        el.classList.add('msg-collapsing');
+        el.getBoundingClientRect(); // сбрасываем стиль с зафиксированной высотой, иначе переход не стартует
+        el.style.height = '0px';
+        el.style.marginTop = '0px';
+        el.style.marginBottom = '0px';
+        onTransitionEnd(el, 'height', LEAVE_COLLAPSE_MS, done);
+    }
+
+    // Конец перехода свойства на самом узле (transitionend всплывает от потомков) или запасной таймер.
+    function onTransitionEnd(el, property, ms, done) {
+        var finished = false;
+        function finish() {
+            if (finished) return;
+            finished = true;
+            done();
+        }
+        el.addEventListener('transitionend', function (e) {
+            if (e.target === el && e.propertyName === property) finish();
+        });
+        setTimeout(finish, ms + 60);
+    }
+
+    function finishRemoval(el, key) {
+        pendingRemovals.delete(key);
+        // Узел мог уйти за время анимации (render, смена чата, reset): чужие узлы не трогаем.
+        if (!el.isConnected) return Promise.resolve();
+        var prevEl = articleSibling(el, false);
+        var nextEl = articleSibling(el, true);
+        removeElement(el);
+        removeOrphanSeparators();
+        var messages = deps.getMessages();
+        return Promise.all(
+            [prevEl, nextEl].filter(Boolean).map(function (neighbor) {
+                var msg = messages.find(function (m) {
+                    return String(m.id) === String(neighbor.dataset.msgId);
+                });
+                return msg ? rebuildInView(msg) : Promise.resolve();
+            })
+        );
     }
 
     function trackBusy(promise) {
@@ -859,6 +1003,7 @@
 
         // Показываем/скрываем кнопку прокрутки вниз
         var distFromBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight;
+        stickToBottom = distFromBottom <= STICK_TO_BOTTOM_PX;
         if (scrollToBottomBtn) scrollToBottomBtn.classList.toggle('visible', distFromBottom > 300);
         if (distFromBottom < 100) loadNewerMessages();
         if (distFromBottom <= 300 && newMessagesBelowCount > 0) {
@@ -889,6 +1034,11 @@
 
         messagesArea.addEventListener('scroll', onScroll);
         messagesInner.addEventListener('keydown', onFeedKeydown);
+        if (typeof ResizeObserver === 'function') {
+            var resizeObserver = new ResizeObserver(keepStuckToBottom);
+            resizeObserver.observe(messagesArea);
+            resizeObserver.observe(messagesInner);
+        }
 
         if (scrollToBottomBtn) {
             scrollToBottomBtn.addEventListener('click', function () {
@@ -912,6 +1062,7 @@
         buildElement: buildMessageViewElement,
         replaceElement: replaceElement,
         removeElement: removeElement,
+        removeMessage: removeMessage,
         announceIncoming: announceIncoming,
         clearNewerGap: function (resetLoading) {
             hasNewerGap = false;

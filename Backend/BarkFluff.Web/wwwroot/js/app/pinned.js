@@ -18,6 +18,7 @@
     var sorted = [];                // sorted by pinnedAt DESC (newest first)
     var totalCount = 0;
     var barIndex = 0;
+    var barSwitching = false; // переключение по клику на превью: только тогда кроссфейд текста
 
     // --- External helpers (provided by main.js via init) ---
     var getMyUserId = function () { return null; };
@@ -220,6 +221,8 @@
     // --- Bar render ---
 
     function renderBar() {
+        var switching = barSwitching;
+        barSwitching = false;
         if (!pinnedBar) return;
         if (totalCount === 0) {
             pinnedBar.classList.remove('visible');
@@ -238,12 +241,12 @@
         }
 
         var msg = info.message || {};
-        var text = (msg.content && msg.content.text) || '';
-        if (!text) {
-            var atts = (msg.content && msg.content.attachments) || [];
-            if (atts.length > 0) text = u.attachmentEmoji(atts[0].type) + ' ' + BF.i18n.t('attachment.generic');
+        var content = msg.content || {};
+        var attachment = (content.attachments || [])[0];
+        if (pinnedBarText) {
+            if (content.text || !attachment) pinnedBarText.textContent = u.truncate(content.text || '', 80);
+            else pinnedBarText.innerHTML = u.attachmentPreviewHtml(attachment.type);
         }
-        if (pinnedBarText) pinnedBarText.textContent = u.truncate(text, 80);
 
         if (pinnedBarAuthor) {
             pinnedBarAuthor.textContent = BF.i18n.t('pinned.bar.author');
@@ -254,6 +257,13 @@
                     if (pinnedBarAuthor) pinnedBarAuthor.textContent = name || BF.i18n.t('pinned.bar.author');
                 }).catch(function () {});
             }
+        }
+
+        if (switching && pinnedBarPreview) {
+            // Перезапуск кроссфейда: снятие класса и чтение layout позволяют проиграть анимацию снова.
+            pinnedBarPreview.classList.remove('is-switching');
+            void pinnedBarPreview.offsetWidth;
+            pinnedBarPreview.classList.add('is-switching');
         }
     }
 
@@ -271,6 +281,7 @@
                 // Перевод на следующий по кругу для следующего клика
                 if (totalCount > 1) {
                     barIndex = (barIndex + 1) % totalCount;
+                    barSwitching = true;
                     renderBar();
                 }
             });

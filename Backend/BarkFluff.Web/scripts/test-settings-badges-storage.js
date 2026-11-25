@@ -22,9 +22,10 @@ function makeEl(tag) {
             add: function (n) {
                 if (classes.indexOf(n) < 0) classes.push(n);
             },
-            remove: function (n) {
+            remove: function () {
+                var drop = Array.prototype.slice.call(arguments);
                 classes = classes.filter(function (c) {
-                    return c !== n;
+                    return drop.indexOf(c) < 0;
                 });
             },
             toggle: function (n, on) {
@@ -79,9 +80,32 @@ function createHarness(api) {
             elements[id] = makeEl();
         }
     );
+    var badgeCacheWrites = [];
     var BF = {
         api: api,
         authUI: { cancelAll: function () {} },
+        node: {
+            pinned: function () {
+                return true;
+            }
+        },
+        userBadges: {
+            set: function (userId, badges) {
+                badgeCacheWrites.push({
+                    userId: userId,
+                    primaryIds: badges
+                        .filter(function (b) {
+                            return b.isPrimary;
+                        })
+                        .map(function (b) {
+                            return b.id;
+                        })
+                });
+            },
+            createSlot: function () {
+                return makeEl('span');
+            }
+        },
         icons: {
             html: function () {
                 return '';
@@ -130,7 +154,14 @@ function createHarness(api) {
     context.window = context;
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../wwwroot/js/app/settings.js'), 'utf8'), context);
     BF.settings.init({ myUserId: 42 });
-    return { BF: BF, body: elements['#sdBody'], title: elements['#sdTitle'], langChanges: langChanges };
+    return {
+        BF: BF,
+        body: elements['#sdBody'],
+        backBtn: elements['#sdBack'],
+        title: elements['#sdTitle'],
+        langChanges: langChanges,
+        badgeCacheWrites: badgeCacheWrites
+    };
 }
 
 function findAll(el, predicate, out) {
@@ -191,6 +222,15 @@ async function main() {
         rows[1].listeners.click();
         await settle();
         assert.deepEqual(calls, [2, 0], 'clicking the primary badge again clears the choice');
+        assert.deepEqual(
+            JSON.parse(JSON.stringify(h.badgeCacheWrites)),
+            [
+                { userId: 42, primaryIds: [1] },
+                { userId: 42, primaryIds: [2] },
+                { userId: 42, primaryIds: [] }
+            ],
+            'the shared badge cache follows the loaded list and every successful choice'
+        );
         assert.equal(badgeRows(h.body).filter(function (r) {
             return /primary/.test(r.className);
         }).length, 0);
@@ -211,6 +251,7 @@ async function main() {
         await settle();
         assert.doesNotMatch(badgeRows(h.body)[0].className, /primary/);
         assert.match(h.body.textContent, /common\.error/);
+        assert.equal(h.badgeCacheWrites.length, 1, 'a failed choice does not touch the shared cache');
     });
 
     await test('storage shows used of limit and non-empty types sorted by size', async function () {
@@ -241,6 +282,56 @@ async function main() {
             return el.textContent;
         });
         assert.deepEqual(labels, ['attachment.video', 'attachment.photo']);
+    });
+
+    await test('navigate slides the screen in from the right, goBack from the left; opening a screen does not slide', async function () {
+        var h = createHarness({
+            // Без пользователя главный экран не трогает аватар (в моке нет replaceChild): переход — единственное, что проверяем.
+            getUser: function () {
+                return Promise.resolve({});
+            },
+            getLoginNotificationSettings: function () {
+                return Promise.resolve({});
+            },
+            getUserStorageInfo: function () {
+                return Promise.resolve({ totalUsed: 0, limit: 0, byType: [] });
+            }
+        });
+        var forward = function () {
+            return h.body.classList.contains('sd-slide-forward');
+        };
+        var back = function () {
+            return h.body.classList.contains('sd-slide-back');
+        };
+        var openStorageRow = function () {
+            findAll(h.body, function (el) {
+                return el.className === 'sd-item' && /settings\.storage/.test(el.innerHTML);
+            })[0].listeners.click();
+        };
+
+        h.BF.settings.open('main');
+        await settle();
+        assert.equal(forward() || back(), false, 'the first open has no transition');
+
+        openStorageRow();
+        assert.equal(h.body.dataset.view, 'storage');
+        assert.equal(forward(), true);
+        assert.equal(back(), false);
+
+        h.backBtn.listeners.click();
+        assert.equal(h.body.dataset.view, 'main');
+        assert.equal(back(), true, 'going back replaces the forward direction');
+        assert.equal(forward(), false);
+
+        h.body.listeners.animationend({ target: {} });
+        assert.equal(back(), true, 'animations of children do not clear the direction');
+        h.body.listeners.animationend({ target: h.body });
+        assert.equal(back(), false, 'the direction clears when the body animation ends');
+
+        openStorageRow();
+        assert.equal(forward(), true);
+        h.BF.settings.open('language');
+        assert.equal(forward() || back(), false, 'a screen opened from outside does not inherit a leftover slide');
     });
 
     await test('settings rows are keyboard-operable buttons and mark the current choice', async function () {

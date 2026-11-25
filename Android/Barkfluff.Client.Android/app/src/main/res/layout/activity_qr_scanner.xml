@@ -54,7 +54,7 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_margin="16dp"
-        app:icon="@drawable/ic_arrow_back"
+        app:icon="@drawable/icon_back"
         app:iconTint="#FFFFFF"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

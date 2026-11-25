@@ -2,7 +2,7 @@
  * Sidebar search: an instant filter over the loaded chats plus debounced user (SearchUsers)
  * and message (SearchMessages) searches. Message search pages by cursor and has author,
  * period and attachment filters.
- * Requires: BF.api, BF.i18n, BF.utils
+ * Requires: BF.api, BF.i18n, BF.utils, BF.userBadges
  * Exposes: BF.search
  */
 (function () {
@@ -373,6 +373,8 @@
         var nextCursor = null;
         var loadingMore = false;
         var moreFailed = false;
+        // Индекс первой строки, дописанной «Показать ещё»: только на одном рендере эти строки получают появление.
+        var appendedFrom = -1;
 
         function renderHit(hit) {
             var el = document.createElement('div');
@@ -400,6 +402,7 @@
                 '</div>' +
                 '<div class="search-result-info"><div class="user-name">' +
                 u.escapeHtml(title) +
+                (peer && !restricted ? BF.userBadges.slotHtml(hit.otherUserId) : '') +
                 '<span class="search-result-time">' +
                 u.escapeHtml(u.formatChatListTime(hit.sentAt)) +
                 '</span></div><div class="search-result-text">' +
@@ -465,6 +468,7 @@
                     '</div>' +
                     '<div class="search-result-info"><div class="user-name">' +
                     u.escapeHtml(title) +
+                    (peer && !restricted ? BF.userBadges.slotHtml(peer.id) : '') +
                     '</div></div>';
                 el.addEventListener('click', function () {
                     clearSearch();
@@ -491,6 +495,7 @@
                         '</div>' +
                         '<div class="search-result-info"><div class="user-name">' +
                         u.escapeHtml(name) +
+                        (restricted ? '' : BF.userBadges.slotHtml(user.id)) +
                         '</div>' +
                         (restricted
                             ? ''
@@ -527,8 +532,10 @@
                     note.textContent = BF.i18n.t(messagesFailed ? 'search.messagesFailed' : 'common.nothingFound');
                     searchResults.appendChild(note);
                 }
-                hits.forEach(function (hit) {
-                    searchResults.appendChild(renderHit(hit));
+                hits.forEach(function (hit, i) {
+                    var el = renderHit(hit);
+                    if (appendedFrom >= 0 && i >= appendedFrom) el.classList.add('search-hit-enter');
+                    searchResults.appendChild(el);
                 });
                 if (nextCursor) {
                     var more = document.createElement('button');
@@ -556,6 +563,7 @@
                     foundHits.forEach(function (hit) {
                         known[hit.messageId] = true;
                     });
+                    var fromIndex = foundHits.length;
                     foundHits = foundHits.concat(
                         ((data && data.hits) || []).filter(function (hit) {
                             return !known[hit.messageId];
@@ -563,7 +571,9 @@
                     );
                     nextCursor = (data && data.nextCursor) || null;
                     loadingMore = false;
+                    appendedFrom = fromIndex;
                     render();
+                    appendedFrom = -1;
                 })
                 .catch(function () {
                     if (token !== searchToken) return;

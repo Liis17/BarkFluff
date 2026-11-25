@@ -56,7 +56,7 @@
                 android:background="@drawable/bg_create_chat_hero_icon"
                 android:contentDescription="@null"
                 android:padding="13dp"
-                android:src="@drawable/ic_person"
+                android:src="@drawable/icon_personal"
                 app:tint="@color/profile_on_accent" />
 
             <LinearLayout
@@ -121,7 +121,7 @@
                     android:layout_width="22dp"
                     android:layout_height="22dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_group"
+                    android:src="@drawable/icon_groups"
                     app:tint="@color/profile_accent" />
 
                 <TextView
@@ -165,7 +165,7 @@
                     android:layout_width="22dp"
                     android:layout_height="22dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_lock"
+                    android:src="@drawable/icon_lock"
                     app:tint="@color/profile_accent" />
 
                 <TextView
@@ -209,7 +209,7 @@
                     android:layout_width="22dp"
                     android:layout_height="22dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_security"
+                    android:src="@drawable/icon_security"
                     app:tint="@color/profile_accent" />
 
                 <TextView

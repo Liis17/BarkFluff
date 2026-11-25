@@ -167,13 +167,12 @@
 
     // ========== REPLY / EDIT ==========
 
-    function buildReplyPreviewText(msg) {
-        if (msg.content && msg.content.text) return msg.content.text;
+    function replyPreviewAttachmentType(msg) {
         var atts = (msg.content && msg.content.attachments) || [];
         for (var i = 0; i < atts.length; i++) {
             var t = atts[i].type;
             if (t === 8 || t === '8' || t === 'FORWARDED_MESSAGE') continue;
-            return BF.utils.attachmentEmoji(t === 7 || t === '7' ? 'STICKER' : t);
+            return t === 7 || t === '7' ? 'STICKER' : t;
         }
         return '';
     }
@@ -183,7 +182,8 @@
         pendingReply = {
             messageId: msg.id,
             authorName: '',
-            previewText: buildReplyPreviewText(msg)
+            previewText: (msg.content && msg.content.text) || '',
+            previewAttachmentType: replyPreviewAttachmentType(msg)
         };
         if (msg.senderId === deps.getMyUserId()) {
             pendingReply.authorName = BF.i18n.t('call.you');
@@ -214,7 +214,11 @@
             return;
         }
         rpbAuthor.textContent = pendingReply.authorName || '';
-        rpbText.textContent = pendingReply.previewText || '';
+        if (pendingReply.previewText || !pendingReply.previewAttachmentType) {
+            rpbText.textContent = pendingReply.previewText || '';
+        } else {
+            rpbText.innerHTML = BF.utils.attachmentPreviewHtml(pendingReply.previewAttachmentType);
+        }
         replyPreviewBar.classList.add('visible');
     }
 

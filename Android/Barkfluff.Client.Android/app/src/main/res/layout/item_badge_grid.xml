@@ -44,7 +44,7 @@
                 android:layout_height="20dp"
                 android:layout_gravity="top|end"
                 android:contentDescription="@null"
-                android:src="@drawable/ic_check_circle"
+                android:src="@drawable/icon_check_circle"
                 android:visibility="gone"
                 app:tint="@color/profile_settings_primary" />
 

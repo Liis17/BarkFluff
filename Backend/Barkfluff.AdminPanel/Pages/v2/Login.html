@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Авторизация</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         html, body {
             min-height: 100vh;
@@ -81,9 +82,8 @@
             justify-content: center;
             animation: md-shape-morph 6s var(--md-easing-emphasized) infinite;
         }
-        .login-icon-wrap .msr {
+        .login-icon-wrap .bf-icon {
             font-size: 36px;
-            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 40;
         }
 
         .login-card h1 {
@@ -137,7 +137,7 @@
             border-radius: 50%;
             display: inline-flex; align-items: center; justify-content: center;
         }
-        .status-container .status-icon .msr { font-size: 28px; }
+        .status-container .status-icon .bf-icon { font-size: 28px; }
         .status-container.waiting .status-icon { background: var(--md-primary-container); color: var(--md-on-primary-container); }
         .status-container.success .status-icon { background: var(--md-success-container); color: var(--md-on-success-container); }
         .status-container.error .status-icon { background: var(--md-error-container); color: var(--md-on-error-container); }
@@ -166,13 +166,6 @@
         .device-info .row { display: flex; gap: 8px; align-items: baseline; }
         .device-info .label { font-weight: 500; color: var(--md-on-surface); flex-shrink: 0; }
 
-        .telegram-icon {
-            width: 18px; height: 18px;
-            background: currentColor;
-            -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z'/></svg>") center/contain no-repeat;
-                    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z'/></svg>") center/contain no-repeat;
-            flex-shrink: 0;
-        }
     </style>
 </head>
 <body>
@@ -183,7 +176,7 @@
 
     <main class="login-card" role="main">
         <div class="login-icon-wrap" aria-hidden="true">
-            <span class="msr">lock</span>
+            <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/lock.svg);" aria-hidden="true"></span>
         </div>
 
         <h1>Авторизация</h1>
@@ -199,16 +192,16 @@
             <div id="validationMessage" class="validation-message">Введите ваше имя пользователя</div>
 
             <button id="loginBtn" type="button" class="md-btn md-btn-filled md-btn-lg md-btn-square-press login-btn">
-                <span class="telegram-icon" aria-hidden="true"></span>
+                <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/telegram.svg);" aria-hidden="true"></span>
                 Войти через Telegram
             </button>
         </form>
 
         <div id="statusContainer" class="status-container">
-            <div class="status-icon"><span class="msr" id="statusIconGlyph">hourglass_top</span></div>
+            <div class="status-icon"><span class="bf-icon" id="statusIconGlyph" style="--bf-icon-url:url(/assets/icons/pending.svg);" aria-hidden="true"></span></div>
             <div class="status-text" id="statusText">Ожидание подтверждения в Telegram...</div>
             <button id="retryBtn" type="button" class="md-btn md-btn-text" style="display:none;">
-                <span class="msr size-18">refresh</span>
+                <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/refresh.svg);" aria-hidden="true"></span>
                 Попробовать снова
             </button>
         </div>
@@ -225,6 +218,7 @@
         </div>
     </main>
 
+    <script src="assets/icons.js?v=3"></script>
     <script>
     (function () {
         var nicknameField = document.getElementById('nicknameField');
@@ -282,9 +276,9 @@
             statusContainer.classList.add('active', state);
             retryBtn.style.display = state === 'error' ? '' : 'none';
             if (text) statusText.textContent = text;
-            if (state === 'waiting') statusIconGlyph.textContent = 'hourglass_top';
-            else if (state === 'success') statusIconGlyph.textContent = 'check_circle';
-            else if (state === 'error') statusIconGlyph.textContent = 'error';
+            if (state === 'waiting') bfSetIcon(statusIconGlyph, 'pending');
+            else if (state === 'success') bfSetIcon(statusIconGlyph, 'check-circle');
+            else if (state === 'error') bfSetIcon(statusIconGlyph, 'error');
         }
 
         function hideStatus() {

@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff Admin — Сервисы</title>
-    <link rel="stylesheet" href="assets/md3.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/adminpanel.svg">
+    <link rel="stylesheet" href="assets/md3.css?v=5">
     <style>
         .tab-bar {
             display: flex;
@@ -185,6 +186,12 @@
             .tab-bar { flex-wrap: wrap; }
             .remote-console-output { min-height: 280px; }
         }
+        .recent-ops { margin-top: 24px; }
+        .recent-ops-title { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 16px; font-weight: 500; }
+        .recent-ops-table-wrap { overflow: auto; border-radius: var(--md-shape-md); border: 1px solid var(--md-outline-variant); }
+        .recent-op-row { cursor: pointer; }
+        .recent-op-row:hover, .recent-op-row:focus-visible { background: var(--md-surface-container-high); outline: none; }
+        .recent-op-step-detail { display: block; margin-top: 2px; font-size: 12px; white-space: normal; opacity: .9; }
     </style>
 </head>
 <body>
@@ -284,6 +291,29 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <section class="recent-ops" aria-labelledby="recentOpsTitle">
+                        <h2 class="recent-ops-title" id="recentOpsTitle">
+                            <span class="bf-icon size-18" data-bf-icon="history"></span>
+                            Недавние операции
+                        </h2>
+                        <div class="recent-ops-table-wrap">
+                            <table class="md-table">
+                                <thead>
+                                    <tr>
+                                        <th>Операция</th>
+                                        <th>Сервисы</th>
+                                        <th>Создана</th>
+                                        <th>Завершена</th>
+                                        <th>Итог</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentOpsBody">
+                                    <tr><td colspan="5" class="empty-cell">Загрузка...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
                 </div>
 
                 <div id="remotePanels"></div>
@@ -400,9 +430,9 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=6"></script>
+<script src="assets/api.js?v=8"></script>
 <script src="assets/sidebar.js?v=4"></script>
-<script src="assets/command-palette.js?v=4"></script>
+<script src="assets/command-palette.js?v=5"></script>
 <script src="assets/terminal.js?v=2"></script>
 <script>
     let servicesData = [];
@@ -814,6 +844,7 @@
     }
 
     function openJobModal(title, jobId, autoCloseOnSuccess = false) {
+        loadRecentJobs();
         clearProgressCloseTimer();
         resetProgressSuccess();
         document.getElementById('modalTitle').textContent = title;
@@ -828,6 +859,8 @@
 
         const token = ++deployJobToken;
         waitDeployJob(jobId, true).then(job => {
+            // Список обновляем даже если модалку уже закрыли: задача завершилась
+            loadRecentJobs();
             if (token !== deployJobToken) return;
             const failed = (job.steps || []).filter(s => s.state === 'Failed');
             const completedSuccessfully = job.state === 'Completed' && failed.length === 0;
@@ -874,13 +907,13 @@
             list.scrollTop = targetTop;
     }
 
-    function renderJobModal(job) {
+    function renderJobModal(job, showDetails = false) {
         const icons = { Pending: 'pending', InProgress: 'sync', Completed: 'check-circle', Failed: 'error' };
         const classes = { Pending: 'pending', InProgress: 'current', Completed: 'completed', Failed: 'error' };
         document.getElementById('servicesList').innerHTML = (job.steps || []).map(s => `
             <div class="svc-row ${classes[s.state] || 'pending'}" title="${escapeHtml(s.message || '')}">
                 ${bfIcon(icons[s.state] || 'pending', 'size-18')}
-                <span>${escapeHtml(s.service)}${s.rolledBack ? ' — откачено' : ''}</span>
+                <span>${escapeHtml(s.service)}${!showDetails && s.rolledBack ? ' — откачено' : ''}${showDetails ? stepDetailHtml(s) : ''}</span>
             </div>
         `).join('');
         const total = (job.steps || []).length;
@@ -909,6 +942,108 @@
             if (active) openJobModal(`${DEPLOY_KIND_LABELS[active.kind] || 'Задача деплоя'} — продолжение`, active.id, active.kind === 'Update');
         } catch { /* ignore */ }
     }
+
+    // ---- Недавние операции ----
+    // Список берётся из истории панели (переживает перезапуск); обновляется при старте, по опросу,
+    // при начале и завершении задач со страницы
+    let recentJobs = [];
+    let recentJobsLoaded = false;
+
+    // Итог задачи в списке: активные — по состоянию, завершённые — успешно или с ошибками
+    function recentJobResult(job) {
+        if (job.state === 'Queued') return { text: 'В очереди', cls: 'md-status-neutral' };
+        if (job.state === 'Running') return { text: 'Выполняется', cls: 'md-status-info' };
+        if (job.state === 'Completed') return { text: 'Успешно', cls: 'md-status-success' };
+        return { text: 'С ошибками', cls: 'md-status-error' };
+    }
+
+    // Состояние отката упавшего шага
+    function rollbackLabel(step) {
+        return step.rolledBack ? 'откат выполнен' : 'без отката';
+    }
+
+    // Причина и откат упавшего шага — только в просмотре результата, не в живом прогрессе
+    function stepDetailHtml(step) {
+        if (step.state !== 'Failed') return '';
+        return `<span class="recent-op-step-detail">${escapeHtml(step.message || 'Причина не записана')} · ${rollbackLabel(step)}</span>`;
+    }
+
+    async function loadRecentJobs() {
+        try {
+            recentJobs = await BF.request('/api/docker/deploy/jobs', { errorToast: false });
+            recentJobsLoaded = true;
+        } catch { /* оставляем прежний список */ }
+        renderRecentJobs();
+    }
+
+    function renderRecentJobs() {
+        const body = document.getElementById('recentOpsBody');
+        if (!recentJobsLoaded) {
+            body.innerHTML = '<tr><td colspan="5" class="empty-cell">Не удалось загрузить историю операций</td></tr>';
+            return;
+        }
+        if (recentJobs.length === 0) {
+            body.innerHTML = '<tr><td colspan="5" class="empty-cell">Операций пока нет. Обновления, перезапуски и переключения веток появятся здесь.</td></tr>';
+            return;
+        }
+        body.innerHTML = recentJobs.map(job => {
+            const steps = job.steps || [];
+            const failed = steps.filter(s => s.state === 'Failed').length;
+            const result = recentJobResult(job);
+            return `
+                <tr class="recent-op-row" tabindex="0" data-job-id="${escapeHtml(job.id)}" title="Открыть результат">
+                    <td>${escapeHtml(DEPLOY_KIND_LABELS[job.kind] || 'Задача деплоя')}</td>
+                    <td>${steps.length}</td>
+                    <td>${formatDate(job.createdAtUtc)}</td>
+                    <td>${job.finishedAtUtc ? formatDate(job.finishedAtUtc) : '—'}</td>
+                    <td><span class="md-status ${result.cls}">${result.text}</span>${failed ? ` · ошибок: ${failed}` : ''}</td>
+                </tr>`;
+        }).join('');
+    }
+
+    async function openRecentJob(jobId) {
+        let job;
+        try {
+            job = await BF.request(`/api/docker/deploy/jobs/${jobId}`, { errorToast: false });
+        } catch (error) {
+            if (error.status === 404) {
+                showNotification('error', 'Операция уже удалена из истории');
+                loadRecentJobs();
+            } else {
+                showNotification('error', 'Не удалось открыть операцию');
+            }
+            return;
+        }
+        // Активную задачу не перезапускаем: открываем её прогресс
+        if (job.state === 'Queued' || job.state === 'Running') {
+            openJobModal(`${DEPLOY_KIND_LABELS[job.kind] || 'Задача деплоя'} — продолжение`, job.id, job.kind === 'Update');
+            return;
+        }
+        openJobResultModal(job);
+    }
+
+    // Результат завершённой задачи: только просмотр, без опроса и без повторного запуска действий
+    function openJobResultModal(job) {
+        clearProgressCloseTimer();
+        resetProgressSuccess();
+        deployJobToken++;
+        document.getElementById('modalTitle').textContent = `${DEPLOY_KIND_LABELS[job.kind] || 'Задача деплоя'} — результат`;
+        document.getElementById('modalSubtitle').textContent = `${recentJobResult(job).text} · создана ${formatDate(job.createdAtUtc)}`;
+        renderJobModal(job, true);
+        document.getElementById('modalFooter').style.display = '';
+        document.getElementById('progressScrim').classList.add('open');
+        setProgressModalLock(true);
+    }
+
+    document.getElementById('recentOpsBody').addEventListener('click', e => {
+        const row = e.target.closest('.recent-op-row');
+        if (row) openRecentJob(row.dataset.jobId);
+    });
+    document.getElementById('recentOpsBody').addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        const row = e.target.closest('.recent-op-row');
+        if (row) openRecentJob(row.dataset.jobId);
+    });
 
     // ---- Admin panel actions ----
     async function restartAdminPanel() {
@@ -1361,12 +1496,13 @@
         const auth = await checkAuth();
         if (!auth) return;
         applyPermissions();
-        await Promise.all([loadServices(), loadAdminPanelUpdateStatus(), loadRemoteServers()]);
+        await Promise.all([loadServices(), loadAdminPanelUpdateStatus(), loadRemoteServers(), loadRecentJobs()]);
         resumeActiveDeployJob();
         BF.pageReady();
         refreshInterval = setInterval(() => {
             loadServices();
             loadAdminPanelUpdateStatus();
+            loadRecentJobs();
             if (activeTab !== 'barkfluff') loadRemoteContainers(activeTab);
         }, 30000);
     })();

@@ -41,7 +41,7 @@
                 android:layout_marginStart="12dp"
                 android:background="@drawable/bg_circle_surface"
                 android:contentDescription="@string/cd_back"
-                android:src="@drawable/ic_arrow_back"
+                android:src="@drawable/icon_back"
                 app:tint="@android:color/white"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintStart_toStartOf="parent" />
@@ -89,7 +89,7 @@
                 app:backgroundTint="@color/profile_accent"
                 app:fabSize="mini"
                 app:maxImageSize="18dp"
-                app:srcCompat="@drawable/ic_camera"
+                app:srcCompat="@drawable/icon_photography"
                 app:tint="@color/profile_on_accent" />
 
         </FrameLayout>
@@ -122,7 +122,7 @@
                 android:background="@drawable/bg_action_square"
                 android:contentDescription="@string/group_change_name"
                 android:padding="7dp"
-                android:src="@drawable/ic_edit"
+                android:src="@drawable/icon_edit"
                 app:tint="@color/profile_accent" />
 
         </LinearLayout>
@@ -145,7 +145,7 @@
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="4dp"
             android:text="@string/profile_chat_background"
-            app:icon="@drawable/ic_photo_library" />
+            app:icon="@drawable/icon_image" />
 
         <!-- Инфо-карта: ID чата -->
         <com.google.android.material.card.MaterialCardView
@@ -172,7 +172,7 @@
                     android:layout_height="22dp"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_forum"
+                    android:src="@drawable/icon_forum"
                     app:tint="@color/profile_accent" />
 
                 <LinearLayout
@@ -203,7 +203,7 @@
                     android:layout_height="20dp"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_copy_content"
+                    android:src="@drawable/icon_copy_plain"
                     app:tint="@color/profile_text_dim" />
             </LinearLayout>
 
@@ -261,7 +261,7 @@
             android:layout_marginTop="8dp"
             android:text="@string/group_add_member"
             android:textColor="@color/profile_accent"
-            app:icon="@drawable/ic_add"
+            app:icon="@drawable/icon_add"
             app:iconTint="@color/profile_accent" />
 
         <!-- Список участников -->
@@ -328,7 +328,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:hint="@string/profile_files_search_hint"
-                    app:startIconDrawable="@drawable/ic_search">
+                    app:startIconDrawable="@drawable/icon_search">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/fileSearchEditText"

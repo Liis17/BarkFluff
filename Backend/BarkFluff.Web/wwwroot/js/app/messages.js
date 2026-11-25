@@ -15,32 +15,17 @@
     }
 
     function updateMessageStatus(statusEl, isRead, isPending) {
-        statusEl.replaceChildren();
-        var icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        icon.setAttribute('class', 'msg-status-icon'
+        var name = isPending ? 'sending' : (isRead ? 'read' : 'delivered');
+        var iconClass = 'msg-status-icon'
             + (isRead ? ' msg-status-icon--read' : '')
-            + (isPending ? ' msg-status-icon--pending' : ''));
-        icon.setAttribute('viewBox', isPending ? '0 0 16 16' : (isRead ? '0 0 20 12' : '0 0 12 12'));
-        icon.setAttribute('aria-hidden', 'true');
-        icon.setAttribute('focusable', 'false');
-
-        var paths = isPending
-            ? ['M8 1.5a6.5 6.5 0 1 1-6.5 6.5A6.5 6.5 0 0 1 8 1.5Z', 'M8 4.5V8l2.5 1.5']
-            : (isRead
-                ? ['M1 6.2 4.5 9.8 11 2', 'M7 6.2 10.5 9.8 17 2']
-                : ['M1 6.2 4.5 9.8 11 2']);
-        paths.forEach(function (d) {
-            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', d);
-            icon.appendChild(path);
-        });
-        statusEl.appendChild(icon);
+            + (isPending ? ' msg-status-icon--pending' : '');
+        statusEl.replaceChildren(BF.icons.element(name, iconClass));
         statusEl.setAttribute('aria-label', BF.i18n.t(isPending ? 'message.status.sending' : (isRead ? 'message.status.read' : 'message.status.delivered')));
     }
 
     // --- Audio Player Singleton ---
     function setPlayButtonState(btn, playing) {
-        btn.textContent = playing ? '\u23F8' : '\u25B6';
+        btn.innerHTML = BF.icons.html(playing ? 'pause' : 'play');
         btn.setAttribute('aria-label', BF.i18n.t(playing ? 'attachment.audio.pause' : 'attachment.audio.play'));
     }
 
@@ -107,20 +92,6 @@
         bubble.appendChild(div);
     }
 
-    // Принимает имя типа: вызывается и по вложению (normType), и по ReplyInfo,
-    // где сервер отдаёт только тип первого вложения оригинала, без самого вложения.
-    function attachmentSummary(type, fileName) {
-        switch (type) {
-            case 'IMAGE': case 'GIF': return '\u{1F4F7} ' + BF.i18n.t('attachment.photo');
-            case 'VIDEO': return '\u{1F3AC} ' + BF.i18n.t('attachment.video');
-            case 'AUDIO': return '\u{1F3B5} ' + BF.i18n.t('attachment.audio');
-            case 'VOICE': return '\u{1F3A4} ' + BF.i18n.t('attachment.voice');
-            case 'STICKER': return '\u{1F92A} ' + BF.i18n.t('attachment.sticker');
-            case 'DOCUMENT': return '\u{1F4C4} ' + (fileName || BF.i18n.t('attachment.document'));
-            default: return '\u{1F4CE} ' + BF.i18n.t('attachment.generic');
-        }
-    }
-
     function renderForwardedBlock(fwd, container, onMediaClick) {
         if (!fwd) return;
         var box = document.createElement('div');
@@ -170,8 +141,8 @@
 
         if (reply.messageId) q.dataset.origId = reply.messageId;
         au.textContent = reply.senderName || '';
-        t.textContent = reply.textPreview ||
-            (reply.firstAttachmentType ? attachmentSummary(reply.firstAttachmentType) : '');
+        if (reply.textPreview) t.textContent = reply.textPreview;
+        else if (reply.firstAttachmentType) t.innerHTML = u().attachmentPreviewHtml(reply.firstAttachmentType);
         q.appendChild(au);
         q.appendChild(t);
 
@@ -211,12 +182,11 @@
         if (visible === 1) {
             var w = images[0].imageWidth || 0;
             var h = images[0].imageHeight || 0;
-            if (w > 0 && h > 0) {
-                grid.style.width = Math.min(w, 400) + 'px';
-                grid.style.maxWidth = '100%';
-                grid.style.aspectRatio = w + ' / ' + h;
-                grid.style.maxHeight = '350px';
-            }
+            var sized = w > 0 && h > 0;
+            grid.style.width = (sized ? Math.min(w, 400) : 400) + 'px';
+            grid.style.maxWidth = '100%';
+            grid.style.aspectRatio = sized ? w + ' / ' + h : '4 / 3';
+            grid.style.maxHeight = '350px';
         } else {
             grid.style.width = '400px';
             grid.style.maxWidth = '100%';
@@ -244,11 +214,26 @@
                 im.loading = 'lazy';
                 im.onerror = (function (im2, u) { return function () { if (im2.src !== u && u) im2.src = u; }; })(im, url);
                 BF.files.bindResilientMedia(im, attachment.fileId, true);
+                markMediaPending(im);
                 im.addEventListener('click', (function (u2, fid) { return function () { if (onMediaClick) onMediaClick('image', u2, fid); }; })(url || prev, attachment.fileId));
                 grid.appendChild(im);
             }
         }
         container.appendChild(grid);
+    }
+
+    // Картинка, которая ещё грузится, прячется и плавно появляется над фоном контейнера. Готовая картинка
+    // (например, из кеша браузера) остаётся видимой сразу. Класс снимается по первому load или error.
+    function markMediaPending(img) {
+        if (!img.getAttribute('src') || img.complete) return;
+        img.classList.add('is-media-pending');
+        var reveal = function () {
+            img.classList.remove('is-media-pending');
+            img.removeEventListener('load', reveal);
+            img.removeEventListener('error', reveal);
+        };
+        img.addEventListener('load', reveal);
+        img.addEventListener('error', reveal);
     }
 
     function createCircularProgress(percent) {
@@ -277,6 +262,14 @@
 
             var wrap = document.createElement('div');
             wrap.className = 'attach-video-wrap';
+            // Размер резервируется до загрузки метаданных: ширина и пропорция из файла, иначе 16:9.
+            var vw = a.imageWidth || 0;
+            var vh = a.imageHeight || 0;
+            var vSized = vw > 0 && vh > 0;
+            wrap.style.width = (vSized ? Math.min(vw, 400) : 400) + 'px';
+            wrap.style.maxWidth = '100%';
+            wrap.style.aspectRatio = vSized ? vw + ' / ' + vh : '16 / 9';
+            wrap.style.maxHeight = '300px';
             var vid = document.createElement('video');
             vid.preload = 'metadata';
             if (prev) vid.poster = prev;
@@ -284,7 +277,7 @@
             BF.files.bindResilientMedia(vid, a.fileId, false);
             var ov = document.createElement('div');
             ov.className = 'video-play-overlay';
-            ov.innerHTML = '<span>\u25B6</span>';
+            ov.innerHTML = '<span class="video-play-disc">' + BF.icons.html('play') + '</span>';
             wrap.appendChild(vid);
             wrap.appendChild(ov);
             wrap.addEventListener('click', function () { if (onMediaClick) onMediaClick('video', url, a.fileId); });
@@ -320,7 +313,10 @@
             timeEl.textContent = '0:00';
             var nameEl = document.createElement('span');
             nameEl.className = 'audio-name';
-            nameEl.textContent = isVoice ? '\u{1F3A4} ' + BF.i18n.t('attachment.voice') : (a.fileName || BF.i18n.t('attachment.audio'));
+            function setAudioName(label) {
+                nameEl.innerHTML = (isVoice ? BF.icons.html('voice') + ' ' : '') + u().escapeHtml(label);
+            }
+            setAudioName(isVoice ? BF.i18n.t('attachment.voice') : (a.fileName || BF.i18n.t('attachment.audio')));
             meta.appendChild(timeEl);
             meta.appendChild(nameEl);
             info.appendChild(progress);
@@ -335,7 +331,7 @@
                 if (refreshed) {
                     playBtn.disabled = true;
                     playBtn.classList.add('bf-load-failed');
-                    nameEl.textContent = isVoice ? '\u{1F3A4} ' + BF.i18n.t('attachment.voice.unavailable') : BF.i18n.t('attachment.audio.unavailable');
+                    setAudioName(BF.i18n.t(isVoice ? 'attachment.voice.unavailable' : 'attachment.audio.unavailable'));
                     return;
                 }
                 refreshed = true;
@@ -345,7 +341,7 @@
                     else {
                         playBtn.disabled = true;
                         playBtn.classList.add('bf-load-failed');
-                        nameEl.textContent = isVoice ? '\u{1F3A4} ' + BF.i18n.t('attachment.voice.unavailable') : BF.i18n.t('attachment.audio.unavailable');
+                        setAudioName(BF.i18n.t(isVoice ? 'attachment.voice.unavailable' : 'attachment.audio.unavailable'));
                     }
                 });
             });
@@ -511,6 +507,7 @@
                     if (pic) {
                         var img = document.createElement('img');
                         img.src = pic; img.alt = '';
+                        markMediaPending(img);
                         avEl.appendChild(img);
                     } else {
                         avEl.textContent = (fullName || '?')[0].toUpperCase();

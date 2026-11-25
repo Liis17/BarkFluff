@@ -63,7 +63,7 @@
                                 android:contentDescription="@string/register_step6_headline"
                                 android:padding="46dp"
                                 android:scaleType="centerInside"
-                                android:src="@drawable/ic_person"
+                                android:src="@drawable/icon_personal"
                                 app:tint="?attr/colorOnSurfaceVariant" />
 
                             <ImageView
@@ -98,7 +98,7 @@
                     android:layout_gravity="center"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_camera"
+                    android:src="@drawable/icon_photography"
                     app:tint="?attr/colorOnPrimary" />
 
             </com.google.android.material.card.MaterialCardView>
@@ -112,7 +112,7 @@
             android:layout_height="@dimen/register_cta_height"
             android:layout_marginTop="32dp"
             android:text="@string/register_pick_photo_from_gallery"
-            app:icon="@drawable/ic_photo_library"
+            app:icon="@drawable/icon_image"
             app:iconGravity="textStart" />
 
         <com.google.android.material.button.MaterialButton

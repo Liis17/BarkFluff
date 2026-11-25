@@ -25,7 +25,7 @@
             android:layout_height="48dp"
             android:background="@drawable/bg_doc_circle"
             android:padding="13dp"
-            android:src="@drawable/ic_file"
+            android:src="@drawable/icon_document"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             app:tint="?attr/colorOnPrimary" />
@@ -35,7 +35,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="@drawable/bg_doc_circle"
-            android:src="@drawable/ic_download"
+            android:src="@drawable/icon_download"
             android:contentDescription="@string/cd_download_file"
             android:scaleType="center"
             app:tint="?attr/colorOnPrimary" />
@@ -107,7 +107,7 @@
         android:layout_width="40dp"
         android:layout_height="48dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:src="@drawable/ic_more_vert"
+        android:src="@drawable/icon_more"
         android:contentDescription="@string/cd_more_menu"
         android:scaleType="center"
         android:visibility="gone"

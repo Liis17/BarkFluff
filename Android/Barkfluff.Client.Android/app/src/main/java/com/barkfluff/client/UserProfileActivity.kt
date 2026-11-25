@@ -168,12 +168,12 @@ class UserProfileActivity : AppCompatActivity() {
     // ── Инфо-карта ────────────────────────────────────────────────────────────
 
     private fun setupInfoCard() {
-        binding.rowUsername.bind(R.drawable.ic_person, R.string.profile_username_label)
-        binding.rowStatus.bind(R.drawable.ic_history, R.string.profile_status_label)
-        binding.rowBio.bind(R.drawable.ic_info, R.string.profile_bio_label)
-        binding.rowUserId.bind(R.drawable.ic_badge, R.string.profile_user_id_label)
-        binding.rowChatId.bind(R.drawable.ic_forum, R.string.profile_chat_id_label)
-        binding.rowRegistration.bind(R.drawable.ic_calendar_month, R.string.profile_registration_label)
+        binding.rowUsername.bind(R.drawable.icon_personal, R.string.profile_username_label)
+        binding.rowStatus.bind(R.drawable.icon_history, R.string.profile_status_label)
+        binding.rowBio.bind(R.drawable.icon_info, R.string.profile_bio_label)
+        binding.rowUserId.bind(R.drawable.icon_badge, R.string.profile_user_id_label)
+        binding.rowChatId.bind(R.drawable.icon_forum, R.string.profile_chat_id_label)
+        binding.rowRegistration.bind(R.drawable.icon_events, R.string.profile_registration_label)
 
         val showIds = globalParam.showIdsInProfile
         val showUserId = showIds && !isGroupChat && otherUserId > 0L
@@ -456,7 +456,7 @@ class UserProfileActivity : AppCompatActivity() {
             binding.actionCallButton.visibility = View.GONE
             binding.moreButton.visibility = View.GONE
             binding.actionMessageButton.setText(R.string.saved_messages_title)
-            binding.actionMessageButton.setIconResource(R.drawable.ic_saved_messages)
+            binding.actionMessageButton.setIconResource(R.drawable.icon_favorites)
             binding.actionMessageButton.setOnClickListener { openSavedMessages() }
             return
         }
@@ -482,12 +482,12 @@ class UserProfileActivity : AppCompatActivity() {
                 M3ContextMenu.Item(
                     id = MENU_TOGGLE_MUTE,
                     title = getString(if (isChatMuted) R.string.chat_menu_unmute else R.string.chat_menu_mute),
-                    icon = if (isChatMuted) R.drawable.ic_notifications else R.drawable.ic_notifications_off,
+                    icon = if (isChatMuted) R.drawable.icon_notifications else R.drawable.icon_mute_chat,
                 ),
                 M3ContextMenu.Item(
                     id = MENU_CHAT_BACKGROUND,
                     title = getString(R.string.profile_chat_background),
-                    icon = R.drawable.ic_photo_library,
+                    icon = R.drawable.icon_image,
                 ),
             ),
             alignEnd = true,
