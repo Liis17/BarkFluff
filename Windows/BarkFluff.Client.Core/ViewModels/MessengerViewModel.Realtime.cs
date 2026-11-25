@@ -309,6 +309,8 @@ public sealed partial class MessengerViewModel
             if (unread && !alreadyInSnapshot)
             {
                 chat.CountIncomingUnread(update.MessageId);
+                if (isOpen && (!chat.IsPrivate || chat.IsPrivateAccepted))
+                    CountNewMessageBelow(update.MessageId);
             }
 
             if ((!chat.IsPrivate && chat.LastMessageId == 0) ||
@@ -424,6 +426,8 @@ public sealed partial class MessengerViewModel
 
     private void RemoveMessage(ChatItemViewModel chat, long messageId, bool adjustUnread)
     {
+        ForgetNewMessageBelow(messageId);
+        _shownUnreadMessages.Remove(messageId);
         _pendingReadMessageIds.Remove(messageId);
         // Сервер сам снимает закреп с удалённого сообщения. Локальный кеш чистим сразу.
         if (!chat.IsPrivate && _pinnedMessages.RemoveAll(pin => pin.Message?.Id == messageId) != 0)

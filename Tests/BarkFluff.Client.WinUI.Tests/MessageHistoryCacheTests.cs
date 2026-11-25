@@ -1,5 +1,6 @@
 using System.Text;
 using BarkFluff.Client.Core.Infrastructure.Storage;
+using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Proto.Shared;
 using BarkFluff.WebApi.Core;
@@ -13,6 +14,48 @@ namespace BarkFluff.Client.WinUI.Tests;
 
 public sealed class MessageHistoryCacheTests
 {
+    [Fact]
+    public async Task CachedUnreadRowsDoNotCountAsNewAndVisibleAnchorIsSkipped()
+    {
+        await using var fixture = await HistoryDatabase.OpenAsync();
+        var scope = ChatListScope.Create("node", 1);
+        fixture.History.Write(scope, [Tail("chat", Row("chat", 1), Row("chat", 2))]);
+        var history = new MessageHistoryCache(fixture.History);
+        var messenger = new FakeMessengerService { CurrentNodeAddress = "node" };
+        var chat = MessengerTestDoubles.CreateChat("chat");
+        chat.CountUnread = 2;
+        chat.FirstUnreadMessageId = 1;
+        messenger.Chats.Add(chat);
+        var ui = new InlineUiDispatcher(serializeContinuations: true);
+        var vm = MessengerTestDoubles.CreateViewModel(messenger, dispatcher: ui,
+            chatCache: new ChatListCache(new ChatListCacheTests.MemoryCache(), history));
+        await ui.RunAsync(() => vm.LoadAsync());
+        try
+        {
+            ui.Post(() =>
+            {
+                vm.IsOffline = true;
+                vm.SelectedChat = Assert.Single(vm.Chats);
+            });
+            await MessengerTestDoubles.WaitForMessageAsync(vm, 2, ui);
+            await ui.RunAsync(async () =>
+            {
+                vm.FeedPositionChangedCommand.Execute(false);
+                vm.MessageBecameVisibleCommand.Execute(vm.Messages[0]);
+                Assert.Equal(0, vm.NewMessagesBelowCount);
+                Assert.True(vm.IsJumpDownVisible);
+                await vm.JumpDownCommand.ExecuteAsync(null);
+                Assert.Equal(MessageScrollTarget.Bottom, vm.ScrollRequest?.Target);
+                Assert.Equal(2, vm.SelectedChat!.UnreadCount);
+            });
+        }
+        finally
+        {
+            ui.Post(vm.Reset);
+            await history.FlushAsync();
+        }
+    }
+
     [Theory]
     [InlineData(1, true)]
     [InlineData(2, false)]

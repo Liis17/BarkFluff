@@ -835,6 +835,21 @@
                 </Grid>
             </ScrollViewer>
 
+            <Button Grid.Row="2"
+                    HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                    Margin="0,0,24,12"
+                    Command="{x:Bind ViewModel.JumpDownCommand}"
+                    AutomationProperties.Name="{x:Bind ViewModel.JumpDownName, Mode=OneWay}"
+                    ToolTipService.ToolTip="{x:Bind ViewModel.JumpDownName, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.IsJumpDownVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE74B;" />
+                    <TextBlock Text="{x:Bind ViewModel.NewMessagesBelowCount, Mode=OneWay}"
+                               VerticalAlignment="Center"
+                               Visibility="{x:Bind ViewModel.HasNewMessagesBelow, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </StackPanel>
+            </Button>
+
             <!--  Заглушка лежит в строке ленты, чтобы центрироваться по всей свободной области.  -->
             <TextBlock Grid.Row="2"
                        HorizontalAlignment="Center"

@@ -218,6 +218,8 @@
     <x:String x:Key="Messenger_DeleteConfirmTitle">Delete message?</x:String>
     <x:String x:Key="Messenger_DeleteConfirmText">The message will be removed for everyone in the chat. This cannot be undone.</x:String>
     <x:String x:Key="Messenger_HistoryLoadFailed">Could not load chat history.</x:String>
+    <x:String x:Key="Messenger_JumpDown">Scroll down</x:String>
+    <x:String x:Key="Messenger_JumpDownCount">Scroll down (new messages: {0})</x:String>
     <x:String x:Key="Messenger_HistoryRetry">Retry</x:String>
     <x:String x:Key="Messenger_HistoryMessageUnavailable">The original message is unavailable. It may have been deleted.</x:String>
     <x:String x:Key="Messenger_HistoryUnavailableOffline">This message is unavailable offline.</x:String>

@@ -13,6 +13,137 @@ public sealed class MessengerHistoryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task JumpDownUsesUnseenUnreadAnchorThenLoadsTrueTail(bool unreadWasShown)
+    {
+        var (api, chat, updates) = CreateChat(180);
+        chat.CountUnread = 180;
+        chat.FirstUnreadMessageId = 1;
+        var ui = new InlineUiDispatcher(serializeContinuations: true);
+        MessengerViewModel vm = null!;
+        await ui.RunAsync(async () => vm = await OpenAsync(api, updates, ui));
+        await ui.RunAsync(async () =>
+        {
+            Assert.True(vm.IsJumpDownVisible);
+            if (unreadWasShown)
+                vm.MessageBecameVisibleCommand.Execute(vm.Messages[0]);
+
+            var openingScroll = vm.ScrollRequest;
+            await vm.JumpDownCommand.ExecuteAsync(null);
+            if (!unreadWasShown)
+            {
+                Assert.NotSame(openingScroll, vm.ScrollRequest);
+                Assert.Equal(1, vm.ScrollRequest?.MessageId);
+                Assert.Equal(51, vm.Messages[^1].Id);
+                await vm.JumpDownCommand.ExecuteAsync(null);
+            }
+
+            Assert.Equal(MessageScrollTarget.Bottom, vm.ScrollRequest?.Target);
+            Assert.Equal(180, vm.Messages[^1].Id);
+            vm.FeedPositionChangedCommand.Execute(true);
+            Assert.False(vm.IsJumpDownVisible);
+            updates.Raise(new MessageUpdate("a", false, 181, MessageUpdateKind.New, Message: CreateMessage(181)));
+            Assert.Equal(0, vm.NewMessagesBelowCount);
+            vm.FeedPositionChangedCommand.Execute(false);
+            updates.Raise(new MessageUpdate("a", false, 182, MessageUpdateKind.New, Message: CreateMessage(182)));
+            Assert.Equal(1, vm.NewMessagesBelowCount);
+            vm.FeedPositionChangedCommand.Execute(true);
+            Assert.Equal(0, vm.NewMessagesBelowCount);
+            vm.Reset();
+        });
+    }
+
+    [Fact]
+    public async Task JumpDownLoadsTailWithoutErrorWhenFirstUnreadWasDeleted()
+    {
+        var (api, chat, updates) = CreateChat(220);
+        chat.CountUnread = 220;
+        chat.FirstUnreadMessageId = 1;
+        var ui = new InlineUiDispatcher(serializeContinuations: true);
+        await ui.RunAsync(async () =>
+        {
+            var vm = await OpenAsync(api, updates, ui);
+            await vm.NavigateToMessageAsync(110);
+            Assert.DoesNotContain(vm.Messages, row => row.Id == 1);
+            api.Messages.RemoveAt(0);
+
+            var errors = new List<string>();
+            vm.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(vm.ActionError) && vm.ActionError is { } error)
+                    errors.Add(error);
+            };
+            await vm.JumpDownCommand.ExecuteAsync(null);
+
+            Assert.Empty(errors);
+            Assert.Equal(MessageScrollTarget.Bottom, vm.ScrollRequest?.Target);
+            Assert.Equal(220, vm.Messages[^1].Id);
+            vm.Reset();
+        });
+    }
+
+    [Theory]
+    [InlineData(false, 2)]
+    [InlineData(true, 0)]
+    public async Task JumpDownCountsNewUnreadTailMessagesFromResync(bool atBottom, int expectedCount)
+    {
+        var (api, _, updates) = CreateChat(80);
+        var ui = new InlineUiDispatcher(serializeContinuations: true);
+        await ui.RunAsync(async () =>
+        {
+            var vm = await OpenAsync(api, updates, ui);
+            vm.FeedPositionChangedCommand.Execute(atBottom);
+            var read = CreateMessage(82);
+            read.ReadBy.Add(1);
+            api.Messages.AddRange([CreateMessage(81), read, CreateMessage(83, sender: 1), CreateMessage(84)]);
+
+            updates.Resync();
+
+            Assert.Equal(84, vm.Messages[^1].Id);
+            Assert.Equal(expectedCount, vm.NewMessagesBelowCount);
+            updates.Resync();
+            updates.Raise(new MessageUpdate("a", false, 84, MessageUpdateKind.New, Message: api.Messages[^1]));
+            Assert.Equal(expectedCount, vm.NewMessagesBelowCount);
+            vm.Reset();
+        });
+    }
+
+    [Fact]
+    public async Task JumpDownBadgeTracksNewUnreadIdsOutsideLoadedWindow()
+    {
+        var (api, chat, updates) = CreateChat(180);
+        chat.CountUnread = 180;
+        chat.FirstUnreadMessageId = 1;
+        api.Chats.Add(MessengerTestDoubles.CreateChat("b"));
+        var ui = new InlineUiDispatcher(serializeContinuations: true);
+        MessengerViewModel vm = null!;
+        await ui.RunAsync(async () => vm = await OpenAsync(api, updates, ui));
+        ui.Post(() =>
+        {
+            void Incoming(long id, long sender = 2) =>
+                updates.Raise(new MessageUpdate("a", false, id, MessageUpdateKind.New, Message: CreateMessage(id, sender)));
+
+            Incoming(181);
+            Incoming(181);
+            Incoming(182);
+            Incoming(183, sender: 1);
+            Assert.Equal(2, vm.NewMessagesBelowCount);
+            vm.FeedPositionChangedCommand.Execute(true);
+            Assert.Equal(2, vm.NewMessagesBelowCount);
+            updates.Raise(new MessageUpdate("a", false, 181, MessageUpdateKind.Delete));
+            Assert.Equal(1, vm.NewMessagesBelowCount);
+            updates.Raise(new MessageReadReceipt("a", 182, [1]));
+            Assert.Equal(0, vm.NewMessagesBelowCount);
+            Incoming(184);
+            Assert.Equal(1, vm.NewMessagesBelowCount);
+            vm.SelectedChat = vm.Chats.Single(item => item.Id == "b");
+            Assert.Equal(0, vm.NewMessagesBelowCount);
+            vm.Reset();
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task PaginatesToBothEndsInServerOrder(bool fromUnread)
     {
         var (api, chat, updates) = CreateChat(181);
@@ -390,6 +521,49 @@ public sealed class MessengerHistoryTests
         Assert.Equal(1, tailRequests);
         Assert.Equal(181, vm.Messages[^1].Id);
         dispatcher.Post(vm.Reset);
+    }
+
+    [Fact]
+    public async Task PartiallyQueuedForwardKeepsStorageErrorAfterTailReload()
+    {
+        var (api, chat, updates) = CreateChat(180);
+        chat.CountUnread = 180;
+        chat.FirstUnreadMessageId = 1;
+        api.Chats.Add(MessengerTestDoubles.CreateChat("b"));
+        var queued = new List<string>();
+        api.OutgoingStore.BeforeFirstSave = message =>
+        {
+            if (queued.Count > 0)
+                throw new IOException("Storage failure");
+            queued.Add(message.ChatId);
+        };
+        api.SendOutgoing = (_, token) => WaitForCancellationAsync(token);
+        var ui = new InlineUiDispatcher(serializeContinuations: true);
+        MessengerViewModel vm = null!;
+        await ui.RunAsync(async () => vm = await OpenAsync(api, updates, ui));
+        await ui.RunAsync(async () =>
+        {
+            vm.StartForwardMessageCommand.Execute(vm.Messages[0]);
+            foreach (var target in vm.ForwardTargets)
+                vm.ToggleForwardTargetCommand.Execute(target);
+            await vm.SubmitForwardCommand.ExecuteAsync(null);
+            Assert.Single(queued);
+            Assert.Equal("Messenger_OutboxStorageFailed", vm.ActionError);
+            Assert.False(vm.IsOutgoingTailVisible);
+            await vm.ShowOutgoingTailCommand.ExecuteAsync(null);
+            Assert.Equal(MessageScrollTarget.Bottom, vm.ScrollRequest?.Target);
+            Assert.Equal(180, vm.Messages[^1].Id);
+            Assert.Equal("Messenger_OutboxStorageFailed", vm.ActionError);
+            Assert.Single(api.OutgoingStore.ListOperations());
+            Assert.Equal(0, vm.NewMessagesBelowCount);
+            vm.Reset();
+        });
+
+        static async Task<(ErrorReturner, MessageModel?)> WaitForCancellationAsync(CancellationToken token)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            return default;
+        }
     }
 
     [Theory]

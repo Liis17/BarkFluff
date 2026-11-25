@@ -24,6 +24,7 @@ public sealed partial class MessengerViewModel
             _historyIncludesTail = value;
             OnPropertyChanged(nameof(IsOutgoingTailVisible));
             OnPropertyChanged(nameof(OutgoingHistoryNotice));
+            OnPropertyChanged(nameof(IsJumpDownVisible));
         }
     }
 
@@ -376,7 +377,8 @@ public sealed partial class MessengerViewModel
                     }
                 }
 
-                ApplyHistoryRows(session, chat, prepared, id => WasPrivateHistoryRead(chat, id));
+                ApplyHistoryRows(session, chat, prepared, id => WasPrivateHistoryRead(chat, id),
+                    previousTail: hasWindow && followTail ? ceiling : null);
                 if (!_feedLoaded)
                 {
                     SetHistoryEdges(page, firstUnread);
@@ -518,7 +520,7 @@ public sealed partial class MessengerViewModel
     }
 
     private void ApplyHistoryRows(RealtimeSession session, ChatItemViewModel chat, PreparedHistoryRow[] rows,
-        Func<long, bool> markRead, bool cached = false)
+        Func<long, bool> markRead, bool cached = false, (DateTimeOffset, long)? previousTail = null)
     {
         foreach (var (row, item, deleted, change, refreshQuote) in rows)
         {
@@ -559,6 +561,10 @@ public sealed partial class MessengerViewModel
             {
                 visible.MarkReadByCurrentUser();
             }
+            if (visible.IsReadByCurrentUser)
+                ForgetNewMessageBelow(row.Id);
+            else if (existing is null && !visible.IsMine && previousTail is { } tail && Position(row).CompareTo(tail) > 0)
+                CountNewMessageBelow(row.Id);
             if (change is not null)
             {
                 change.WaitingForNew = false;

@@ -231,7 +231,9 @@ public sealed partial class MessengerViewModel
     private static bool IsMissingAnchor(ErrorReturner error) =>
         error.ErrorCode is 1 or ErrorReturner.HistoryAnchorNotFound;
 
-    public async Task NavigateToMessageAsync(long messageId)
+    public Task NavigateToMessageAsync(long messageId) => NavigateToMessageAsync(messageId, fallbackToTail: false);
+
+    private async Task NavigateToMessageAsync(long messageId, bool fallbackToTail)
     {
         if (messageId <= 0)
         {
@@ -249,12 +251,12 @@ public sealed partial class MessengerViewModel
         }
 
         ActionError = null;
-        await ReplaceHistoryWindowAsync(messageId);
+        await ReplaceHistoryWindowAsync(messageId, fallbackToTail);
     }
 
     private Task ReloadHistoryTailAsync() => ReplaceHistoryWindowAsync(0);
 
-    private async Task ReplaceHistoryWindowAsync(long anchor)
+    private async Task ReplaceHistoryWindowAsync(long anchor, bool fallbackToTail = false)
     {
         var session = _realtimeSession;
         var chat = SelectedChat;
@@ -280,14 +282,19 @@ public sealed partial class MessengerViewModel
             }
             if (chat.IsPrivate && key is null)
             {
-                ShowReplacementError(missing: false);
+                await ShowReplacementErrorAsync(missing: false);
                 return;
             }
             if (IsOffline)
             {
                 var shown = await ShowCachedHistoryAsync(session, chat, key, anchor, IsCurrentRequest, lifetime.Token, replace: true);
                 if (!shown && IsCurrentRequest() && anchor > 0)
-                    ActionError = _localization.GetString("Messenger_HistoryUnavailableOffline");
+                {
+                    if (fallbackToTail)
+                        await ShowOutgoingTailAsync();
+                    else
+                        ActionError = _localization.GetString("Messenger_HistoryUnavailableOffline");
+                }
                 return;
             }
 
@@ -309,22 +316,23 @@ public sealed partial class MessengerViewModel
                     ActionError = _localization.GetString("Messenger_HistoryUnavailableOffline");
                     return;
                 }
-                ShowReplacementError(IsMissingAnchor(error));
+                await ShowReplacementErrorAsync(IsMissingAnchor(error));
                 return;
             }
             if (anchor > 0 && rows.Find(row => row.Id == anchor) is not { IsDeleted: false })
             {
-                ShowReplacementError(missing: true);
+                await ShowReplacementErrorAsync(missing: true);
                 return;
             }
 
             var range = HistoryRange(rows, anchor);
+            var missingAnchor = false;
             await PrepareHistoryAsync(session, chat, rows, revision, IsCurrentRequest, lifetime.Token, prepared =>
             {
                 var visibleIds = prepared.Where(row => row.Item is not null).Select(row => row.Row.Id).ToHashSet();
                 if (anchor > 0 && !visibleIds.Contains(anchor))
                 {
-                    ShowReplacementError(missing: true);
+                    missingAnchor = true;
                     return;
                 }
 
@@ -356,13 +364,18 @@ public sealed partial class MessengerViewModel
                     IsHistoryUpdating = false;
                 }
             }, key, range);
+            if (missingAnchor && IsCurrentRequest())
+                await ShowReplacementErrorAsync(missing: true);
         }
         catch (OperationCanceledException) when (!IsCurrentRequest())
         {
         }
 
-        void ShowReplacementError(bool missing)
+        Task ShowReplacementErrorAsync(bool missing)
         {
+            if (missing && fallbackToTail)
+                return ShowOutgoingTailAsync();
+
             if (anchor > 0)
             {
                 ActionError = _localization.GetString(missing
@@ -373,6 +386,7 @@ public sealed partial class MessengerViewModel
                 _tailReloadFailed = true;
                 UpdateHistoryError();
             }
+            return Task.CompletedTask;
         }
     }
 

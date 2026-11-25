@@ -347,7 +347,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         ChangeComposerChat(oldValue, newValue);
         ScrollRequest = null;
         // Только что открытый чат следует за новыми сообщениями, пока пользователь не ушёл вверх.
-        _isFeedAtBottom = true;
+        ResetFeedNavigation(oldValue, newValue);
         IsPrivateUnlockVisible = false;
         PrivateUnlockError = null;
         PrivatePassphrase = string.Empty;
@@ -474,12 +474,13 @@ public sealed partial class MessengerViewModel : ObservableObject
     private void MessageBecameVisible(MessageItemViewModel message)
     {
         var chat = SelectedChat;
-        if (IsOffline || !_feedLoaded || IsHistoryUpdating || chat is null || message.IsMine || message.IsReadByCurrentUser || !Messages.Contains(message))
+        if (!_feedLoaded || IsHistoryUpdating || chat is null || message.IsMine || message.IsReadByCurrentUser || !Messages.Contains(message))
         {
             return;
         }
 
-        if (_pendingReadMessageIds.Add(message.Id))
+        _shownUnreadMessages.Add(message.Id);
+        if (!IsOffline && _pendingReadMessageIds.Add(message.Id))
         {
             ScheduleReadBatch(chat);
         }
@@ -821,6 +822,12 @@ public sealed partial class MessengerViewModel : ObservableObject
                 message.MarkReadByCurrentUser();
             }
 
+            if (chat.IsPrivate)
+                ForgetPrivateMessagesRead(messageIds.Max());
+            else
+                foreach (var messageId in messageIds)
+                    ForgetNewMessageBelow(messageId);
+
             _pendingReadMessageIds.ExceptWith(messageIds);
             _realtimeSession?.Journal.TouchUnread(chat.Id, chat.IsPrivate);
             UpdateUnreadState(chat, messagesToMark.Length);
@@ -1005,6 +1012,7 @@ public sealed partial class MessengerViewModel : ObservableObject
     {
         ScrollRequest = null;
         ScrollRequest = new MessageScrollRequest(target, messageId);
+        OnPropertyChanged(nameof(IsJumpDownVisible));
     }
 
     /// <summary>
@@ -1034,7 +1042,15 @@ public sealed partial class MessengerViewModel : ObservableObject
     /// тогда — иначе чтение истории сбрасывалось бы в конец при каждом чужом сообщении.
     /// </summary>
     [RelayCommand]
-    private void FeedPositionChanged(bool isAtBottom) => _isFeedAtBottom = isAtBottom;
+    private void FeedPositionChanged(bool isAtBottom)
+    {
+        if (isAtBottom && _feedIncludesTail)
+            ClearNewMessagesBelow();
+        if (_isFeedAtBottom == isAtBottom)
+            return;
+        _isFeedAtBottom = isAtBottom;
+        OnPropertyChanged(nameof(IsJumpDownVisible));
+    }
 
     /// <summary>
     /// Чат с новым сообщением поднимается наверх с сохранением выбора в привязанном списке.
@@ -1099,6 +1115,8 @@ public sealed partial class MessengerViewModel : ObservableObject
                 return;
             }
 
+            if (receipt.ReadBy.Contains(session.UserId))
+                ForgetNewMessageBelow(receipt.MessageId);
             var message = Messages.FirstOrDefault(item => item.Id == receipt.MessageId);
             if (message is null)
             {
@@ -1141,6 +1159,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             session.Journal.TouchUnread(receipt.ChatId, true);
             if (receipt.UserId == currentUserId)
             {
+                ForgetPrivateMessagesRead(receipt.LastReadMessageId);
                 var firstUnread = SelectedChat.FirstUnreadMessageId;
                 var newlyRead = Messages.Where(message => !message.IsMine && message.Id <= receipt.LastReadMessageId && !message.IsReadByCurrentUser).ToArray();
                 foreach (var message in newlyRead)

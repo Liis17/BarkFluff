@@ -270,6 +270,8 @@ public static class MessageFeedBehavior
         if (!eventArgs.IsIntermediate)
         {
             state.ProgrammaticScroll = false;
+            // Программный переход тоже может завершить начатую пользователем прокрутку.
+            state.UserScrollInProgress = false;
         }
         if (!programmatic)
         {
@@ -284,7 +286,7 @@ public static class MessageFeedBehavior
         {
             state.FollowingTail = MessageFeedViewport.FollowTail(state.FollowingTail, scrolled,
                 scroller.ScrollableHeight - view.Offset);
-            Execute(GetFeedPositionCommand(repeater), state.FollowingTail);
+            ReportFeedPosition(repeater, state);
             if (!historyUpdating)
             {
                 CheckHistoryEdges(repeater, state, scroller, olderScroll: true, newerScroll: true);
@@ -441,7 +443,7 @@ public static class MessageFeedBehavior
                     !MessageFeedViewport.IsNearEdge(scroller.ScrollableHeight - scroller.VerticalOffset))
                 {
                     state.FollowingTail = false;
-                    Execute(GetFeedPositionCommand(repeater), false);
+                    ReportFeedPosition(repeater, state);
                 }
             }
             if (state.FollowingTail && !state.HasScrollInput && !state.Intermediate && !state.ProgrammaticScroll &&
@@ -457,11 +459,15 @@ public static class MessageFeedBehavior
             }
             if (!state.Intermediate)
             {
+                ReportFeedPosition(repeater, state);
                 ReportVisibleMessages(repeater, scroller);
             }
             CheckHistoryEdges(repeater, state, scroller);
         });
     }
+
+    private static void ReportFeedPosition(ItemsRepeater repeater, FeedState state) =>
+        Execute(GetFeedPositionCommand(repeater), state.FollowingTail);
 
     private static void Execute(ICommand? command, object? argument = null)
     {
@@ -515,7 +521,7 @@ public static class MessageFeedBehavior
             if (atBottom.HasValue)
             {
                 state.FollowingTail = atBottom.Value;
-                Execute(GetFeedPositionCommand(repeater), state.FollowingTail);
+                ReportFeedPosition(repeater, state);
             }
             state.View = ReadView(scroller);
             if (ReferenceEquals(state.PendingScroll, request))
