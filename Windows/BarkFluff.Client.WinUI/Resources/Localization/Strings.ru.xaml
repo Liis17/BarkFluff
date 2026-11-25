@@ -14,6 +14,7 @@
     <x:String x:Key="Settings_WindowSize_Reset">Сбросить размер и положение</x:String>
     <x:String x:Key="Tray_Open">Открыть BarkFluff</x:String>
     <x:String x:Key="Tray_Exit">Выход</x:String>
+    <x:String x:Key="Tray_UnreadMessages">BarkFluff · Непрочитанные сообщения: {0:N0}</x:String>
     <x:String x:Key="Welcome_Title">Добро пожаловать в BarkFluff</x:String>
     <x:String x:Key="Welcome_Subtitle">Выберите ноду, чтобы начать пользоваться распределённым мессенджером.</x:String>
     <x:String x:Key="Welcome_Eyebrow">BarkFluff для Windows</x:String>

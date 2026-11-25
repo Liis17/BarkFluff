@@ -1094,12 +1094,16 @@ public sealed partial class MessengerViewModel : ObservableObject
         {
             if (SelectedChat?.Id != receipt.ChatId || SelectedChat.IsPrivate)
             {
+                if (receipt.ReadBy.Contains(session.UserId))
+                    ConfirmUnreadAfterReadReceipt(session, receipt.ChatId, isPrivate: false, receipt.MessageId);
                 return;
             }
 
             var message = Messages.FirstOrDefault(item => item.Id == receipt.MessageId);
             if (message is null)
             {
+                if (receipt.ReadBy.Contains(session.UserId))
+                    ConfirmUnreadAfterReadReceipt(session, receipt.ChatId, isPrivate: false, receipt.MessageId);
                 return;
             }
 
@@ -1123,6 +1127,8 @@ public sealed partial class MessengerViewModel : ObservableObject
         {
             if (SelectedChat?.Id != receipt.ChatId || !SelectedChat.IsPrivate)
             {
+                if (receipt.UserId == session.UserId)
+                    ConfirmUnreadAfterReadReceipt(session, receipt.ChatId, isPrivate: true);
                 return;
             }
 
@@ -1135,6 +1141,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             session.Journal.TouchUnread(receipt.ChatId, true);
             if (receipt.UserId == currentUserId)
             {
+                var firstUnread = SelectedChat.FirstUnreadMessageId;
                 var newlyRead = Messages.Where(message => !message.IsMine && message.Id <= receipt.LastReadMessageId && !message.IsReadByCurrentUser).ToArray();
                 foreach (var message in newlyRead)
                 {
@@ -1142,6 +1149,8 @@ public sealed partial class MessengerViewModel : ObservableObject
                 }
 
                 UpdateUnreadState(SelectedChat, newlyRead.Length);
+                if (SelectedChat.UnreadCount > 0 && firstUnread <= receipt.LastReadMessageId)
+                    session.ChatRefresh.RequestConfirmation();
                 return;
             }
 

@@ -14,6 +14,7 @@
     <x:String x:Key="Settings_WindowSize_Reset">Reset size and position</x:String>
     <x:String x:Key="Tray_Open">Open BarkFluff</x:String>
     <x:String x:Key="Tray_Exit">Exit</x:String>
+    <x:String x:Key="Tray_UnreadMessages">BarkFluff · Unread messages: {0:N0}</x:String>
     <x:String x:Key="Welcome_Title">Welcome to BarkFluff</x:String>
     <x:String x:Key="Welcome_Subtitle">Choose a node to start using your distributed messenger.</x:String>
     <x:String x:Key="Welcome_Eyebrow">BarkFluff for Windows</x:String>

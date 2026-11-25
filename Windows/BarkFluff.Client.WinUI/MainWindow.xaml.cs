@@ -1,6 +1,7 @@
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
+using BarkFluff.Client.Core.ViewModels.Settings;
 using BarkFluff.Client.WinUI.Views;
 
 using CommunityToolkit.Mvvm.Input;
@@ -25,6 +26,7 @@ public sealed partial class MainWindow : Window
     private static readonly TimeSpan WindowSizeSaveDelay = TimeSpan.FromMilliseconds(300);
 
     private readonly MainWindowViewModel _viewModel;
+    private readonly SettingsLanguageViewModel _languageSettings;
     private bool _isExitRequested;
     private bool _isWindowActive;
     private CancellationTokenSource? _windowSizeSaveCancellation;
@@ -35,6 +37,7 @@ public sealed partial class MainWindow : Window
     public MainWindow(MainWindowViewModel viewModel)
     {
         _viewModel = viewModel;
+        _languageSettings = App.Services.GetRequiredService<SettingsLanguageViewModel>();
         InitializeComponent();
         InitializeCalls();
         ApplySavedWindowBounds();
@@ -58,6 +61,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Changed += OnAppWindowChanged;
         _viewModel.Settings.WindowBoundsResetRequested += OnWindowBoundsResetRequested;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _languageSettings.PropertyChanged += OnTrayLanguageChanged;
         NavigateToCurrentViewModel();
     }
 
@@ -161,6 +165,8 @@ public sealed partial class MainWindow : Window
     private void NavigateToCurrentViewModel()
     {
         var viewModel = _viewModel.CurrentViewModel;
+        if (!_windowCloseInProgress)
+            WatchUnreadBadge(viewModel as MessengerViewModel);
         var pageType = ViewLocator.Resolve(viewModel);
         if (pageType is null || ContentFrame.CurrentSourcePageType == pageType)
         {
@@ -241,6 +247,9 @@ public sealed partial class MainWindow : Window
         }
 
         _windowCloseInProgress = true;
+        _languageSettings.PropertyChanged -= OnTrayLanguageChanged;
+        WatchUnreadBadge(null);
+        TrayIcon.Dispose();
         _ = CloseAfterSavingWindowSizeAsync();
     }
 
@@ -343,7 +352,6 @@ public sealed partial class MainWindow : Window
     private void OnTrayExitRequested(object sender, RoutedEventArgs eventArgs)
     {
         _isExitRequested = true;
-        TrayIcon.Dispose();
         Close();
     }
 }
