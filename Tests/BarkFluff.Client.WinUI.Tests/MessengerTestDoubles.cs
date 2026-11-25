@@ -514,6 +514,8 @@ internal sealed class FakeMessengerService : IMessengerService, IOutgoingMessage
     public List<ChatAttachmentInfo> Attachments { get; } = [];
 
     public bool AttachmentsFail { get; set; }
+    public List<(string ChatId, MessageAttachmentType Type, int Offset)> AttachmentRequests { get; } = [];
+    public Func<string, MessageAttachmentType, int, Task<(ErrorReturner, List<ChatAttachmentInfo>?, int)>>? AttachmentPage { get; set; }
 
     public Task<(ErrorReturner error, List<ChatAttachmentInfo>? attachments, int totalCount)> ListChatAttachmentsAsync(
         string chatId,
@@ -522,12 +524,15 @@ internal sealed class FakeMessengerService : IMessengerService, IOutgoingMessage
         int size,
         CancellationToken cancellationToken = default)
     {
+        AttachmentRequests.Add((chatId, attachmentType, offset));
+        if (AttachmentPage is not null)
+            return AttachmentPage(chatId, attachmentType, offset);
         if (AttachmentsFail)
         {
             return Task.FromResult<(ErrorReturner, List<ChatAttachmentInfo>?, int)>((new ErrorReturner(false, "вложения недоступны"), null, 0));
         }
 
-        var filtered = Attachments.Where(info => info.Attachment.Type == attachmentType).ToList();
+        var filtered = Attachments.Where(info => attachmentType == MessageAttachmentType.Unknown || info.Attachment.Type == attachmentType).ToList();
         var page = filtered.Skip(offset).Take(size).ToList();
         return Task.FromResult<(ErrorReturner, List<ChatAttachmentInfo>?, int)>((new ErrorReturner(true), page, filtered.Count));
     }

@@ -29,6 +29,7 @@ public sealed partial class MessengerPage : Page
         }
         if (ViewModel is not null)
         {
+            BindMediaViewer(ViewModel.MediaViewer);
             _ = ViewModel.LoadStickerPreferencesAsync();
             _ = ViewModel.RefreshSecretPreferenceAsync();
         }
@@ -41,6 +42,7 @@ public sealed partial class MessengerPage : Page
             ViewModel.CloseCallHistory();
             _ = ViewModel.LeaveMessengerAsync();
         }
+        BindMediaViewer(null);
         _secretDialog?.Hide();
         base.OnNavigatedFrom(e);
     }

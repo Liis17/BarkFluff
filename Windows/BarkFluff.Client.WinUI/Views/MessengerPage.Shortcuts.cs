@@ -17,6 +17,13 @@ public sealed partial class MessengerPage
         ComposerBox.TextCompositionEnded += (_, _) => _isComposingText = false;
         ComposerBox.LostFocus += (_, _) => _isComposingText = false;
 
+        foreach (var key in new[] { VirtualKey.Left, VirtualKey.Right })
+        {
+            var accelerator = new KeyboardAccelerator { Key = key, ScopeOwner = MediaOverlay };
+            accelerator.Invoked += OnMediaArrow;
+            MediaOverlay.KeyboardAccelerators.Add(accelerator);
+        }
+
         Register(ShortcutScope, VirtualKey.K, VirtualKeyModifiers.Control, MessengerShortcutKey.CtrlK);
         Register(ShortcutScope, VirtualKey.F, VirtualKeyModifiers.Control, MessengerShortcutKey.CtrlF);
         Register(ShortcutScope, VirtualKey.Escape, VirtualKeyModifiers.None, MessengerShortcutKey.Escape);
@@ -59,7 +66,7 @@ public sealed partial class MessengerPage
                 return MessengerShortcutFocus.Protected;
             if (shortcut == MessengerShortcutKey.Escape &&
                 (element == PrivateUnlockOverlay || element == DeleteConfirmOverlay || element == ForwardOverlay ||
-                 element == ProfileOverlay || element == SecretChatsOverlay))
+                 element == ProfileOverlay || element == SecretChatsOverlay || element == MediaOverlay))
                 return MessengerShortcutFocus.Other;
             if (element == ComposerBox)
                 focus = _isComposingText ? MessengerShortcutFocus.Protected : MessengerShortcutFocus.Composer;

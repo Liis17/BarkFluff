@@ -163,26 +163,16 @@
             </Button>
         </DataTemplate>
 
-        <!--
-            Плитка медиа внутри пузыря: превью всегда, плеер раскрывается кнопкой. Адрес плееру
-            передаёт Tag кнопки — без него PlayVideoBehavior молча ничего не сделает.
-        -->
         <DataTemplate x:Key="MediaAttachmentTemplate" x:DataType="vm:MessageAttachmentItemViewModel">
-            <Grid Margin="2">
-                <Image Source="{x:Bind PreviewUrl, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
-                <MediaPlayerElement AreTransportControlsEnabled="True"
-                                    AutoPlay="False"
-                                    Stretch="UniformToFill"
-                                    Visibility="Collapsed" />
-                <Button Width="44"
-                        Height="44"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        behaviors:PlayVideoBehavior.Enable="True"
-                        Content="&#x25B6;"
-                        Tag="{x:Bind FileUrl}"
-                        Visibility="{x:Bind IsVideo, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            </Grid>
+            <Button Margin="2" Padding="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                    AutomationProperties.Name="{x:Bind FileName}" Tag="{x:Bind}" Click="OnOpenMediaClick">
+                <Grid>
+                    <Image Source="{x:Bind PreviewUrl, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill" />
+                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24" Text="&#x25B6;"
+                               Visibility="{x:Bind IsVideo, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </Grid>
+            </Button>
         </DataTemplate>
 
         <DataTemplate x:Key="FeedStickerTemplate" x:DataType="vm:MessageAttachmentItemViewModel">
@@ -1517,6 +1507,44 @@
                             IsEnabled="{x:Bind ViewModel.SecretChats.CanSend, Mode=OneWay}" />
                 </Grid>
             </StackPanel>
+        </Grid>
+        <Grid x:Name="MediaOverlay" Visibility="Collapsed" Padding="16" RowSpacing="12"
+              TabFocusNavigation="Cycle" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+              RowDefinitions="Auto,*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           Text="{x:Bind ViewModel.MediaViewer.Current.FileName, Mode=OneWay}" />
+                <Button x:Name="MediaSaveButton" Grid.Column="1" Content="{StaticResource Messenger_MediaSave}" Click="OnSaveMediaClick" />
+                <Button x:Name="MediaCloseButton" Grid.Column="2" Content="{StaticResource Messenger_MediaClose}" Click="OnCloseMediaClick" />
+            </Grid>
+            <Grid x:Name="MediaViewport" Grid.Row="1">
+                <ScrollViewer x:Name="MediaZoom" Visibility="Collapsed" ZoomMode="Enabled"
+                              HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled"
+                              HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                              AutomationProperties.Name="{StaticResource Messenger_MediaImage}">
+                    <Image x:Name="MediaImage" Stretch="Uniform"
+                           Width="{Binding ActualWidth, ElementName=MediaViewport}"
+                           Height="{Binding ActualHeight, ElementName=MediaViewport}"
+                           AutomationProperties.Name="{x:Bind ViewModel.MediaViewer.Current.FileName, Mode=OneWay}" />
+                </ScrollViewer>
+                <MediaPlayerElement x:Name="MediaVideo" Visibility="Collapsed" AreTransportControlsEnabled="True" Stretch="Uniform"
+                                    AutomationProperties.Name="{x:Bind ViewModel.MediaViewer.Current.FileName, Mode=OneWay}" />
+                <ProgressRing HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                              IsActive="{x:Bind ViewModel.MediaViewer.IsLoading, Mode=OneWay}" />
+            </Grid>
+            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                <Button Content="&#x2190;" AutomationProperties.Name="{StaticResource Messenger_MediaPrevious}"
+                        IsEnabled="{x:Bind ViewModel.MediaViewer.CanGoPrevious, Mode=OneWay}" Click="OnPreviousMediaClick" />
+                <StackPanel Grid.Column="1">
+                    <TextBlock AutomationProperties.LiveSetting="Polite" TextWrapping="Wrap"
+                               Text="{x:Bind ViewModel.MediaViewer.Error, Mode=OneWay}" />
+                    <TextBlock x:Name="MediaSaveStatus" Visibility="Collapsed"
+                               AutomationProperties.LiveSetting="Polite" TextWrapping="Wrap"
+                               Text="{x:Bind ViewModel.MediaViewer.SaveStatus, Mode=OneWay}" />
+                </StackPanel>
+                <Button Grid.Column="2" Content="&#x2192;" AutomationProperties.Name="{StaticResource Messenger_MediaNext}"
+                        IsEnabled="{x:Bind ViewModel.MediaViewer.CanGoNext, Mode=OneWay}" Click="OnNextMediaClick" />
+            </Grid>
         </Grid>
     </Grid>
 </Page>

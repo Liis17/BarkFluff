@@ -41,7 +41,8 @@ public sealed partial class MessengerViewModel
     public bool TryInvokeShortcut(MessengerShortcutKey key, MessengerShortcutFocus focus, Func<bool> focusSearch)
     {
         // Порядок соответствует наложению панелей в MessengerPage.
-        Action? closeOverlay = SecretChats.IsOpen ? SecretChats.Close
+        Action? closeOverlay = MediaViewer.IsOpen ? MediaViewer.Close
+            : SecretChats.IsOpen ? SecretChats.Close
             : IsProfileVisible ? CloseProfile
             : IsForwardVisible ? CancelForward
             : IsDeleteConfirmVisible ? CancelDeleteMessage

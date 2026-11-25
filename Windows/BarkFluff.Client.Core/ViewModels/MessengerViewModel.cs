@@ -68,6 +68,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         BarkFluff.WebApi.Core.WebApi? webApi = null)
     {
         _messenger = messenger;
+        MediaViewer = new(messenger, localization);
         _secretStore = secretStore;
         _secretClientSession = clientSession;
         _secretApi = webApi;
@@ -321,6 +322,7 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     partial void OnSelectedChatChanged(ChatItemViewModel? oldValue, ChatItemViewModel? newValue)
     {
+        MediaViewer.Close();
         if (oldValue is not null)
         {
             _realtimeSession?.Journal.LeaveChat(oldValue.Id, oldValue.IsPrivate);
@@ -990,7 +992,7 @@ public sealed partial class MessengerViewModel : ObservableObject
             string.IsNullOrWhiteSpace(attachment.FileName) ? _localization.GetString("Messenger_File") : attachment.FileName,
             attachment.Size,
             attachment.ImageWidth,
-            attachment.ImageHeight);
+            attachment.ImageHeight, attachment.FileId, attachment.Id);
     }
 
     private async Task<string> ResolveFileUrlAsync(string fileId)
@@ -1640,7 +1642,9 @@ public sealed partial class MessageAttachmentItemViewModel(
     string fileName,
     long size,
     int imageWidth,
-    int imageHeight) : ObservableObject
+    int imageHeight,
+    string fileId = "",
+    long attachmentId = 0) : ObservableObject
 {
     [ObservableProperty, NotifyPropertyChangedFor(nameof(VoicePlaybackSymbol))] private bool _isVoiceActive;
     public string VoicePlaybackSymbol => IsVoiceActive ? "■" : "▶";
@@ -1649,6 +1653,8 @@ public sealed partial class MessageAttachmentItemViewModel(
     [ObservableProperty] private string? _voiceError;
 
     internal MessageAttachmentType Type => type;
+    internal string FileId => fileId;
+    internal long AttachmentId => attachmentId;
     public string PreviewUrl { get; } = previewUrl;
     public string FileUrl { get; } = fileUrl;
     public string FileName { get; } = fileName;

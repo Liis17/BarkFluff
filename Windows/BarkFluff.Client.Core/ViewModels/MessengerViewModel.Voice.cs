@@ -56,6 +56,7 @@ public sealed partial class MessengerViewModel
 
     public Task LeaveMessengerAsync()
     {
+        MediaViewer.Close();
         _voicePlayback.Stop();
         return Voice.CancelAsync();
     }

@@ -640,4 +640,14 @@
     <x:String x:Key="Secret_Received">Получено</x:String>
     <x:String x:Key="Secret_User">Пользователь</x:String>
     <x:String x:Key="Secret_Notification">Новое секретное сообщение</x:String>
+    <x:String x:Key="Messenger_MediaSave">Сохранить как</x:String>
+    <x:String x:Key="Messenger_MediaClose">Закрыть</x:String>
+    <x:String x:Key="Messenger_MediaPrevious">Предыдущее медиа</x:String>
+    <x:String x:Key="Messenger_MediaNext">Следующее медиа</x:String>
+    <x:String x:Key="Messenger_MediaImage">Просмотр изображения</x:String>
+    <x:String x:Key="Messenger_MediaFile">Медиафайл</x:String>
+    <x:String x:Key="Error_MediaOpen">Не удалось открыть вложение.</x:String>
+    <x:String x:Key="Messenger_MediaSaved">Вложение сохранено.</x:String>
+    <x:String x:Key="Error_MediaNotFound">Вложение не найдено среди медиа чата.</x:String>
+    <x:String x:Key="Error_MediaSave">Не удалось сохранить вложение.</x:String>
 </ResourceDictionary>

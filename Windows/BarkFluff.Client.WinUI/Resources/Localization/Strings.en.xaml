@@ -640,4 +640,14 @@
     <x:String x:Key="Secret_Received">Received</x:String>
     <x:String x:Key="Secret_User">User</x:String>
     <x:String x:Key="Secret_Notification">New secret message</x:String>
+    <x:String x:Key="Messenger_MediaSave">Save as</x:String>
+    <x:String x:Key="Messenger_MediaClose">Close</x:String>
+    <x:String x:Key="Messenger_MediaPrevious">Previous media</x:String>
+    <x:String x:Key="Messenger_MediaNext">Next media</x:String>
+    <x:String x:Key="Messenger_MediaImage">Image viewer</x:String>
+    <x:String x:Key="Messenger_MediaFile">Media file</x:String>
+    <x:String x:Key="Error_MediaOpen">Could not open this attachment.</x:String>
+    <x:String x:Key="Messenger_MediaSaved">Attachment saved.</x:String>
+    <x:String x:Key="Error_MediaNotFound">This attachment was not found in the chat media.</x:String>
+    <x:String x:Key="Error_MediaSave">Could not save this attachment.</x:String>
 </ResourceDictionary>
