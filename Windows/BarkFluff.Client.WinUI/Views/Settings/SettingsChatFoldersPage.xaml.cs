@@ -2,22 +2,89 @@ using BarkFluff.Client.Core.ViewModels.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Navigation;
 
 namespace BarkFluff.Client.WinUI.Views.Settings;
 
 public sealed partial class SettingsChatFoldersPage : Page
 {
+    private ContentDialog? _membershipDialog;
+
     public SettingsChatFoldersPage() => InitializeComponent();
 
-    public SettingsChatFoldersViewModel ViewModel { get; private set; } = null!;
+    public SettingsChatFoldersViewModel ViewModel { get; } =
+        App.Services.GetRequiredService<SettingsChatFoldersViewModel>();
 
-    protected override async void OnNavigatedTo(NavigationEventArgs e)
+    private async void OnPageLoaded(object sender, RoutedEventArgs e) => await ViewModel.ActivateAsync();
+
+    private void OnPageUnloaded(object sender, RoutedEventArgs e)
     {
-        base.OnNavigatedTo(e);
-        ViewModel = App.Services.GetRequiredService<SettingsChatFoldersViewModel>();
-        Bindings.Update();
-        await ViewModel.LoadAsync();
+        _membershipDialog?.Hide();
+        ViewModel.Deactivate();
+    }
+
+    private async void OnManageChatsClick(object sender, RoutedEventArgs e)
+    {
+        if (_membershipDialog is not null || ((FrameworkElement)sender).DataContext is not SettingsChatFolderItem item ||
+            ViewModel.CreateSelection(item) is not { } selection)
+        {
+            return;
+        }
+
+        var search = new TextBox { Header = ResourceString("Settings_ChatFolders_SearchChats") };
+        var choices = new StackPanel();
+        var empty = new TextBlock { Text = ResourceString("Settings_ChatFolders_NoChats") };
+        choices.Children.Add(empty);
+        var checkboxes = selection.Chats.ToDictionary(chat => chat, chat =>
+        {
+            var checkbox = new CheckBox { Content = chat.Title, IsChecked = selection.Includes(chat) };
+            checkbox.Checked += (_, _) => selection.SetIncluded(chat, true);
+            checkbox.Unchecked += (_, _) => selection.SetIncluded(chat, false);
+            choices.Children.Add(checkbox);
+            return checkbox;
+        });
+
+        void Filter()
+        {
+            var visible = selection.Search(search.Text).ToHashSet();
+            foreach (var (chat, checkbox) in checkboxes)
+            {
+                checkbox.Visibility = visible.Contains(chat) ? Visibility.Visible : Visibility.Collapsed;
+            }
+            empty.Visibility = visible.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        search.TextChanged += (_, _) => Filter();
+        Filter();
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = ResourceString("Settings_ChatFolders_ManageChats"),
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Children =
+                {
+                    search,
+                    new ScrollViewer { MaxHeight = 360, Content = choices }
+                }
+            },
+            PrimaryButtonText = ResourceString("Common_Save"),
+            CloseButtonText = ResourceString("Common_Cancel"),
+            DefaultButton = ContentDialogButton.Primary,
+            IsPrimaryButtonEnabled = selection.Chats.Count > 0
+        };
+        _membershipDialog = dialog;
+        try
+        {
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            {
+                await ViewModel.ApplySelectionAsync(selection);
+            }
+        }
+        finally
+        {
+            _membershipDialog = null;
+        }
     }
 
     private async void OnCreateClick(object sender, RoutedEventArgs e) => await EditFolderAsync();
@@ -47,7 +114,8 @@ public sealed partial class SettingsChatFoldersPage : Page
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        var lifetime = ViewModel.Lifetime;
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary && lifetime == ViewModel.Lifetime)
         {
             await ViewModel.DeleteAsync(item);
         }
@@ -83,7 +151,8 @@ public sealed partial class SettingsChatFoldersPage : Page
             DefaultButton = ContentDialogButton.Primary
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        var lifetime = ViewModel.Lifetime;
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary || lifetime != ViewModel.Lifetime)
         {
             return;
         }
@@ -97,6 +166,9 @@ public sealed partial class SettingsChatFoldersPage : Page
             await ViewModel.UpdateAsync(item, nameBox.Text, iconBox.Text);
         }
     }
+
+    public static string ManageChatsAutomationName(string name) =>
+        $"{ResourceString("Settings_ChatFolders_ManageChats")} — {name}";
 
     private static string ResourceString(string key) => (string)Application.Current.Resources[key];
 }

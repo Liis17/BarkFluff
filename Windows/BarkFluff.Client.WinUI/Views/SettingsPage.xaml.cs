@@ -15,8 +15,7 @@ namespace BarkFluff.Client.WinUI.Views;
 /// раздела не поднимаются до внешнего кадра, поэтому его кнопка «назад» всегда означает «выйти из
 /// настроек» — именно это и требуется.
 /// <para>
-/// Параметр навигации не читается: <see cref="MainWindow"/> по-прежнему передаёт сюда
-/// <c>SettingsViewModel</c>, но нужен он только разделу «Общие», который берёт его из контейнера сам.
+/// Меню чата передаёт тег раздела папок. При обычном переходе открывается раздел «Общие».
 /// </para>
 /// </remarks>
 public sealed partial class SettingsPage : Page
@@ -26,7 +25,12 @@ public sealed partial class SettingsPage : Page
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        SectionList.SelectedIndex = 0;
+        SectionList.SelectedItem = SectionList.Items.OfType<ListViewItem>()
+            .FirstOrDefault(item => item.Tag as string == e.Parameter as string);
+        if (SectionList.SelectedIndex < 0)
+        {
+            SectionList.SelectedIndex = 0;
+        }
     }
 
     private void OnSectionSelected(object sender, SelectionChangedEventArgs eventArgs)

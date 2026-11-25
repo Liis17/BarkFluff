@@ -1,0 +1,335 @@
+using BarkFluff.Client.Core.Services;
+using Microsoft.Extensions.Time.Testing;
+using static BarkFluff.Client.WinUI.Tests.MessengerTestDoubles;
+using BarkFluff.Client.Core.ViewModels;
+using BarkFluff.Proto.Files;
+using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Shared;
+using BarkFluff.WebApi.Core;
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+
+namespace BarkFluff.Client.WinUI.Tests;
+
+public sealed class MessengerAttachmentTests : IDisposable
+{
+    private readonly string _path = Path.Combine(Path.GetTempPath(), $"barkfluff-test-{Guid.NewGuid():N}");
+
+    public MessengerAttachmentTests() => File.WriteAllBytes(_path, [1, 2, 3]);
+
+    public void Dispose() => File.Delete(_path);
+
+    [Theory]
+    [InlineData("фото.jpg", null, UploadFileType.MessageAttachmentImage)]
+    [InlineData("анимация.gif", "application/octet-stream", UploadFileType.MessageAttachmentGif)]
+    [InlineData("видео.mp4", null, UploadFileType.MessageAttachmentVideo)]
+    [InlineData("отчёт.pdf", "application/pdf", UploadFileType.MessageAttachmentDocument)]
+    [InlineData("video.unknown", "video/mp4", UploadFileType.MessageAttachmentVideo)]
+    public void MIMEAndExtensionSelectUploadType(string name, string? mime, UploadFileType type) =>
+        Assert.Equal(type, PendingAttachment.ResolveType(name, mime));
+
+    [Fact]
+    public async Task BatchLimitPreservesOrderAndAllowsAttachmentOnlyMessages()
+    {
+        var (vm, service) = await OpenChatAsync();
+        string[] names = ["фото.jpg", "анимация.gif", "видео.mp4", .. Enumerable.Range(1, 8).Select(i => $"{i}.pdf")];
+        await AddAsync(vm, names);
+        Assert.Equal(10, vm.AttachmentComposer.Files.Count);
+        Assert.Equal("Messenger_AttachmentLimit", vm.AttachmentComposer.Error);
+        vm.AttachmentComposer.Files[0].AsDocument = true;
+        vm.AttachmentComposer.Files[2].AsDocument = true;
+        service.UploadAttachment = (name, type, _, _) =>
+        {
+            if (name == names[0])
+                Assert.Equal(UploadFileType.MessageAttachmentDocument, type);
+            if (name == names[1])
+                Assert.Equal(UploadFileType.MessageAttachmentGif, type);
+            if (name == names[2])
+                Assert.Equal(UploadFileType.MessageAttachmentVideo, type);
+            return Task.FromResult<(ErrorReturner, string?)>((new(true), name));
+        };
+        service.SendAttachments = (chat, text, reply, ids) =>
+        {
+            Assert.Equal("a", chat);
+            Assert.Empty(text);
+            Assert.Equal(0, reply);
+            Assert.Equal(names[..10], ids);
+            return SentAsync(chat, text);
+        };
+
+        await vm.SendCommand.ExecuteAsync(null);
+
+        await WaitForMessageAsync(vm, 51);
+        Assert.False(vm.AttachmentComposer.HasFiles);
+    }
+
+    [Fact]
+    public async Task BatchLimitsConcurrentUploadsAndSendsInComposerOrder()
+    {
+        var (vm, service) = await OpenChatAsync();
+        string[] names = ["first.pdf", "second.pdf", "third.pdf", "fourth.pdf"];
+        await AddAsync(vm, names);
+        var releaseFirst = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseOthers = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstPairStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thirdStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = new List<string>();
+        service.UploadAttachment = async (name, _, _, _) =>
+        {
+            started.Add(name);
+            if (name == names[1])
+                firstPairStarted.SetResult();
+            if (name == names[2])
+                thirdStarted.SetResult();
+            await (name == names[0] ? releaseFirst.Task : releaseOthers.Task);
+            return (new(true), name);
+        };
+        IReadOnlyList<string>? sent = null;
+        service.SendAttachments = (chat, text, _, ids) =>
+        {
+            sent = ids;
+            return SentAsync(chat, text);
+        };
+
+        await vm.SendCommand.ExecuteAsync(null);
+        await firstPairStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var initiallyStarted = started.ToArray();
+        releaseOthers.SetResult();
+        await thirdStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        releaseFirst.SetResult();
+        await WaitForMessageAsync(vm, 51);
+
+        Assert.Equal(names[..2], initiallyStarted);
+        Assert.Equal(names, sent);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ChecksCombinedStorageOnceAndOnlyBlocksOnKnownShortage(bool checkFails)
+    {
+        var (vm, service) = await OpenChatAsync();
+        await AddAsync(vm, "first.pdf", "second.pdf");
+        var checks = 0;
+        service.GetAttachmentStorageAvailable = _ =>
+        {
+            checks++;
+            return checkFails
+                ? Task.FromException<long?>(new IOException())
+                : Task.FromResult<long?>(5);
+        };
+        var uploads = 0;
+        service.UploadAttachment = (name, _, _, _) =>
+        {
+            uploads++;
+            return Task.FromResult<(ErrorReturner, string?)>((new(true), name));
+        };
+        service.SendAttachments = (chat, text, _, _) => SentAsync(chat, text);
+
+        await vm.SendCommand.ExecuteAsync(null);
+
+        if (checkFails)
+            await WaitForMessageAsync(vm, 51);
+        else
+        {
+            await WaitForOutgoingAsync(vm, () => vm.PendingMessages.SingleOrDefault()?.CanRetry == true);
+            Assert.Equal("Messenger_AttachmentStorageFull", Assert.Single(vm.PendingMessages).Status);
+        }
+        Assert.Equal(1, checks);
+        Assert.Equal(checkFails ? 2 : 0, uploads);
+    }
+
+    [Fact]
+    public async Task RetryingQueuedAttachmentPreservesReadyFileCaptionAndReply()
+    {
+        var clock = new FakeTimeProvider();
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var (vm, service) = await OpenChatAsync(clock, dispatcher);
+        vm.StartReplyMessageCommand.Execute(Assert.Single(vm.Messages));
+        vm.DraftText = "caption";
+        await AddAsync(vm, "ready.gif", "retry.pdf");
+        var attempt = new TaskCompletionSource<(ErrorReturner, string?)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var uploads = new List<string>();
+        service.UploadAttachment = (name, _, progress, _) =>
+        {
+            uploads.Add(name);
+            if (uploads.Count == 2)
+            {
+                progress.Report(0.8);
+                return attempt.Task;
+            }
+            if (uploads.Count == 3)
+                return Task.FromResult<(ErrorReturner, string?)>((new(false, errorResourceKey: "Messenger_AttachmentStorageFull"), null));
+            return Task.FromResult<(ErrorReturner, string?)>((new(true), name));
+        };
+        var sends = 0;
+        service.SendAttachments = (chat, text, reply, ids) =>
+        {
+            sends++;
+            Assert.Equal("caption", text);
+            Assert.Equal(50, reply);
+            Assert.Equal(new[] { "ready.gif", "retry.pdf" }, ids);
+            return SentAsync(chat, text);
+        };
+
+        await dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
+        await WaitForOutgoingAsync(vm, () => vm.PendingMessages.SingleOrDefault()?.Progress == 40, dispatcher);
+        var bubble = Assert.Single(vm.PendingMessages);
+        Assert.True(bubble.IsUploading);
+        Assert.Empty(vm.DraftText);
+        Assert.Equal("caption", bubble.Text);
+        Assert.Equal(0, sends);
+        attempt.SetResult((new(false), null));
+        await WaitForOutgoingAsync(vm, () => bubble.Status == "Messenger_OutboxWaiting", dispatcher);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        await WaitForOutgoingAsync(vm, () => bubble.CanRetry, dispatcher);
+        Assert.Equal("Messenger_AttachmentStorageFull", bubble.Status);
+        Assert.Equal(0, sends);
+
+        await dispatcher.RunAsync(() => bubble.RetryCommand.ExecuteAsync(null));
+        await WaitForMessageAsync(vm, 51, dispatcher);
+        Assert.Equal(new[] { "ready.gif", "retry.pdf", "retry.pdf", "retry.pdf" }, uploads);
+        Assert.Equal(1, sends);
+        Assert.Empty(vm.AttachmentComposer.Files);
+    }
+
+    [Theory]
+    [InlineData("chat")]
+    [InlineData("reset")]
+    [InlineData("exit")]
+    public async Task LeavingComposerDeletesTemporaryInputAndOnlyLogoutOrResetCancelsDelivery(string reason)
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var (vm, service) = await OpenChatAsync(dispatcher: dispatcher);
+        await vm.AddAttachmentsAsync(_ => Task.FromResult<IReadOnlyList<AttachmentSourceFile>>(
+            [new(_path, "изображение.png", IsTemporary: true)]));
+        var response = new TaskCompletionSource<(ErrorReturner, string?)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.UploadAttachment = (_, _, _, token) =>
+        {
+            started.SetResult(token);
+            return response.Task.WaitAsync(token);
+        };
+        var sends = 0;
+        service.SendAttachments = (chat, text, _, _) =>
+        {
+            sends++;
+            return SentAsync(chat, text);
+        };
+        await dispatcher.RunAsync(() => vm.SendCommand.ExecuteAsync(null));
+        var uploadToken = await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var cancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var registration = uploadToken.Register(() => cancelled.TrySetResult());
+
+        Task? exiting = null;
+        if (reason == "reset")
+            dispatcher.Post(vm.Reset);
+        else if (reason == "exit")
+            exiting = dispatcher.RunAsync(() => vm.ClearOutgoingForLogoutAsync());
+        else
+            dispatcher.Post(() => vm.SelectedChat = vm.Chats.Single(c => c.Id == "b"));
+        if (reason != "chat")
+            await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        else
+            Assert.False(uploadToken.IsCancellationRequested);
+        Assert.Empty(vm.AttachmentComposer.Files);
+        response.SetResult((new(true), "late-file-id"));
+        await (exiting ?? dispatcher.RunAsync(vm.CancelAttachmentsAsync));
+        if (reason == "chat")
+        {
+            dispatcher.Post(() => vm.SelectedChat = vm.Chats.Single(c => c.Id == "a"));
+            await WaitForMessageAsync(vm, 51, dispatcher);
+        }
+        Assert.Equal(reason == "chat" ? 1 : 0, sends);
+        Assert.False(File.Exists(_path));
+        dispatcher.Post(vm.Reset);
+    }
+
+    [Fact]
+    public async Task LateClipboardResultIsDeletedAndPrivateChatDoesNotReadClipboard()
+    {
+        var (vm, _) = await OpenChatAsync();
+        var picker = new TaskCompletionSource<IReadOnlyList<AttachmentSourceFile>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var adding = vm.AddAttachmentsAsync(_ => picker.Task);
+        vm.SelectedChat = vm.Chats.Single(c => c.Id == "private");
+        picker.SetResult([new(_path, "clipboard.png", IsTemporary: true)]);
+        await adding;
+
+        await vm.AddAttachmentsAsync(_ => throw new InvalidOperationException("Буфер недоступен в приватном чате"));
+        Assert.True(vm.HasPrivateAttachmentRestriction);
+        Assert.False(vm.CanAttach);
+        Assert.False(File.Exists(_path));
+        Assert.Empty(vm.AttachmentComposer.Files);
+        Assert.Null(vm.AttachmentComposer.Error);
+    }
+
+    [Fact]
+    public async Task FileAtRequestLimitIsRejectedBeforeUpload()
+    {
+        var (vm, _) = await OpenChatAsync();
+        using (var file = File.OpenWrite(_path))
+            file.SetLength(BarkFluff.WebApi.Core.WebApi.MaxFileUploadRequestSize);
+        await AddAsync(vm, "big.zip");
+        Assert.Equal("Messenger_AttachmentTooLarge", vm.AttachmentComposer.Error);
+        Assert.Empty(vm.AttachmentComposer.Files);
+    }
+
+    [Fact]
+    public async Task ChatListSnapshotUsesAttachmentTypeWhenTextIsEmpty()
+    {
+        var service = new FakeMessengerService();
+        var chat = MessengerTestDoubles.CreateChat("a");
+        chat.LastMessage = new() { Id = 10, Content = new() };
+        chat.LastMessage.Content.Attachments.Add(new MessageAttachment { Type = MessageAttachmentType.Image });
+        service.Chats.Add(chat);
+        var vm = MessengerTestDoubles.CreateViewModel(service);
+        await vm.LoadAsync();
+        Assert.Equal("Messenger_AttachmentPhoto", Assert.Single(vm.Chats).Preview);
+    }
+
+    [Fact]
+    public async Task ReceivedGifUsesAnimatedOriginalWhenServerProvidesJpegPreview()
+    {
+        var service = new FakeMessengerService();
+        service.Chats.Add(MessengerTestDoubles.CreateChat("a"));
+        var message = MessengerTestDoubles.CreateMessage(50, "a", 2, string.Empty);
+        message.Attachments.Add(new AttachmentsModel
+        {
+            Type = MessageAttachmentType.Gif,
+            FileId = "animated",
+            FileName = "анимация.gif",
+            PreviewUrl = "https://example.invalid/still.jpg",
+        });
+        service.Messages.Add(message);
+        service.FileUrl = id => Task.FromResult($"https://example.invalid/{id}.gif");
+        var vm = MessengerTestDoubles.CreateViewModel(service);
+        await vm.LoadAsync();
+        vm.SelectedChat = Assert.Single(vm.Chats);
+
+        var gif = Assert.Single(Assert.Single(vm.Messages).MediaAttachments);
+        Assert.Equal("анимация.gif", gif.FileName);
+        Assert.Equal("https://example.invalid/animated.gif", gif.PreviewUrl);
+    }
+
+    private Task AddAsync(MessengerViewModel vm, params string[] names) =>
+        vm.AddAttachmentsAsync(_ => Task.FromResult<IReadOnlyList<AttachmentSourceFile>>(names.Select(name =>
+            new AttachmentSourceFile(_path, name)).ToArray()));
+
+    private static Task<(ErrorReturner, MessageModel?)> SentAsync(string chat, string text) =>
+        Task.FromResult<(ErrorReturner, MessageModel?)>((new(true), MessengerTestDoubles.CreateMessage(51, chat, 1, text)));
+
+    private static async Task<(MessengerViewModel, FakeMessengerService)> OpenChatAsync(
+        TimeProvider? clock = null, InlineUiDispatcher? dispatcher = null)
+    {
+        var service = new FakeMessengerService();
+        service.Chats.AddRange([
+            MessengerTestDoubles.CreateChat("a"),
+            MessengerTestDoubles.CreateChat("b"),
+            MessengerTestDoubles.CreateChat("private", chatType: ChatType.Private)
+        ]);
+        service.Messages.Add(MessengerTestDoubles.CreateMessage(50, "a", 2));
+        var vm = MessengerTestDoubles.CreateViewModel(service, dispatcher: dispatcher, timeProvider: clock);
+        await vm.LoadAsync();
+        vm.SelectedChat = vm.Chats.Single(c => c.Id == "a");
+        return (vm, service);
+    }
+}

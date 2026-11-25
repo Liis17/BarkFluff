@@ -3,13 +3,24 @@ using BarkFluff.Client.Core.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace BarkFluff.Client.WinUI.Views;
 
 public sealed partial class MessengerPage : Page
 {
-    public MessengerPage() => InitializeComponent();
+    private uint? _voiceScrubPointer;
+
+    public MessengerPage()
+    {
+        InitializeComponent();
+        InitializeShortcuts();
+        VoicePositionSlider.AddHandler(PointerPressedEvent, new PointerEventHandler(OnVoiceScrubStarted), true);
+        VoicePositionSlider.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnVoiceScrubEnded), true);
+        VoicePositionSlider.AddHandler(PointerCaptureLostEvent, new PointerEventHandler(OnVoiceScrubEnded), true);
+        VoicePositionSlider.AddHandler(PointerCanceledEvent, new PointerEventHandler(OnVoiceScrubCanceled), true);
+    }
 
     public MessengerViewModel ViewModel { get; private set; } = null!;
 
@@ -22,6 +33,75 @@ public sealed partial class MessengerPage : Page
             ViewModel = viewModel;
             Bindings.Update();
         }
+        if (ViewModel is not null)
+        {
+            BindMediaViewer(ViewModel.MediaViewer);
+            _ = ViewModel.LoadStickerPreferencesAsync();
+            _ = ViewModel.RefreshSecretPreferenceAsync();
+        }
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        if (ViewModel is not null)
+        {
+            ViewModel.CloseCallHistory();
+            _ = ViewModel.LeaveMessengerAsync();
+        }
+        BindMediaViewer(null);
+        _secretDialog?.Hide();
+        _chatSoundDialog?.Hide();
+        base.OnNavigatedFrom(e);
+    }
+
+    private void OnVoicePositionChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs args)
+    {
+        // Slider может изменить значение раньше, чем PointerPressed дойдёт до обработчика.
+        if (ViewModel?.VoicePlayer is { } player && args.NewValue != player.Progress)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_voiceScrubPointer is null && VoicePositionSlider.Value == args.NewValue &&
+                    args.NewValue != player.Progress)
+                    player.Seek(args.NewValue);
+            });
+        }
+    }
+
+    private void OnVoiceScrubStarted(object sender, PointerRoutedEventArgs args)
+    {
+        if (_voiceScrubPointer is not null || ViewModel?.VoicePlayer is not { CanSeek: true } player ||
+            !args.GetCurrentPoint(VoicePositionSlider).Properties.IsLeftButtonPressed)
+            return;
+
+        _voiceScrubPointer = args.Pointer.PointerId;
+        player.BeginScrub();
+    }
+
+    private void OnVoiceScrubEnded(object sender, PointerRoutedEventArgs args)
+    {
+        if (_voiceScrubPointer != args.Pointer.PointerId)
+            return;
+
+        _voiceScrubPointer = null;
+        ViewModel.VoicePlayer.EndScrub(VoicePositionSlider.Value);
+    }
+
+    private void OnVoiceScrubCanceled(object sender, PointerRoutedEventArgs args)
+    {
+        if (_voiceScrubPointer != args.Pointer.PointerId)
+            return;
+
+        _voiceScrubPointer = null;
+        var player = ViewModel.VoicePlayer;
+        player.EndScrub(null);
+        VoicePositionSlider.Value = player.Progress;
+    }
+
+    private async void OnVoicePlaybackClick(object sender, RoutedEventArgs args)
+    {
+        if (sender is Button { Tag: MessageAttachmentItemViewModel item })
+            await ViewModel.ToggleVoicePlaybackAsync(item);
     }
 
     /// <summary>
@@ -32,12 +112,105 @@ public sealed partial class MessengerPage : Page
     private void OnFeedScrollerSizeChanged(object sender, SizeChangedEventArgs eventArgs) =>
         FeedHost.MinHeight = eventArgs.NewSize.Height;
 
-    private async void OnSearchResultItemClick(object sender, ItemClickEventArgs eventArgs)
+    private void OnChatListContextRequested(UIElement sender, ContextRequestedEventArgs args)
     {
-        if (eventArgs.ClickedItem is UserSearchResultViewModel result)
+        var list = (ListView)sender;
+        var hasPosition = args.TryGetPosition(list, out var position);
+        var source = hasPosition ? args.OriginalSource : FocusManager.GetFocusedElement(list.XamlRoot);
+        args.Handled = ShowChatListMenu(list, source, hasPosition ? position : null);
+    }
+
+    private bool ShowChatListMenu(ListView list, object? source, global::Windows.Foundation.Point? position)
+    {
+        ListViewItem? container = null;
+        for (var element = source as DependencyObject; element is not null && element != list;
+            element = VisualTreeHelper.GetParent(element))
         {
-            await ViewModel.OpenSearchResultAsync(result);
+            if (element is ListViewItem item)
+            {
+                container = item;
+                break;
+            }
         }
+
+        if (container is null || list.ItemFromContainer(container) is not ChatItemViewModel chat)
+        {
+            return false;
+        }
+
+        var menu = (MenuFlyout)Resources["ChatListMenu"];
+        var mute = (MenuFlyoutItem)menu.Items[0];
+        mute.Text = chat.MuteMenuHeader;
+        mute.Command = ViewModel.ToggleChatMuteCommand;
+        mute.CommandParameter = chat;
+        mute.IsEnabled = !chat.IsChangingMute;
+        PopulateFolders((MenuFlyoutSubItem)menu.Items[1], chat);
+        if (position is { } point)
+        {
+            menu.ShowAt(list, point);
+        }
+        else
+        {
+            menu.ShowAt(container);
+        }
+        return true;
+    }
+
+    private void PopulateFolders(MenuFlyoutSubItem submenu, ChatItemViewModel chat)
+    {
+        submenu.Items.Clear();
+        if (ViewModel.ChatFolders is not { } state)
+        {
+            submenu.IsEnabled = false;
+            return;
+        }
+
+        var lifetime = state.Lifetime;
+        submenu.IsEnabled = !lifetime.IsCancellationRequested;
+        foreach (var folder in state.Folders)
+        {
+            var item = new ToggleMenuFlyoutItem
+            {
+                Text = folder.FolderName,
+                IsChecked = folder.ChatList.Contains(chat.Id),
+                IsEnabled = !state.IsSaving
+            };
+            item.Click += async (_, _) => await ViewModel.SetChatFolderAsync(chat, folder.FolderId, item.IsChecked, lifetime);
+            submenu.Items.Add(item);
+        }
+
+        if (submenu.Items.Count == 0)
+        {
+            if (state.IsBusy || state.LoadError is not null)
+            {
+                submenu.Items.Add(new MenuFlyoutItem
+                {
+                    Text = ResourceString(state.IsBusy ? "Messenger_ChatFolders_Loading" : "Error_SettingsLoadFailed"),
+                    IsEnabled = false
+                });
+            }
+            else
+            {
+                var openSettings = new MenuFlyoutItem { Text = ResourceString("Messenger_ChatFolders_Empty") };
+                openSettings.Click += (_, _) =>
+                {
+                    if (lifetime == state.Lifetime)
+                    {
+                        Frame.Navigate(typeof(SettingsPage), "chatfolders");
+                    }
+                };
+                submenu.Items.Add(openSettings);
+            }
+        }
+    }
+
+    private static string ResourceString(string key) => (string)Application.Current.Resources[key];
+
+    private void OnChatListMenuClosed(object sender, object args)
+    {
+        var menu = (MenuFlyout)sender;
+        ((MenuFlyoutItem)menu.Items[0]).CommandParameter = null;
+        ((MenuFlyoutSubItem)menu.Items[1]).Items.Clear();
     }
 
     /// <summary>

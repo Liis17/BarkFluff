@@ -20,6 +20,46 @@ namespace BarkFluff.WebApi.Core.Managers
         private const string CallsUnavailable = "Звонки недоступны на этом сервере";
         private const int MaxHistoryLimit = 50;
 
+        private CallsApi.CallsApiClient RequireClient() =>
+            CallsAC ?? throw new RpcException(new Status(StatusCode.Unimplemented, CallsUnavailable));
+
+        internal Task<T> InvokeAsync<T>(Func<CallsApi.CallsApiClient, AsyncUnaryCall<T>> invoke,
+            GlobalParam parameters, CancellationToken ct, bool retry = true) =>
+            _webApi.TokenManager.ExecuteWithTokenRefresh(parameters, async () =>
+            {
+                ct.ThrowIfCancellationRequested();
+                using var call = invoke(RequireClient());
+                return await call.ResponseAsync;
+            }, allowRetry: retry);
+
+        internal async IAsyncEnumerable<CallEvent> ReadCallEventsAsync(GlobalParam parameters,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+        {
+            _ = RequireClient();
+            var valid = await _webApi.EnsureTokenValidAsync(parameters);
+            ct.ThrowIfCancellationRequested();
+            if (!valid.IsSuccess)
+                throw new RpcException(new Status(StatusCode.Unauthenticated, string.Empty));
+
+            // Сохраняем исходный статус окончания, в том числе Unimplemented.
+            using var call = RequireClient().SubscribeCallEvents(new SubscribeCallEventsRequest(), cancellationToken: ct);
+            while (await MoveNextAsync())
+                yield return call.ResponseStream.Current;
+
+            async Task<bool> MoveNextAsync()
+            {
+                try
+                {
+                    return await call.ResponseStream.MoveNext(ct);
+                }
+                catch (RpcException ex) when (ex.StatusCode == StatusCode.Unauthenticated && !ct.IsCancellationRequested)
+                {
+                    await _webApi.ForceRefreshTokenAsync(parameters);
+                    throw;
+                }
+            }
+        }
+
         private readonly WebApi _webApi;
 
         public WebApiCallsManager(WebApi webApi) : base(webApi)

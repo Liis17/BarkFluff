@@ -5,7 +5,7 @@ namespace BarkFluff.WebApi.Core.Managers
     /// <summary>
     /// Менеджер для работы с файлами.
     /// </summary>
-    internal class WebApiFileManager : WebApiBase
+    internal partial class WebApiFileManager : WebApiBase
     {
         private static readonly TimeSpan DefaultHttpTimeout = TimeSpan.FromMinutes(5);
         private static readonly HttpClient _httpClient = new HttpClient { Timeout = DefaultHttpTimeout };

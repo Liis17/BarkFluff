@@ -4,6 +4,8 @@ namespace BarkFluff.Client.Core.Services;
 
 public interface IAuthenticationService
 {
+    bool IsRestoredSessionOffline => false;
+
     string? RestoreSessionErrorResourceKey => null;
 
     Task<bool> TryRestoreSessionAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);

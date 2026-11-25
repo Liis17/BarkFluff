@@ -10,7 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="..\..\Windows\BarkFluff.SignalShim\target\x86_64-pc-windows-msvc\release\barkfluff_signal_shim.dll"
+          Link="barkfluff_signal_shim.dll" CopyToOutputDirectory="PreserveNewest" />
     <PackageReference Include="AWSSDK.Core" Version="4.0.102.9" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -31,6 +34,9 @@
       падает с REGDB_E_CLASSNOTREG.
     -->
     <ProjectReference Include="..\..\Windows\BarkFluff.Client.Core\BarkFluff.Client.Core.csproj" />
+    <Compile Include="..\..\Backend\BarkFluff.Files\Services\FileTypeDetector.cs" Link="FileTypeDetector.cs" />
+    <EmbeddedResource Include="..\..\Windows\BarkFluff.Client.WinUI\Resources\Localization\Strings.en.xaml" LogicalName="Typing.Strings.en.xaml" WithCulture="false" />
+    <EmbeddedResource Include="..\..\Windows\BarkFluff.Client.WinUI\Resources\Localization\Strings.ru.xaml" LogicalName="Typing.Strings.ru.xaml" WithCulture="false" />
   </ItemGroup>
 
 </Project>

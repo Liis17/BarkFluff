@@ -7,7 +7,7 @@ using Grpc.Net.Client;
 
 namespace BarkFluff.WebApi.Core
 {
-    public class WebApi : IDisposable
+    public partial class WebApi : IDisposable
     {
         private bool _disposed = false;
 
@@ -160,6 +160,15 @@ namespace BarkFluff.WebApi.Core
         /// </summary>
         public async Task<ErrorReturner> EnsureTokenValidAsync(GlobalParam globalParam, int bufferMinutes = 5)
             => await TokenManager.EnsureTokenValidAsync(globalParam, bufferMinutes);
+        /// <summary>Обновление при запуске, до начала работы авторизованных запросов.</summary>
+        public async Task RefreshTokenForSessionRestoreAsync(GlobalParam parameters, CancellationToken cancellationToken)
+        {
+            using var call = IdentityAC!.CreateTokenAsync(
+                new BarkFluff.Proto.Identity.CreateTokenRequest { RefreshToken = parameters.RefreshToken.Value },
+                deadline: DateTime.UtcNow.AddSeconds(5), cancellationToken: cancellationToken);
+            parameters.AccessToken = (await call.ResponseAsync.ConfigureAwait(false)).AccessToken;
+        }
+
         /// <summary>
         /// Принудительно обновляет токен и переинициализирует клиентов.
         /// Используется когда известно, что токен недействителен.
@@ -227,12 +236,19 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, List<Proto.Identity.GetActiveSessionsResponse.Types.Session>? sessions)> GetDevicesList(GlobalParam globalParam) => await UserManager.GetDevicesList(globalParam);
         public async Task<(ErrorReturner error, List<Proto.Users.Device>? devices)> GetDevices(GlobalParam globalParam) => await UserManager.GetDevices(globalParam);
         public async Task<(ErrorReturner error, Proto.Users.Device? device)> GetCurrentDevice(GlobalParam globalParam) => await UserManager.GetCurrentDevice(globalParam);
+
+        public Task<(ErrorReturner error, Proto.Users.Device? device)> GetCurrentDevice(GlobalParam globalParam, CancellationToken cancellationToken) =>
+            UserManager.GetCurrentDevice(globalParam, cancellationToken);
         public async Task<ErrorReturner> RenameDevice(string deviceId, string customName, GlobalParam globalParam) => await UserManager.RenameDevice(deviceId, customName, globalParam);
         public async Task<ErrorReturner> RemoveActiveSession(string deviceId, GlobalParam globalParam) => await UserManager.RemoveActiveSession(deviceId, globalParam);
         public async Task<(ErrorReturner, string?)> GetUserAvatar(GlobalParam globalParam, long userId = 0) => await UserManager.GetUserAvatar(globalParam, userId);
         public async Task<(ErrorReturner Error, UserData? Data)> GetUserData(GlobalParam globalParam, long userId = 0) => await UserManager.GetUserData(globalParam, userId);
         public Task<(ErrorReturner Error, UserData? Data)> GetUserDataForAuthentication(GlobalParam globalParam, CancellationToken cancellationToken = default) =>
             UserManager.GetUserDataForAuthentication(globalParam, cancellationToken);
+
+        public Task<(ErrorReturner Error, UserData? Data)> GetUserDataForSessionRestoreAsync(
+            GlobalParam parameters, CancellationToken cancellationToken) =>
+            UserManager.GetUserDataForAuthentication(parameters, cancellationToken, DateTime.UtcNow.AddSeconds(5));
         public async Task<(ErrorReturner Error, Proto.Identity.Token? refreshToken, Proto.Identity.Token? accessToken, bool getMeOtpCode)> Authorizations(string _email, string _username, string _password, string _otpCode, GlobalParam global) => await UserManager.Authorizations(_email, _username, _password, _otpCode, global);
         public ErrorReturner CreatePreLoginAuthenticationClient(GlobalParam globalParam, string deviceName, string os, string appName, string appVersion, string ip) =>
             ClientManager.CreatePreLoginAuthenticationClient(globalParam, deviceName, os, appName, appVersion, ip);
@@ -252,9 +268,16 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, Proto.Users.PrivacySettings? settings)> GetPrivacySettings(GlobalParam globalParam) => await UserManager.GetPrivacySettings(globalParam);
         public async Task<ErrorReturner> UpdatePrivacySettings(Proto.Users.PrivacySettings settings, GlobalParam globalParam) => await UserManager.UpdatePrivacySettings(settings, globalParam);
         public async Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam) => await UserManager.SetNotificationsEnabled(enabled, globalParam);
+
+        public Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam, CancellationToken cancellationToken) =>
+            UserManager.SetNotificationsEnabled(enabled, globalParam, cancellationToken);
         public async Task<ErrorReturner> Logout(GlobalParam globalParam) => await UserManager.Logout(globalParam);
         public async Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil = null) => await UserManager.SetChatMuted(chatId, muted, globalParam, mutedUntil);
         public async Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam) => await UserManager.GetMutedChats(globalParam);
+        public Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil, CancellationToken cancellationToken) =>
+            UserManager.SetChatMuted(chatId, muted, globalParam, mutedUntil, cancellationToken);
+        public Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam, CancellationToken cancellationToken) =>
+            UserManager.GetMutedChats(globalParam, cancellationToken);
         public async Task<ErrorReturner> SetFirebaseToken(string firebaseToken, GlobalParam globalParam) => await UserManager.SetFirebaseToken(firebaseToken, globalParam);
         public async Task<(ErrorReturner error, Proto.Users.ResolveFederatedUserResponse? user)> ResolveFederatedUser(string fid, GlobalParam globalParam) => await UserManager.ResolveFederatedUser(fid, globalParam);
         #endregion
@@ -304,7 +327,9 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> UpdateChatFolder(string folderId, GlobalParam globalParam, string? folderName = null, string? folderIcon = null, List<string>? chatList = null) => await ChatFolderManager.UpdateChatFolder(folderId, globalParam, folderName, folderIcon, chatList);
         public async Task<ErrorReturner> DeleteChatFolder(string folderId, GlobalParam globalParam) => await ChatFolderManager.DeleteChatFolder(folderId, globalParam);
         public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> AddChatToFolder(string folderId, string chatId, GlobalParam globalParam) => await ChatFolderManager.AddChatToFolder(folderId, chatId, globalParam);
+        public Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> AddChatToFolder(string folderId, string chatId, GlobalParam globalParam, CancellationToken cancellationToken) => ChatFolderManager.AddChatToFolder(folderId, chatId, globalParam, cancellationToken);
         public async Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> RemoveChatFromFolder(string folderId, string chatId, GlobalParam globalParam) => await ChatFolderManager.RemoveChatFromFolder(folderId, chatId, globalParam);
+        public Task<(ErrorReturner error, Proto.Users.ChatFolderData? folder)> RemoveChatFromFolder(string folderId, string chatId, GlobalParam globalParam, CancellationToken cancellationToken) => ChatFolderManager.RemoveChatFromFolder(folderId, chatId, globalParam, cancellationToken);
         public async Task<ErrorReturner> ReorderChatFolders(Dictionary<string, int> orders, GlobalParam globalParam) => await ChatFolderManager.ReorderChatFolders(orders, globalParam);
         #endregion
 
@@ -338,15 +363,92 @@ namespace BarkFluff.WebApi.Core
         #endregion
 
         #region Работа с сообщениями (делегирование к MessageManager)
+        internal sealed record DraftClientBinding(
+            GlobalParam Parameters,
+            Proto.Messages.MessagesApi.MessagesApiClient Client);
+
+        internal volatile DraftClientBinding? DraftClient;
+        internal sealed record OutgoingClientBinding(GlobalParam Parameters,
+            Proto.Messages.MessagesApi.MessagesApiClient Messages, Proto.Files.FilesApi.FilesApiClient Files);
+        internal volatile OutgoingClientBinding? OutgoingClient;
+
+        public async Task<long?> GetOutgoingAttachmentStorageAvailableAsync(GlobalParam parameters, CancellationToken token)
+        {
+            var client = GetOutgoingClient(parameters, token).Files;
+            var response = await client.GetUserStorageInfoAsync(new Proto.Files.GetUserStorageInfoRequest(),
+                cancellationToken: token).ResponseAsync.ConfigureAwait(false);
+            return response.StorageLimit - response.TotalUsedStorage;
+        }
+
+        internal OutgoingClientBinding GetOutgoingClient(GlobalParam parameters, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            if (OutgoingClient is { } binding && ReferenceEquals(binding.Parameters, parameters))
+                return binding;
+            throw new OperationCanceledException();
+        }
+
+        public Task<Proto.Messages.GetChatDraftResponse?> GetChatDraft(
+            GlobalParam parameters, string chatId, CancellationToken cancellationToken) =>
+            CallDraftAsync(parameters, cancellationToken, (client, deadline) => client.GetChatDraftAsync(
+                new Proto.Messages.GetChatDraftRequest { ChatId = chatId }, deadline: deadline,
+                cancellationToken: cancellationToken).ResponseAsync);
+
+        public Task<Proto.Messages.UpsertChatDraftResponse?> UpsertChatDraft(
+            GlobalParam parameters, string chatId, string text, long replyId, CancellationToken cancellationToken) =>
+            CallDraftAsync(parameters, cancellationToken, (client, deadline) => client.UpsertChatDraftAsync(
+                new Proto.Messages.UpsertChatDraftRequest { ChatId = chatId, Text = text, ReplyToMessageId = replyId },
+                deadline: deadline, cancellationToken: cancellationToken).ResponseAsync);
+
+        public Task<Proto.Messages.DeleteChatDraftResponse?> DeleteChatDraft(
+            GlobalParam parameters, string chatId, string revision, CancellationToken cancellationToken) =>
+            CallDraftAsync(parameters, cancellationToken, (client, deadline) => client.DeleteChatDraftAsync(
+                new Proto.Messages.DeleteChatDraftRequest { ChatId = chatId, ExpectedRevision = revision },
+                deadline: deadline, cancellationToken: cancellationToken).ResponseAsync);
+
+        private async Task<T?> CallDraftAsync<T>(GlobalParam parameters, CancellationToken cancellationToken,
+            Func<Proto.Messages.MessagesApi.MessagesApiClient, DateTime, Task<T>> call) where T : class
+        {
+            if (!ReferenceEquals(DraftClient?.Parameters, parameters))
+                return null;
+
+            var userId = parameters.UserId;
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            return await TokenManager.SafeCallAsync<T?>(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // После обновления токена канал заменяется. Повтор берёт клиент той же сессии.
+                var binding = DraftClient;
+                return binding is not null && ReferenceEquals(binding.Parameters, parameters) && parameters.UserId == userId
+                    ? await call(binding.Client, deadline)
+                    : null;
+            }, parameters).WaitAsync(cancellationToken);
+        }
+
+        public Task<(ErrorReturner error, Proto.Messages.SearchMessagesResponse? page)> SearchMessagesAsync(
+            GlobalParam parameters, Proto.Messages.SearchMessagesRequest request, CancellationToken cancellationToken = default) =>
+            MessageManager.SearchMessagesAsync(parameters, request, cancellationToken);
+
+        public Task<(ErrorReturner error, List<Proto.Messages.Chat>? chats, int totalCount)> ListChatsPageAsync(
+            GlobalParam globalParam, int offset, int size, CancellationToken cancellationToken) =>
+            MessageManager.ListChatsPageAsync(globalParam, offset, size, cancellationToken);
+
         public async Task<(ErrorReturner error, List<Proto.Messages.Chat>? chats)> GetChats(GlobalParam globalParam) => await MessageManager.GetChats(globalParam);
         public async Task<(ErrorReturner error, ChatInfo chatInfo)> GetChatInfo(GlobalParam globalParam, string chatId) => await MessageManager.GetChatInfo(globalParam, chatId);
         public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter) => await MessageManager.SendMessage(globalParam, options, letter);
+        public Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter, CancellationToken cancellationToken) =>
+            MessageManager.SendMessage(globalParam, options, letter, cancellationToken);
+        public Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, string chatId,
+            ForwardingLetter letter, Guid clientOperationId, CancellationToken cancellationToken) =>
+            MessageManager.SendMessage(globalParam, (false, chatId), letter, clientOperationId.ToString(), cancellationToken);
         public async Task<(bool, string?)> CreateGroupChat(GlobalParam globalParam, string chatName, List<long> userIds) => await MessageManager.CreateGroupChat(globalParam, chatName, userIds); // исправить не использовать в таком виде
         public async Task<(bool, string?)> CreateChat(GlobalParam globalParam, string userId) => await MessageManager.CreateChat(globalParam, userId); // исправить не использовать в таком виде
         public async Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessages(GlobalParam globalParam, string chatId, long fromMessageId) => await MessageManager.GetMessages(globalParam, chatId, fromMessageId);
         public async Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessagesWithOffset(GlobalParam globalParam, string chatId, long fromMessageId, int offsetBefore, int offsetAfter) => await MessageManager.GetMessagesWithOffset(globalParam, chatId, fromMessageId, offsetBefore, offsetAfter);
         public async Task<ErrorReturner> MarkMessageAsRead(GlobalParam globalParam, List<long> messageId) => await MessageManager.MarkMessageAsRead(globalParam, messageId);
         public async Task<(ErrorReturner error, string chatId)> GetPersonChatId(GlobalParam globalParam, long userId) => await MessageManager.GetPersonChatId(globalParam, userId);
+        public Task<(ErrorReturner error, string chatId)> GetPersonChatId(GlobalParam globalParam, long userId, CancellationToken cancellationToken) =>
+            MessageManager.GetPersonChatId(globalParam, userId, cancellationToken);
         public async Task<(ErrorReturner error, List<Proto.Messages.ListChatMembersResponse.Types.DetailedChatMemberInfo>? members, int totalCount)> ListChatMembers(GlobalParam globalParam, string chatId, int offset = 0, int size = 50) => await MessageManager.ListChatMembers(globalParam, chatId, offset, size);
         public async Task<(ErrorReturner error, List<Proto.Messages.ChatAttachmentInfo>? attachments, int totalCount)> ListChatAttachments(GlobalParam globalParam, string chatId, Proto.Shared.MessageAttachmentType attachmentType = Proto.Shared.MessageAttachmentType.Unknown, bool sortDescending = true, int offset = 0, int size = 50) => await MessageManager.ListChatAttachments(globalParam, chatId, attachmentType, sortDescending, offset, size);
         public async Task<ErrorReturner> KickUser(GlobalParam globalParam, string chatId, long userId) => await MessageManager.KickUser(globalParam, chatId, userId);
@@ -492,12 +594,27 @@ namespace BarkFluff.WebApi.Core
 
         #region Поиск (делегирование к SearchManager)
         public async Task<(ErrorReturner error, List<UserData>? userList)> SearchUser(GlobalParam globalParam, string userNameSearched) => await SearchManager.SearchUser(globalParam, userNameSearched);
+
+        public Task<(ErrorReturner error, List<UserData>? userList)> SearchUser(
+            GlobalParam globalParam, string userNameSearched, CancellationToken cancellationToken) =>
+            SearchManager.SearchUser(globalParam, userNameSearched, cancellationToken);
         #endregion
 
         #region Файлы (делегирование к FileManager)
+        public const long MaxFileUploadRequestSize = WebApiFileManager.MaxUploadRequestSize;
         public async Task<(ErrorReturner error, long totalUsedSpace, long totalSpace, Dictionary<Proto.Files.UploadFileType, long> storageByType)> GetUserStorageInfoAsync(GlobalParam globalParam) => await FileManager.GetUserStorageInfoAsync(globalParam);
+        public Task<long?> GetAttachmentStorageAvailableAsync(GlobalParam globalParam, CancellationToken cancellationToken) =>
+            FileManager.GetAttachmentStorageAvailableAsync(globalParam, cancellationToken);
         public async Task<(ErrorReturner error, string? fileId)> UploadFileAsync(GlobalParam globalParam, string filePath, Proto.Files.UploadFileType fileType) => await FileManager.UploadFileAsync(globalParam, filePath, fileType);
         public async Task<(ErrorReturner error, string? fileId)> UploadFileAsync(GlobalParam globalParam, string filePath, Proto.Files.UploadFileType fileType, IProgress<double>? progress) => await FileManager.UploadFileAsync(globalParam, filePath, fileType, progress);
+        public Task<(ErrorReturner error, string? fileId)> UploadFileAsync(GlobalParam globalParam, string filePath, string fileName,
+            string? contentType, Proto.Files.UploadFileType fileType, IProgress<double>? progress, CancellationToken cancellationToken) =>
+            FileManager.UploadFileAsync(globalParam, filePath, fileName, contentType, fileType, progress, cancellationToken);
+        public Task<(ErrorReturner error, string? fileId)> UploadFileAsync(GlobalParam globalParam, string filePath, string fileName,
+            string? contentType, Proto.Files.UploadFileType fileType, Guid clientOperationId, IProgress<double>? progress,
+            CancellationToken cancellationToken) =>
+            FileManager.UploadFileAsync(globalParam, filePath, fileName, contentType, fileType, progress, cancellationToken,
+                clientOperationId.ToString());
         public async Task<ErrorReturner> UploadUserAvatarAsync(GlobalParam globalParam, byte[] jpegImageBytes) => await FileManager.UploadUserAvatarAsync(globalParam, jpegImageBytes);
         public async Task<(ErrorReturner error, string? url)> GetFile(GlobalParam globalParam, string fileId) => await FileManager.GetFile(globalParam, fileId);
         public async Task<(ErrorReturner error, List<string>? urls)> GetFiles(GlobalParam globalParam, List<string> fileId) => await FileManager.GetFiles(globalParam, fileId);
@@ -510,6 +627,9 @@ namespace BarkFluff.WebApi.Core
 
         #region Реалтайм обновления (делегирование к UpdateManager)
         public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.JustUpdate(globalParam, ct);
+        public Task<(ErrorReturner error, IAsyncEnumerable<ChatFoldersChangedEvent>? stream)> SubscribeToChatFoldersChanged(
+            GlobalParam globalParam, CancellationToken ct = default) => UpdateManager.SubscribeToChatFoldersChanged(globalParam, ct);
+
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToReadReceipts(globalParam, ct);
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageEditedEvent>? stream)> SubscribeToMessagesEdited(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesEdited(globalParam, ct);
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageDeletedEvent>? stream)> SubscribeToMessagesDeleted(GlobalParam globalParam, CancellationToken ct = default) => await UpdateManager.SubscribeToMessagesDeleted(globalParam, ct);
@@ -568,6 +688,54 @@ namespace BarkFluff.WebApi.Core
             => await OnlinerManager.ChangeUsersInSubscription(userIds, globalParam);
         #endregion
 
+        public Task<Proto.Calls.InitiateCallResponse> InitiateAudioCallAsync(long userId, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.InitiateCallAsync(
+                new Proto.Calls.InitiateCallRequest { CalleeUserId = userId, MediaType = Proto.Calls.CallMediaType.CallMediaAudio },
+                deadline: DateTime.UtcNow.AddSeconds(15), cancellationToken: ct), parameters, ct, retry: false);
+
+        public Task<Proto.Calls.InitiateCallResponse> InitiateCallAsync(
+            Proto.Calls.InitiateCallRequest request, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.InitiateCallAsync(request,
+                deadline: DateTime.UtcNow.AddSeconds(15), cancellationToken: ct), parameters, ct, retry: false);
+
+        public Task<Proto.Calls.JoinCallResponse> JoinCallAsync(string callId, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.JoinCallAsync(new Proto.Calls.JoinCallRequest { CallId = callId },
+                deadline: DateTime.UtcNow.AddSeconds(15), cancellationToken: ct), parameters, ct);
+
+        public Task<Proto.Calls.SetCallAudioQualityResponse> SetCallAudioQualityAsync(
+            string callId, Proto.Calls.CallAudioQuality quality, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.SetCallAudioQualityAsync(
+                new Proto.Calls.SetCallAudioQualityRequest { CallId = callId, Quality = quality },
+                deadline: DateTime.UtcNow.AddSeconds(10), cancellationToken: ct), parameters, ct, retry: false);
+
+        public Task<Proto.Calls.GetActiveCallsResponse> GetActiveCallsAsync(
+            string chatId, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.GetActiveCallsAsync(
+                new Proto.Calls.GetActiveCallsRequest { ChatIds = { chatId } },
+                deadline: DateTime.UtcNow.AddSeconds(10), cancellationToken: ct), parameters, ct);
+
+        public Task<Proto.Calls.ListCallHistoryResponse> ListCallHistoryAsync(
+            Proto.Calls.ListCallHistoryRequest request, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.ListCallHistoryAsync(request,
+                deadline: DateTime.UtcNow.AddSeconds(10), cancellationToken: ct), parameters, ct);
+
+        public Task<Proto.Calls.AcceptCallResponse> AcceptCallAsync(string callId, GlobalParam parameters, CancellationToken ct)
+            => CallsManager.InvokeAsync(client => client.AcceptCallAsync(new Proto.Calls.AcceptCallRequest { CallId = callId },
+                deadline: DateTime.UtcNow.AddSeconds(15), cancellationToken: ct), parameters, ct);
+
+        public async Task FinishCallAsync(string callId, bool reject, GlobalParam parameters, CancellationToken ct)
+        {
+            if (reject)
+                await CallsManager.InvokeAsync(client => client.RejectCallAsync(new Proto.Calls.RejectCallRequest { CallId = callId },
+                    deadline: DateTime.UtcNow.AddSeconds(10), cancellationToken: ct), parameters, ct, retry: false);
+            else
+                await CallsManager.InvokeAsync(client => client.EndCallAsync(new Proto.Calls.EndCallRequest { CallId = callId },
+                    deadline: DateTime.UtcNow.AddSeconds(10), cancellationToken: ct), parameters, ct, retry: false);
+        }
+
+        public IAsyncEnumerable<Proto.Calls.CallEvent> ReadCallEventsAsync(GlobalParam parameters, CancellationToken ct)
+            => CallsManager.ReadCallEventsAsync(parameters, ct);
+
         #region Звонки (делегирование к CallsManager)
         /// <summary>
         /// Сигнализация звонков. Медиа библиотека не ведёт: в ответах приходят
@@ -611,6 +779,12 @@ namespace BarkFluff.WebApi.Core
 
         public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Onliner.TypingEvent>? stream)> SubscribeToTyping(List<string> chatIds, GlobalParam globalParam, CancellationToken ct = default)
             => await OnlinerManager.SubscribeToTyping(chatIds, globalParam, ct);
+
+        public IAsyncEnumerable<Proto.Onliner.TypingEvent> SubscribeToTypingWithStatus(string chatId, CancellationToken cancellationToken)
+            => OnlinerManager.SubscribeToTypingWithStatus(chatId, cancellationToken);
+
+        public Task SetTypingStatusOnceAsync(string chatId, Proto.Onliner.TypingAction action, CancellationToken cancellationToken)
+            => OnlinerManager.SetTypingStatusOnceAsync(chatId, action, cancellationToken);
 
         public async Task<ErrorReturner> ChangeChatsInTypingSubscription(List<string> chatIds, GlobalParam globalParam)
             => await OnlinerManager.ChangeChatsInTypingSubscription(chatIds, globalParam);

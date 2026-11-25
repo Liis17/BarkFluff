@@ -33,17 +33,16 @@
                 </StackPanel>
             </Border>
 
-            <!--  Дисковых кешей изображений и чатов в WinUI нет, поэтому мерить и чистить нечего.  -->
             <TextBlock Style="{StaticResource SettingsGroupTitle}" Text="{StaticResource Settings_Storage_LocalStorage}" />
             <Border Style="{StaticResource SettingsGroupCard}">
                 <StackPanel>
                     <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeAndroidOnly}" Header="{StaticResource Settings_Storage_AppCache}" IsEnabled="False" />
                     <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeAndroidOnly}" Header="{StaticResource Settings_Storage_ImageCache}" IsEnabled="False" />
-                    <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeAndroidOnly}" Header="{StaticResource Settings_Storage_ChatCache}" IsEnabled="False" />
-                    <Button IsEnabled="False" Style="{StaticResource SettingsRowButtonStyle}">
-                        <controls:SettingsRow BadgeText="{StaticResource Settings_BadgeAndroidOnly}"
-                                              Glyph="&#xE74D;"
-                                              Header="{StaticResource Settings_Storage_ClearCache}" />
+                    <controls:SettingsRow Description="{x:Bind ViewModel.ChatCacheSize, Mode=OneWay}" Header="{StaticResource Settings_Storage_ChatCache}" />
+                    <Button Command="{x:Bind ViewModel.ClearChatCacheCommand}" Style="{StaticResource SettingsRowButtonStyle}"
+                            AutomationProperties.Name="{StaticResource Settings_Storage_ClearChatCache}">
+                        <controls:SettingsRow Glyph="&#xE74D;"
+                                              Header="{StaticResource Settings_Storage_ClearChatCache}" />
                     </Button>
                 </StackPanel>
             </Border>

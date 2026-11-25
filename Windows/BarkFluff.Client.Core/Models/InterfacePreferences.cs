@@ -2,6 +2,9 @@ namespace BarkFluff.Client.Core.Models;
 
 public sealed record InterfacePreferences
 {
+    public const int MinChatStickerSizeDp = 96;
+    public const int MaxChatStickerSizeDp = 240;
+
     public int ChatCornerRadius { get; init; } = 20;
     public bool ChatBackgroundBlur { get; init; }
     public int ChatBackgroundBlurRadius { get; init; } = 10;

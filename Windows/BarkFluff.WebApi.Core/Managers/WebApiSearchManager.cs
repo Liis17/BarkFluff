@@ -16,7 +16,11 @@ namespace BarkFluff.WebApi.Core.Managers
             _webApi = webApi;
         }
 
-        public async Task<(ErrorReturner error, List<UserData>? userList)> SearchUser(GlobalParam globalParam, string userNameSearched)
+        public Task<(ErrorReturner error, List<UserData>? userList)> SearchUser(GlobalParam globalParam, string userNameSearched) =>
+            SearchUser(globalParam, userNameSearched, CancellationToken.None);
+
+        public async Task<(ErrorReturner error, List<UserData>? userList)> SearchUser(
+            GlobalParam globalParam, string userNameSearched, CancellationToken cancellationToken)
         {
             try
             {
@@ -30,7 +34,7 @@ namespace BarkFluff.WebApi.Core.Managers
                             Size = DefaultPageSize
                         },
                         Query = userNameSearched
-                    });
+                    }, cancellationToken: cancellationToken);
 
                     var userDataList = response.Users
                         .Select(item => new UserData
@@ -55,7 +59,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Неверный токен обновления."), null);
             }
-            catch (Exception)
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
                 return (new ErrorReturner(false, "Ошибка поиска пользователей"), null);
             }

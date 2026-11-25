@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import textwrap
 import unittest
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -112,27 +113,46 @@ class WinUIManifestTests(unittest.TestCase):
                        PACKAGE_VERSION=version)
             result = subprocess.run([PWSH, '-NoLogo', '-NoProfile', '-File', str(script)],
                                     env=env, text=True, capture_output=True)
-            return result, output.read_text(encoding='utf-8-sig'), original == (client / 'Package.appxmanifest').read_text()
+            prepared = (client / 'Package.appxmanifest').read_text()
+            return result, output.read_text(encoding='utf-8-sig'), original == prepared, prepared
 
     def test_channel_manifests_use_computed_version(self):
         for channel in ['nightly', 'dev', 'release']:
             with self.subTest(channel=channel):
-                result, output, unchanged = self.run_variant(channel, '1.2.10')
+                result, output, unchanged, _ = self.run_variant(channel, '1.2.10')
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn('version=1.2.10\n', output)
                 self.assertIn('manifest_version=1.2.10.0\n', output)
                 self.assertFalse(unchanged)
 
+    def test_channels_register_distinct_notification_activators(self):
+        clsids = {
+            'release': 'B46F53B2-4682-4E4C-B696-89B5F684B179',
+            'dev': 'CE28FAC5-3702-4410-B3A5-425284F2FE6D',
+            'nightly': 'E4170BC3-C566-4F96-8791-71746BE83912',
+        }
+        for channel, clsid in clsids.items():
+            with self.subTest(channel=channel):
+                result, _, _, prepared = self.run_variant(channel, '1.2.10')
+                self.assertEqual(result.returncode, 0, result.stderr)
+                manifest = ET.fromstring(prepared)
+                activation = manifest.find('.//{*}ToastNotificationActivation')
+                com_class = manifest.find(".//{*}ExeServer[@Arguments='----AppNotificationActivated:']/{*}Class")
+                self.assertEqual(clsid, activation.get('ToastActivatorCLSID'))
+                self.assertEqual(clsid, com_class.get('Id'))
+                if channel != 'release':
+                    self.assertNotIn(clsids['release'], prepared)
+
     def test_invalid_or_out_of_range_version_keeps_manifest(self):
         for version in ['', '1.2', '1.2.3 beta', 'a.b.c', '65536.1.1', '1.2.65536', '1.2.3.4']:
             with self.subTest(version=version):
-                result, output, unchanged = self.run_variant('nightly', version)
+                result, output, unchanged, _ = self.run_variant('nightly', version)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(output, '')
                 self.assertTrue(unchanged)
 
     def test_valid_version_equal_to_original_application_manifest(self):
-        result, output, _ = self.run_variant('dev', '1.0.0')
+        result, output, _, _ = self.run_variant('dev', '1.0.0')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('manifest_version=1.0.0.0\n', output)
 

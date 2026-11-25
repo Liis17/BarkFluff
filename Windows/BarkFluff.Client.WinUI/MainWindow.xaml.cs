@@ -1,5 +1,7 @@
 using BarkFluff.Client.Core.Models;
+using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
+using BarkFluff.Client.Core.ViewModels.Settings;
 using BarkFluff.Client.WinUI.Views;
 
 using CommunityToolkit.Mvvm.Input;
@@ -24,7 +26,9 @@ public sealed partial class MainWindow : Window
     private static readonly TimeSpan WindowSizeSaveDelay = TimeSpan.FromMilliseconds(300);
 
     private readonly MainWindowViewModel _viewModel;
+    private readonly SettingsLanguageViewModel _languageSettings;
     private bool _isExitRequested;
+    private bool _isWindowActive;
     private CancellationTokenSource? _windowSizeSaveCancellation;
     private Task? _windowSizeSaveTask;
     private bool _windowCloseReady;
@@ -33,7 +37,9 @@ public sealed partial class MainWindow : Window
     public MainWindow(MainWindowViewModel viewModel)
     {
         _viewModel = viewModel;
+        _languageSettings = App.Services.GetRequiredService<SettingsLanguageViewModel>();
         InitializeComponent();
+        InitializeCalls();
         ApplySavedWindowBounds();
 
         ExtendsContentIntoTitleBar = true;
@@ -42,10 +48,20 @@ public sealed partial class MainWindow : Window
         // WinUI-версия H.NotifyIcon не даёт событий клика, только команды.
         TrayIcon.DoubleClickCommand = new RelayCommand(ShowFromTray);
 
+        Activated += (_, args) =>
+        {
+            var wasActive = _isWindowActive;
+            _isWindowActive = args.WindowActivationState != WindowActivationState.Deactivated;
+            if (!wasActive && _isWindowActive && ContentFrame.Content is Views.MessengerPage)
+                _calls.RefreshGroupCall();
+            UpdateNotificationWindowState();
+            UpdateCallNotification();
+        };
         AppWindow.Closing += OnAppWindowClosing;
         AppWindow.Changed += OnAppWindowChanged;
         _viewModel.Settings.WindowBoundsResetRequested += OnWindowBoundsResetRequested;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _languageSettings.PropertyChanged += OnTrayLanguageChanged;
         NavigateToCurrentViewModel();
     }
 
@@ -149,6 +165,8 @@ public sealed partial class MainWindow : Window
     private void NavigateToCurrentViewModel()
     {
         var viewModel = _viewModel.CurrentViewModel;
+        if (!_windowCloseInProgress)
+            WatchUnreadBadge(viewModel as MessengerViewModel);
         var pageType = ViewLocator.Resolve(viewModel);
         if (pageType is null || ContentFrame.CurrentSourcePageType == pageType)
         {
@@ -187,6 +205,7 @@ public sealed partial class MainWindow : Window
     {
         RootNavigation.IsBackEnabled = ContentFrame.CanGoBack;
         AppTitleBar.IsBackButtonEnabled = ContentFrame.CanGoBack;
+        UpdateNotificationWindowState();
     }
 
     private void OnTitleBarBackRequested(TitleBar sender, object args)
@@ -212,7 +231,12 @@ public sealed partial class MainWindow : Window
         if (!_isExitRequested && _viewModel.Settings.ClosingBehavior == WindowClosingBehavior.MinimizeToTray)
         {
             eventArgs.Cancel = true;
+            _isWindowActive = false;
+            if (_viewModel.CurrentViewModel is MessengerViewModel messenger)
+                _ = messenger.LeaveMessengerAsync();
             this.Hide();
+            UpdateNotificationWindowState();
+            UpdateCallNotification();
             return;
         }
 
@@ -223,11 +247,19 @@ public sealed partial class MainWindow : Window
         }
 
         _windowCloseInProgress = true;
+        _languageSettings.PropertyChanged -= OnTrayLanguageChanged;
+        WatchUnreadBadge(null);
+        TrayIcon.Dispose();
         _ = CloseAfterSavingWindowSizeAsync();
     }
 
     private async Task CloseAfterSavingWindowSizeAsync()
     {
+        var callCleanup = _calls.StopAsync();
+        var messenger = App.Services.GetRequiredService<MessengerViewModel>();
+        var attachments = messenger.LeaveMessengerAsync(clearAttachments: true);
+        var drafts = messenger.StopDraftsAsync();
+        var cache = messenger.FlushChatCacheAsync();
         try
         {
             _windowSizeSaveCancellation?.Cancel();
@@ -249,7 +281,9 @@ public sealed partial class MainWindow : Window
         {
             try
             {
-                await CleanupLoginForExitAsync().WaitAsync(TimeSpan.FromSeconds(3));
+                var typing = App.Services.GetRequiredService<IChatTypingService>();
+                await Task.WhenAll(callCleanup, attachments, drafts, cache, typing.StopAsync(), CleanupLoginForExitAsync(),
+                    ((App)Application.Current).StopNotificationsAsync()).WaitAsync(TimeSpan.FromSeconds(3));
             }
             catch (TimeoutException)
             {
@@ -283,6 +317,30 @@ public sealed partial class MainWindow : Window
             cancellationToken);
     }
 
+    private void UpdateNotificationWindowState()
+    {
+        if (_viewModel.CurrentViewModel is MessengerViewModel messenger)
+        {
+            messenger.SetNotificationWindowState(_isWindowActive,
+                ContentFrame.CurrentSourcePageType == typeof(MessengerPage) && AppWindow.IsVisible);
+        }
+    }
+
+    internal async Task OpenNotificationAsync(MessageNotificationTarget? target)
+    {
+        ShowFromTray();
+        if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
+        {
+            presenter.Restore();
+        }
+
+        if (target is not null && _viewModel.CurrentViewModel is MessengerViewModel messenger &&
+            await messenger.OpenNotificationChatAsync(target) && _viewModel.CurrentViewModel == messenger)
+        {
+            NavigateToCurrentViewModel();
+        }
+    }
+
     private void OnTrayShowRequested(object sender, RoutedEventArgs eventArgs) => ShowFromTray();
 
     private void ShowFromTray()
@@ -294,7 +352,6 @@ public sealed partial class MainWindow : Window
     private void OnTrayExitRequested(object sender, RoutedEventArgs eventArgs)
     {
         _isExitRequested = true;
-        TrayIcon.Dispose();
         Close();
     }
 }

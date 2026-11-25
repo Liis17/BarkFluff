@@ -17,8 +17,9 @@ jobs:
           node-version: '24'
       - name: CI helper tests
         run: python3 -m unittest discover -s .github/tests -p 'test_*.py'
-      - name: Web and AdminPanel JavaScript tests
+      - name: JavaScript tests
         run: |
           for test in Backend/BarkFluff.Web/scripts/test-*.js Tests/BarkFluff.AdminPanel.Tests/Frontend/test-*.js; do
             node "$test"
           done
+          node --test Windows/BarkFluff.Client.WinUI/tools/CallRoom.test.cjs

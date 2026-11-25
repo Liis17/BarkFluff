@@ -219,6 +219,9 @@ public sealed partial class LoginViewModel : ObservableObject
         }
     }
 
+    internal void ShowOfflineLogoutNotice() =>
+        StatusMessage = _localization.GetString("Login_OfflineLogoutNotice");
+
     public async Task CleanupAsync()
     {
         StopFastAuthUi();

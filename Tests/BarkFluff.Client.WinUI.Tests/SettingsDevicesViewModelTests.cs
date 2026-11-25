@@ -127,8 +127,13 @@ internal sealed class FakeDeviceSettingsService : IDeviceSettingsService
 
     public HashSet<string> FailedDeviceIds { get; } = [];
 
-    public Task<(string? ErrorKey, Device? Device)> GetCurrentDeviceAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<(string?, Device?)>((null, CurrentDevice));
+    public int CurrentDeviceReads { get; private set; }
+
+    public Task<(string? ErrorKey, Device? Device)> GetCurrentDeviceAsync(CancellationToken cancellationToken = default)
+    {
+        CurrentDeviceReads++;
+        return Task.FromResult<(string?, Device?)>((null, CurrentDevice));
+    }
 
     public Task<(string? ErrorKey, List<GetActiveSessionsResponse.Types.Session>? Sessions)> GetDevicesAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<(string?, List<GetActiveSessionsResponse.Types.Session>?)>((null, Sessions));
@@ -139,6 +144,8 @@ internal sealed class FakeDeviceSettingsService : IDeviceSettingsService
         return Task.FromResult<string?>(FailedDeviceIds.Contains(deviceId) ? "Error_SettingsSaveFailed" : null);
     }
 
+    public Func<bool, Task<string?>>? SetNotificationsEnabled { get; set; }
+
     public Task<string?> SetNotificationsEnabledAsync(bool enabled, CancellationToken cancellationToken = default) =>
-        Task.FromResult<string?>(null);
+        SetNotificationsEnabled?.Invoke(enabled) ?? Task.FromResult<string?>(null);
 }

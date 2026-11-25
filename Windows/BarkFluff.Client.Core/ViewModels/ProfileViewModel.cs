@@ -165,6 +165,8 @@ public sealed partial class ProfileViewModel : ObservableObject
         }
     }
 
+    internal string? AttachmentChatId => _chatId;
+
     private Task ApplyChatIdAsync(string? chatId)
     {
         _chatId = string.IsNullOrEmpty(chatId) ? null : chatId;

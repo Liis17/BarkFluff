@@ -4,6 +4,10 @@ using BarkFluff.Proto.FastAuth;
 using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 
 using System.Runtime.CompilerServices;
+using System.Net.Http;
+using System.Net.Sockets;
+using BarkFluff.Shared.Exceptions.Identity;
+using Grpc.Core;
 
 namespace BarkFluff.Client.Core.Services;
 
@@ -15,44 +19,125 @@ public sealed partial class AuthenticationService : IAuthenticationService
 
     public string? RestoreSessionErrorResourceKey { get; private set; }
 
-    public AuthenticationService(WebApiClient webApi, IClientSession session, ISecureSessionStore secureSessionStore)
+    private readonly ChatListCache? _chatCache;
+    private NodeConnection? _offlineConnection;
+    public bool IsRestoredSessionOffline => _offlineConnection is { } connection &&
+        ReferenceEquals(connection, _session.CurrentConnection);
+
+    public AuthenticationService(WebApiClient webApi, IClientSession session, ISecureSessionStore secureSessionStore,
+        ChatListCache? chatCache = null)
     {
         _webApi = webApi;
         _session = session;
         _secureSessionStore = secureSessionStore;
+        _chatCache = chatCache;
     }
 
     public async Task<bool> TryRestoreSessionAsync(CancellationToken cancellationToken = default)
     {
+        await _sessionCommitGate.WaitAsync(cancellationToken);
+        try
+        {
+            return await RestoreSessionCoreAsync(cancellationToken);
+        }
+        finally
+        {
+            _sessionCommitGate.Release();
+        }
+    }
+
+    private async Task<bool> RestoreSessionCoreAsync(CancellationToken cancellationToken)
+    {
         RestoreSessionErrorResourceKey = null;
-        var parameters = GetConnectionParameters();
+        var connection = _session.CurrentConnection;
         var saved = await _secureSessionStore.LoadAsync(cancellationToken);
-        if (parameters is null || saved is null)
+        if (connection is null || saved is null || !ReferenceEquals(connection, _session.CurrentConnection))
         {
             return false;
         }
 
-        parameters.AccessToken = new BarkFluff.Proto.Identity.Token { Value = saved.AccessToken };
-        parameters.RefreshToken = new BarkFluff.Proto.Identity.Token { Value = saved.RefreshToken };
-        var refreshed = await _webApi.ForceRefreshTokenAsync(parameters);
-        if (!refreshed.IsSuccess || parameters.AccessToken is null || !InitializeAuthorizedClient(parameters))
+        var node = connection.Profile.BeaconAddress;
+        var parameters = connection.ConnectionParameters;
+        if (saved.Node is { } savedNode && !ChatListScope.SameNode(savedNode, node))
+            return false;
+
+        var loadingProfile = false;
+        try
         {
-            RestoreSessionErrorResourceKey = refreshed.ErrorResourceKey;
-            await _secureSessionStore.ClearAsync(cancellationToken);
+            parameters.AccessToken = new BarkFluff.Proto.Identity.Token { Value = saved.AccessToken };
+            parameters.RefreshToken = new BarkFluff.Proto.Identity.Token { Value = saved.RefreshToken };
+            await _webApi.RefreshTokenForSessionRestoreAsync(parameters, cancellationToken);
+            if (!IsCurrent() || parameters.AccessToken is not { Value.Length: > 0 } || !InitializeAuthorizedClient(parameters))
+                return false;
+
+            loadingProfile = true;
+            var (_, user) = await _webApi.GetUserDataForSessionRestoreAsync(parameters, cancellationToken);
+            loadingProfile = false;
+            if (!IsCurrent() || user is not { Id: > 0 })
+                return false;
+
+            if (user.AccountStatus is BarkFluff.Proto.Users.AccountStatus.Blocked)
+                throw new AccountBlockedException();
+            if (user.AccountStatus is BarkFluff.Proto.Users.AccountStatus.PendingDeletion or BarkFluff.Proto.Users.AccountStatus.Deleted)
+                throw new AccountPendingDeletionException();
+
+            if (saved.UserId is > 0 && saved.UserId != user.Id)
+                throw new InvalidRefreshTokenException();
+
+            parameters.UserId = user.Id;
+            parameters.UserName = user.Username;
+            await PersistTokensAsync(cancellationToken);
+            if (!IsCurrent())
+                return false;
+            _offlineConnection = null;
+            return true;
+        }
+        catch (RpcException) when (cancellationToken.IsCancellationRequested)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
+        }
+        catch (Exception error) when (!cancellationToken.IsCancellationRequested)
+        {
+            if (!IsCurrent())
+                return false;
+
+            var rejected = error is InvalidRefreshTokenException or AccountBlockedException or
+                AccountPendingDeletionException or UserNotFoundException ||
+                (loadingProfile && error is RpcException { StatusCode: StatusCode.Unauthenticated or StatusCode.PermissionDenied });
+            if (rejected)
+            {
+                _offlineConnection = null;
+                RestoreSessionErrorResourceKey = error switch
+                {
+                    AccountBlockedException => "Error_AccountBlocked",
+                    AccountPendingDeletionException => "Error_AccountPendingDeletion",
+                    _ => null
+                };
+                await _secureSessionStore.ClearAsync(cancellationToken);
+                if (saved.UserId is { } rejectedUserId && _chatCache is not null)
+                    await _chatCache.ClearAsync(ChatListScope.Create(node, rejectedUserId));
+                return false;
+            }
+
+            // gRPC обычно сообщает об обрыве или таймауте статусом, но HTTP и сокеты могут передать сбой напрямую.
+            var unavailable = error is RpcException { StatusCode: StatusCode.Unavailable or StatusCode.DeadlineExceeded }
+                or HttpRequestException or SocketException;
+            // Уже открытая офлайн-сессия остаётся доступной при неопределённом сбое повторной попытки.
+            // Завершить её может подтверждённый отказ авторизации, обработанный выше.
+            if ((unavailable || IsRestoredSessionOffline) && saved.Node is not null && saved.UserId is > 0)
+            {
+                parameters.UserId = saved.UserId.Value;
+                parameters.UserName = saved.UserName ?? string.Empty;
+                _offlineConnection = connection;
+                return true;
+            }
+
             return false;
         }
 
-        var profile = await _webApi.GetUserData(parameters);
-        if (!profile.Error.IsSuccess || profile.Data is null)
-        {
-            await _secureSessionStore.ClearAsync(cancellationToken);
-            return false;
-        }
-
-        parameters.UserId = profile.Data.Id;
-        parameters.UserName = profile.Data.Username;
-        await PersistTokensAsync(cancellationToken);
-        return true;
+        bool IsCurrent() => !cancellationToken.IsCancellationRequested &&
+            ReferenceEquals(connection, _session.CurrentConnection);
     }
 
     public async Task<LoginResult> LoginAsync(
@@ -91,6 +176,7 @@ public sealed partial class AuthenticationService : IAuthenticationService
             return LoginResult.Failure("Error_LoginUnavailable");
         }
 
+        _offlineConnection = null;
         await InitializeProfileAndPersistAsync(cancellationToken);
         return LoginResult.Success();
     }
@@ -262,7 +348,12 @@ public sealed partial class AuthenticationService : IAuthenticationService
     {
         var parameters = GetConnectionParameters();
         return parameters?.AccessToken is { Value.Length: > 0 } access && parameters.RefreshToken is { Value.Length: > 0 } refresh
-            ? _secureSessionStore.SaveAsync(new StoredSession(access.Value, refresh.Value), cancellationToken)
+            ? _secureSessionStore.SaveAsync(new StoredSession(access.Value, refresh.Value)
+            {
+                Node = _session.CurrentConnection?.Profile.BeaconAddress,
+                UserId = parameters.UserId > 0 ? parameters.UserId : null,
+                UserName = parameters.UserName
+            }, cancellationToken)
             : Task.CompletedTask;
     }
 }

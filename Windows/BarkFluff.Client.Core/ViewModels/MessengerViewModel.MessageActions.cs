@@ -1,5 +1,6 @@
 using BarkFluff.Client.Core.Markdown;
 using BarkFluff.Client.Core.Models;
+using BarkFluff.Client.Core.Services;
 using BarkFluff.WebApi.Core;
 
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -30,7 +31,7 @@ public sealed partial class MessengerViewModel
     private PinnedPreviewViewModel? _pinnedPreview;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsEditing), nameof(IsComposerHintVisible), nameof(ComposerHintTitle), nameof(ComposerHintPreview))]
+    [NotifyPropertyChangedFor(nameof(IsEditing), nameof(IsComposerHintVisible), nameof(ComposerHintTitle), nameof(ComposerHintPreview), nameof(CanAttach))]
     private MessageItemViewModel? _editingMessage;
 
     [ObservableProperty]
@@ -114,43 +115,79 @@ public sealed partial class MessengerViewModel
             return;
         }
 
+        var session = _realtimeSession;
+        var version = _chatVersion;
+        var revision = _pinnedRevision;
+        var cacheGeneration = session is null ? null : HistoryCacheGeneration(session, chat);
         ActionError = null;
         if (message.IsPinned)
         {
             var unpinError = await _messenger.UnpinMessageAsync(chat.Id, message.Id);
+            if (!IsOpen(session, chat, version))
+            {
+                return;
+            }
+
+            if (revision != _pinnedRevision)
+            {
+                session!.PinRefresh.RequestConfirmation();
+                return;
+            }
+
             if (!unpinError.IsSuccess)
             {
                 ActionError = DescribeError(unpinError);
                 return;
             }
 
+            _pinnedRevision++;
             _pinnedMessages.RemoveAll(info => info.Message?.Id == message.Id);
-            message.IsPinned = false;
+            if (Messages.FirstOrDefault(item => item.Id == message.Id) is { } visible)
+            {
+                visible.IsPinned = false;
+            }
             _pinnedBarIndex = 0;
             RefreshPinnedBar();
+            SaveHistoryPins(session!, chat, cacheGeneration);
             return;
         }
 
         var (pinError, pinned) = await _messenger.PinMessageAsync(chat.Id, message.Id);
+        if (!IsOpen(session, chat, version))
+        {
+            return;
+        }
+
+        if (revision != _pinnedRevision)
+        {
+            session!.PinRefresh.RequestConfirmation();
+            return;
+        }
+
         if (!pinError.IsSuccess || pinned is null)
         {
             ActionError = DescribeError(pinError);
             return;
         }
 
+        _pinnedRevision++;
         // Новый закреп показываем первым — как это делает веб-клиент.
         _pinnedMessages.RemoveAll(info => info.Message?.Id == message.Id);
         _pinnedMessages.Insert(0, pinned);
-        message.IsPinned = true;
+        if (Messages.FirstOrDefault(item => item.Id == message.Id) is { } visiblePin)
+        {
+            visiblePin.IsPinned = true;
+        }
         _pinnedBarIndex = 0;
         RefreshPinnedBar();
+        SaveHistoryPins(session!, chat, cacheGeneration);
     }
 
     /// <summary>
     /// Клик по плашке: переход к текущему закрепу и перелистывание на следующий по кругу.
     /// </summary>
     [RelayCommand]
-    private void CyclePinnedMessage()
+    private async Task CyclePinnedMessageAsync()
     {
         if (_pinnedMessages.Count == 0)
         {
@@ -158,16 +195,13 @@ public sealed partial class MessengerViewModel
         }
 
         var messageId = _pinnedMessages[_pinnedBarIndex].Message?.Id ?? 0;
-        if (messageId > 0)
-        {
-            RequestScroll(MessageScrollTarget.Message, messageId);
-        }
-
         if (_pinnedMessages.Count > 1)
         {
             _pinnedBarIndex = (_pinnedBarIndex + 1) % _pinnedMessages.Count;
             RefreshPinnedBar();
         }
+
+        await NavigateToMessageAsync(messageId);
     }
 
     [RelayCommand]
@@ -180,22 +214,27 @@ public sealed partial class MessengerViewModel
             return;
         }
 
+        var session = _realtimeSession;
+        var version = _chatVersion;
+        var revision = _pinnedRevision;
         var error = await _messenger.UnpinMessageAsync(chat.Id, preview.MessageId);
+        if (!IsOpen(session, chat, version))
+        {
+            return;
+        }
+
+        if (revision != _pinnedRevision)
+        {
+            session!.PinRefresh.RequestConfirmation();
+            return;
+        }
         if (!error.IsSuccess)
         {
             ActionError = DescribeError(error);
             return;
         }
 
-        _pinnedMessages.RemoveAll(info => info.Message?.Id == preview.MessageId);
-        var message = Messages.FirstOrDefault(item => item.Id == preview.MessageId);
-        if (message is not null)
-        {
-            message.IsPinned = false;
-        }
-
-        _pinnedBarIndex = 0;
-        RefreshPinnedBar();
+        ApplyPinUpdate(session!, new(chat.Id, false, preview.MessageId, MessageUpdateKind.Unpin));
     }
 
     private void RefreshPinnedBar()
@@ -253,22 +292,19 @@ public sealed partial class MessengerViewModel
     [RelayCommand]
     private void StartEditMessage(MessageItemViewModel message)
     {
-        if (!message.CanModify)
+        if (!message.CanModify || Voice.IsBusy || AttachmentComposer.HasVoice)
         {
             return;
         }
 
         ActionError = null;
-        ReplyTarget = null;
-        EditingMessage = message;
-        DraftText = message.Text;
+        BeginDraftEdit(message);
     }
 
     [RelayCommand]
     private void CancelEdit()
     {
-        EditingMessage = null;
-        DraftText = string.Empty;
+        RestoreDraftAfterEdit();
     }
 
     [RelayCommand]
@@ -301,14 +337,10 @@ public sealed partial class MessengerViewModel
     }
 
     [RelayCommand]
-    private void ScrollToOriginal(MessageItemViewModel message)
-    {
-        // Оригинал удалённого сообщения не показывается, поэтому и прыгать некуда.
-        if (message.Reply is { IsDeleted: false, MessageId: > 0 } reply)
-        {
-            RequestScroll(MessageScrollTarget.Message, reply.MessageId);
-        }
-    }
+    private Task ScrollToOriginalAsync(MessageItemViewModel message) =>
+        message.Reply is { } reply
+            ? NavigateToMessageAsync(reply.IsDeleted ? 0 : reply.MessageId)
+            : Task.CompletedTask;
 
     [RelayCommand]
     private void StartForwardMessage(MessageItemViewModel message)
@@ -358,32 +390,31 @@ public sealed partial class MessengerViewModel
     [RelayCommand]
     private async Task SubmitForwardAsync()
     {
-        var currentUserId = _messenger.CurrentUserId;
+        var session = _realtimeSession;
         var targetChatIds = ForwardTargets.Where(target => target.IsSelected).Select(target => target.ChatId).ToArray();
-        if (currentUserId is null || targetChatIds.Length == 0 || _forwardSourceMessageIds.Count == 0)
+        var sourceIds = _forwardSourceMessageIds;
+        if (!IsCurrent(session) || targetChatIds.Length == 0 || sourceIds.Count == 0)
         {
             return;
         }
 
         var comment = ForwardComment.Trim();
-        IsForwardVisible = false;
+        var chat = SelectedChat;
+        var version = _chatVersion;
         foreach (var chatId in targetChatIds)
         {
-            var (error, message) = await _messenger.SendMessageAsync(chatId, comment, forwardedMessageIds: _forwardSourceMessageIds);
-            if (!error.IsSuccess)
-            {
-                ActionError = DescribeError(error);
-                continue;
-            }
-
-            if (message is not null && SelectedChat?.Id == chatId)
-            {
-                InsertMessageInOrder(await CreateMessageItemAsync(message, currentUserId.Value));
-                RequestScroll(MessageScrollTarget.Bottom);
-            }
+            if (!await EnqueueOutgoingAsync(session!, chatId, comment, forwards: sourceIds))
+                return;
+            if (!IsCurrent(session))
+                return;
+            var target = ForwardTargets.FirstOrDefault(item => item.ChatId == chatId);
+            if (target is not null)
+                target.IsSelected = false;
         }
 
         CancelForward();
+        if (chat is not null && IsOpen(session, chat, version) && targetChatIds.Contains(chat.Id))
+            await ShowOutgoingTailAsync();
     }
 
     private void NotifyForwardSelectionChanged()
@@ -409,33 +440,31 @@ public sealed partial class MessengerViewModel
     private async Task ConfirmDeleteMessageAsync()
     {
         var message = MessagePendingDelete;
-        if (message is null)
+        var chat = SelectedChat;
+        var session = _realtimeSession;
+        var version = _chatVersion;
+        if (message is null || chat is null)
         {
             return;
         }
 
         MessagePendingDelete = null;
         var error = await _messenger.DeleteMessageAsync(message.Id);
-        if (!error.IsSuccess)
+        if (!IsCurrent(session))
         {
-            ActionError = DescribeError(error);
             return;
         }
 
-        Messages.Remove(message);
-        // Сервер сам снимает закреп с удалённого сообщения, локальный кеш чистим сразу.
-        _pinnedMessages.RemoveAll(info => info.Message?.Id == message.Id);
-        _pinnedBarIndex = 0;
-        RefreshPinnedBar();
-        if (EditingMessage == message)
+        if (!error.IsSuccess)
         {
-            CancelEdit();
+            if (IsOpen(session, chat, version))
+            {
+                ActionError = DescribeError(error);
+            }
+            return;
         }
 
-        if (ReplyTarget == message)
-        {
-            ReplyTarget = null;
-        }
+        await ApplyMessageUpdateAsync(session!, new(chat.Id, false, message.Id, MessageUpdateKind.Delete));
     }
 
     /// <summary>
@@ -450,38 +479,78 @@ public sealed partial class MessengerViewModel
             return;
         }
 
-        var (error, edited) = await _messenger.EditMessageAsync(chat.Id, message.Id, DraftText.Trim());
+        var session = _realtimeSession;
+        var version = _chatVersion;
+        var draft = DraftText;
+        var (error, edited) = await _messenger.EditMessageAsync(chat.Id, message.Id, draft.Trim());
+        if (!IsOpen(session, chat, version))
+        {
+            return;
+        }
         if (!error.IsSuccess || edited is null)
         {
+            // Черновик остаётся в композере, чтобы пользователь мог повторить правку.
             ActionError = DescribeError(error);
             return;
         }
 
-        message.Text = edited.Text;
-        message.IsEdited = true;
-        EditingMessage = null;
-        DraftText = string.Empty;
+        if (EditingMessage == message && DraftText == draft)
+        {
+            RestoreDraftAfterEdit();
+        }
+
+        await ApplyMessageUpdateAsync(session!, new(chat.Id, false, message.Id, MessageUpdateKind.Edit, Message: edited));
     }
 
-    private async Task LoadPinnedMessagesAsync(ChatItemViewModel chat, int loadVersion)
+    private async Task<bool> RefreshPinsAsync(ChatItemViewModel chat, int loadVersion, bool reportError)
     {
-        var (error, pinned) = await _messenger.GetPinnedMessagesAsync(chat.Id);
-        if (SelectedChat?.Id != chat.Id || loadVersion != _messageLoadVersion)
+        var session = _realtimeSession;
+        var revision = _pinnedRevision;
+        if (!IsOpen(session, chat, loadVersion))
         {
-            return;
+            return true;
+        }
+
+        var token = session!.Lifetime.Token;
+        var cacheGeneration = HistoryCacheGeneration(session, chat);
+        var (error, pinned) = await _messenger.GetPinnedMessagesAsync(chat.Id, token).WaitAsync(token);
+        // Закрепы относятся ко всему чату и переживают замену окна истории.
+        if (!IsOpen(session, chat, loadVersion))
+        {
+            return true;
         }
 
         if (!error.IsSuccess || pinned is null)
         {
-            ReportBackgroundError(error);
-            return;
+            if (reportError)
+            {
+                ReportBackgroundError(error);
+            }
+            return false;
         }
 
-        _pinnedMessages.Clear();
-        _pinnedMessages.AddRange(pinned.OrderByDescending(info => info.PinnedAt?.ToDateTimeOffset()));
-        _pinnedBarIndex = 0;
+        if (revision != _pinnedRevision)
+        {
+            session!.PinRefresh.RequestConfirmation();
+            return true;
+        }
+
+        var next = pinned
+            .Where(pin => pin.Message is not null &&
+                session!.Journal.Find(chat.Id, false, pin.Message.Id)?.Kind != MessageUpdateKind.Delete)
+            .OrderByDescending(pin => pin.PinnedAt)
+            .ToArray();
+        if (!_pinnedMessages.SequenceEqual(next))
+        {
+            var shown = PinnedPreview?.MessageId;
+            _pinnedMessages.Clear();
+            _pinnedMessages.AddRange(next);
+            _pinnedBarIndex = Math.Max(0, _pinnedMessages.FindIndex(pin => pin.Message.Id == shown));
+            RefreshPinnedBar();
+        }
         ApplyPinnedState();
-        RefreshPinnedBar();
+        SaveHistoryPins(session, chat, cacheGeneration);
+        return true;
     }
 
     private void ApplyPinnedState()

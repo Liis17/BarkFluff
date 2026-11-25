@@ -18,26 +18,37 @@ public sealed class UserPreferencesService(WebApiClient webApi, IClientSession s
     public async Task<(string? ErrorKey, IReadOnlyList<ChatFolderData>? Folders)> GetChatFoldersAsync(CancellationToken cancellationToken = default)
     {
         var (error, folders) = await WebApi.GetChatFolders(Parameters);
-        return error.IsSuccess && folders is not null ? (null, folders) : ("Error_SettingsLoadFailed", null);
+        return error?.IsSuccess == true && folders is not null ? (null, folders) : ("Error_SettingsLoadFailed", null);
     }
 
     public async Task<(string? ErrorKey, ChatFolderData? Folder)> CreateChatFolderAsync(string name, string icon, CancellationToken cancellationToken = default)
     {
         var (error, folder) = await WebApi.CreateChatFolder(name, Parameters, icon);
-        return error.IsSuccess && folder is not null ? (null, folder) : ("Error_SettingsSaveFailed", null);
+        return error?.IsSuccess == true && folder is not null ? (null, folder) : ("Error_SettingsSaveFailed", null);
     }
 
     public async Task<(string? ErrorKey, ChatFolderData? Folder)> UpdateChatFolderAsync(string folderId, string name, string icon, CancellationToken cancellationToken = default)
     {
         var (error, folder) = await WebApi.UpdateChatFolder(folderId, Parameters, name, icon);
-        return error.IsSuccess && folder is not null ? (null, folder) : ("Error_SettingsSaveFailed", null);
+        return error?.IsSuccess == true && folder is not null ? (null, folder) : ("Error_SettingsSaveFailed", null);
+    }
+
+    public async Task<(string? ErrorKey, ChatFolderData? Folder)> SetChatFolderMembershipAsync(
+        string folderId, string chatId, bool included, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var parameters = Parameters;
+        var (error, folder) = await (included
+            ? WebApi.AddChatToFolder(folderId, chatId, parameters, cancellationToken)
+            : WebApi.RemoveChatFromFolder(folderId, chatId, parameters, cancellationToken)).WaitAsync(cancellationToken);
+        return error?.IsSuccess == true && folder is not null ? (null, folder) : ("Error_SettingsSaveFailed", null);
     }
 
     public async Task<string?> DeleteChatFolderAsync(string folderId, CancellationToken cancellationToken = default) =>
-        (await WebApi.DeleteChatFolder(folderId, Parameters)).IsSuccess ? null : "Error_SettingsSaveFailed";
+        (await WebApi.DeleteChatFolder(folderId, Parameters))?.IsSuccess == true ? null : "Error_SettingsSaveFailed";
 
     public async Task<string?> ReorderChatFoldersAsync(IReadOnlyDictionary<string, int> orders, CancellationToken cancellationToken = default) =>
-        (await WebApi.ReorderChatFolders(orders.ToDictionary(), Parameters)).IsSuccess ? null : "Error_SettingsSaveFailed";
+        (await WebApi.ReorderChatFolders(orders.ToDictionary(), Parameters))?.IsSuccess == true ? null : "Error_SettingsSaveFailed";
 
     public async Task<(string? ErrorKey, UserStorageInfo? Storage)> GetUserStorageInfoAsync(CancellationToken cancellationToken = default)
     {

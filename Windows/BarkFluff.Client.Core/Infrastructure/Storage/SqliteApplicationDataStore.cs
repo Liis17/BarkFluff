@@ -8,7 +8,7 @@ using System.Text.Json;
 
 namespace BarkFluff.Client.Core.Infrastructure.Storage;
 
-public sealed class SqliteApplicationDataStore : IApplicationDataStore
+public sealed partial class SqliteApplicationDataStore : IApplicationDataStore, IChatNotificationSoundStore
 {
     private const string WelcomeSeenKey = "onboarding.welcome-seen";
     private const string LanguageKey = "application.language";
@@ -54,12 +54,36 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 protected_data BLOB NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS chat_drafts (
+                node TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                chat_id TEXT NOT NULL,
+                protected_data BLOB NOT NULL,
+                PRIMARY KEY (node, user_id, chat_id)
+            );
+            CREATE TABLE IF NOT EXISTS outgoing_messages (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                node TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                operation_id TEXT NOT NULL,
+                protected_data BLOB NOT NULL,
+                UNIQUE (node, user_id, operation_id)
+            );
+            CREATE TABLE IF NOT EXISTS notification_replies (
+                node TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                operation_id TEXT NOT NULL,
+                PRIMARY KEY (node, user_id, operation_id)
+            );
             CREATE TABLE IF NOT EXISTS private_chat_keys (
                 scope TEXT PRIMARY KEY,
                 protected_data BLOB NOT NULL
             );
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
+        await InitializeSecretChatsAsync(connection, cancellationToken);
+        await Task.Run(InitializeChatCache, cancellationToken);
+        await Task.Run(InitializeMessageHistory, cancellationToken);
     }
 
     public async Task<bool> HasSeenWelcomeAsync(CancellationToken cancellationToken = default)
@@ -219,6 +243,35 @@ public sealed class SqliteApplicationDataStore : IApplicationDataStore
 
     public Task SavePreferenceAsync(string key, string value, CancellationToken cancellationToken = default) =>
         SaveSettingAsync(key, value, cancellationToken);
+
+    private static string ChatSoundKey(MessageNotificationTarget target) =>
+        "notifications.chat-sound." + MessageNotificationPayload.Group(target);
+
+    Task<ChatNotificationSound> IChatNotificationSoundStore.LoadAsync(
+        MessageNotificationTarget target, CancellationToken cancellationToken) => Task.Run(async () =>
+    {
+        var value = await GetSettingAsync(ChatSoundKey(target), cancellationToken);
+        return Enum.TryParse<ChatNotificationSound>(value, out var sound) && Enum.IsDefined(sound)
+            ? sound : ChatNotificationSound.Default;
+    }, cancellationToken);
+
+    Task IChatNotificationSoundStore.SaveAsync(
+        MessageNotificationTarget target, ChatNotificationSound sound, CancellationToken cancellationToken) =>
+        Task.Run(async () =>
+        {
+            var key = ChatSoundKey(target);
+            if (sound != ChatNotificationSound.Default)
+            {
+                await SaveSettingAsync(key, sound.ToString(), cancellationToken);
+                return;
+            }
+
+            await using var connection = await OpenConnectionAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM app_settings WHERE key = $key;";
+            command.Parameters.AddWithValue("$key", key);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }, cancellationToken);
 
     private async Task<string?> GetSettingAsync(string key, CancellationToken cancellationToken)
     {

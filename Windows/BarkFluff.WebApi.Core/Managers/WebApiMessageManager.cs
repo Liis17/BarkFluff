@@ -1,3 +1,4 @@
+using BarkFluff.Proto.Messages;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
@@ -51,6 +52,7 @@ namespace BarkFluff.WebApi.Core.Managers
             Attachments = message.Content.Attachments.Select(MapAttachment).ToList(),
             SenderId = message.SenderId,
             SentAt = message.SentAt,
+            ClientOperationId = message.ClientOperationId,
             Type = message.Type,
             ReadBy = message.ReadBy.ToList(),
             IsEdited = message.IsEdited,
@@ -136,6 +138,47 @@ namespace BarkFluff.WebApi.Core.Managers
             }
         }
 
+        internal async Task<(ErrorReturner error, SearchMessagesResponse? page)> SearchMessagesAsync(
+            GlobalParam parameters, SearchMessagesRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.SearchMessagesAsync(request, cancellationToken: cancellationToken);
+                    return (new ErrorReturner(true), (SearchMessagesResponse?)response);
+                }, parameters);
+            }
+            catch (Grpc.Core.RpcException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                return (new ErrorReturner(false, errorCode: (int)ex.StatusCode), null);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return (new ErrorReturner(false), null);
+            }
+        }
+
+        internal async Task<(ErrorReturner error, List<Proto.Messages.Chat>? chats, int totalCount)> ListChatsPageAsync(
+            GlobalParam globalParam, int offset, int size, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.ListChatsAsync(new Proto.Messages.ListChatsRequest
+                    {
+                        Pagination = new Proto.Shared.PageRequest { Offset = offset, Size = size },
+                    }, cancellationToken: cancellationToken);
+                    return (new ErrorReturner(true), (List<Proto.Messages.Chat>?)response.Chats.ToList(), response.TotalCount);
+                }, globalParam);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return (new ErrorReturner(false), null, 0);
+            }
+        }
+
         /// <summary>
         /// Получить информацию о чате по его идентификатору.
         /// </summary>
@@ -190,31 +233,41 @@ namespace BarkFluff.WebApi.Core.Managers
         /// <summary>
         /// Отправка сообщения в чат
         /// </summary>
-        public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter)
+        public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter, CancellationToken cancellationToken = default) =>
+            await SendMessage(globalParam, options, letter, "", cancellationToken);
+
+        internal async Task<(ErrorReturner error, MessageModel? message)> SendMessage(
+            GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter,
+            string clientOperationId, CancellationToken cancellationToken)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var client = clientOperationId.Length == 0 ? MessagesAC
+                        : _webApi.GetOutgoingClient(globalParam, cancellationToken).Messages;
                     Proto.Messages.SendMessageResponse response;
                     string chatId;
                     if (!options.isUserId)
                     {
                         chatId = options.recipient;
-                        response = await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
+                        response = await client!.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
                             ChatId = options.recipient,
+                            ClientOperationId = clientOperationId,
                             Message = BuildOutgoingMessage(letter),
-                        });
+                        }, cancellationToken: cancellationToken);
                     }
                     else
                     {
                         chatId = string.Empty;
-                        response = await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
+                        response = await client!.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
                             UserId = long.Parse(options.recipient),
+                            ClientOperationId = clientOperationId,
                             Message = BuildOutgoingMessage(letter),
-                        });
+                        }, cancellationToken: cancellationToken);
                     }
 
                     return (new ErrorReturner(true), MapMessage(response.Message, chatId));
@@ -222,16 +275,38 @@ namespace BarkFluff.WebApi.Core.Managers
             }
             catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
             {
-                return (new ErrorReturner(false, "Неверный идентификатор чата."), null);
+                return (new ErrorReturner(false, "Неверный идентификатор чата.",
+                    clientOperationId.Length == 0 ? 0 : ErrorReturner.PermanentOutgoingFailure), null);
             }
             catch (BarkFluff.Shared.Exceptions.Users.UserUnavailableException)
             {
                 return (new ErrorReturner(false, errorResourceKey: "Messenger_UserUnavailable"), null);
             }
+            catch (Exception exception) when (clientOperationId.Length > 0 && IsPermanentOperationFailure(exception))
+            {
+                return (new ErrorReturner(false, errorCode: ErrorReturner.PermanentOutgoingFailure), null);
+            }
             catch (Exception)
             {
+                if (clientOperationId.Length > 0)
+                    cancellationToken.ThrowIfCancellationRequested();
                 return (new ErrorReturner(false, "Ошибка отправки сообщения"), null);
             }
+        }
+
+        internal static bool IsPermanentOperationFailure(Exception exception)
+        {
+            while (exception is InvalidOperationException { InnerException: { } inner })
+                exception = inner;
+            var status = exception switch
+            {
+                BarkFluff.Shared.Exceptions.BaseGrpcException domain => domain.StatusCode,
+                Grpc.Core.RpcException rpc => rpc.StatusCode,
+                _ => Grpc.Core.StatusCode.Unknown
+            };
+            return status is Grpc.Core.StatusCode.InvalidArgument or Grpc.Core.StatusCode.NotFound
+                or Grpc.Core.StatusCode.PermissionDenied or Grpc.Core.StatusCode.FailedPrecondition
+                or Grpc.Core.StatusCode.Unimplemented;
         }
 
         public async Task<(bool, string?)> CreateGroupChat(GlobalParam globalParam, string chatName, List<long> userIds)
@@ -346,6 +421,10 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Неверный идентификатор чата"), null);
             }
+            catch (BarkFluff.Shared.Exceptions.Messages.MessageNotFoundException) when (fromMessageId != 0)
+            {
+                return (new ErrorReturner(false, "Ошибка получения сообщений", ErrorReturner.HistoryAnchorNotFound), null);
+            }
             catch (Exception)
             {
                 return (new ErrorReturner(false, "Ошибка получения сообщений"), null);
@@ -382,13 +461,14 @@ namespace BarkFluff.WebApi.Core.Managers
         /// <summary>
         /// Получить идентификатор персонального чата с указанным пользователем.
         /// </summary>
-        public async Task<(ErrorReturner error, string chatId)> GetPersonChatId(GlobalParam globalParam, long userId)
+        public async Task<(ErrorReturner error, string chatId)> GetPersonChatId(GlobalParam globalParam, long userId, CancellationToken cancellationToken = default)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    var response = await MessagesAC!.GetPersonChatIdAsync(new Proto.Messages.GetPersonChatIdRequest { UserId = userId });
+                    var response = await MessagesAC!.GetPersonChatIdAsync(
+                        new Proto.Messages.GetPersonChatIdRequest { UserId = userId }, cancellationToken: cancellationToken);
                     return (new ErrorReturner(true), response.ChatId);
                 }, globalParam);
             }
@@ -412,7 +492,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Нет доступа к чату"), string.Empty);
             }
-            catch (Exception ex)
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
                 return (new ErrorReturner(false, "Ошибка получения идентификатора чата"), string.Empty);
             }

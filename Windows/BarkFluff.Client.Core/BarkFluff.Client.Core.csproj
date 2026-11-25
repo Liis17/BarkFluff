@@ -11,6 +11,7 @@
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!--
       MVVMTK0045: [ObservableProperty] на поле вместо partial-свойства несовместимо с AOT
       в WinRT-сценариях. PublishAot и PublishTrimmed у WinUI-приложения выключены, поэтому
@@ -22,6 +23,8 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.Core" Version="4.0.102.9" />
+    <PackageReference Include="Concentus" Version="2.2.2" />
+    <PackageReference Include="Concentus.Oggfile" Version="1.0.7" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />

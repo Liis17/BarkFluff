@@ -10,6 +10,17 @@ public sealed class SettingsPreferences(IApplicationDataStore dataStore) : ISett
     private const string TestingPreferencesKey = "settings.testing";
     private const string WindowPreferencesKey = "settings.window";
 
+    private const string VoicePlaybackSpeedKey = "settings.voicePlaybackSpeed";
+
+    public async Task<double> GetVoicePlaybackSpeedAsync(CancellationToken cancellationToken = default)
+    {
+        var speed = await GetAsync<double>(VoicePlaybackSpeedKey, cancellationToken);
+        return speed is 1 or 1.5 or 2 ? speed : 1;
+    }
+
+    public Task SaveVoicePlaybackSpeedAsync(double speed, CancellationToken cancellationToken = default) =>
+        SaveAsync(VoicePlaybackSpeedKey, speed, cancellationToken);
+
     public async Task<InterfacePreferences> GetInterfacePreferencesAsync(CancellationToken cancellationToken = default) =>
         Clamp(await GetAsync<InterfacePreferences>(InterfacePreferencesKey, cancellationToken) ?? new InterfacePreferences());
 
@@ -54,7 +65,8 @@ public sealed class SettingsPreferences(IApplicationDataStore dataStore) : ISett
         ChatCornerRadius = Math.Clamp(preferences.ChatCornerRadius, 0, 30),
         ChatBackgroundBlurRadius = Math.Clamp(preferences.ChatBackgroundBlurRadius, 1, 25),
         ChatBackgroundDim = Math.Clamp(preferences.ChatBackgroundDim, 0, 100),
-        ChatStickerSizeDp = Math.Clamp(preferences.ChatStickerSizeDp, 96, 240)
+        ChatStickerSizeDp = Math.Clamp(preferences.ChatStickerSizeDp,
+            InterfacePreferences.MinChatStickerSizeDp, InterfacePreferences.MaxChatStickerSizeDp)
     };
 
     private static WindowPreferences Normalize(WindowPreferences preferences) => preferences with

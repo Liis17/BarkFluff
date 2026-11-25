@@ -69,6 +69,7 @@ class CiPlanTests(unittest.TestCase):
             'Icons/add.svg': {'android'},
             'Mac/Barkfluff/App.swift': {'macos'},
             'Windows/BarkFluff.Client.Core/Client.cs': {'winui'},
+            'Windows/BarkFluff.SignalShim/Cargo.lock': {'winui'},
             'Shared/BarkFluff.Proto/users_api.proto': {'winui'},
             'Shared/BarkFluff.Shared.Queue/Event.cs': set(),
             'Shared/BarkFluff.Bft/Frame.cs': set(),

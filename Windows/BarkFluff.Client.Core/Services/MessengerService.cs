@@ -1,4 +1,5 @@
 using BarkFluff.Proto.Messages;
+using BarkFluff.Proto.Files;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
@@ -7,8 +8,9 @@ using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 
 namespace BarkFluff.Client.Core.Services;
 
-public sealed class MessengerService : IMessengerService
+public sealed class MessengerService : IMessengerService, IOutgoingMessageTransport
 {
+    private const int ChatPageSize = 50;
     private readonly WebApiClient _webApi;
     private readonly IClientSession _session;
 
@@ -23,20 +25,113 @@ public sealed class MessengerService : IMessengerService
     public string CurrentNodeAddress => _session.CurrentConnection?.Profile.BeaconAddress ?? string.Empty;
 
     public Task<(ErrorReturner error, List<Chat>? chats)> GetChatsAsync(CancellationToken cancellationToken = default) =>
-        WithParametersAsync(parameters => _webApi.GetChats(parameters));
+        WithParametersAsync(parameters => LoadChatsAsync(parameters, null, cancellationToken));
+
+    public Task<(ErrorReturner error, List<Chat>? chats)> GetFirstChatPageAsync(CancellationToken cancellationToken) =>
+        WithParametersAsync(async parameters =>
+        {
+            var (error, chats, _) = await _webApi.ListChatsPageAsync(parameters, 0, ChatPageSize, cancellationToken);
+            return (error ?? new ErrorReturner(false), chats);
+        });
+
+    public async Task<Chat?> FindChatAsync(string chatId, CancellationToken cancellationToken = default)
+    {
+        if (_session.CurrentConnection?.ConnectionParameters is not { } parameters)
+            return null;
+
+        var result = await LoadChatsAsync(parameters, chatId, cancellationToken);
+        return result.chats?.FirstOrDefault();
+    }
+
+    private Task<(ErrorReturner error, List<Chat>? chats)> LoadChatsAsync(
+        GlobalParam parameters, string? targetId, CancellationToken cancellationToken) =>
+        LoadChatPagesAsync((offset, size, token) =>
+            _webApi.ListChatsPageAsync(parameters, offset, size, token), targetId, cancellationToken);
+
+    internal static async Task<(ErrorReturner error, List<Chat>? chats)> LoadChatPagesAsync(
+        Func<int, int, CancellationToken, Task<(ErrorReturner error, List<Chat>? chats, int totalCount)>> loadPage,
+        string? targetId, CancellationToken cancellationToken)
+    {
+        var result = new List<Chat>();
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        for (var offset = 0; ;)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var page = await loadPage(offset, ChatPageSize, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (page.error is not { IsSuccess: true } || page.chats is null)
+                return (page.error is { IsSuccess: false } ? page.error : new ErrorReturner(false), null);
+
+            foreach (var chat in page.chats)
+            {
+                if (targetId == chat.Id)
+                    return (page.error, [chat]);
+                if (targetId is null && ids.Add(chat.Id))
+                    result.Add(chat);
+            }
+
+            offset += page.chats.Count;
+            if (page.chats.Count == 0 || offset >= page.totalCount)
+                return (page.error, result);
+        }
+    }
+
+    public Task<ErrorReturner> SetChatMutedAsync(string chatId, bool muted, CancellationToken cancellationToken) =>
+        WithParametersAsync(parameters => _webApi.SetChatMuted(chatId, muted, parameters, null, cancellationToken));
+
+    public Task<(ErrorReturner error, List<BarkFluff.Proto.Users.MutedChat>? chats)> GetMutedChatsAsync(CancellationToken cancellationToken) =>
+        WithParametersAsync(parameters => _webApi.GetMutedChats(parameters, cancellationToken));
 
     public Task<(ErrorReturner error, MessageModel? message)> SendMessageAsync(
         string chatId,
         string text,
         long replyToMessageId = 0,
         IReadOnlyList<long>? forwardedMessageIds = null,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default,
+        IReadOnlyList<string>? attachmentIds = null) =>
         WithParametersAsync(parameters => _webApi.SendMessage(parameters, (false, chatId), new ForwardingLetter
         {
             Text = text,
             ReplyToMessageId = replyToMessageId,
             ForwardedMessageIds = forwardedMessageIds?.ToList() ?? [],
-        }));
+            FilesId = attachmentIds?.ToList() ?? [],
+        }, cancellationToken));
+
+    public Task<long?> GetAttachmentStorageAvailableAsync(CancellationToken cancellationToken) =>
+        WithParametersAsync(parameters => _webApi.GetAttachmentStorageAvailableAsync(parameters, cancellationToken));
+
+    public Task<(ErrorReturner error, string? fileId)> UploadAttachmentAsync(string path, string name, string? contentType,
+        UploadFileType type, IProgress<double> progress, CancellationToken cancellationToken) =>
+        WithParametersAsync(parameters => Task.Run(
+            () => _webApi.UploadFileAsync(parameters, path, name, contentType, type, progress, cancellationToken), cancellationToken));
+
+    Task<long?> IOutgoingMessageTransport.GetStorageAvailableAsync(OutgoingScope scope, CancellationToken token) =>
+        _webApi.GetOutgoingAttachmentStorageAvailableAsync(OutgoingParameters(scope, token), token);
+
+    Task<(ErrorReturner error, string? fileId)> IOutgoingMessageTransport.UploadAsync(
+        OutgoingScope scope, OutgoingFile file, string path, IProgress<double> progress, CancellationToken token) =>
+        _webApi.UploadFileAsync(OutgoingParameters(scope, token), path, file.Name, file.ContentType, file.Type,
+            file.Id, progress, token);
+
+    Task<(ErrorReturner error, MessageModel? message)> IOutgoingMessageTransport.SendAsync(
+        OutgoingScope scope, OutgoingMessage message, CancellationToken token) =>
+        _webApi.SendMessage(OutgoingParameters(scope, token), message.ChatId, new ForwardingLetter
+        {
+            Text = message.Text,
+            ReplyToMessageId = message.ReplyId,
+            ForwardedMessageIds = [.. message.Forwards],
+            FilesId = [.. message.Attachments, .. message.Uploaded.OfType<string>()],
+        }, message.Id, token);
+
+    private GlobalParam OutgoingParameters(OutgoingScope scope, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        if (_session.CurrentConnection is { } connection && connection.ConnectionParameters.UserId is { } userId &&
+            OutgoingScope.Create(connection.Profile.BeaconAddress, userId) == scope)
+            return connection.ConnectionParameters;
+
+        throw new OperationCanceledException();
+    }
 
     public Task<(ErrorReturner error, MessageModel? message)> EditMessageAsync(string chatId, long messageId, string text, CancellationToken cancellationToken = default) =>
         WithParametersAsync(parameters => _webApi.EditMessage(parameters, chatId, messageId, text));
@@ -52,8 +147,27 @@ public sealed class MessengerService : IMessengerService
 
     public async Task<(ErrorReturner error, List<PinnedMessageInfo>? pinned)> GetPinnedMessagesAsync(string chatId, CancellationToken cancellationToken = default)
     {
-        var result = await WithParametersAsync(parameters => _webApi.ListPinnedMessages(parameters, chatId));
-        return (result.error, result.pinned);
+        return await WithParametersAsync<(ErrorReturner error, List<PinnedMessageInfo>? pinned)>(async parameters =>
+        {
+            List<PinnedMessageInfo> pinned = [];
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var result = await _webApi.ListPinnedMessages(parameters, chatId, pinned.Count);
+                if (!result.error.IsSuccess || result.pinned is null)
+                {
+                    return (result.error, null);
+                }
+
+                pinned.AddRange(result.pinned);
+                if (pinned.Count >= result.totalCount || result.pinned.Count == 0)
+                {
+                    return (result.error, pinned.DistinctBy(pin => pin.Message?.Id).ToList());
+                }
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return (new ErrorReturner(false), null);
+        });
     }
 
     public Task<(ErrorReturner error, PrivateMessageModel? message)> SendPrivateMessageAsync(string chatId, string text, byte[] key, CancellationToken cancellationToken = default) =>
@@ -75,7 +189,11 @@ public sealed class MessengerService : IMessengerService
         WithParametersAsync(parameters => _webApi.GetUserData(parameters, userId));
 
     public Task<(ErrorReturner error, List<UserData>? users)> SearchUsersAsync(string query, CancellationToken cancellationToken = default) =>
-        WithParametersAsync(parameters => _webApi.SearchUser(parameters, query));
+        WithParametersAsync(parameters => _webApi.SearchUser(parameters, query, cancellationToken));
+
+    public Task<(ErrorReturner error, SearchMessagesResponse? page)> SearchMessagesAsync(
+        SearchMessagesRequest request, CancellationToken cancellationToken) =>
+        WithParametersAsync(parameters => _webApi.SearchMessagesAsync(parameters, request, cancellationToken));
 
     public async Task<string> ResolveFileUrlAsync(string fileId, CancellationToken cancellationToken = default)
     {
@@ -85,13 +203,13 @@ public sealed class MessengerService : IMessengerService
         }
 
         var result = await _webApi.GetFile(parameters, fileId);
-        return result.error.IsSuccess ? result.url ?? string.Empty : string.Empty;
+        return result.error is { IsSuccess: true } ? result.url ?? string.Empty : string.Empty;
     }
 
     public byte[]? UnlockPrivateChat(Chat chat, string passphrase) => WebApiClient.UnlockPrivateChat(chat, passphrase);
 
     public Task<(ErrorReturner error, string chatId)> GetPersonChatIdAsync(long userId, CancellationToken cancellationToken = default) =>
-        WithParametersAsync(parameters => _webApi.GetPersonChatId(parameters, userId));
+        WithParametersAsync(parameters => _webApi.GetPersonChatId(parameters, userId, cancellationToken));
 
     public Task<(ErrorReturner error, List<Proto.Messages.ChatAttachmentInfo>? attachments, int totalCount)> ListChatAttachmentsAsync(
         string chatId,

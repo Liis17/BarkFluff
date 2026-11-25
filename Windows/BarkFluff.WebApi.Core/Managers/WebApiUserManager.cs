@@ -138,13 +138,16 @@ namespace BarkFluff.WebApi.Core.Managers
         /// <summary>
         /// Возвращает текущее устройство.
         /// </summary>
-        public async Task<(ErrorReturner error, Proto.Users.Device? device)> GetCurrentDevice(GlobalParam globalParam)
+        public Task<(ErrorReturner error, Proto.Users.Device? device)> GetCurrentDevice(GlobalParam globalParam) =>
+            GetCurrentDevice(globalParam, CancellationToken.None);
+
+        internal async Task<(ErrorReturner error, Proto.Users.Device? device)> GetCurrentDevice(GlobalParam globalParam, CancellationToken cancellationToken)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    var response = await UsersAC!.GetCurrentDeviceAsync(new Proto.Users.GetCurrentDeviceRequest { });
+                    var response = await UsersAC!.GetCurrentDeviceAsync(new Proto.Users.GetCurrentDeviceRequest(), cancellationToken: cancellationToken);
                     return (new ErrorReturner(true), response.Device);
                 }, globalParam);
             }
@@ -152,7 +155,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Неверный токен обновления."), null);
             }
-            catch (Exception ex)
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
                 return (new ErrorReturner(false, "Ошибка получения текущего устройства"), null);
             }
@@ -185,12 +188,16 @@ namespace BarkFluff.WebApi.Core.Managers
         /// Отключить или включить уведомления конкретного чата.
         /// mutedUntil = null при muted=true означает «навсегда».
         /// </summary>
-        public async Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil = null)
+        public Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil = null) =>
+            SetChatMuted(chatId, muted, globalParam, mutedUntil, CancellationToken.None);
+
+        public async Task<ErrorReturner> SetChatMuted(string chatId, bool muted, GlobalParam globalParam, DateTime? mutedUntil, CancellationToken cancellationToken)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var request = new Proto.Users.SetChatMutedRequest
                     {
                         ChatId = chatId,
@@ -199,7 +206,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     if (mutedUntil.HasValue)
                         request.MutedUntil = Timestamp.FromDateTime(mutedUntil.Value.ToUniversalTime());
 
-                    await UsersAC!.SetChatMutedAsync(request);
+                    await UsersAC!.SetChatMutedAsync(request, cancellationToken: cancellationToken);
                     return new ErrorReturner(true);
                 }, globalParam);
             }
@@ -212,13 +219,17 @@ namespace BarkFluff.WebApi.Core.Managers
         /// <summary>
         /// Список чатов с активным mute у текущего пользователя.
         /// </summary>
-        public async Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam)
+        public Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam) =>
+            GetMutedChats(globalParam, CancellationToken.None);
+
+        public async Task<(ErrorReturner error, List<Proto.Users.MutedChat>? chats)> GetMutedChats(GlobalParam globalParam, CancellationToken cancellationToken)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    var response = await UsersAC!.GetMutedChatsAsync(new Proto.Users.GetMutedChatsRequest());
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var response = await UsersAC!.GetMutedChatsAsync(new Proto.Users.GetMutedChatsRequest(), cancellationToken: cancellationToken);
                     return (new ErrorReturner(true), response.Chats.ToList());
                 }, globalParam);
             }
@@ -392,11 +403,11 @@ namespace BarkFluff.WebApi.Core.Managers
 
         public async Task<(ErrorReturner Error, UserData? Data)> GetUserDataForAuthentication(
             GlobalParam globalParam,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, DateTime? deadline = null)
         {
             var response = await UsersAC!.GetUserAsync(
                 new Proto.Users.GetUserRequest { UserId = 0 },
-                cancellationToken: cancellationToken);
+                deadline: deadline, cancellationToken: cancellationToken);
 
             return (new ErrorReturner(true), new UserData
             {
@@ -614,7 +625,10 @@ namespace BarkFluff.WebApi.Core.Managers
             }
         }
 
-        public async Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam)
+        public Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam) =>
+            SetNotificationsEnabled(enabled, globalParam, CancellationToken.None);
+
+        internal async Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam, CancellationToken cancellationToken)
         {
             try
             {
@@ -623,11 +637,11 @@ namespace BarkFluff.WebApi.Core.Managers
                     await UsersAC!.SetNotificationsEnabledAsync(new Proto.Users.SetNotificationsEnabledRequest
                     {
                         Enabled = enabled
-                    });
+                    }, cancellationToken: cancellationToken);
                     return new ErrorReturner(true);
                 }, globalParam);
             }
-            catch (Exception)
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
                 return new ErrorReturner(false, "Ошибка изменения настроек уведомлений");
             }

@@ -2,6 +2,7 @@ using BarkFluff.Proto.Onliner;
 using BarkFluff.WebApi.Core.MessengerData;
 
 using Grpc.Core;
+using System.Runtime.CompilerServices;
 
 namespace BarkFluff.WebApi.Core.Managers
 {
@@ -157,6 +158,25 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Ошибка подключения к индикаторам набора"), null);
             }
+        }
+
+        // Необязательный поток: клиент должен отличать UNIMPLEMENTED от обрыва связи.
+        public async IAsyncEnumerable<TypingEvent> SubscribeToTypingWithStatus(
+            string chatId, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            var request = new SubscribeToTypingRequest { ChatIds = { chatId } };
+            using var call = OnlinerAC!.SubscribeToTyping(request, cancellationToken: cancellationToken);
+            while (await call.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+            {
+                yield return call.ResponseStream.Current;
+            }
+        }
+
+        public async Task SetTypingStatusOnceAsync(string chatId, TypingAction action, CancellationToken cancellationToken)
+        {
+            var client = OnlinerAC ?? throw new RpcException(new Status(StatusCode.Unavailable, ""));
+            await client.SetTypingStatusAsync(new SetTypingStatusRequest { ChatId = chatId, Action = action },
+                deadline: DateTime.UtcNow.AddSeconds(2), cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>

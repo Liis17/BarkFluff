@@ -15,6 +15,8 @@ public interface IOnboardingNavigationService
     void ShowConnectedNode();
 
     void ShowLogin();
+    void ShowRestrictedLogin(string? errorKey) => ShowLogin();
+    void ShowLoginAfterOfflineLogout() => ShowLogin();
 
     void ShowRegistration();
 

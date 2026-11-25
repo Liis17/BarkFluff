@@ -21,6 +21,7 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
     private readonly ILocalizationService _localization;
     private readonly MessageAttachmentType _attachmentType;
     private string _chatId = string.Empty;
+    private int _version;
     private bool _isLoaded;
     private bool _hasReceivedResult;
 
@@ -46,6 +47,8 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
     /// <summary>Сбрасывает вкладку на новый чат; сама загрузка запускается отдельно через <see cref="EnsureLoadedAsync"/>.</summary>
     public void Reset(string? chatId)
     {
+        _version++;
+        IsLoading = false;
         _chatId = chatId ?? string.Empty;
         _isLoaded = false;
         _hasReceivedResult = false;
@@ -76,12 +79,16 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
             return;
         }
 
+        var version = _version;
         IsLoading = true;
         ErrorMessage = null;
         try
         {
             var (error, attachments, totalCount) = await _messenger.ListChatAttachmentsAsync(_chatId, _attachmentType, Items.Count, PageSize);
-            if (!error.IsSuccess || attachments is null)
+            if (version != _version)
+                return;
+
+            if (error is not { IsSuccess: true } || attachments is null)
             {
                 ErrorMessage = _localization.GetString("Error_AttachmentsLoadFailed");
                 return;
@@ -91,17 +98,23 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
             _hasReceivedResult = true;
             foreach (var info in attachments)
             {
-                Items.Add(await CreateItemAsync(info.Attachment));
+                var item = await CreateItemAsync(info.Attachment, _chatId, info.MessageId);
+                if (version != _version)
+                    return;
+                Items.Add(item);
             }
         }
         finally
         {
-            IsLoading = false;
-            RaiseCollectionDependentProperties();
+            if (version == _version)
+            {
+                IsLoading = false;
+                RaiseCollectionDependentProperties();
+            }
         }
     }
 
-    private async Task<MessageAttachmentItemViewModel> CreateItemAsync(MessageAttachment attachment)
+    private async Task<MessageAttachmentItemViewModel> CreateItemAsync(MessageAttachment attachment, string chatId, long messageId)
     {
         var previewUrl = attachment.PreviewUrl;
         if (string.IsNullOrWhiteSpace(previewUrl)
@@ -118,7 +131,10 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
             string.IsNullOrWhiteSpace(attachment.FileName) ? _localization.GetString("Messenger_File") : attachment.FileName,
             attachment.AttachmentSize,
             attachment.ImageWidth,
-            attachment.ImageHeight);
+            attachment.ImageHeight, attachment.FileId, attachment.Id)
+        {
+            VoiceTarget = _attachmentType == MessageAttachmentType.Voice && messageId > 0 ? (chatId, messageId) : null
+        };
     }
 
     private async Task<string> ResolveFileUrlAsync(string fileId) =>

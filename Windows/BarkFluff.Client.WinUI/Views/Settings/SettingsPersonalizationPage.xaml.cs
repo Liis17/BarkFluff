@@ -45,6 +45,12 @@ public sealed partial class SettingsPersonalizationPage : Page
         await ViewModel.SetChatBackgroundDimAsync((int)Math.Round(e.NewValue));
     }
 
+    private async void OnStickerSizeChanged(object sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (ViewModel is null || ViewModel.ChatStickerSizeDp == (int)e.NewValue) return;
+        await ViewModel.SetChatStickerSizeAsync((int)e.NewValue);
+    }
+
     private async void OnRelativeOnlineTimeToggled(object sender, RoutedEventArgs e)
     {
         if (ViewModel is null) return;

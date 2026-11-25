@@ -5,9 +5,13 @@ using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Client.Core.ViewModels.Settings;
+using BarkFluff.Client.WinUI.Infrastructure;
 using BarkFluff.Client.WinUI.Infrastructure.Appearance;
 using BarkFluff.Client.WinUI.Infrastructure.Dialogs;
 using BarkFluff.Client.WinUI.Infrastructure.Localization;
+using BarkFluff.Client.Core.Services.Calls;
+using BarkFluff.Client.WinUI.Infrastructure.Calls;
+using BarkFluff.Client.WinUI.Infrastructure.Notifications;
 using BarkFluff.Client.WinUI.Infrastructure.Threading;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -27,10 +31,15 @@ public partial class App : Application
 
     private IHost? _host;
     private Window? _window;
+    private readonly WindowsNotificationPresenter _notificationPresenter = new();
+    private MainWindow? _notificationWindow;
+    private readonly Queue<NotificationActivation> _pendingNotifications = new();
 
     public App()
     {
         InitializeComponent();
+        var dispatcher = new DispatcherQueueUiDispatcher();
+        _notificationPresenter.Register(activation => dispatcher.Post(() => OnNotificationInvoked(activation)));
         AttachCrashLogging();
     }
 
@@ -44,6 +53,16 @@ public partial class App : Application
     {
         try
         {
+            var activation = _notificationPresenter.ReadStartupActivation();
+            if (activation is { IsSoundPreview: true })
+            {
+                await _notificationPresenter.StopAsync();
+                Exit();
+                return;
+            }
+            if (activation is not null)
+                _pendingNotifications.Enqueue(activation);
+            VoiceComposer.CleanTemporaryFiles();
             _host = CreateHost();
             await _host.StartAsync();
 
@@ -52,6 +71,7 @@ public partial class App : Application
 
             var dataStore = services.GetRequiredService<IApplicationDataStore>();
             await dataStore.InitializeAsync();
+            await services.GetRequiredService<OutgoingMessageQueue>().SweepOrphansAsync();
 
             var theme = await dataStore.GetThemeAsync() ?? ApplicationThemeMode.System;
             var themeService = services.GetRequiredService<IApplicationThemeService>();
@@ -100,6 +120,11 @@ public partial class App : Application
                 navigation.ShowWelcome();
             }
 
+            if (navigation.CurrentViewModel is not MessengerViewModel)
+            {
+                _notificationPresenter.RemoveAll();
+            }
+
             var mainWindow = services.GetRequiredService<MainWindow>();
             _window = mainWindow;
 
@@ -107,11 +132,28 @@ public partial class App : Application
             webApi.TokenInvalidated += (_, _) =>
             {
                 var errorResourceKey = webApi.LastTokenRefreshErrorResourceKey;
-                if (errorResourceKey is not ("Error_AccountBlocked" or "Error_AccountPendingDeletion")) return;
-                mainWindow.DispatcherQueue.TryEnqueue(() =>
+                if (errorResourceKey is not ("Error_SessionExpired" or "Error_AccountBlocked" or "Error_AccountPendingDeletion"))
+                    return;
+                var session = services.GetRequiredService<IClientSession>();
+                var connection = session.CurrentConnection;
+                var userId = connection?.ConnectionParameters.UserId;
+                mainWindow.DispatcherQueue.TryEnqueue(async () =>
                 {
-                    navigation.ShowLogin();
-                    services.GetRequiredService<LoginViewModel>().ShowSessionRestrictionNotice(errorResourceKey);
+                    if (connection is null || userId is not > 0 ||
+                        !ReferenceEquals(connection, session.CurrentConnection) ||
+                        userId != connection.ConnectionParameters.UserId ||
+                        navigation.CurrentViewModel is LoginViewModel)
+                        return;
+                    var currentView = navigation.CurrentViewModel;
+                    var messenger = services.GetRequiredService<MessengerViewModel>();
+                    var localCleanup = messenger.ResetAfterSessionRejectionAsync();
+                    await services.GetRequiredService<ISecureSessionStore>().ClearAsync();
+                    await localCleanup;
+                    if (!ReferenceEquals(connection, session.CurrentConnection) ||
+                        userId != connection.ConnectionParameters.UserId ||
+                        navigation.CurrentViewModel != currentView)
+                        return;
+                    navigation.ShowRestrictedLogin(errorResourceKey);
                 });
             };
 
@@ -120,6 +162,9 @@ public partial class App : Application
             services.GetRequiredService<IDialogService>().Attach(mainWindow.RootElement.XamlRoot);
 
             mainWindow.Activate();
+            _notificationWindow = mainWindow;
+            while (_pendingNotifications.TryDequeue(out var pending))
+                OnNotificationInvoked(pending);
         }
         catch (Exception exception)
         {
@@ -133,6 +178,7 @@ public partial class App : Application
     /// </summary>
     private void ShowStartupFailure(Exception exception)
     {
+        _ = _notificationPresenter.StopAsync();
         ShutdownHost();
 
         var window = new Window
@@ -215,16 +261,57 @@ public partial class App : Application
         teardown.Wait(HostShutdownTimeout);
     }
 
-    private static IHost CreateHost()
+    private void OnNotificationInvoked(NotificationActivation activation)
+    {
+        if (_notificationWindow is not { } window)
+        {
+            _pendingNotifications.Enqueue(activation);
+            return;
+        }
+        if (activation.Reply is { } reply)
+            _ = ReplyToNotificationAsync(reply, Services);
+        else
+            _ = window.OpenNotificationAsync(activation.Target);
+    }
+
+    private async Task ReplyToNotificationAsync(NotificationReply reply, IServiceProvider services)
+    {
+        var navigation = services.GetRequiredService<IOnboardingNavigationService>();
+        var error = navigation.CurrentViewModel is MessengerViewModel messenger
+            ? await messenger.ReplyToNotificationAsync(reply)
+            : "Notifications_ReplySessionMismatch";
+        if (error is not null && _notificationWindow is not null)
+            _notificationPresenter.ShowReplyError(services.GetRequiredService<ILocalizationService>().GetString(error));
+    }
+
+    internal void ShowCallNotification(Guid id, string title) => _notificationPresenter.ShowCall(id, title);
+
+    internal void RemoveCallNotification(Guid id) => _notificationPresenter.RemoveCall(id);
+
+    internal Task StopNotificationsAsync()
+    {
+        _notificationWindow = null;
+        return _notificationPresenter.StopAsync();
+    }
+
+    private IHost CreateHost()
     {
         var builder = Host.CreateApplicationBuilder();
 
         builder.Services.AddSingleton(AppDataPaths.CreateDefault());
-        builder.Services.AddSingleton<IApplicationDataStore, SqliteApplicationDataStore>();
+        builder.Services.AddSingleton<SqliteApplicationDataStore>();
+        builder.Services.AddSingleton<IApplicationDataStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton<IChatListCacheStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton<IMessageHistoryCacheStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton<MessageHistoryCache>();
+        builder.Services.AddSingleton<ChatListCache>();
+        builder.Services.AddSingleton<IChatDraftStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton<IChatDraftRemote, ChatDraftRemote>();
         builder.Services.AddSingleton<ISecureSessionStore, DpapiSecureSessionStore>();
         builder.Services.AddSingleton<IPrivateChatKeyStore, DpapiPrivateChatKeyStore>();
         builder.Services.AddSingleton<IRealtimeMessengerService, RealtimeMessengerService>();
         builder.Services.AddSingleton<IOnlinePresenceService, OnlinePresenceService>();
+        builder.Services.AddSingleton<IChatTypingService, ChatTypingService>();
         builder.Services.AddSingleton<IApplicationThemeService, ApplicationThemeService>();
         builder.Services.AddSingleton<ILocalizationService, LocalizationService>();
         builder.Services.AddSingleton<IUiDispatcher, DispatcherQueueUiDispatcher>();
@@ -232,14 +319,27 @@ public partial class App : Application
         builder.Services.AddSingleton<WebApiClient>();
         builder.Services.AddSingleton<INodeAddressParser, NodeAddressParser>();
         builder.Services.AddSingleton<IClientSession, ClientSession>();
-        builder.Services.AddSingleton<IMessengerService, MessengerService>();
+        builder.Services.AddSingleton<MessengerService>();
+        builder.Services.AddSingleton<IMessengerService>(services => services.GetRequiredService<MessengerService>());
+        builder.Services.AddSingleton<IOutgoingMessageTransport>(services => services.GetRequiredService<MessengerService>());
+        builder.Services.AddSingleton<IOutgoingMessageStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton(services => new OutgoingMessageQueue(
+            services.GetRequiredService<IOutgoingMessageStore>(), services.GetRequiredService<IOutgoingMessageTransport>(),
+            services.GetRequiredService<AppDataPaths>(), TimeProvider.System));
+        builder.Services.AddSingleton<IStickerCatalog, StickerCatalog>();
+        builder.Services.AddSingleton(_ => Controls.StickerImage.CreateCache());
+        builder.Services.AddSingleton<StickerPickerViewModel>();
         builder.Services.AddSingleton<INodeConnectionService, NodeConnectionService>();
         builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
         builder.Services.AddSingleton<IOnboardingNavigationService, OnboardingNavigationService>();
         builder.Services.AddSingleton<ISecuritySettingsService, SecuritySettingsService>();
         builder.Services.AddSingleton<IAccountSettingsService, AccountSettingsService>();
         builder.Services.AddSingleton<IUserPreferencesService, UserPreferencesService>();
+        builder.Services.AddSingleton<IChatFoldersState, ChatFoldersState>();
         builder.Services.AddSingleton<IDeviceSettingsService, DeviceSettingsService>();
+        builder.Services.AddSingleton<INotificationPresenter>(_notificationPresenter);
+        builder.Services.AddSingleton<IChatNotificationSoundStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
+        builder.Services.AddSingleton<MessageNotificationService>();
         builder.Services.AddSingleton<ISettingsPreferences, SettingsPreferences>();
         builder.Services.AddSingleton<IAboutSettingsService, AboutSettingsService>();
         builder.Services.AddSingleton<HttpClient>(_ => UpdateHttpClientFactory.Create());
@@ -253,6 +353,13 @@ public partial class App : Application
         builder.Services.AddSingleton<LoginViewModel>();
         builder.Services.AddSingleton<RegistrationViewModel>();
         builder.Services.AddSingleton<PasswordRecoveryViewModel>();
+        builder.Services.AddSingleton<IVoiceRecorder, WindowsVoiceRecorder>();
+        builder.Services.AddSingleton<IVoicePlayer, WindowsVoicePlayer>();
+        builder.Services.AddSingleton<WebViewCallMedia>();
+        builder.Services.AddSingleton<ICallMedia>(services => services.GetRequiredService<WebViewCallMedia>());
+        builder.Services.AddSingleton<CallSignaling>();
+        builder.Services.AddSingleton(services => new AudioCallService(services.GetRequiredService<ICallMedia>(),
+            services.GetRequiredService<IUiDispatcher>(), TimeProvider.System));
         builder.Services.AddSingleton<MessengerViewModel>();
         builder.Services.AddSingleton<ProfileViewModel>();
         builder.Services.AddSingleton<SettingsSecurityViewModel>();
@@ -262,7 +369,7 @@ public partial class App : Application
         builder.Services.AddSingleton<SettingsDevicesViewModel>();
         builder.Services.AddSingleton<SettingsStorageViewModel>();
         builder.Services.AddSingleton<SettingsPersonalizationViewModel>();
-        builder.Services.AddSingleton<SettingsChatFoldersViewModel>();
+        builder.Services.AddTransient<SettingsChatFoldersViewModel>();
         builder.Services.AddSingleton<SettingsLanguageViewModel>();
         builder.Services.AddSingleton<SettingsUpdateViewModel>();
         builder.Services.AddSingleton<SettingsAboutViewModel>();

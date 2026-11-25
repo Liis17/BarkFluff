@@ -21,11 +21,22 @@
     <RuntimeIdentifier Condition="'$(Platform)' == 'x64'">win-x64</RuntimeIdentifier>
     <RuntimeIdentifier Condition="'$(Platform)' == 'x86'">win-x86</RuntimeIdentifier>
     <RuntimeIdentifier Condition="'$(Platform)' == 'ARM64'">win-arm64</RuntimeIdentifier>
+    <SignalShimTarget Condition="'$(RuntimeIdentifier)' == 'win-x64'">x86_64-pc-windows-msvc</SignalShimTarget>
+    <SignalShimTarget Condition="'$(RuntimeIdentifier)' == 'win-x86'">i686-pc-windows-msvc</SignalShimTarget>
+    <SignalShimTarget Condition="'$(RuntimeIdentifier)' == 'win-arm64'">aarch64-pc-windows-msvc</SignalShimTarget>
   </PropertyGroup>
   
   <ItemGroup>
+    <Content Include="..\BarkFluff.SignalShim\target\$(SignalShimTarget)\release\barkfluff_signal_shim.dll"
+             Link="barkfluff_signal_shim.dll" Condition="'$(SignalShimTarget)' != ''"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!--  Иконка трея адресуется как ms-appx:///Resources/Icons/barkfluff.ico — без Content она не попадёт в пакет.  -->
     <Content Include="Resources\Icons\barkfluff.ico" />
+    <Content Include="Resources\Calls\room.html;Resources\Calls\room.js;Resources\Calls\room.css"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Backend\BarkFluff.Web\wwwroot\js\vendor\livekit-client.bundle.js"
+             Link="Resources\Calls\livekit-client.bundle.js"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -95,4 +106,17 @@
     <AppxBundle>Never</AppxBundle>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
   </PropertyGroup>
+  <Target Name="ValidateNotificationActivatorExecutable" AfterTargets="_GenerateAppxManifest"
+          Condition="'@(FinalAppxManifest)' != ''">
+    <XmlPeek XmlInputPath="@(FinalAppxManifest)"
+             Query="//*[local-name()='ExeServer' and namespace-uri()='http://schemas.microsoft.com/appx/manifest/com/windows10' and @Arguments='----AppNotificationActivated:']/@Executable">
+      <Output TaskParameter="Result" PropertyName="_NotificationActivatorExecutable" />
+    </XmlPeek>
+    <ItemGroup>
+      <_NotificationActivatorPayload Include="@(AppxPackagePayload)"
+                                     Condition="'%(AppxPackagePayload.TargetPath)' == '$(_NotificationActivatorExecutable)' and Exists('%(AppxPackagePayload.FullPath)')" />
+    </ItemGroup>
+    <Error Condition="'$(_NotificationActivatorExecutable)' == '' or '@(_NotificationActivatorPayload)' == ''"
+           Text="В содержимом MSIX отсутствует exe активатора уведомлений из AppxManifest.xml: '$(_NotificationActivatorExecutable)'." />
+  </Target>
 </Project>

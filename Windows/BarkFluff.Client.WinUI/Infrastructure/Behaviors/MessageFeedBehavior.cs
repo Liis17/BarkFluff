@@ -4,11 +4,16 @@ using BarkFluff.Client.Core.ViewModels;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
 using Windows.Foundation;
+
+using VirtualKey = Windows.System.VirtualKey;
 
 namespace BarkFluff.Client.WinUI.Infrastructure.Behaviors;
 
@@ -19,8 +24,49 @@ namespace BarkFluff.Client.WinUI.Infrastructure.Behaviors;
 /// </summary>
 public static class MessageFeedBehavior
 {
-    /// <summary>Насколько близко к нижней кромке лента ещё считается «в конце», в пикселях.</summary>
-    private const double NearBottomThreshold = 48;
+    private sealed class FeedState(ItemsRepeater repeater)
+    {
+        internal bool Queued;
+        internal bool Intermediate;
+        internal bool DirectManipulation;
+        internal uint? ScrollBarPointer;
+        internal bool UserScrollInProgress;
+        internal bool ProgrammaticScroll;
+        // Колесо и клавиши могут сдвинуть ленту позже или вовсе не сдвинуть её у кромки.
+        internal readonly DispatcherQueueTimer InputTimer = repeater.DispatcherQueue.CreateTimer();
+        internal bool HasScrollInput =>
+            DirectManipulation || ScrollBarPointer.HasValue || UserScrollInProgress || InputTimer.IsRunning;
+        internal void OnInputExpired(DispatcherQueueTimer sender, object args) => QueueViewportCheck(repeater);
+        internal MessageScrollRequest? PendingScroll;
+        internal long ExtentCallback;
+        internal bool FollowingTail = true;
+        internal MessageItemViewModel? LastBeforeHistoryUpdate;
+        internal bool OlderArmed = true;
+        internal bool NewerArmed = true;
+        internal (double Offset, double Extent, double Viewport) View;
+    }
+
+    private static readonly ConditionalWeakTable<ItemsRepeater, FeedState> States = new();
+    private static readonly PointerEventHandler WheelHandler = OnPointerWheelChanged;
+    private static readonly KeyEventHandler ScrollKeyHandler = OnScrollKeyDown;
+    private static readonly PointerEventHandler ScrollBarPressedHandler = OnScrollBarPressed;
+    private static readonly PointerEventHandler ScrollBarReleasedHandler = OnScrollBarReleased;
+
+    public static readonly DependencyProperty HistoryUpdatingProperty = DependencyProperty.RegisterAttached(
+        "HistoryUpdating", typeof(bool), typeof(MessageFeedBehavior), new PropertyMetadata(false, OnHistoryUpdatingChanged));
+
+    public static readonly DependencyProperty OlderHistoryCommandProperty = DependencyProperty.RegisterAttached(
+        "OlderHistoryCommand", typeof(ICommand), typeof(MessageFeedBehavior), new PropertyMetadata(null));
+
+    public static readonly DependencyProperty NewerHistoryCommandProperty = DependencyProperty.RegisterAttached(
+        "NewerHistoryCommand", typeof(ICommand), typeof(MessageFeedBehavior), new PropertyMetadata(null));
+
+    public static bool GetHistoryUpdating(DependencyObject element) => (bool)element.GetValue(HistoryUpdatingProperty);
+    public static void SetHistoryUpdating(DependencyObject element, bool value) => element.SetValue(HistoryUpdatingProperty, value);
+    public static ICommand? GetOlderHistoryCommand(DependencyObject element) => (ICommand?)element.GetValue(OlderHistoryCommandProperty);
+    public static void SetOlderHistoryCommand(DependencyObject element, ICommand? value) => element.SetValue(OlderHistoryCommandProperty, value);
+    public static ICommand? GetNewerHistoryCommand(DependencyObject element) => (ICommand?)element.GetValue(NewerHistoryCommandProperty);
+    public static void SetNewerHistoryCommand(DependencyObject element, ICommand? value) => element.SetValue(NewerHistoryCommandProperty, value);
 
     /// <summary>Доля видимой площади, с которой сообщение считается прочитанным.</summary>
     private const double VisibleRatio = 0.5;
@@ -81,25 +127,128 @@ public static class MessageFeedBehavior
 
         if (eventArgs.OldValue is ScrollViewer previous)
         {
-            previous.ViewChanged -= OnViewChanged;
-            previous.SetValue(OwnerProperty, null);
-            repeater.ElementPrepared -= OnElementPrepared;
-            repeater.ElementClearing -= OnElementClearing;
+            Detach(repeater, previous);
+            repeater.Loaded -= OnLoaded;
+            repeater.Unloaded -= OnUnloaded;
         }
 
         if (eventArgs.NewValue is ScrollViewer scroller)
         {
-            scroller.SetValue(OwnerProperty, repeater);
-            scroller.ViewChanged += OnViewChanged;
-            repeater.ElementPrepared += OnElementPrepared;
-            repeater.ElementClearing += OnElementClearing;
+            repeater.Loaded += OnLoaded;
+            repeater.Unloaded += OnUnloaded;
+            if (repeater.IsLoaded)
+            {
+                Attach(repeater, scroller);
+            }
         }
     }
 
-    /// <summary>
-    /// Положение отслеживается непрерывно, а не в момент запроса прокрутки: к тому моменту
-    /// новое сообщение уже добавлено в коллекцию, и лента формально перестала быть «в конце».
-    /// </summary>
+    private static void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is ItemsRepeater repeater && GetScroller(repeater) is { } scroller)
+        {
+            Attach(repeater, scroller);
+        }
+    }
+
+    private static void OnUnloaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is ItemsRepeater repeater && GetScroller(repeater) is { } scroller)
+        {
+            Detach(repeater, scroller);
+        }
+    }
+
+    private static void Attach(ItemsRepeater repeater, ScrollViewer scroller)
+    {
+        if (States.TryGetValue(repeater, out _))
+        {
+            return;
+        }
+
+        var state = new FeedState(repeater) { View = ReadView(scroller) };
+        state.InputTimer.Interval = TimeSpan.FromMilliseconds(250);
+        state.InputTimer.IsRepeating = false;
+        state.InputTimer.Tick += state.OnInputExpired;
+        States.Add(repeater, state);
+        scroller.SetValue(OwnerProperty, repeater);
+        scroller.ViewChanged += OnViewChanged;
+        scroller.DirectManipulationStarted += OnDirectManipulationStarted;
+        scroller.DirectManipulationCompleted += OnDirectManipulationCompleted;
+        scroller.AddHandler(UIElement.PointerWheelChangedEvent, WheelHandler, handledEventsToo: true);
+        scroller.AddHandler(UIElement.PreviewKeyDownEvent, ScrollKeyHandler, handledEventsToo: true);
+        scroller.AddHandler(UIElement.PointerPressedEvent, ScrollBarPressedHandler, handledEventsToo: true);
+        scroller.AddHandler(UIElement.PointerReleasedEvent, ScrollBarReleasedHandler, handledEventsToo: true);
+        scroller.AddHandler(UIElement.PointerCanceledEvent, ScrollBarReleasedHandler, handledEventsToo: true);
+        scroller.AddHandler(UIElement.PointerCaptureLostEvent, ScrollBarReleasedHandler, handledEventsToo: true);
+        scroller.SizeChanged += OnScrollerSizeChanged;
+        repeater.EffectiveViewportChanged += OnEffectiveViewportChanged;
+        state.ExtentCallback = scroller.RegisterPropertyChangedCallback(ScrollViewer.ExtentHeightProperty,
+            (_, _) => QueueViewportCheck(repeater));
+        if (GetScrollRequest(repeater) is { } request)
+        {
+            QueueScroll(repeater, scroller, state, request);
+        }
+        QueueViewportCheck(repeater);
+    }
+
+    private static void Detach(ItemsRepeater repeater, ScrollViewer scroller)
+    {
+        if (!States.TryGetValue(repeater, out var state))
+        {
+            return;
+        }
+
+        scroller.ViewChanged -= OnViewChanged;
+        scroller.DirectManipulationStarted -= OnDirectManipulationStarted;
+        scroller.DirectManipulationCompleted -= OnDirectManipulationCompleted;
+        scroller.RemoveHandler(UIElement.PointerWheelChangedEvent, WheelHandler);
+        scroller.RemoveHandler(UIElement.PreviewKeyDownEvent, ScrollKeyHandler);
+        scroller.RemoveHandler(UIElement.PointerPressedEvent, ScrollBarPressedHandler);
+        scroller.RemoveHandler(UIElement.PointerReleasedEvent, ScrollBarReleasedHandler);
+        scroller.RemoveHandler(UIElement.PointerCanceledEvent, ScrollBarReleasedHandler);
+        scroller.RemoveHandler(UIElement.PointerCaptureLostEvent, ScrollBarReleasedHandler);
+        state.InputTimer.Stop();
+        state.InputTimer.Tick -= state.OnInputExpired;
+        scroller.SizeChanged -= OnScrollerSizeChanged;
+        repeater.EffectiveViewportChanged -= OnEffectiveViewportChanged;
+        scroller.UnregisterPropertyChangedCallback(ScrollViewer.ExtentHeightProperty, state.ExtentCallback);
+        scroller.ClearValue(OwnerProperty);
+        States.Remove(repeater);
+    }
+
+    private static void OnEffectiveViewportChanged(FrameworkElement element, EffectiveViewportChangedEventArgs args) =>
+        QueueViewportCheck((ItemsRepeater)element);
+
+    private static void OnScrollerSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        if (sender is ScrollViewer scroller && scroller.GetValue(OwnerProperty) is ItemsRepeater repeater)
+        {
+            QueueViewportCheck(repeater);
+        }
+    }
+
+    private static void OnHistoryUpdatingChanged(DependencyObject element, DependencyPropertyChangedEventArgs args)
+    {
+        if (element is not ItemsRepeater repeater || !States.TryGetValue(repeater, out var state))
+        {
+            return;
+        }
+
+        if (args.NewValue is true)
+        {
+            state.LastBeforeHistoryUpdate ??= LastMessage(repeater);
+        }
+        else
+        {
+            QueueViewportCheck(repeater);
+        }
+    }
+
+    private static MessageItemViewModel? LastMessage(ItemsRepeater repeater) =>
+        repeater.ItemsSourceView is { Count: > 0 } source
+            ? source.GetAt(source.Count - 1) as MessageItemViewModel : null;
+
     private static void OnViewChanged(object? sender, ScrollViewerViewChangedEventArgs eventArgs)
     {
         if (sender is not ScrollViewer scroller || scroller.GetValue(OwnerProperty) is not ItemsRepeater repeater)
@@ -107,54 +256,324 @@ public static class MessageFeedBehavior
             return;
         }
 
-        var isAtBottom = scroller.ScrollableHeight - scroller.VerticalOffset <= NearBottomThreshold;
-        if (GetFeedPositionCommand(repeater) is { } command && command.CanExecute(isAtBottom))
+        if (!States.TryGetValue(repeater, out var state))
         {
-            command.Execute(isAtBottom);
+            return;
+        }
+
+        state.Intermediate = eventArgs.IsIntermediate;
+        var view = ReadView(scroller);
+        var programmatic = state.ProgrammaticScroll || state.PendingScroll is not null;
+        var userInput = state.HasScrollInput;
+        var scrolled = !programmatic && MessageFeedViewport.HasScrolled(state.View, view, userInput);
+        state.View = view;
+        if (!eventArgs.IsIntermediate)
+        {
+            state.ProgrammaticScroll = false;
+            // Программный переход тоже может завершить начатую пользователем прокрутку.
+            state.UserScrollInProgress = false;
+        }
+        if (!programmatic)
+        {
+            state.UserScrollInProgress = eventArgs.IsIntermediate && (state.UserScrollInProgress || (userInput && scrolled));
+            if (scrolled)
+            {
+                state.InputTimer.Stop();
+            }
+        }
+        var historyUpdating = state.LastBeforeHistoryUpdate is not null || GetHistoryUpdating(repeater);
+        if (scrolled && (userInput || !historyUpdating))
+        {
+            state.FollowingTail = MessageFeedViewport.FollowTail(state.FollowingTail, scrolled,
+                scroller.ScrollableHeight - view.Offset);
+            ReportFeedPosition(repeater, state);
+            if (!historyUpdating)
+            {
+                CheckHistoryEdges(repeater, state, scroller, olderScroll: true, newerScroll: true);
+            }
+        }
+        QueueViewportCheck(repeater);
+    }
+
+    private static void OnPointerWheelChanged(object sender, PointerRoutedEventArgs args)
+    {
+        // У самой кромки колесо может не сдвинуть ленту и ViewChanged не придёт.
+        if (sender is ScrollViewer scroller && scroller.GetValue(OwnerProperty) is ItemsRepeater repeater &&
+            States.TryGetValue(repeater, out var state))
+        {
+            var pointer = args.GetCurrentPoint(scroller).Properties;
+            var delta = pointer.MouseWheelDelta;
+            if (delta != 0 && !pointer.IsHorizontalMouseWheel)
+            {
+                MarkScrollInput(state);
+                if (state.PendingScroll is null && !GetHistoryUpdating(repeater))
+                {
+                    CheckHistoryEdges(repeater, state, scroller, olderScroll: delta > 0, newerScroll: delta < 0);
+                }
+            }
+        }
+    }
+
+    private static void OnScrollKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key is (VirtualKey.Up or VirtualKey.Down or VirtualKey.PageUp or VirtualKey.PageDown
+            or VirtualKey.Home or VirtualKey.End or VirtualKey.Space) && GetState(sender) is { } state)
+        {
+            MarkScrollInput(state);
+        }
+    }
+
+    private static void MarkScrollInput(FeedState state)
+    {
+        state.ProgrammaticScroll = false;
+        state.InputTimer.Stop();
+        state.InputTimer.Start();
+    }
+
+    private static void OnDirectManipulationStarted(object? sender, object args)
+    {
+        if (GetState(sender) is { } state)
+        {
+            state.ProgrammaticScroll = false;
+            state.DirectManipulation = true;
+        }
+    }
+
+    private static void OnDirectManipulationCompleted(object? sender, object args)
+    {
+        if (sender is ScrollViewer scroller && scroller.GetValue(OwnerProperty) is ItemsRepeater repeater &&
+            States.TryGetValue(repeater, out var state))
+        {
+            state.DirectManipulation = false;
+            QueueViewportCheck(repeater);
+        }
+    }
+
+    private static void OnScrollBarPressed(object sender, PointerRoutedEventArgs args)
+    {
+        if (sender is not ScrollViewer scroller || GetState(sender) is not { } state ||
+            !args.GetCurrentPoint(scroller).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        var thumbPressed = false;
+        for (var element = args.OriginalSource as UIElement; element is not null && element != scroller;
+            element = VisualTreeHelper.GetParent(element) as UIElement)
+        {
+            if (element is ScrollBar)
+            {
+                if (thumbPressed)
+                {
+                    state.ScrollBarPointer = args.Pointer.PointerId;
+                    state.ProgrammaticScroll = false;
+                }
+                else
+                {
+                    MarkScrollInput(state);
+                }
+                return;
+            }
+            thumbPressed |= element is Thumb;
+        }
+    }
+
+    private static void OnScrollBarReleased(object sender, PointerRoutedEventArgs args)
+    {
+        if (sender is ScrollViewer scroller && scroller.GetValue(OwnerProperty) is ItemsRepeater repeater &&
+            States.TryGetValue(repeater, out var state) && state.ScrollBarPointer == args.Pointer.PointerId)
+        {
+            state.ScrollBarPointer = null;
+            QueueViewportCheck(repeater);
+        }
+    }
+
+    private static FeedState? GetState(object? sender) =>
+        sender is ScrollViewer scroller && scroller.GetValue(OwnerProperty) is ItemsRepeater repeater &&
+        States.TryGetValue(repeater, out var state) ? state : null;
+
+    private static (double Offset, double Extent, double Viewport) ReadView(ScrollViewer scroller) =>
+        (scroller.VerticalOffset, scroller.ExtentHeight, scroller.ViewportHeight);
+
+    private static void CheckHistoryEdges(ItemsRepeater repeater, FeedState state, ScrollViewer scroller,
+        bool olderScroll = false, bool newerScroll = false)
+    {
+        var (offset, extent, viewport) = ReadView(scroller);
+        var older = MessageFeedViewport.CheckHistoryEdge(state.OlderArmed, olderScroll, offset, extent, viewport);
+        var newer = MessageFeedViewport.CheckHistoryEdge(state.NewerArmed, newerScroll,
+            scroller.ScrollableHeight - offset, extent, viewport);
+        state.OlderArmed = older.Armed;
+        state.NewerArmed = newer.Armed;
+        if (older.Load)
+        {
+            Execute(GetOlderHistoryCommand(repeater));
+        }
+        if (newer.Load)
+        {
+            Execute(GetNewerHistoryCommand(repeater));
+        }
+    }
+
+    private static void QueueViewportCheck(ItemsRepeater repeater)
+    {
+        if (!States.TryGetValue(repeater, out var state) || state.Queued ||
+            state.PendingScroll is not null || GetHistoryUpdating(repeater))
+        {
+            return;
+        }
+
+        state.Queued = repeater.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            state.Queued = false;
+            if (!States.TryGetValue(repeater, out var current) || !ReferenceEquals(current, state) || state.PendingScroll is not null ||
+                GetHistoryUpdating(repeater) || GetScroller(repeater) is not { ViewportHeight: > 0 } scroller)
+            {
+                return;
+            }
+
+            if (!state.HasScrollInput && !state.Intermediate)
+            {
+                state.View = ReadView(scroller);
+            }
+            if (state.LastBeforeHistoryUpdate is { } previousLast)
+            {
+                state.LastBeforeHistoryUpdate = null;
+                // Страница снизу сохраняет позицию чтения, даже если до вставки она была у кромки.
+                if (!ReferenceEquals(previousLast, LastMessage(repeater)) &&
+                    !MessageFeedViewport.IsNearEdge(scroller.ScrollableHeight - scroller.VerticalOffset))
+                {
+                    state.FollowingTail = false;
+                    ReportFeedPosition(repeater, state);
+                }
+            }
+            if (state.FollowingTail && !state.HasScrollInput && !state.Intermediate && !state.ProgrammaticScroll &&
+                scroller.VerticalOffset < scroller.ScrollableHeight - 0.5)
+            {
+                // Раскладка может увеличить высоту последней строки без прокрутки пользователя.
+                state.View = (scroller.ScrollableHeight, scroller.ExtentHeight, scroller.ViewportHeight);
+                if (ChangeView(scroller, state, scroller.ScrollableHeight))
+                {
+                    QueueViewportCheck(repeater);
+                    return;
+                }
+            }
+            if (!state.Intermediate)
+            {
+                ReportFeedPosition(repeater, state);
+                ReportVisibleMessages(repeater, scroller);
+            }
+            CheckHistoryEdges(repeater, state, scroller);
+        });
+    }
+
+    private static void ReportFeedPosition(ItemsRepeater repeater, FeedState state) =>
+        Execute(GetFeedPositionCommand(repeater), state.FollowingTail);
+
+    private static void Execute(ICommand? command, object? argument = null)
+    {
+        if (command?.CanExecute(argument) == true)
+        {
+            command.Execute(argument);
         }
     }
 
     private static void OnScrollRequestChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
     {
-        if (dependencyObject is not ItemsRepeater repeater
-            || eventArgs.NewValue is not MessageScrollRequest request
-            || GetScroller(repeater) is not { } scroller)
+        if (dependencyObject is not ItemsRepeater repeater ||
+            GetScroller(repeater) is not { } scroller ||
+            !States.TryGetValue(repeater, out var state))
         {
             return;
         }
 
-        // Коллекция изменилась только что — раскладка ещё не прошла, измерять пока нечего.
-        repeater.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => Apply(repeater, scroller, request));
+        if (eventArgs.NewValue is MessageScrollRequest request)
+        {
+            QueueScroll(repeater, scroller, state, request);
+        }
+        else
+        {
+            state.OlderArmed = true;
+            state.NewerArmed = true;
+            state.PendingScroll = null;
+            QueueViewportCheck(repeater);
+        }
     }
 
-    private static void Apply(ItemsRepeater repeater, ScrollViewer scroller, MessageScrollRequest request)
+    private static void QueueScroll(ItemsRepeater repeater, ScrollViewer scroller, FeedState state, MessageScrollRequest request)
+    {
+        state.PendingScroll = request;
+        if (request.Target == MessageScrollTarget.Message)
+        {
+            state.OlderArmed = true;
+            state.NewerArmed = true;
+        }
+        // Коллекция изменилась только что — раскладка ещё не прошла, измерять пока нечего.
+        repeater.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (!States.TryGetValue(repeater, out var current) || !ReferenceEquals(current, state) ||
+                !ReferenceEquals(state.PendingScroll, request))
+            {
+                return;
+            }
+
+            state.LastBeforeHistoryUpdate = null;
+            var atBottom = Apply(repeater, scroller, state, request);
+            if (atBottom.HasValue)
+            {
+                state.FollowingTail = atBottom.Value;
+                ReportFeedPosition(repeater, state);
+            }
+            state.View = ReadView(scroller);
+            if (ReferenceEquals(state.PendingScroll, request))
+            {
+                state.PendingScroll = null;
+                QueueViewportCheck(repeater);
+            }
+        });
+    }
+
+    private static bool ChangeView(ScrollViewer scroller, FeedState state, double offset)
+    {
+        state.ProgrammaticScroll = true;
+        if (scroller.ChangeView(null, offset, null, disableAnimation: true))
+        {
+            return true;
+        }
+
+        state.ProgrammaticScroll = false;
+        return false;
+    }
+
+    private static bool? Apply(ItemsRepeater repeater, ScrollViewer scroller, FeedState state, MessageScrollRequest request)
     {
         scroller.UpdateLayout();
         if (request.Target == MessageScrollTarget.Bottom)
         {
-            scroller.ChangeView(null, scroller.ScrollableHeight, null, disableAnimation: true);
-            return;
+            ChangeView(scroller, state, scroller.ScrollableHeight);
+            return true;
         }
 
         var index = IndexOf(repeater, request.MessageId);
         if (index < 0)
         {
-            return;
+            return null;
         }
 
         // ItemsRepeater виртуализирует, поэтому нужное сообщение может быть ещё не создано:
         // в WPF-версии контейнеры существовали всегда и достаточно было их найти.
         if (repeater.GetOrCreateElement(index) is not FrameworkElement element)
         {
-            return;
+            return null;
         }
 
         repeater.UpdateLayout();
         var bounds = element
             .TransformToVisual(scroller)
             .TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
-        var offset = scroller.VerticalOffset + bounds.Top - ((scroller.ViewportHeight - bounds.Height) / 2);
-        scroller.ChangeView(null, Math.Max(0, offset), null, disableAnimation: true);
+        var offset = MessageFeedViewport.CenterOffset(scroller.VerticalOffset, bounds.Top, bounds.Height,
+            scroller.ViewportHeight, scroller.ScrollableHeight);
+        ChangeView(scroller, state, offset);
+        return MessageFeedViewport.IsNearEdge(scroller.ScrollableHeight - offset);
     }
 
     private static int IndexOf(ItemsRepeater repeater, long? messageId)
@@ -175,46 +594,31 @@ public static class MessageFeedBehavior
         return -1;
     }
 
-    private static void OnElementPrepared(ItemsRepeater sender, ItemsRepeaterElementPreparedEventArgs eventArgs)
+    private static void ReportVisibleMessages(ItemsRepeater repeater, ScrollViewer scroller)
     {
-        if (eventArgs.Element is FrameworkElement element)
+        var command = GetVisibleMessageCommand(repeater);
+        var viewport = new Rect(0, 0, scroller.ViewportWidth, scroller.ViewportHeight);
+        var count = VisualTreeHelper.GetChildrenCount(repeater);
+        for (var child = 0; child < count; child++)
         {
-            element.EffectiveViewportChanged += OnEffectiveViewportChanged;
-        }
-    }
+            if (VisualTreeHelper.GetChild(repeater, child) is not FrameworkElement { ActualHeight: > 0 } element)
+            {
+                continue;
+            }
 
-    private static void OnElementClearing(ItemsRepeater sender, ItemsRepeaterElementClearingEventArgs eventArgs)
-    {
-        if (eventArgs.Element is FrameworkElement element)
-        {
-            element.EffectiveViewportChanged -= OnEffectiveViewportChanged;
-        }
-    }
+            var index = repeater.GetElementIndex(element);
+            if (index < 0 || repeater.ItemsSourceView?.GetAt(index) is not MessageItemViewModel message)
+            {
+                continue;
+            }
 
-    /// <summary>
-    /// Событийная модель вместо обхода всех сообщений на каждый проход раскладки, как было в WPF:
-    /// <c>EffectiveViewport</c> уже задан в координатах самого элемента и учитывает обрезку предками.
-    /// </summary>
-    private static void OnEffectiveViewportChanged(FrameworkElement element, EffectiveViewportChangedEventArgs eventArgs)
-    {
-        if (VisualTreeHelper.GetParent(element) is not ItemsRepeater repeater
-            || GetVisibleMessageCommand(repeater) is not { } command
-            || element.ActualHeight <= 0)
-        {
-            return;
-        }
-
-        var index = repeater.GetElementIndex(element);
-        if (index < 0 || repeater.ItemsSourceView?.GetAt(index) is not MessageItemViewModel message)
-        {
-            return;
-        }
-
-        var visible = new Rect(0, 0, element.ActualWidth, element.ActualHeight);
-        visible.Intersect(eventArgs.EffectiveViewport);
-        if (!visible.IsEmpty && visible.Height / element.ActualHeight >= VisibleRatio && command.CanExecute(message))
-        {
-            command.Execute(message);
+            var bounds = element.TransformToVisual(scroller)
+                .TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
+            bounds.Intersect(viewport);
+            if (!bounds.IsEmpty && bounds.Height / element.ActualHeight >= VisibleRatio)
+            {
+                Execute(command, message);
+            }
         }
     }
 }

@@ -82,6 +82,8 @@
                         <TextBox x:Name="CodeInput"
                                  Margin="0,8,0,8"
                                  MaxLength="128"
+                                 IsSpellCheckEnabled="False"
+                                 IsTextPredictionEnabled="False"
                                  PlaceholderText="{x:Bind ViewModel.CodePlaceholder, Mode=OneWay}"
                                  Text="{x:Bind ViewModel.Code, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  behaviors:OtpInputBehavior.PasteCommand="{x:Bind ViewModel.PasteOtpCodeCommand}"

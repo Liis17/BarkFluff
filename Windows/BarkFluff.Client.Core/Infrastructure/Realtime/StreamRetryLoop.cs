@@ -1,3 +1,5 @@
+using Grpc.Core;
+
 namespace BarkFluff.Client.Core.Infrastructure.Realtime;
 
 /// <summary>
@@ -47,9 +49,17 @@ internal static class StreamRetryLoop
         Action<T> onItem,
         Action<bool>? onConnectedChanged,
         Func<int, TimeSpan> backoff,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action? onStreamOpened = null,
+        Func<TimeSpan, CancellationToken, Task>? delay = null,
+        bool stopOnUnimplemented = false,
+        Func<T, Task>? onItemAsync = null,
+        Action? onUnimplemented = null)
     {
+        delay ??= Task.Delay;
         var attempt = 0;
+        // Необязательный поток сначала проверяем на немедленное завершение.
+        var openedOnce = stopOnUnimplemented;
         while (!cancellationToken.IsCancellationRequested)
         {
             var startedAt = Environment.TickCount64;
@@ -61,11 +71,58 @@ internal static class StreamRetryLoop
                 {
                     wasConnected = true;
                     onConnectedChanged?.Invoke(true);
-                    await foreach (var item in stream.WithCancellation(cancellationToken))
+                    await using var reader = stream.GetAsyncEnumerator(cancellationToken);
+                    var hasMore = true;
+                    if (onStreamOpened is not null)
                     {
-                        onItem(item);
+                        if (!openedOnce)
+                        {
+                            openedOnce = true;
+                            onStreamOpened();
+                        }
+                        else
+                        {
+                            // ReadStream может сразу завершиться на ноде без этого RPC.
+                            // Повторное открытие учитываем после первого элемента или короткого ожидания.
+                            var first = reader.MoveNextAsync().AsTask();
+                            using var grace = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                            var wait = delay(TimeSpan.FromMilliseconds(750), grace.Token);
+                            await Task.WhenAny(first, wait);
+                            grace.Cancel();
+                            var announced = !first.IsCompleted && !cancellationToken.IsCancellationRequested;
+                            if (announced)
+                            {
+                                onStreamOpened();
+                            }
+
+                            hasMore = await first;
+                            if (hasMore && !cancellationToken.IsCancellationRequested)
+                            {
+                                if (!announced && !stopOnUnimplemented)
+                                {
+                                    onStreamOpened();
+                                }
+                                if (onItemAsync is not null)
+                                    await onItemAsync(reader.Current);
+                                else
+                                    onItem(reader.Current);
+                            }
+                        }
+                    }
+
+                    while (hasMore && await reader.MoveNextAsync())
+                    {
+                        if (onItemAsync is not null)
+                            await onItemAsync(reader.Current);
+                        else
+                            onItem(reader.Current);
                     }
                 }
+            }
+            catch (RpcException ex) when (stopOnUnimplemented && ex.StatusCode == StatusCode.Unimplemented)
+            {
+                onUnimplemented?.Invoke();
+                return;
             }
             catch (OperationCanceledException)
             {
@@ -92,7 +149,7 @@ internal static class StreamRetryLoop
             attempt = NextAttempt(attempt, Environment.TickCount64 - startedAt);
             try
             {
-                await Task.Delay(backoff(attempt), cancellationToken);
+                await delay(backoff(attempt), cancellationToken);
             }
             catch (OperationCanceledException)
             {

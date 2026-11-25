@@ -866,6 +866,19 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Кэш Cargo для Signal shim
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Windows/BarkFluff.SignalShim/target
+          key: ${{ runner.os }}-signal-x64-${{ hashFiles('Windows/BarkFluff.SignalShim/Cargo.lock', 'Windows/BarkFluff.SignalShim/rust-toolchain.toml') }}
+
+      - name: Сборка Signal shim (x64)
+        shell: pwsh
+        run: ./Windows/BarkFluff.SignalShim/build.ps1
+
       - name: Определение канала обновлений
         id: target
         shell: pwsh
@@ -988,6 +1001,24 @@ jobs:
           $preparedManifest = $preparedManifest.Replace(
             'Assets\master\',
             "Assets\$($env:ASSET_DIRECTORY)\")
+
+          $sourceToastClsid = 'B46F53B2-4682-4E4C-B696-89B5F684B179'
+          $toastClsid = switch ($env:CHANNEL) {
+            'release' { $sourceToastClsid }
+            'dev' { 'CE28FAC5-3702-4410-B3A5-425284F2FE6D' }
+            'nightly' { 'E4170BC3-C566-4F96-8791-71746BE83912' }
+            default { throw "Неизвестный канал MSIX: $($env:CHANNEL)" }
+          }
+          $preparedManifest = $preparedManifest.Replace($sourceToastClsid, $toastClsid)
+          if ($toastClsid -ne $sourceToastClsid -and $preparedManifest.Contains($sourceToastClsid)) {
+            throw 'В manifest остался CLSID активатора уведомлений канала release'
+          }
+          [xml]$activationManifest = $preparedManifest
+          $toastActivation = $activationManifest.SelectSingleNode("//*[local-name()='ToastNotificationActivation']")
+          $toastClass = $activationManifest.SelectSingleNode("//*[local-name()='ExeServer' and @Arguments='----AppNotificationActivated:']/*[local-name()='Class']")
+          if ($toastActivation.ToastActivatorCLSID -ne $toastClsid -or $toastClass.Id -ne $toastClsid) {
+            throw "CLSID активатора уведомлений и COM-класса должны совпадать с CLSID канала $($env:CHANNEL): $toastClsid"
+          }
 
           $expectedAssetPrefix = "Assets\$($env:ASSET_DIRECTORY)\"
           $assetReferenceCount = [regex]::Matches(
@@ -1196,6 +1227,9 @@ jobs:
               $candidateIdentity = $candidateManifest.SelectSingleNode("/*[local-name()='Package']/*[local-name()='Identity']")
               if ($null -ne $candidateIdentity -and
                   [string]$candidateIdentity.Name -eq $env:EXPECTED_IDENTITY) {
+                if ($null -eq $candidatePackage.GetEntry('barkfluff_signal_shim.dll')) {
+                  throw 'В MSIX отсутствует barkfluff_signal_shim.dll'
+                }
                 $msix = $candidate
                 $manifestText = $candidateManifestText
                 $identity = $candidateIdentity

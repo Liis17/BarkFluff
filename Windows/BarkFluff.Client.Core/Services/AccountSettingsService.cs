@@ -1,4 +1,6 @@
+using BarkFluff.Client.Core.Infrastructure.Storage;
 using BarkFluff.Client.Core.Models;
+using BarkFluff.Client.Core.Services.Calls;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData;
@@ -15,6 +17,9 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
     private readonly IPrivateChatKeyStore _privateChatKeyStore;
     private readonly MessengerViewModel _messengerViewModel;
     private readonly IOnboardingNavigationService _navigation;
+    private readonly AudioCallService? _audioCalls;
+    private readonly IClientSession _session;
+    private readonly SqliteApplicationDataStore? _applicationData;
 
     public AccountSettingsService(
         WebApiClient webApi,
@@ -24,7 +29,9 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
         ISecureSessionStore secureSessionStore,
         IPrivateChatKeyStore privateChatKeyStore,
         MessengerViewModel messengerViewModel,
-        IOnboardingNavigationService navigation)
+        IOnboardingNavigationService navigation,
+        AudioCallService? audioCalls = null,
+        SqliteApplicationDataStore? applicationData = null)
         : base(webApi, session)
     {
         _realtimeMessenger = realtimeMessenger;
@@ -33,6 +40,9 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
         _privateChatKeyStore = privateChatKeyStore;
         _messengerViewModel = messengerViewModel;
         _navigation = navigation;
+        _audioCalls = audioCalls;
+        _session = session;
+        _applicationData = applicationData;
     }
 
     public async Task<(string? ErrorKey, AccountProfile? Profile)> GetProfileAsync(CancellationToken cancellationToken = default)
@@ -113,17 +123,59 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
     /// </summary>
     public async Task<string?> LogoutAsync(CancellationToken cancellationToken = default)
     {
+        var connection = _session.CurrentConnection;
+        var secretCleanup = connection is not null && connection.ConnectionParameters.UserId > 0 && _applicationData is not null
+            ? ClearSecretsOnLogoutAsync(SqliteApplicationDataStore.SecretScope.Create(
+                connection.Profile.BeaconAddress, connection.ConnectionParameters.UserId))
+            : Task.FromResult(true);
+        if (_audioCalls is not null)
+            await _audioCalls.StopAsync();
+
+        var draftCleanup = _messengerViewModel.StopDraftsForLogoutAsync();
+        var outgoingCleanup = _messengerViewModel.ClearOutgoingForLogoutAsync();
+        var cacheCleanup = _messengerViewModel.ClearChatCacheAsync();
+        var offline = _messengerViewModel.IsOffline;
+        _messengerViewModel.Reset();
         await _realtimeMessenger.StopAsync();
         await _presence.StopAsync();
 
-        var result = await LogoutFromServerAsync(Parameters);
+        var revoked = !offline && (await LogoutFromServerAsync(Parameters)).IsSuccess;
 
         await _secureSessionStore.ClearAsync(cancellationToken);
         await _privateChatKeyStore.ForgetAllAsync(cancellationToken);
-        _messengerViewModel.Reset();
-        _navigation.ShowLogin();
+        bool draftsCleared;
+        try
+        {
+            draftsCleared = await draftCleanup.WaitAsync(TimeSpan.FromSeconds(3));
+        }
+        catch (TimeoutException)
+        {
+            draftsCleared = false;
+        }
+        var outgoingCleared = await outgoingCleanup;
+        var cacheCleared = await cacheCleanup;
+        var secretsCleared = await secretCleanup;
+        if (offline)
+            _navigation.ShowLoginAfterOfflineLogout();
+        else
+            _navigation.ShowLogin();
 
-        return result.IsSuccess ? null : "Error_LogoutFailed";
+        return (offline || revoked) && draftsCleared && outgoingCleared && cacheCleared && secretsCleared
+            ? null : "Error_LogoutFailed";
+    }
+
+    private async Task<bool> ClearSecretsOnLogoutAsync(SqliteApplicationDataStore.SecretScope scope)
+    {
+        try
+        {
+            await _messengerViewModel.SecretChats.FlushDraftAsync();
+            await Task.Run(() => _applicationData!.ForgetSecretChatsAsync(scope));
+            return true;
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Отдельная точка для проверки порядка выхода без подключения к живой ноде.</summary>

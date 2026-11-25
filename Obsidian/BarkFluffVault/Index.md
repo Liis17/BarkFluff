@@ -65,6 +65,8 @@
 | [[Clients/Developers-Web]] | React/Vite портал разработчиков | — |
 | [[Clients/Web]] | Vanilla-JS браузерный мессенджер | [[Clients/Web-Network-Reliability|Сеть]] |
 
+[Проект протокола вложений в приватных чатах и тестовые векторы](../../Docs/private-chat-attachments.md). Поддержка в клиентах пока отсутствует.
+
 ## Tools
 
 | Компонент | Назначение | Дополнительные заметки |

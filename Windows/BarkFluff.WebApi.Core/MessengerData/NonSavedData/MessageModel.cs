@@ -4,6 +4,7 @@ namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
 {
     public class MessageModel
     {
+        public string ClientOperationId { get; set; } = string.Empty;
         public long MessageId { get; set; } = 0;
         public string ChatId { get; set; } = string.Empty;
         public string Text { get; set; } = string.Empty;

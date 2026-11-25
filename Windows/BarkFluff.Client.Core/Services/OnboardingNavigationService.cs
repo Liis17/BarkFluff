@@ -36,6 +36,20 @@ public sealed class OnboardingNavigationService : IOnboardingNavigationService
         Navigate(viewModel);
     }
 
+    public void ShowRestrictedLogin(string? errorKey)
+    {
+        ShowLogin();
+        if (errorKey is not null && CurrentViewModel is LoginViewModel login)
+            login.ShowSessionRestrictionNotice(errorKey);
+    }
+
+    public void ShowLoginAfterOfflineLogout()
+    {
+        ShowLogin();
+        if (CurrentViewModel is LoginViewModel login)
+            login.ShowOfflineLogoutNotice();
+    }
+
     public void ShowRegistration()
     {
         var viewModel = _serviceProvider.GetRequiredService<RegistrationViewModel>();
@@ -63,6 +77,11 @@ public sealed class OnboardingNavigationService : IOnboardingNavigationService
         {
             loginViewModel.StopFastAuth();
             loginViewModel.ClearSensitiveState();
+        }
+
+        if (CurrentViewModel is MessengerViewModel messenger && viewModel is not MessengerViewModel)
+        {
+            messenger.Reset();
         }
 
         CurrentViewModel = viewModel;

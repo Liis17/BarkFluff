@@ -6,7 +6,9 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
-  IgnorableNamespaces="uap rescap uap10">
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  IgnorableNamespaces="uap rescap uap10 com desktop">
 
   <Identity
     Name="7895OrbitinSpace.Barkfluff"
@@ -44,10 +46,24 @@
         <uap:SplashScreen Image="Assets\master\SplashScreen.png" />
         <uap:LockScreen Notification="badge" BadgeLogo="Assets\master\BadgeLogo.png"/>
       </uap:VisualElements>
+      <Extensions>
+        <desktop:Extension Category="windows.toastNotificationActivation">
+          <desktop:ToastNotificationActivation ToastActivatorCLSID="B46F53B2-4682-4E4C-B696-89B5F684B179" />
+        </desktop:Extension>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <!-- MSBuild не подставляет $targetnametoken$ в com:ExeServer. Сборка проверяет exe в содержимом пакета. -->
+            <com:ExeServer Executable="BarkFluff.Client.WinUI.exe" Arguments="----AppNotificationActivated:" DisplayName="Barkfluff">
+              <com:Class Id="B46F53B2-4682-4E4C-B696-89B5F684B179" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+      </Extensions>
     </Application>
   </Applications>
 
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
+    <DeviceCapability Name="microphone" />
   </Capabilities>
 </Package>

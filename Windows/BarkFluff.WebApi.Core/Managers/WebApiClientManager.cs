@@ -144,6 +144,9 @@ namespace BarkFluff.WebApi.Core.Managers
             _webApi.IdentityAC = null!;
             _webApi.UsersAC = null!;
             _webApi.FilesAC = null!;
+            _webApi.DraftClient = null;
+            _webApi.SecretClient = null;
+            _webApi.OutgoingClient = null;
             _webApi.MessagesAC = null!;
             _webApi.UpdatesAC = null!;
             _webApi.OnlinerAC = null!;
@@ -206,7 +209,10 @@ namespace BarkFluff.WebApi.Core.Managers
                 _webApi.UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(userInvoker);
                 _webApi.FilesAC = new BarkFluff.Proto.Files.FilesApi.FilesApiClient(filesInvoker);
                 _webApi.MessagesAC = new Proto.Messages.MessagesApi.MessagesApiClient(messageInvoker);
+                _webApi.DraftClient = new(_gParam, _webApi.MessagesAC);
+                _webApi.OutgoingClient = new(_gParam, _webApi.MessagesAC, _webApi.FilesAC);
                 _webApi.UpdatesAC = new Proto.Updates.UpdatesApi.UpdatesApiClient(updatesInvoker);
+                _webApi.SecretClient = new(_gParam, _webApi.UsersAC, _webApi.MessagesAC, _webApi.UpdatesAC);
                 _webApi.OnlinerAC = new BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient(onlinerInvoker);
 
                 // Звонки есть не на каждом сервере, а сохранённый ранее GlobalParam мог быть

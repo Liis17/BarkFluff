@@ -82,16 +82,15 @@ public sealed class MessengerPresentationTests
     }
 
     [Fact]
-    public void ApplyIncomingMessage_SetsFirstUnreadOnlyOnce()
+    public void CountIncomingUnread_SetsFirstUnreadOnlyOnce()
     {
         var item = CreateChatItem(MessengerTestDoubles.CreateChat("chat", peerUserId: 2));
 
-        item.ApplyIncomingMessage(10, "hello", DateTimeOffset.UtcNow, countAsUnread: true);
-        item.ApplyIncomingMessage(11, "world", DateTimeOffset.UtcNow, countAsUnread: true);
+        item.CountIncomingUnread(10);
+        item.CountIncomingUnread(11);
 
         Assert.Equal(2, item.UnreadCount);
         Assert.Equal(10, item.FirstUnreadMessageId);
-        Assert.Equal("world", item.Preview);
     }
 
     [Fact]

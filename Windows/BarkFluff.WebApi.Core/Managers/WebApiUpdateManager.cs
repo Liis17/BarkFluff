@@ -2,6 +2,7 @@ using BarkFluff.Proto.Updates;
 using BarkFluff.WebApi.Core.MessengerData;
 
 using Grpc.Core;
+using System.Runtime.CompilerServices;
 
 namespace BarkFluff.WebApi.Core.Managers
 {
@@ -29,23 +30,41 @@ namespace BarkFluff.WebApi.Core.Managers
         private async Task<(ErrorReturner error, IAsyncEnumerable<TEvent>? stream)> Subscribe<TEvent>(
             Func<CancellationToken, AsyncServerStreamingCall<TEvent>> startCall,
             GlobalParam globalParam,
-            CancellationToken ct)
+            CancellationToken ct, bool preserveStatus = false)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
                     var call = startCall(ct);
-                    return ((ErrorReturner, IAsyncEnumerable<TEvent>?))(new ErrorReturner(true, ""), ReadStream(call, ct));
+                    return ((ErrorReturner, IAsyncEnumerable<TEvent>?))(new ErrorReturner(true, ""), preserveStatus ? ReadStreamWithStatus(call, ct) : ReadStream(call, ct));
                 }, globalParam);
             }
-            catch (RpcException)
+            catch (RpcException) when (!preserveStatus)
             {
                 return (new ErrorReturner(false, "Ошибка аутентификации"), null);
             }
-            catch (Exception)
+            catch (Exception) when (!preserveStatus)
             {
                 return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
+            }
+        }
+
+        public Task<(ErrorReturner error, IAsyncEnumerable<ChatFoldersChangedEvent>? stream)> SubscribeToChatFoldersChanged(
+            GlobalParam globalParam, CancellationToken ct = default) =>
+            Subscribe(token => UpdatesAC!.SubscribeChatFoldersChanged(new SubscribeChatFoldersChangedRequest(),
+                cancellationToken: token), globalParam, ct, preserveStatus: true);
+
+        // Для необязательного RPC клиент должен отличать UNIMPLEMENTED от сетевого сбоя.
+        private static async IAsyncEnumerable<T> ReadStreamWithStatus<T>(
+            AsyncServerStreamingCall<T> call, [EnumeratorCancellation] CancellationToken ct)
+        {
+            using (call)
+            {
+                while (await call.ResponseStream.MoveNext(ct).ConfigureAwait(false))
+                {
+                    yield return call.ResponseStream.Current;
+                }
             }
         }
 
