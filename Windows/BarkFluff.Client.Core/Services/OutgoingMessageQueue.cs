@@ -160,6 +160,26 @@ public sealed class OutgoingMessageQueue(IOutgoingMessageStore store, IOutgoingM
             await afterCommit(message).ConfigureAwait(false);
     }, token);
 
+    internal Task<bool> EnqueueNotificationReplyAsync(OutgoingScope scope, NotificationReply reply,
+        CancellationToken token) => Task.Run(() =>
+    {
+        lock (_gate)
+        {
+            token.ThrowIfCancellationRequested();
+            if (_session is not { } session || session.Scope != scope || session.Token != token)
+                throw new OperationCanceledException();
+
+            var message = new OutgoingMessage(reply.OperationId, reply.Target.ChatId, reply.Text,
+                0, [], [], [], []);
+            if (!store.TrySaveNotificationReply(scope, message))
+                return false;
+            session.Entries.Add(new Entry(message));
+            Pump(session);
+        }
+        Changed?.Invoke();
+        return true;
+    }, token);
+
     internal Task WakeAsync(OutgoingScope scope, CancellationToken token) => Task.Run(() =>
     {
         lock (_gate)

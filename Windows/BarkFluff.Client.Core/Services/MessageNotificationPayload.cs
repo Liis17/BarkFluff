@@ -1,4 +1,5 @@
 using System.Buffers.Text;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -10,6 +11,8 @@ namespace BarkFluff.Client.Core.Services;
 public static class MessageNotificationPayload
 {
     public const string ArgumentName = "messageChat";
+    public const string ReplyOperationArgument = "replyOperation";
+    public const string ReplyMessageArgument = "replyMessage";
 
     public static string CreateXml(MessageNotification notification) =>
         new XElement("toast",
@@ -20,7 +23,7 @@ public static class MessageNotificationPayload
                 new XElement("text", RemoveInvalidXmlCharacters(notification.Text)))))
             .ToString(SaveOptions.DisableFormatting);
 
-    private static string RemoveInvalidXmlCharacters(string text)
+    public static string RemoveInvalidXmlCharacters(string text)
     {
         var result = new StringBuilder(text.Length);
         for (var index = 0; index < text.Length; index++)
@@ -55,6 +58,19 @@ public static class MessageNotificationPayload
         }
     }
 
-    private static string Encode(MessageNotificationTarget target) =>
+    public static (MessageNotificationTarget? Target, NotificationReply? Reply) ParseActivation(
+        IDictionary<string, string> arguments, string? text)
+    {
+        var target = arguments.TryGetValue(ArgumentName, out var encoded) ? Parse(encoded) : null;
+        if (target is null || !arguments.TryGetValue(ReplyOperationArgument, out var operation))
+            return (target, null);
+
+        Guid.TryParseExact(operation, "N", out var operationId);
+        arguments.TryGetValue(ReplyMessageArgument, out var message);
+        long.TryParse(message, NumberStyles.Integer, CultureInfo.InvariantCulture, out var messageId);
+        return (target, new NotificationReply(target, operationId, messageId, text ?? string.Empty));
+    }
+
+    public static string Encode(MessageNotificationTarget target) =>
         Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(target));
 }

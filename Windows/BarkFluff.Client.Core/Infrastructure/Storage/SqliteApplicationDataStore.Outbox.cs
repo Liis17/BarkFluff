@@ -67,11 +67,36 @@ public sealed partial class SqliteApplicationDataStore : IOutgoingMessageStore
     void IOutgoingMessageStore.Save(OutgoingScope scope, OutgoingMessage message)
     {
         using var connection = OpenDraftConnection();
+        SaveOutgoing(connection, null, scope, message);
+    }
+
+    bool IOutgoingMessageStore.TrySaveNotificationReply(OutgoingScope scope, OutgoingMessage message)
+    {
+        using var connection = OpenDraftConnection();
+        using var transaction = connection.BeginTransaction();
+        using var receipt = OutgoingCommand(connection, scope, """
+            INSERT INTO notification_replies (node, user_id, operation_id)
+            VALUES ($node, $user, $id)
+            ON CONFLICT DO NOTHING;
+            """);
+        receipt.Transaction = transaction;
+        receipt.Parameters.AddWithValue("$id", message.Id.ToString());
+        if (receipt.ExecuteNonQuery() == 0)
+            return false;
+        SaveOutgoing(connection, transaction, scope, message);
+        transaction.Commit();
+        return true;
+    }
+
+    private static void SaveOutgoing(SqliteConnection connection, SqliteTransaction? transaction,
+        OutgoingScope scope, OutgoingMessage message)
+    {
         using var command = OutgoingCommand(connection, scope, """
             INSERT INTO outgoing_messages (node, user_id, operation_id, protected_data)
             VALUES ($node, $user, $id, $data)
             ON CONFLICT(node, user_id, operation_id) DO UPDATE SET protected_data = excluded.protected_data;
             """);
+        command.Transaction = transaction;
         command.Parameters.AddWithValue("$id", message.Id.ToString());
         command.Parameters.AddWithValue("$data", ProtectedData.Protect(JsonSerializer.SerializeToUtf8Bytes(message),
             OutgoingEntropy(scope, message.Id), DataProtectionScope.CurrentUser));
@@ -90,9 +115,14 @@ public sealed partial class SqliteApplicationDataStore : IOutgoingMessageStore
     void IOutgoingMessageStore.Clear(OutgoingScope scope)
     {
         using var connection = OpenDraftConnection();
-        using var command = OutgoingCommand(connection, scope,
-            "DELETE FROM outgoing_messages WHERE node = $node AND user_id = $user;");
+        using var transaction = connection.BeginTransaction();
+        using var command = OutgoingCommand(connection, scope, """
+            DELETE FROM outgoing_messages WHERE node = $node AND user_id = $user;
+            DELETE FROM notification_replies WHERE node = $node AND user_id = $user;
+            """);
+        command.Transaction = transaction;
         command.ExecuteNonQuery();
+        transaction.Commit();
     }
 
     private static SqliteCommand OutgoingCommand(SqliteConnection connection, OutgoingScope scope, string sql)

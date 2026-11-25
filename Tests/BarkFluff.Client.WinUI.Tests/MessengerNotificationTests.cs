@@ -4,6 +4,7 @@ using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Client.Core.ViewModels.Settings;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
+using BarkFluff.Proto.Users;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 using static BarkFluff.Client.WinUI.Tests.MessengerTestDoubles;
@@ -12,6 +13,30 @@ namespace BarkFluff.Client.WinUI.Tests;
 
 public sealed class MessengerNotificationTests
 {
+    [Theory]
+    [InlineData(ChatType.Regular, AccountStatus.Active, true)]
+    [InlineData(ChatType.Regular, AccountStatus.Blocked, false)]
+    [InlineData(ChatType.Private, AccountStatus.Active, false)]
+    public async Task ReplyActionRequiresWritableRegularChat(ChatType type, AccountStatus status, bool canReply)
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        await dispatcher.RunAsync(async () =>
+        {
+            var fixture = new Fixture(dispatcher: dispatcher);
+            fixture.Messenger.Chats[0] = CreateChat("known", peerUserId: 2, chatType: type);
+            fixture.Messenger.UserData = new() { AccountStatus = status };
+            await fixture.ViewModel.LoadAsync();
+            if (type == ChatType.Private)
+                fixture.Realtime.Raise(new MessageUpdate("known", true, 42, MessageUpdateKind.New,
+                    Encrypted: new EncryptedMessage { Id = 42, ChatId = "known", SenderId = 2 }));
+            else
+                fixture.Receive(42);
+
+            var action = Assert.Single(fixture.Presenter.Shown).Reply;
+            Assert.Equal(canReply ? 42L : null, action?.MessageId);
+        });
+    }
+
     [Theory]
     [InlineData(false, false, false, false, false)]
     [InlineData(true, true, false, false, false)]
@@ -211,6 +236,28 @@ public sealed class MessengerNotificationTests
         Assert.Equal(1, fixture.Presenter.ClearCount);
     }
 
+    [Theory]
+    [InlineData("  ответ  ", true, "  ответ  ")]
+    [InlineData(null, true, "")]
+    [InlineData(null, false, null)]
+    public void ActivationDistinguishesOpeningFromReplying(string? input, bool isReply, string? expectedText)
+    {
+        var target = new MessageNotificationTarget("https://node.invalid", 1, "chat");
+        var operationId = Guid.Parse("657262a0-df45-4669-ac3c-4f18f21beb60");
+        var arguments = new Dictionary<string, string> { ["messageChat"] = MessageNotificationPayload.Encode(target) };
+        if (isReply)
+        {
+            arguments["replyOperation"] = operationId.ToString("N");
+            arguments["replyMessage"] = "42";
+        }
+
+        var activation = MessageNotificationPayload.ParseActivation(arguments, input);
+
+        Assert.Equal(target, activation.Target);
+        Assert.Equal(expectedText is null ? null : new NotificationReply(target, operationId, 42, expectedText),
+            activation.Reply);
+    }
+
     [Fact]
     public async Task SettingsReloadDeviceFlagAndDisableClearsImmediatelyEvenWhileSaving()
     {
@@ -250,14 +297,15 @@ public sealed class MessengerNotificationTests
 
     private sealed class Fixture
     {
-        public Fixture(bool enabled = true)
+        public Fixture(bool enabled = true, InlineUiDispatcher? dispatcher = null)
         {
             Device.CurrentDevice!.NotificationsEnabled = enabled;
             Messenger.Chats.Add(CreateChat("known"));
             var localization = new StubLocalizationService();
             var notifications = new MessageNotificationService(Presenter, localization);
             Settings = new(Device, localization, notifications);
-            ViewModel = CreateViewModel(Messenger, Realtime, notifications: notifications, notificationSettings: Settings);
+            ViewModel = CreateViewModel(Messenger, Realtime, dispatcher: dispatcher, notifications: notifications,
+                notificationSettings: Settings);
         }
 
         public FakeRealtimeMessengerService Realtime { get; } = new();
@@ -278,6 +326,7 @@ public sealed class MessengerNotificationTests
         public int ClearCount { get; private set; }
 
         public void Show(MessageNotification notification) => Shown.Add(notification);
+        public void RemoveReply(NotificationReply reply) { }
         public void RemoveChat(MessageNotificationTarget target)
         {
             ClearedChats.Add(target);

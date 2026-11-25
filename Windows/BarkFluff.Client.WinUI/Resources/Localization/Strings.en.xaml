@@ -504,6 +504,12 @@
     <x:String x:Key="Messenger_UnmuteChat">Unmute notifications</x:String>
     <x:String x:Key="Notifications_NewMessage">New message</x:String>
     <x:String x:Key="Notifications_PrivateMessage">New encrypted message</x:String>
+    <x:String x:Key="Notifications_Reply">Reply</x:String>
+    <x:String x:Key="Notifications_ReplyPlaceholder">Type a reply</x:String>
+    <x:String x:Key="Notifications_ReplySessionMismatch">This notification belongs to another account or node. Open the original account to reply.</x:String>
+    <x:String x:Key="Notifications_ReplyUnavailable">Could not reply from this notification. Open the chat to check whether you can send a message.</x:String>
+    <x:String x:Key="Notifications_ReplyEmpty">Type a message before sending your reply.</x:String>
+    <x:String x:Key="Notifications_ReplyFailed">Could not queue the reply. Open the chat and try again.</x:String>
     <x:String x:Key="Messenger_ChatMuted">Notifications muted</x:String>
     <x:String x:Key="Messenger_ChatOptions">Chat actions</x:String>
     <x:String x:Key="Messenger_ChatMuteFailed">Couldn't change chat notifications.</x:String>

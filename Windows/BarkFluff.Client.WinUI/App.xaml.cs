@@ -33,13 +33,13 @@ public partial class App : Application
     private Window? _window;
     private readonly WindowsNotificationPresenter _notificationPresenter = new();
     private MainWindow? _notificationWindow;
-    private MessageNotificationTarget? _pendingNotification;
+    private readonly Queue<NotificationActivation> _pendingNotifications = new();
 
     public App()
     {
         InitializeComponent();
         var dispatcher = new DispatcherQueueUiDispatcher();
-        _notificationPresenter.Register(target => dispatcher.Post(() => OnNotificationInvoked(target)));
+        _notificationPresenter.Register(activation => dispatcher.Post(() => OnNotificationInvoked(activation)));
         AttachCrashLogging();
     }
 
@@ -54,7 +54,8 @@ public partial class App : Application
         try
         {
             VoiceComposer.CleanTemporaryFiles();
-            _pendingNotification ??= _notificationPresenter.ReadStartupActivation();
+            if (_notificationPresenter.ReadStartupActivation() is { } activation)
+                _pendingNotifications.Enqueue(activation);
             _host = CreateHost();
             await _host.StartAsync();
 
@@ -155,11 +156,8 @@ public partial class App : Application
 
             mainWindow.Activate();
             _notificationWindow = mainWindow;
-            if (_pendingNotification is { } target)
-            {
-                _pendingNotification = null;
-                OnNotificationInvoked(target);
-            }
+            while (_pendingNotifications.TryDequeue(out var pending))
+                OnNotificationInvoked(pending);
         }
         catch (Exception exception)
         {
@@ -256,16 +254,27 @@ public partial class App : Application
         teardown.Wait(HostShutdownTimeout);
     }
 
-    private void OnNotificationInvoked(MessageNotificationTarget? target)
+    private void OnNotificationInvoked(NotificationActivation activation)
     {
-        if (_notificationWindow is { } window)
+        if (_notificationWindow is not { } window)
         {
-            _ = window.OpenNotificationAsync(target);
+            _pendingNotifications.Enqueue(activation);
+            return;
         }
+        if (activation.Reply is { } reply)
+            _ = ReplyToNotificationAsync(reply, Services);
         else
-        {
-            _pendingNotification = target;
-        }
+            _ = window.OpenNotificationAsync(activation.Target);
+    }
+
+    private async Task ReplyToNotificationAsync(NotificationReply reply, IServiceProvider services)
+    {
+        var navigation = services.GetRequiredService<IOnboardingNavigationService>();
+        var error = navigation.CurrentViewModel is MessengerViewModel messenger
+            ? await messenger.ReplyToNotificationAsync(reply)
+            : "Notifications_ReplySessionMismatch";
+        if (error is not null && _notificationWindow is not null)
+            _notificationPresenter.ShowReplyError(services.GetRequiredService<ILocalizationService>().GetString(error));
     }
 
     internal void ShowCallNotification(Guid id, string title) => _notificationPresenter.ShowCall(id, title);

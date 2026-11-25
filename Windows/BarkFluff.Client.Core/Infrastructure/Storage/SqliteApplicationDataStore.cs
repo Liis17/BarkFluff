@@ -69,6 +69,12 @@ public sealed partial class SqliteApplicationDataStore : IApplicationDataStore
                 protected_data BLOB NOT NULL,
                 UNIQUE (node, user_id, operation_id)
             );
+            CREATE TABLE IF NOT EXISTS notification_replies (
+                node TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                operation_id TEXT NOT NULL,
+                PRIMARY KEY (node, user_id, operation_id)
+            );
             CREATE TABLE IF NOT EXISTS private_chat_keys (
                 scope TEXT PRIMARY KEY,
                 protected_data BLOB NOT NULL

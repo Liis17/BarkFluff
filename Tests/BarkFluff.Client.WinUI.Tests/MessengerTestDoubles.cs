@@ -365,6 +365,7 @@ internal sealed class FakeMessengerService : IMessengerService, IOutgoingMessage
     internal sealed class MemoryOutgoingStore : IOutgoingMessageStore
     {
         private readonly Dictionary<(OutgoingScope, Guid), OutgoingMessage> _messages = [];
+        private readonly HashSet<(OutgoingScope, Guid)> _notificationReplies = [];
         public Action<OutgoingMessage>? BeforeFirstSave { get; set; }
         public Func<OutgoingMessage, Task>? AfterFirstSaveAsync { get; set; }
         public IReadOnlyList<OutgoingMessage> Load(OutgoingScope scope) =>
@@ -377,6 +378,13 @@ internal sealed class FakeMessengerService : IMessengerService, IOutgoingMessage
             _messages[(scope, message.Id)] = message;
         }
         public void Remove(OutgoingScope scope, Guid id) => _messages.Remove((scope, id));
+        public bool TrySaveNotificationReply(OutgoingScope scope, OutgoingMessage message)
+        {
+            if (_notificationReplies.Contains((scope, message.Id)))
+                return false;
+            Save(scope, message);
+            return _notificationReplies.Add((scope, message.Id));
+        }
         public void Clear(OutgoingScope scope)
         {
             foreach (var message in Load(scope))

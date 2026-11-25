@@ -504,6 +504,12 @@
     <x:String x:Key="Messenger_UnmuteChat">Включить уведомления</x:String>
     <x:String x:Key="Notifications_NewMessage">Новое сообщение</x:String>
     <x:String x:Key="Notifications_PrivateMessage">Новое зашифрованное сообщение</x:String>
+    <x:String x:Key="Notifications_Reply">Ответить</x:String>
+    <x:String x:Key="Notifications_ReplyPlaceholder">Введите ответ</x:String>
+    <x:String x:Key="Notifications_ReplySessionMismatch">Уведомление относится к другой ноде или аккаунту. Войдите в исходный аккаунт, чтобы ответить.</x:String>
+    <x:String x:Key="Notifications_ReplyUnavailable">Не удалось ответить из уведомления. Откройте чат и проверьте, доступна ли отправка сообщений.</x:String>
+    <x:String x:Key="Notifications_ReplyEmpty">Введите сообщение, прежде чем отправить ответ.</x:String>
+    <x:String x:Key="Notifications_ReplyFailed">Не удалось поставить ответ в очередь. Откройте чат и попробуйте снова.</x:String>
     <x:String x:Key="Messenger_ChatMuted">Уведомления отключены</x:String>
     <x:String x:Key="Messenger_ChatOptions">Действия чата</x:String>
     <x:String x:Key="Messenger_ChatMuteFailed">Не удалось изменить уведомления чата.</x:String>

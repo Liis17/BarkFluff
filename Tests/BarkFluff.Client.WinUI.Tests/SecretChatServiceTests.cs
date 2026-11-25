@@ -427,6 +427,7 @@ public sealed class SecretChatServiceTests
         public void Show(MessageNotification notification) => Notification = notification;
         public void RemoveChat(MessageNotificationTarget target) { }
         public void RemoveAll() { }
+        public void RemoveReply(NotificationReply reply) { }
     }
 
     [Fact]

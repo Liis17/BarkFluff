@@ -1,17 +1,20 @@
 using BarkFluff.Client.Core.Services;
 using Microsoft.Windows.AppLifecycle;
 using Microsoft.Windows.AppNotifications;
-using Windows.ApplicationModel.Activation;
+using Microsoft.Windows.AppNotifications.Builder;
 
 namespace BarkFluff.Client.WinUI.Infrastructure.Notifications;
 
+internal sealed record NotificationActivation(MessageNotificationTarget? Target, NotificationReply? Reply = null);
+
 internal sealed class WindowsNotificationPresenter : INotificationPresenter
 {
+    private const string ReplyInput = "replyText";
     private AppNotificationManager? _manager;
-    private Action<MessageNotificationTarget?>? _invoke;
+    private Action<NotificationActivation>? _invoke;
     private Task _pending = Task.CompletedTask;
 
-    public void Register(Action<MessageNotificationTarget?> invoke)
+    public void Register(Action<NotificationActivation> invoke)
     {
         try
         {
@@ -35,7 +38,7 @@ internal sealed class WindowsNotificationPresenter : INotificationPresenter
         }
     }
 
-    public MessageNotificationTarget? ReadStartupActivation()
+    public NotificationActivation? ReadStartupActivation()
     {
         if (_manager is null)
         {
@@ -46,14 +49,7 @@ internal sealed class WindowsNotificationPresenter : INotificationPresenter
         {
             // Холодный запуск может получить первый клик через AppLifecycle, до событий NotificationInvoked.
             var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
-            return activation.Data switch
-            {
-                AppNotificationActivatedEventArgs args => ParseTarget(args),
-                ToastNotificationActivatedEventArgs args when args.Argument.StartsWith(
-                    MessageNotificationPayload.ArgumentName + "=", StringComparison.Ordinal) =>
-                    MessageNotificationPayload.Parse(args.Argument[(MessageNotificationPayload.ArgumentName.Length + 1)..]),
-                _ => null
-            };
+            return activation?.Data is AppNotificationActivatedEventArgs args ? ParseActivation(args) : null;
         }
         catch (Exception)
         {
@@ -63,30 +59,62 @@ internal sealed class WindowsNotificationPresenter : INotificationPresenter
 
     private void OnInvoked(AppNotificationManager sender, AppNotificationActivatedEventArgs args)
     {
-        MessageNotificationTarget? target = null;
+        NotificationActivation activation = new(null);
         try
         {
-            target = ParseTarget(args);
+            activation = ParseActivation(args);
         }
         catch (Exception)
         {
             // При недоступных аргументах достаточно показать окно.
         }
 
-        _invoke?.Invoke(target);
+        _invoke?.Invoke(activation);
     }
 
-    private static MessageNotificationTarget? ParseTarget(AppNotificationActivatedEventArgs args) =>
-        args.Arguments.TryGetValue(MessageNotificationPayload.ArgumentName, out var value)
-            ? MessageNotificationPayload.Parse(value)
-            : null;
+    private static NotificationActivation ParseActivation(AppNotificationActivatedEventArgs args)
+    {
+        var (target, reply) = MessageNotificationPayload.ParseActivation(
+            args.Arguments, args.UserInput.TryGetValue(ReplyInput, out var text) ? text : null);
+        return new(target, reply);
+    }
 
     public void Show(MessageNotification notification) => Enqueue(manager =>
     {
-        manager.Show(new AppNotification(MessageNotificationPayload.CreateXml(notification))
+        AppNotification toast;
+        if (notification.Reply is { } reply)
         {
-            Group = MessageNotificationPayload.Group(notification.Target)
-        });
+            var target = MessageNotificationPayload.Encode(notification.Target);
+            var operation = Guid.NewGuid().ToString("N");
+            toast = new AppNotificationBuilder()
+                .AddArgument(MessageNotificationPayload.ArgumentName, target)
+                .AddText(MessageNotificationPayload.RemoveInvalidXmlCharacters(notification.Title))
+                .AddText(MessageNotificationPayload.RemoveInvalidXmlCharacters(notification.Text))
+                .AddTextBox(ReplyInput, reply.Placeholder, string.Empty)
+                .AddButton(new AppNotificationButton(reply.Label)
+                    .SetInputId(ReplyInput)
+                    .AddArgument(MessageNotificationPayload.ArgumentName, target)
+                    .AddArgument(MessageNotificationPayload.ReplyOperationArgument, operation)
+                    .AddArgument(MessageNotificationPayload.ReplyMessageArgument, reply.MessageId.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture)))
+                .BuildNotification();
+            toast.Tag = operation;
+        }
+        else
+        {
+            toast = new AppNotification(MessageNotificationPayload.CreateXml(notification));
+        }
+        toast.Group = MessageNotificationPayload.Group(notification.Target);
+        manager.Show(toast);
+        return Task.CompletedTask;
+    });
+
+    public void RemoveReply(NotificationReply reply) => Enqueue(async manager =>
+        await manager.RemoveByTagAndGroupAsync(reply.OperationId.ToString("N"), MessageNotificationPayload.Group(reply.Target)));
+
+    public void ShowReplyError(string text) => Enqueue(manager =>
+    {
+        manager.Show(new AppNotificationBuilder().AddText("BarkFluff").AddText(text).BuildNotification());
         return Task.CompletedTask;
     });
 

@@ -20,6 +20,7 @@ public interface IOutgoingMessageStore
     IReadOnlyList<OutgoingMessage> Load(OutgoingScope scope);
     IReadOnlyList<(OutgoingScope Scope, Guid Id)> ListOperations();
     void Save(OutgoingScope scope, OutgoingMessage message);
+    bool TrySaveNotificationReply(OutgoingScope scope, OutgoingMessage message);
     void Remove(OutgoingScope scope, Guid id);
     void Clear(OutgoingScope scope);
 }

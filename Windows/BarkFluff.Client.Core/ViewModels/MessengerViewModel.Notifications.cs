@@ -142,6 +142,18 @@ public sealed partial class MessengerViewModel
             : Task.FromResult(false);
     }
 
+    public Task<string?> ReplyToNotificationAsync(NotificationReply reply)
+    {
+        if (_realtimeSession is not { } session || !IsCurrent(session))
+            return Task.FromResult<string?>("Notifications_ReplySessionMismatch");
+        if (_notifications is null)
+            return Task.FromResult<string?>("Notifications_ReplyUnavailable");
+
+        var chat = Chats.FirstOrDefault(item => item.Id == reply.Target.ChatId);
+        return new NotificationReplyService(_messenger, _outgoing, _notifications)
+            .AcceptAsync(reply, chat, _outgoingReady, () => IsCurrent(session), session.Lifetime.Token);
+    }
+
     private async Task<bool> OpenChatByIdAsync(
         RealtimeSession session, string chatId, CancellationToken token, Func<bool>? stillRequested = null)
     {

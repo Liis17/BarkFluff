@@ -24,6 +24,127 @@ public sealed class OutgoingMessageQueueTests : IDisposable
     private IOutgoingMessageStore Store => new SqliteApplicationDataStore(Paths);
 
     [Fact]
+    public async Task NotificationReplyWaitsForQueueAndIsDeduplicatedAfterRestart()
+    {
+        await InitializeAsync();
+        var messenger = new FakeMessengerService { CurrentNodeAddress = Scope.Node };
+        messenger.Chats.Add(MessengerTestDoubles.CreateChat("a"));
+        IReadOnlyCollection<long>? markedRead = null;
+        messenger.MarkReadResponse = ids =>
+        {
+            markedRead = ids;
+            return Task.FromResult(new ErrorReturner(true));
+        };
+        using var lifetime = new CancellationTokenSource();
+        var queue = Start(new Transport(), start: false);
+        var presenter = new ReplyPresenter();
+        var notifications = new MessageNotificationService(presenter, new StubLocalizationService());
+        var service = new NotificationReplyService(messenger, queue, notifications);
+        var reply = new NotificationReply(new(Scope.Node, Scope.UserId, "a"), Guid.NewGuid(), 42, " \tответ\r\n ");
+        var ready = Signal();
+
+        var pending = service.AcceptAsync(reply, null, ready.Task, () => true, lifetime.Token);
+        Assert.False(pending.IsCompleted);
+        await queue.StartAsync(Scope, lifetime.Token, paused: true);
+        ready.SetResult();
+        Assert.Null(await pending);
+        var saved = Assert.Single(Store.Load(Scope));
+        Assert.Equal(reply.OperationId, saved.Id);
+        Assert.Equal("ответ", saved.Text);
+        Assert.Equal(reply, Assert.Single(presenter.Removed));
+        Assert.Equal(new long[] { 42 }, markedRead);
+
+        await queue.StopAsync();
+        Store.Remove(Scope, saved.Id);
+        var restarted = Start(new Transport(), start: false);
+        await restarted.StartAsync(Scope, lifetime.Token, paused: true);
+        service = new NotificationReplyService(messenger, restarted, notifications);
+        Assert.Null(await service.AcceptAsync(reply, null, Task.CompletedTask, () => true, lifetime.Token));
+        Assert.Empty(Store.Load(Scope));
+    }
+
+    [Fact]
+    public async Task NotificationReplyRejectsWhitespaceBeforeWaiting()
+    {
+        await InitializeAsync();
+        var messenger = new FakeMessengerService { CurrentNodeAddress = Scope.Node };
+        var presenter = new ReplyPresenter();
+        var service = new NotificationReplyService(messenger, Start(new Transport(), start: false),
+            new MessageNotificationService(presenter, new StubLocalizationService()));
+        var reply = new NotificationReply(new(Scope.Node, Scope.UserId, "a"), Guid.NewGuid(), 42, " \t\r\n ");
+
+        Assert.Equal("Notifications_ReplyEmpty",
+            await service.AcceptAsync(reply, null, Signal().Task, () => true, default).WaitAsync(Timeout));
+        Assert.Empty(Store.Load(Scope));
+        Assert.Empty(presenter.Removed);
+    }
+
+    [Fact]
+    public async Task ClearRemovesOnlyCurrentScopeNotificationReplyReceipts()
+    {
+        await InitializeAsync();
+        var store = Store;
+        var otherUser = Scope with { UserId = 2 };
+        var otherNode = OutgoingScope.Create("https://other.invalid", Scope.UserId);
+        var message = new OutgoingMessage(Guid.NewGuid(), "a", "reply", 0, [], [], [], []);
+        Assert.True(store.TrySaveNotificationReply(Scope, message));
+        Assert.True(store.TrySaveNotificationReply(otherUser, message));
+        Assert.True(store.TrySaveNotificationReply(otherNode, message));
+
+        store.Clear(Scope);
+
+        Assert.Empty(store.Load(Scope));
+        Assert.True(store.TrySaveNotificationReply(Scope, message));
+        Assert.False(store.TrySaveNotificationReply(otherUser, message));
+        Assert.False(store.TrySaveNotificationReply(otherNode, message));
+        Assert.Single(store.Load(otherUser));
+        Assert.Single(store.Load(otherNode));
+    }
+
+    [Theory]
+    [InlineData("other-node", 1)]
+    [InlineData("https://node.invalid", 2)]
+    public async Task NotificationReplyRejectsDifferentSessionBeforeWaiting(string node, long userId)
+    {
+        await InitializeAsync();
+        var messenger = new FakeMessengerService { CurrentNodeAddress = "https://node.invalid" };
+        var queue = Start(new Transport(), start: false);
+        var notifications = new MessageNotificationService(new ReplyPresenter(), new StubLocalizationService());
+        var service = new NotificationReplyService(messenger, queue, notifications);
+        var reply = new NotificationReply(new(node, userId, "a"), Guid.NewGuid(), 42, "reply");
+
+        Assert.Equal("Notifications_ReplySessionMismatch",
+            await service.AcceptAsync(reply, null, Signal().Task, () => true, default).WaitAsync(Timeout));
+        Assert.Empty(Store.Load(Scope));
+    }
+
+    [Fact]
+    public async Task NotificationReplyRejectsSessionChangeWhileWaiting()
+    {
+        var messenger = new FakeMessengerService { CurrentNodeAddress = Scope.Node };
+        var queue = Start(new Transport(), start: false);
+        var service = new NotificationReplyService(messenger, queue,
+            new MessageNotificationService(new ReplyPresenter(), new StubLocalizationService()));
+        var reply = new NotificationReply(new(Scope.Node, Scope.UserId, "a"), Guid.NewGuid(), 42, "reply");
+        var ready = Signal();
+        using var session = new CancellationTokenSource();
+        var pending = service.AcceptAsync(reply, null, ready.Task, () => true, session.Token);
+
+        await session.CancelAsync();
+
+        Assert.Equal("Notifications_ReplySessionMismatch", await pending.WaitAsync(Timeout));
+    }
+
+    private sealed class ReplyPresenter : INotificationPresenter
+    {
+        public List<NotificationReply> Removed { get; } = [];
+        public void Show(MessageNotification notification) { }
+        public void RemoveChat(MessageNotificationTarget target) { }
+        public void RemoveAll() { }
+        public void RemoveReply(NotificationReply reply) => Removed.Add(reply);
+    }
+
+    [Fact]
     public async Task DatabaseReadFailureDoesNotDisableEnqueueForSession()
     {
         await InitializeAsync();
@@ -169,6 +290,8 @@ public sealed class OutgoingMessageQueueTests : IDisposable
             : inner.Load(scope);
         public IReadOnlyList<(OutgoingScope Scope, Guid Id)> ListOperations() => inner.ListOperations();
         public void Save(OutgoingScope scope, OutgoingMessage message) => inner.Save(scope, message);
+        public bool TrySaveNotificationReply(OutgoingScope scope, OutgoingMessage message) =>
+            inner.TrySaveNotificationReply(scope, message);
         public void Clear(OutgoingScope scope) => inner.Clear(scope);
         public void Remove(OutgoingScope scope, Guid id)
         {

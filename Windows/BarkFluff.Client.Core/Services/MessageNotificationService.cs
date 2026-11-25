@@ -11,13 +11,18 @@ public sealed record MessageNotificationTarget(string Node, long UserId, string 
         !string.IsNullOrWhiteSpace(ChatId);
 }
 
-public sealed record MessageNotification(MessageNotificationTarget Target, string Title, string Text);
+public sealed record MessageNotification(MessageNotificationTarget Target, string Title, string Text,
+    NotificationReplyAction? Reply = null);
+
+public sealed record NotificationReplyAction(long MessageId, string Label, string Placeholder);
+public sealed record NotificationReply(MessageNotificationTarget Target, Guid OperationId, long MessageId, string Text);
 
 public interface INotificationPresenter
 {
     void Show(MessageNotification notification);
     void RemoveChat(MessageNotificationTarget target);
     void RemoveAll();
+    void RemoveReply(NotificationReply reply);
 }
 
 public sealed class MessageNotificationService(INotificationPresenter presenter, ILocalizationService localization)
@@ -76,13 +81,18 @@ public sealed class MessageNotificationService(INotificationPresenter presenter,
                 ? "Messenger_Attachment" : "Notifications_NewMessage");
         }
 
-        presenter.Show(new(target, title, preview));
+        var reply = NotificationReplyService.CanReply(chat)
+            ? new NotificationReplyAction(update.MessageId, localization.GetString("Notifications_Reply"),
+                localization.GetString("Notifications_ReplyPlaceholder"))
+            : null;
+        presenter.Show(new(target, title, preview, reply));
     }
 
     internal void ShowSecret(MessageNotificationTarget target) =>
         presenter.Show(new(target, "BarkFluff", localization.GetString("Secret_Notification")));
 
     internal void ClearChat(MessageNotificationTarget target) => presenter.RemoveChat(target);
+    internal void RemoveReply(NotificationReply reply) => presenter.RemoveReply(reply);
     internal long ClearVersion { get; private set; }
 
     internal void Clear()
