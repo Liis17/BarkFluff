@@ -95,6 +95,7 @@ public sealed partial class MessengerViewModel
 
     private void OnAudioCallChanged()
     {
+        _uiDispatcher.Post(() => _voicePlayback.SetCallInProgress(_calls?.Current is not null));
         NotifyAudioCallButton();
         if (_calls?.Current is not { PeerName: null } call || call.Id == _lookupCallId ||
             _realtimeSession is not { } session)

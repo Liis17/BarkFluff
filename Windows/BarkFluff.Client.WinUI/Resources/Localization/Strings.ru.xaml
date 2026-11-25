@@ -551,7 +551,7 @@
     <x:String x:Key="Messenger_VoiceCaptureFailed">Не удалось завершить запись. Попробуйте записать сообщение ещё раз.</x:String>
     <x:String x:Key="Messenger_VoiceTooShort">Запишите хотя бы полсекунды.</x:String>
     <x:String x:Key="Messenger_VoicePlaybackFailed">Не удалось воспроизвести вложение.</x:String>
-    <x:String x:Key="Messenger_VoicePlayStop">Воспроизвести или остановить аудио</x:String>
+    <x:String x:Key="Messenger_VoicePlayStop">Воспроизвести или приостановить аудио</x:String>
     <x:String x:Key="Messenger_VoiceProgress">Прогресс воспроизведения</x:String>
     <x:String x:Key="Messenger_OutboxWaiting">Ожидает отправки</x:String>
     <x:String x:Key="Messenger_OutboxSending">Отправляется</x:String>
@@ -664,4 +664,10 @@
     <x:String x:Key="Messenger_ChatSoundPreviewTitle">Проверка звука уведомлений</x:String>
     <x:String x:Key="Messenger_ChatSoundDeviceOnly">Настройка действует только на этом устройстве.</x:String>
     <x:String x:Key="Messenger_ChatSoundFailed">Не удалось загрузить или сохранить звук уведомлений чата.</x:String>
+    <x:String x:Key="Messenger_VoicePlay">Воспроизвести</x:String>
+    <x:String x:Key="Messenger_VoicePause">Пауза</x:String>
+    <x:String x:Key="Messenger_VoicePosition">Позиция воспроизведения (%)</x:String>
+    <x:String x:Key="Messenger_VoiceSpeed">Скорость воспроизведения</x:String>
+    <x:String x:Key="Messenger_VoiceJump">Перейти к сообщению</x:String>
+    <x:String x:Key="Messenger_VoiceClose">Закрыть плеер голосовых</x:String>
 </ResourceDictionary>

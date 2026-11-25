@@ -7,6 +7,7 @@ public sealed partial class MessengerViewModel
 {
     private readonly VoicePlayback _voicePlayback;
     public VoiceComposer Voice { get; }
+    public VoicePlayback VoicePlayer => _voicePlayback;
 
     public bool ShowVoiceMicrophone => Voice.IsAvailable && CanAttach && !Voice.IsBusy &&
         !AttachmentComposer.HasFiles && !SendCommand.IsRunning && string.IsNullOrWhiteSpace(DraftText);
@@ -43,21 +44,50 @@ public sealed partial class MessengerViewModel
     [RelayCommand]
     private Task CancelVoiceRecordingAsync() => Voice.IsBusy ? CancelAttachmentsAsync() : Task.CompletedTask;
 
-    public Task ToggleVoicePlaybackAsync(MessageAttachmentItemViewModel item) =>
-        _realtimeSession is not null && !Voice.IsBusy
-            ? _voicePlayback.ToggleAsync(item, Profile.VoiceTab.Items.Contains(item))
-            : Task.CompletedTask;
-
-    partial void OnIsProfileVisibleChanged(bool value)
+    public Task ToggleVoicePlaybackAsync(MessageAttachmentItemViewModel item)
     {
-        if (!value)
-            _voicePlayback.StopProfilePlayback();
+        if (!IsCurrent(_realtimeSession) || Voice.IsBusy || _calls?.Current is not null)
+            return Task.CompletedTask;
+
+        if (Profile.VoiceTab.Items.Contains(item))
+            return _voicePlayback.ToggleAsync(item, item.VoiceTarget);
+
+        var message = Messages.FirstOrDefault(message => message.FileAttachments.Contains(item));
+        return SelectedChat is { IsPrivate: false } chat && message is not null
+            ? _voicePlayback.ToggleAsync(item, (chat.Id, message.Id))
+            : Task.CompletedTask;
     }
 
-    public Task LeaveMessengerAsync()
+    public void OnVideoPlaybackStarted() => _voicePlayback.Pause();
+
+    [RelayCommand]
+    private async Task OpenPlayingVoiceAsync()
+    {
+        if (_realtimeSession is not { } session || !IsCurrent(session) ||
+            _voicePlayback.Target is not { } target || _voicePlayback.Lifetime is not { } token)
+            return;
+
+        var version = _chatVersion;
+        var opening = OpenChatByIdAsync(session, target.ChatId, token);
+        var activation = _notificationActivation;
+        if (await opening && activation == _notificationActivation &&
+            IsCurrent(session) && !token.IsCancellationRequested &&
+            SelectedChat is { IsPrivate: false } chat && chat.Id == target.ChatId)
+        {
+            SecretChats.Close();
+            await NavigateToMessageAsync(target.MessageId);
+        }
+        else if (activation == _notificationActivation && IsCurrent(session) &&
+            !token.IsCancellationRequested && version == _chatVersion)
+        {
+            ActionError = _localization.GetString("Messenger_HistoryMessageUnavailable");
+        }
+    }
+
+    public Task LeaveMessengerAsync(bool clearAttachments = false)
     {
         MediaViewer.Close();
         _voicePlayback.Stop();
-        return Voice.CancelAsync();
+        return clearAttachments ? CancelAttachmentsAsync() : Voice.CancelAsync();
     }
 }

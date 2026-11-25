@@ -10,10 +10,16 @@ namespace BarkFluff.Client.WinUI.Views;
 
 public sealed partial class MessengerPage : Page
 {
+    private uint? _voiceScrubPointer;
+
     public MessengerPage()
     {
         InitializeComponent();
         InitializeShortcuts();
+        VoicePositionSlider.AddHandler(PointerPressedEvent, new PointerEventHandler(OnVoiceScrubStarted), true);
+        VoicePositionSlider.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnVoiceScrubEnded), true);
+        VoicePositionSlider.AddHandler(PointerCaptureLostEvent, new PointerEventHandler(OnVoiceScrubEnded), true);
+        VoicePositionSlider.AddHandler(PointerCanceledEvent, new PointerEventHandler(OnVoiceScrubCanceled), true);
     }
 
     public MessengerViewModel ViewModel { get; private set; } = null!;
@@ -46,6 +52,50 @@ public sealed partial class MessengerPage : Page
         _secretDialog?.Hide();
         _chatSoundDialog?.Hide();
         base.OnNavigatedFrom(e);
+    }
+
+    private void OnVoicePositionChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs args)
+    {
+        // Slider может изменить значение раньше, чем PointerPressed дойдёт до обработчика.
+        if (ViewModel?.VoicePlayer is { } player && args.NewValue != player.Progress)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_voiceScrubPointer is null && VoicePositionSlider.Value == args.NewValue &&
+                    args.NewValue != player.Progress)
+                    player.Seek(args.NewValue);
+            });
+        }
+    }
+
+    private void OnVoiceScrubStarted(object sender, PointerRoutedEventArgs args)
+    {
+        if (_voiceScrubPointer is not null || ViewModel?.VoicePlayer is not { CanSeek: true } player ||
+            !args.GetCurrentPoint(VoicePositionSlider).Properties.IsLeftButtonPressed)
+            return;
+
+        _voiceScrubPointer = args.Pointer.PointerId;
+        player.BeginScrub();
+    }
+
+    private void OnVoiceScrubEnded(object sender, PointerRoutedEventArgs args)
+    {
+        if (_voiceScrubPointer != args.Pointer.PointerId)
+            return;
+
+        _voiceScrubPointer = null;
+        ViewModel.VoicePlayer.EndScrub(VoicePositionSlider.Value);
+    }
+
+    private void OnVoiceScrubCanceled(object sender, PointerRoutedEventArgs args)
+    {
+        if (_voiceScrubPointer != args.Pointer.PointerId)
+            return;
+
+        _voiceScrubPointer = null;
+        var player = ViewModel.VoicePlayer;
+        player.EndScrub(null);
+        VoicePositionSlider.Value = player.Progress;
     }
 
     private async void OnVoicePlaybackClick(object sender, RoutedEventArgs args)

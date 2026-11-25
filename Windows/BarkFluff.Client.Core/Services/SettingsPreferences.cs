@@ -10,6 +10,17 @@ public sealed class SettingsPreferences(IApplicationDataStore dataStore) : ISett
     private const string TestingPreferencesKey = "settings.testing";
     private const string WindowPreferencesKey = "settings.window";
 
+    private const string VoicePlaybackSpeedKey = "settings.voicePlaybackSpeed";
+
+    public async Task<double> GetVoicePlaybackSpeedAsync(CancellationToken cancellationToken = default)
+    {
+        var speed = await GetAsync<double>(VoicePlaybackSpeedKey, cancellationToken);
+        return speed is 1 or 1.5 or 2 ? speed : 1;
+    }
+
+    public Task SaveVoicePlaybackSpeedAsync(double speed, CancellationToken cancellationToken = default) =>
+        SaveAsync(VoicePlaybackSpeedKey, speed, cancellationToken);
+
     public async Task<InterfacePreferences> GetInterfacePreferencesAsync(CancellationToken cancellationToken = default) =>
         Clamp(await GetAsync<InterfacePreferences>(InterfacePreferencesKey, cancellationToken) ?? new InterfacePreferences());
 

@@ -551,7 +551,7 @@
     <x:String x:Key="Messenger_VoiceCaptureFailed">Could not finish the voice recording. Try recording again.</x:String>
     <x:String x:Key="Messenger_VoiceTooShort">Record at least half a second.</x:String>
     <x:String x:Key="Messenger_VoicePlaybackFailed">Could not play this attachment.</x:String>
-    <x:String x:Key="Messenger_VoicePlayStop">Play or stop audio</x:String>
+    <x:String x:Key="Messenger_VoicePlayStop">Play or pause audio</x:String>
     <x:String x:Key="Messenger_VoiceProgress">Playback progress</x:String>
     <x:String x:Key="Messenger_OutboxWaiting">Waiting to send</x:String>
     <x:String x:Key="Messenger_OutboxSending">Sending</x:String>
@@ -664,4 +664,10 @@
     <x:String x:Key="Messenger_ChatSoundPreviewTitle">Notification sound preview</x:String>
     <x:String x:Key="Messenger_ChatSoundDeviceOnly">This setting applies only on this device.</x:String>
     <x:String x:Key="Messenger_ChatSoundFailed">Could not load or save the chat notification sound.</x:String>
+    <x:String x:Key="Messenger_VoicePlay">Play</x:String>
+    <x:String x:Key="Messenger_VoicePause">Pause</x:String>
+    <x:String x:Key="Messenger_VoicePosition">Playback position (%)</x:String>
+    <x:String x:Key="Messenger_VoiceSpeed">Playback speed</x:String>
+    <x:String x:Key="Messenger_VoiceJump">Go to message</x:String>
+    <x:String x:Key="Messenger_VoiceClose">Close voice player</x:String>
 </ResourceDictionary>

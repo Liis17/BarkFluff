@@ -98,7 +98,7 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
             _hasReceivedResult = true;
             foreach (var info in attachments)
             {
-                var item = await CreateItemAsync(info.Attachment);
+                var item = await CreateItemAsync(info.Attachment, _chatId, info.MessageId);
                 if (version != _version)
                     return;
                 Items.Add(item);
@@ -114,7 +114,7 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
         }
     }
 
-    private async Task<MessageAttachmentItemViewModel> CreateItemAsync(MessageAttachment attachment)
+    private async Task<MessageAttachmentItemViewModel> CreateItemAsync(MessageAttachment attachment, string chatId, long messageId)
     {
         var previewUrl = attachment.PreviewUrl;
         if (string.IsNullOrWhiteSpace(previewUrl)
@@ -131,7 +131,10 @@ public sealed partial class ProfileAttachmentsTabViewModel : ObservableObject
             string.IsNullOrWhiteSpace(attachment.FileName) ? _localization.GetString("Messenger_File") : attachment.FileName,
             attachment.AttachmentSize,
             attachment.ImageWidth,
-            attachment.ImageHeight, attachment.FileId, attachment.Id);
+            attachment.ImageHeight, attachment.FileId, attachment.Id)
+        {
+            VoiceTarget = _attachmentType == MessageAttachmentType.Voice && messageId > 0 ? (chatId, messageId) : null
+        };
     }
 
     private async Task<string> ResolveFileUrlAsync(string fileId) =>

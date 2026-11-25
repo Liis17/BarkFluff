@@ -1,9 +1,12 @@
 using System.Buffers.Binary;
-using System.ComponentModel;
+using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
+using BarkFluff.Client.Core.Services.Calls;
+using BarkFluff.Proto.Calls;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Files.Services;
 using BarkFluff.Proto.Files;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.Proto.Users;
 using BarkFluff.WebApi.Core;
@@ -271,75 +274,151 @@ public sealed class MessengerVoiceTests
     }
 
     [Fact]
-    public async Task OnlyOneVoicePlaysAndChatSwitchStopsIt()
+    public async Task OneVoicePlaysAcrossChatsAndJumpOpensItsMessage()
     {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
         var player = new Player();
-        var clock = new FakeTimeProvider();
-        var (vm, _) = await OpenAsync(player: player, clock: clock, withVoice: true);
-        var items = Assert.Single(vm.Messages).FileAttachments.ToArray();
-        Assert.Equal(2, items.Length);
-        // Общий FakeTimeProvider может обработать таймер в другом потоке после возврата из Advance.
-        var updated = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        void OnTimeChanged(object? sender, PropertyChangedEventArgs args)
+        var (vm, _) = await OpenAsync(player: player, clock: new FakeTimeProvider(), withVoice: true,
+            dispatcher: dispatcher);
+
+        await dispatcher.RunAsync(async () =>
         {
-            if (args.PropertyName == nameof(MessageAttachmentItemViewModel.VoiceTime))
-                updated.TrySetResult();
-        }
-        items[0].PropertyChanged += OnTimeChanged;
-        try
-        {
+            var items = Assert.Single(vm.Messages).FileAttachments.ToArray();
             await vm.ToggleVoicePlaybackAsync(items[0]);
-            clock.Advance(TimeSpan.FromMilliseconds(200));
-            await updated.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        }
-        finally
-        {
-            items[0].PropertyChanged -= OnTimeChanged;
-        }
-        Assert.True(items[0].IsVoiceActive);
-        Assert.Equal(25, items[0].VoiceProgress);
-        Assert.Equal("00:01 / 00:04", items[0].VoiceTime);
-        var first = Assert.Single(player.Playbacks);
+            Assert.True(vm.VoicePlayer.IsVisible);
+            Assert.Equal(25, vm.VoicePlayer.Progress);
+            Assert.Equal("00:01 / 00:04", items[0].VoiceTime);
+            var first = Assert.Single(player.Playbacks);
 
-        await vm.ToggleVoicePlaybackAsync(items[1]);
-        Assert.True(first.Disposed);
-        Assert.False(items[0].IsVoiceActive);
-        Assert.True(items[1].IsVoiceActive);
-        first.Ended(true);
-        Assert.True(items[1].IsVoiceActive);
+            await vm.ToggleVoicePlaybackAsync(items[1]);
+            Assert.True(first.Disposed);
+            Assert.False(items[0].IsVoiceActive);
+            first.Ended(true);
+            Assert.True(items[1].IsVoiceActive);
 
-        vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
-        Assert.True(player.Playbacks[1].Disposed);
-        Assert.False(items[1].IsVoiceActive);
-        Assert.Equal(0, items[0].VoiceProgress);
-        Assert.Equal("00:00 / 00:04", items[0].VoiceTime);
+            vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+            Assert.True(vm.VoicePlayer.IsPlaying);
+            Assert.False(player.Playbacks[1].Disposed);
+
+            await vm.OpenPlayingVoiceCommand.ExecuteAsync(null);
+            Assert.Equal("a", vm.SelectedChat!.Id);
+            Assert.Equal(MessageScrollTarget.Message, vm.ScrollRequest?.Target);
+            Assert.Equal(50, vm.ScrollRequest?.MessageId);
+            vm.VoicePlayer.StopCommand.Execute(null);
+            Assert.False(vm.VoicePlayer.IsVisible);
+            Assert.True(player.Playbacks[1].Disposed);
+        });
     }
 
     [Fact]
-    public async Task ClosingProfileOrChangingTabStopsOnlyProfilePlayback()
+    public async Task CallDuringPreparationPausesVoiceAndEndingCallLeavesItPaused()
     {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var player = new Player(deferStart: true);
+        var clock = new FakeTimeProvider();
+        var calls = new AudioCallService(new AudioCallTests.Media(), dispatcher, clock);
+        var (vm, _) = await OpenAsync(player: player, clock: clock, withVoice: true,
+            dispatcher: dispatcher, calls: calls);
+
+        await dispatcher.RunAsync(async () =>
+        {
+            var item = Assert.Single(vm.Messages).FileAttachments.First();
+            var starting = vm.ToggleVoicePlaybackAsync(item);
+            var signaling = new AudioCallTests.Signaling();
+            var seen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            calls.Start(signaling);
+            await signaling.Events.Writer.WriteAsync((new CallEvent
+            {
+                Incoming = new() { CallId = Guid.NewGuid().ToString(), CallerUserId = 2,
+                    MediaType = CallMediaType.CallMediaAudio }
+            }, seen));
+            await seen.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.NotNull(calls.Current);
+            Assert.True(vm.VoicePlayer.CallInProgress);
+            player.CompleteStart();
+            await starting;
+
+            var playback = Assert.Single(player.Playbacks);
+            Assert.True(vm.VoicePlayer.IsVisible);
+            Assert.False(playback.IsPlaying);
+            vm.VoicePlayer.ToggleCommand.Execute(null);
+            Assert.False(playback.IsPlaying);
+            await calls.HangUpAsync();
+            Assert.False(vm.VoicePlayer.CallInProgress);
+            Assert.False(playback.IsPlaying);
+
+            vm.VoicePlayer.CycleSpeedCommand.Execute(null);
+            Assert.Equal(1.5, playback.Speed);
+            vm.VoicePlayer.CycleSpeedCommand.Execute(null);
+            Assert.Equal(2, playback.Speed);
+            vm.VoicePlayer.CycleSpeedCommand.Execute(null);
+            Assert.Equal(1, playback.Speed);
+            vm.VoicePlayer.Seek(75);
+            Assert.Equal(TimeSpan.FromSeconds(3), playback.Position);
+
+            vm.VoicePlayer.ToggleCommand.Execute(null);
+            Assert.True(playback.IsPlaying);
+            vm.VoicePlayer.Pause();
+            Assert.False(playback.IsPlaying);
+            Assert.True(vm.VoicePlayer.IsVisible);
+            vm.Reset();
+            Assert.True(playback.Disposed);
+            await calls.StopAsync();
+        });
+    }
+
+    [Fact]
+    public async Task RealtimeDeletionStopsVoiceFromAnotherChat()
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
         var player = new Player();
-        var (vm, _) = await OpenAsync(player: player, withVoice: true);
-        var items = Assert.Single(vm.Messages).FileAttachments.ToArray();
-        vm.Profile.VoiceTab.Items.Add(items[0]);
-        vm.IsProfileVisible = true;
-        vm.Profile.SelectedAttachmentTabIndex = 3;
+        var realtime = new FakeRealtimeMessengerService();
+        var (vm, _) = await OpenAsync(player: player, clock: new FakeTimeProvider(), withVoice: true,
+            dispatcher: dispatcher, realtime: realtime);
 
-        await vm.ToggleVoicePlaybackAsync(items[0]);
-        vm.Profile.SelectedAttachmentTabIndex = 0;
-        Assert.True(player.Playbacks[0].Disposed);
+        await dispatcher.RunAsync(async () =>
+        {
+            var item = Assert.Single(vm.Messages).FileAttachments.First();
+            await vm.ToggleVoicePlaybackAsync(item);
+            vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+            realtime.Raise(new MessageUpdate("b", false, 50, MessageUpdateKind.Delete));
+            Assert.True(vm.VoicePlayer.IsVisible);
+            realtime.Raise(new MessageUpdate("a", false, 50, MessageUpdateKind.Delete));
+            Assert.False(vm.VoicePlayer.IsVisible);
+            Assert.True(Assert.Single(player.Playbacks).Disposed);
+        });
+    }
 
-        vm.Profile.SelectedAttachmentTabIndex = 3;
-        await vm.ToggleVoicePlaybackAsync(items[0]);
-        vm.CloseProfileCommand.Execute(null);
-        Assert.True(player.Playbacks[1].Disposed);
+    [Fact]
+    public async Task VoiceFromProfileKeepsPlayingAndCanJumpToItsMessage()
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var player = new Player();
+        var (vm, service) = await OpenAsync(player: player, clock: new FakeTimeProvider(), withVoice: true,
+            dispatcher: dispatcher);
+        service.Attachments.Add(new ChatAttachmentInfo
+        {
+            MessageId = 50,
+            Attachment = new MessageAttachment { Type = MessageAttachmentType.Voice, FileId = "voice-1" }
+        });
 
-        await vm.ToggleVoicePlaybackAsync(items[1]);
-        vm.IsProfileVisible = true;
-        vm.Profile.SelectedAttachmentTabIndex = 0;
-        vm.CloseProfileCommand.Execute(null);
-        Assert.False(player.Playbacks[2].Disposed);
-        await vm.LeaveMessengerAsync();
+        await dispatcher.RunAsync(async () =>
+        {
+            vm.Profile.VoiceTab.Reset("a");
+            await vm.Profile.VoiceTab.EnsureLoadedAsync();
+            vm.IsProfileVisible = true;
+            vm.Profile.SelectedAttachmentTabIndex = 3;
+            await vm.ToggleVoicePlaybackAsync(Assert.Single(vm.Profile.VoiceTab.Items));
+            vm.Profile.SelectedAttachmentTabIndex = 0;
+            vm.CloseProfileCommand.Execute(null);
+            Assert.True(vm.VoicePlayer.IsPlaying);
+
+            await vm.OpenPlayingVoiceCommand.ExecuteAsync(null);
+            Assert.Equal(50, vm.ScrollRequest?.MessageId);
+            await vm.LeaveMessengerAsync();
+            Assert.False(vm.VoicePlayer.IsVisible);
+            Assert.True(Assert.Single(player.Playbacks).Disposed);
+        });
     }
 
     [Fact]
@@ -380,10 +459,199 @@ public sealed class MessengerVoiceTests
         Assert.Null(item.VoiceError);
     }
 
+    [Fact]
+    public async Task ResyncDeletionStopsVoice()
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var player = new Player();
+        var realtime = new FakeRealtimeMessengerService();
+        var (vm, service) = await OpenAsync(player: player, clock: new FakeTimeProvider(), withVoice: true,
+            dispatcher: dispatcher, realtime: realtime);
+
+        await dispatcher.RunAsync(async () =>
+        {
+            await vm.ToggleVoicePlaybackAsync(Assert.Single(vm.Messages).FileAttachments.First());
+            service.Messages.Clear();
+            realtime.Resync();
+            Assert.Empty(vm.Messages);
+            Assert.True(Assert.Single(player.Playbacks).Disposed);
+            Assert.False(vm.VoicePlayer.IsVisible);
+            vm.Reset();
+        });
+    }
+
+    [Fact]
+    public async Task SupersededJumpDoesNotShowError()
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var lookup = new TaskCompletionSource<Chat?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var (vm, service) = await OpenAsync(player: new Player(), clock: new FakeTimeProvider(),
+            withVoice: true, dispatcher: dispatcher);
+
+        await dispatcher.RunAsync(async () =>
+        {
+            await vm.ToggleVoicePlaybackAsync(Assert.Single(vm.Messages).FileAttachments.First());
+            vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+            vm.Chats.Remove(vm.Chats.Single(chat => chat.Id == "a"));
+            var requests = 0;
+            var firstLookup = new TaskCompletionSource<Chat?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            service.FindChat = _ => ++requests == 1 ? firstLookup.Task : lookup.Task;
+            var first = vm.OpenPlayingVoiceCommand.ExecuteAsync(null);
+            var second = vm.OpenPlayingVoiceCommand.ExecuteAsync(null);
+            firstLookup.SetResult(null);
+            await first;
+            Assert.Null(vm.ActionError);
+            lookup.SetResult(MessengerTestDoubles.CreateChat("a"));
+            await second;
+            Assert.Equal(50, vm.ScrollRequest?.MessageId);
+            vm.Reset();
+        });
+    }
+
+    [Fact]
+    public async Task JumpToDeletedVoiceReportsUnavailable()
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var (vm, service) = await OpenAsync(player: new Player(), clock: new FakeTimeProvider(),
+            withVoice: true, dispatcher: dispatcher);
+
+        await dispatcher.RunAsync(async () =>
+        {
+            await vm.ToggleVoicePlaybackAsync(Assert.Single(vm.Messages).FileAttachments.First());
+            vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "b");
+            service.Messages.Clear();
+            await vm.OpenPlayingVoiceCommand.ExecuteAsync(null);
+            Assert.Equal("Messenger_HistoryMessageUnavailable", vm.ActionError);
+            Assert.NotEqual(50L, vm.ScrollRequest?.MessageId);
+            vm.Reset();
+        });
+    }
+
+    [Fact]
+    public async Task SeekBeforeDurationIsKnownLeavesPositionUnchanged()
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var clock = new FakeTimeProvider();
+        var player = new Player(durationKnown: false);
+        var (vm, _) = await OpenAsync(player: player, clock: clock, withVoice: true, dispatcher: dispatcher);
+
+        await dispatcher.RunAsync(async () =>
+        {
+            await vm.ToggleVoicePlaybackAsync(Assert.Single(vm.Messages).FileAttachments.First());
+            var playback = Assert.Single(player.Playbacks);
+            Assert.False(vm.VoicePlayer.CanSeek);
+            vm.VoicePlayer.Seek(75);
+            Assert.Equal(TimeSpan.FromSeconds(1), playback.Position);
+
+            playback.Duration = TimeSpan.FromSeconds(4);
+            clock.Advance(TimeSpan.FromMilliseconds(200));
+            Assert.True(vm.VoicePlayer.CanSeek);
+            vm.VoicePlayer.Seek(75);
+            Assert.Equal(TimeSpan.FromSeconds(3), playback.Position);
+            vm.Reset();
+        });
+    }
+
+    [Fact]
+    public async Task SpeedPersistsForVoiceAcrossViewModelsButDoesNotAffectAudioFiles()
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var store = new TestApplicationDataStore();
+        var player = new Player();
+        var (first, _) = await OpenAsync(player: player, clock: new FakeTimeProvider(), withVoice: true,
+            dispatcher: dispatcher, preferences: new SettingsPreferences(store));
+        await dispatcher.RunAsync(async () =>
+        {
+            await first.ToggleVoicePlaybackAsync(Assert.Single(first.Messages).FileAttachments.First());
+            await first.VoicePlayer.CycleSpeedCommand.ExecuteAsync(null);
+            Assert.Equal(1.5, Assert.Single(player.Playbacks).Speed);
+            first.Reset();
+        });
+
+        var (second, _) = await OpenAsync(player: player, clock: new FakeTimeProvider(), withVoice: true,
+            dispatcher: dispatcher, preferences: new SettingsPreferences(store), withAudio: true);
+        await dispatcher.RunAsync(async () =>
+        {
+            var items = Assert.Single(second.Messages).FileAttachments;
+            await second.ToggleVoicePlaybackAsync(items.Last());
+            Assert.Equal(1, player.Playbacks.Last().Speed);
+            Assert.False(second.VoicePlayer.CanChangeSpeed);
+            await second.VoicePlayer.CycleSpeedCommand.ExecuteAsync(null);
+            Assert.Equal(1, player.Playbacks.Last().Speed);
+
+            await second.ToggleVoicePlaybackAsync(items.First());
+            Assert.True(second.VoicePlayer.CanChangeSpeed);
+            Assert.Equal(1.5, player.Playbacks.Last().Speed);
+            second.Reset();
+        });
+    }
+
+    [Fact]
+    public async Task ScrubHoldsProgressAndSeeksOnceOnRelease()
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var clock = new FakeTimeProvider();
+        var player = new Player();
+        var (vm, _) = await OpenAsync(player: player, clock: clock, withVoice: true, dispatcher: dispatcher);
+
+        await dispatcher.RunAsync(async () =>
+        {
+            await vm.ToggleVoicePlaybackAsync(Assert.Single(vm.Messages).FileAttachments.First());
+            var playback = Assert.Single(player.Playbacks);
+            vm.VoicePlayer.BeginScrub();
+            playback.AdvanceTo(TimeSpan.FromSeconds(2));
+            clock.Advance(TimeSpan.FromMilliseconds(200));
+            vm.VoicePlayer.Seek(60);
+            Assert.Equal(25, vm.VoicePlayer.Progress);
+            Assert.Equal(TimeSpan.FromSeconds(2), playback.Position);
+
+            vm.VoicePlayer.EndScrub(75);
+            Assert.Equal(TimeSpan.FromSeconds(3), playback.Position);
+            Assert.Equal(75, vm.VoicePlayer.Progress);
+            vm.Reset();
+        });
+    }
+
+    [Fact]
+    public async Task StartingVoicePausesVideoAndStartingVideoPausesVoice()
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var player = new Player(deferStart: true);
+        var (vm, _) = await OpenAsync(player: player, clock: new FakeTimeProvider(),
+            withVoice: true, dispatcher: dispatcher);
+
+        await dispatcher.RunAsync(async () =>
+        {
+            var starting = vm.ToggleVoicePlaybackAsync(Assert.Single(vm.Messages).FileAttachments.First());
+            vm.OnVideoPlaybackStarted();
+            player.CompleteStart();
+            await starting;
+            var playback = Assert.Single(player.Playbacks);
+            Assert.False(playback.IsPlaying);
+
+            var videoPlaying = true;
+            vm.VoicePlayer.Starting += () =>
+            {
+                Assert.False(playback.IsPlaying);
+                videoPlaying = false;
+            };
+            vm.VoicePlayer.ToggleCommand.Execute(null);
+            Assert.True(playback.IsPlaying);
+            Assert.False(videoPlaying);
+
+            vm.OnVideoPlaybackStarted();
+            Assert.False(playback.IsPlaying);
+            Assert.True(vm.VoicePlayer.IsVisible);
+            vm.Reset();
+        });
+    }
+
     private static async Task<(MessengerViewModel Vm, FakeMessengerService Service)> OpenAsync(
         IVoiceRecorder? recorder = null, IVoicePlayer? player = null, TimeProvider? clock = null, bool withVoice = false,
-        InlineUiDispatcher? dispatcher = null)
+        InlineUiDispatcher? dispatcher = null, FakeRealtimeMessengerService? realtime = null,
+        AudioCallService? calls = null, ISettingsPreferences? preferences = null, bool withAudio = false)
     {
+        dispatcher ??= new InlineUiDispatcher(serializeContinuations: true);
         var service = new FakeMessengerService();
         service.Chats.AddRange([MessengerTestDoubles.CreateChat("a"), MessengerTestDoubles.CreateChat("b")]);
         var message = MessengerTestDoubles.CreateMessage(50, "a", 2);
@@ -391,13 +659,18 @@ public sealed class MessengerVoiceTests
         {
             message.Attachments.Add(new AttachmentsModel { Type = MessageAttachmentType.Voice, FileId = "voice-1" });
             message.Attachments.Add(new AttachmentsModel { Type = MessageAttachmentType.Voice, FileId = "voice-2" });
+            if (withAudio)
+                message.Attachments.Add(new AttachmentsModel { Type = MessageAttachmentType.Audio, FileId = "audio" });
             service.FileUrl = id => Task.FromResult($"https://example.invalid/{id}.ogg");
         }
         service.Messages.Add(message);
-        var vm = MessengerTestDoubles.CreateViewModel(service, dispatcher: dispatcher, timeProvider: clock,
-            voiceRecorder: recorder, voicePlayer: player);
-        await vm.LoadAsync();
-        vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "a");
+        var vm = MessengerTestDoubles.CreateViewModel(service, realtime: realtime, dispatcher: dispatcher, timeProvider: clock,
+            voiceRecorder: recorder, voicePlayer: player, calls: calls, stickerPreferences: preferences);
+        await dispatcher.RunAsync(async () =>
+        {
+            await vm.LoadAsync();
+            vm.SelectedChat = vm.Chats.Single(chat => chat.Id == "a");
+        });
         return (vm, service);
     }
 
@@ -438,7 +711,7 @@ public sealed class MessengerVoiceTests
         public void Dispose() => Disposed = true;
     }
 
-    private sealed class Player(bool deferStart = false) : IVoicePlayer
+    private sealed class Player(bool deferStart = false, bool durationKnown = true) : IVoicePlayer
     {
         private readonly TaskCompletionSource<IVoicePlayback> _start = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public List<Playback> Playbacks { get; } = [];
@@ -446,11 +719,10 @@ public sealed class MessengerVoiceTests
 
         public void CompleteStart() => _start.SetResult(Playbacks.Single());
 
-        public Task<IVoicePlayback> PlayAsync(string url, bool isOpus, Action<bool> ended, CancellationToken cancellationToken)
+        public Task<IVoicePlayback> PrepareAsync(string url, bool isOpus, Action<bool> ended, CancellationToken cancellationToken)
         {
-            Assert.True(isOpus);
             Token = cancellationToken;
-            var playback = new Playback(ended);
+            var playback = new Playback(ended) { Duration = durationKnown ? TimeSpan.FromSeconds(4) : TimeSpan.Zero };
             Playbacks.Add(playback);
             return deferStart ? _start.Task : Task.FromResult<IVoicePlayback>(playback);
         }
@@ -459,8 +731,22 @@ public sealed class MessengerVoiceTests
     private sealed class Playback(Action<bool> ended) : IVoicePlayback
     {
         public Action<bool> Ended => ended;
-        public TimeSpan Position => TimeSpan.FromSeconds(1);
-        public TimeSpan Duration => TimeSpan.FromSeconds(4);
+        public TimeSpan Position { get; private set; } = TimeSpan.FromSeconds(1);
+        public bool CanSeek => true;
+        public bool IsPlaying { get; private set; }
+        public double Speed { get; private set; } = 1;
+
+        public void Play(double speed)
+        {
+            Speed = speed;
+            IsPlaying = true;
+        }
+
+        public void Pause() => IsPlaying = false;
+        public void AdvanceTo(TimeSpan position) => Position = position;
+        public void Seek(TimeSpan position) => Position = position;
+        public void SetSpeed(double speed) => Speed = speed;
+        public TimeSpan Duration { get; set; }
         public bool Disposed { get; private set; }
         public void Dispose() => Disposed = true;
     }

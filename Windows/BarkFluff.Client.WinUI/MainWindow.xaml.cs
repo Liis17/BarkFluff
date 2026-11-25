@@ -257,8 +257,7 @@ public sealed partial class MainWindow : Window
     {
         var callCleanup = _calls.StopAsync();
         var messenger = App.Services.GetRequiredService<MessengerViewModel>();
-        messenger.MediaViewer.Close();
-        var attachments = messenger.CancelAttachmentsAsync();
+        var attachments = messenger.LeaveMessengerAsync(clearAttachments: true);
         var drafts = messenger.StopDraftsAsync();
         var cache = messenger.FlushChatCacheAsync();
         try

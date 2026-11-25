@@ -26,13 +26,17 @@ public sealed partial class MessengerPage
     {
         if (_mediaViewer is not null)
         {
+            ViewModel.VoicePlayer.Starting -= PauseMediaVideo;
             _mediaViewer.Close();
             _mediaViewer.PropertyChanged -= OnMediaViewerChanged;
         }
 
         _mediaViewer = viewer;
         if (viewer is not null)
+        {
             viewer.PropertyChanged += OnMediaViewerChanged;
+            ViewModel.VoicePlayer.Starting += PauseMediaVideo;
+        }
     }
 
     private async void OnOpenMediaClick(object sender, RoutedEventArgs args)
@@ -105,6 +109,7 @@ public sealed partial class MessengerPage
         if (_mediaPlayer is not null)
         {
             _mediaPlayer.MediaFailed -= OnVideoFailed;
+            _mediaPlayer.PlaybackSession.PlaybackStateChanged -= OnVideoPlaybackStateChanged;
             var source = MediaVideo.Source as MediaSource;
             if (_mediaPlayer.PlaybackSession.CanPause)
                 _mediaPlayer.Pause();
@@ -129,7 +134,9 @@ public sealed partial class MessengerPage
         _displayedMediaUri = uri;
         if (isVideo)
         {
+            ViewModel.OnVideoPlaybackStarted();
             _mediaPlayer = new MediaPlayer();
+            _mediaPlayer.PlaybackSession.PlaybackStateChanged += OnVideoPlaybackStateChanged;
             _mediaPlayer.MediaFailed += OnVideoFailed;
             MediaVideo.SetMediaPlayer(_mediaPlayer);
             MediaVideo.Source = MediaSource.CreateFromUri(uri);
@@ -144,6 +151,15 @@ public sealed partial class MessengerPage
             _mediaBitmap.UriSource = uri;
         }
     }
+
+    private void PauseMediaVideo() => _mediaPlayer?.Pause();
+
+    private void OnVideoPlaybackStateChanged(MediaPlaybackSession session, object args) =>
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (session == _mediaPlayer?.PlaybackSession && session.PlaybackState == MediaPlaybackState.Playing)
+                ViewModel.OnVideoPlaybackStarted();
+        });
 
     private void OnVideoFailed(MediaPlayer player, MediaPlayerFailedEventArgs args) =>
         DispatcherQueue.TryEnqueue(async () =>

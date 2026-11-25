@@ -109,6 +109,7 @@ public sealed partial class MessengerViewModel
     private void EndRealtimeSession()
     {
         MediaViewer.Close();
+        _voicePlayback.Stop();
         var session = _realtimeSession;
         CloseCallHistory();
         _calls?.Stop();
@@ -242,6 +243,9 @@ public sealed partial class MessengerViewModel
         {
             return;
         }
+
+        if (change.Kind == MessageUpdateKind.Delete && !update.IsPrivate)
+            _voicePlayback.StopDeletedMessage(update.ChatId, update.MessageId);
 
         SaveHistoryEvent(session, chat, update, change.Payload);
         try
@@ -430,6 +434,7 @@ public sealed partial class MessengerViewModel
 
     private void RemoveMessage(ChatItemViewModel chat, long messageId, bool adjustUnread)
     {
+        _voicePlayback.StopDeletedMessage(chat.Id, messageId);
         ForgetNewMessageBelow(messageId);
         _shownUnreadMessages.Remove(messageId);
         _pendingReadMessageIds.Remove(messageId);

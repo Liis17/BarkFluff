@@ -13,11 +13,16 @@ public interface IVoiceRecording : IDisposable
 
 public interface IVoicePlayer
 {
-    Task<IVoicePlayback> PlayAsync(string url, bool isOpus, Action<bool> ended, CancellationToken cancellationToken);
+    Task<IVoicePlayback> PrepareAsync(string url, bool isOpus, Action<bool> ended, CancellationToken cancellationToken);
 }
 
 public interface IVoicePlayback : IDisposable
 {
     TimeSpan Position { get; }
     TimeSpan Duration { get; }
+    bool CanSeek { get; }
+    void Play(double speed);
+    void Pause();
+    void Seek(TimeSpan position);
+    void SetSpeed(double speed);
 }

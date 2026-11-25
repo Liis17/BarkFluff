@@ -96,7 +96,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         AttachmentComposer = new(localization);
         var clock = timeProvider ?? TimeProvider.System;
         Voice = new(voiceRecorder, localization, uiDispatcher, clock, VoiceComposer.TemporaryDirectory);
-        _voicePlayback = new(voicePlayer, uiDispatcher, localization, clock);
+        _voicePlayback = new(voicePlayer, uiDispatcher, localization, clock, stickerPreferences);
         Voice.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(VoiceComposer.IsBusy))
@@ -124,11 +124,6 @@ public sealed partial class MessengerViewModel : ObservableObject
         _notifications = notifications;
         _notificationSettings = notificationSettings;
         Profile = profile;
-        Profile.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(ProfileViewModel.SelectedAttachmentTabIndex))
-                _voicePlayback.StopProfilePlayback();
-        };
         _presence.PresenceChanged += OnPresenceChanged;
         _presence.ConnectionChanged += OnPresenceConnectionChanged;
     }
@@ -1670,7 +1665,7 @@ public sealed partial class MessageAttachmentItemViewModel(
     long attachmentId = 0) : ObservableObject
 {
     [ObservableProperty, NotifyPropertyChangedFor(nameof(VoicePlaybackSymbol))] private bool _isVoiceActive;
-    public string VoicePlaybackSymbol => IsVoiceActive ? "■" : "▶";
+    public string VoicePlaybackSymbol => IsVoiceActive ? "⏸" : "▶";
     [ObservableProperty] private double _voiceProgress;
     [ObservableProperty] private string? _voiceTime;
     [ObservableProperty] private string? _voiceError;
@@ -1678,6 +1673,7 @@ public sealed partial class MessageAttachmentItemViewModel(
     internal MessageAttachmentType Type => type;
     internal string FileId => fileId;
     internal long AttachmentId => attachmentId;
+    internal (string ChatId, long MessageId)? VoiceTarget { get; init; }
     public string PreviewUrl { get; } = previewUrl;
     public string FileUrl { get; } = fileUrl;
     public string FileName { get; } = fileName;

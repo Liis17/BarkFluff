@@ -20,7 +20,6 @@ public sealed partial class MessengerViewModel
 
     public Task CancelAttachmentsAsync()
     {
-        _voicePlayback.Stop();
         return Task.WhenAll(Voice.CancelAsync(), AttachmentComposer.ClearAsync());
     }
 }

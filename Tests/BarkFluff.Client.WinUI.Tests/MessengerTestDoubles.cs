@@ -3,6 +3,7 @@ using BarkFluff.Client.Core.Infrastructure.Storage;
 using BarkFluff.Client.Core.Infrastructure.Localization;
 using BarkFluff.Client.Core.Infrastructure.Threading;
 using BarkFluff.Client.Core.Services;
+using BarkFluff.Client.Core.Services.Calls;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Client.Core.ViewModels.Settings;
 using BarkFluff.Proto.Messages;
@@ -45,7 +46,8 @@ internal static class MessengerTestDoubles
         IAuthenticationService? authentication = null,
         IOnboardingNavigationService? navigation = null,
         SqliteApplicationDataStore? secretStore = null,
-        IClientSession? clientSession = null)
+        IClientSession? clientSession = null,
+        AudioCallService? calls = null)
     {
         var effectiveMessenger = messenger ?? new FakeMessengerService();
         var effectivePresence = presence ?? new FakeOnlinePresenceService();
@@ -61,7 +63,7 @@ internal static class MessengerTestDoubles
             timeProvider, chatFolders, typing, notifications, notificationSettings, stickerPicker, stickerPreferences,
             voiceRecorder: voiceRecorder, voicePlayer: voicePlayer, draftStore: draftStore, draftRemote: draftRemote,
             chatCache: chatCache, authentication: authentication, navigation: navigation,
-            secretStore: secretStore, clientSession: clientSession);
+            calls: calls, secretStore: secretStore, clientSession: clientSession);
     }
 
     internal static OutgoingMessageQueue CreateOutgoingQueue(FakeMessengerService messenger, TimeProvider clock) =>

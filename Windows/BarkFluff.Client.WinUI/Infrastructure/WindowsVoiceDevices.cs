@@ -155,7 +155,7 @@ internal sealed class WindowsVoicePlayer : IVoicePlayer, IDisposable
 
     public void Dispose() => _http.Dispose();
 
-    public async Task<IVoicePlayback> PlayAsync(string url, bool isOpus, Action<bool> ended, CancellationToken cancellationToken)
+    public async Task<IVoicePlayback> PrepareAsync(string url, bool isOpus, Action<bool> ended, CancellationToken cancellationToken)
     {
         var playback = new Playback(ended);
         try
@@ -195,7 +195,7 @@ internal sealed class WindowsVoicePlayer : IVoicePlayer, IDisposable
                 }
             }
             cancellationToken.ThrowIfCancellationRequested();
-            playback.Start(uri);
+            playback.SetSource(uri);
             return playback;
         }
         catch
@@ -214,25 +214,36 @@ internal sealed class WindowsVoicePlayer : IVoicePlayer, IDisposable
 
     private sealed class Playback : IVoicePlayback
     {
-        private readonly MediaPlayer _player = new();
+        private readonly MediaPlayer _player = new() { AutoPlay = false };
         private readonly Action<bool> _ended;
         private MediaSource? _source;
         public IRandomAccessStream? Wave { get; set; }
         public TimeSpan Position => _player.PlaybackSession.Position;
         public TimeSpan Duration => _player.PlaybackSession.NaturalDuration;
+        public bool CanSeek => _player.PlaybackSession.CanSeek;
+
+        public void Play(double speed)
+        {
+            SetSpeed(speed);
+            _player.Play();
+        }
+
+        public void Pause() => _player.Pause();
+        public void Seek(TimeSpan position) => _player.PlaybackSession.Position = position;
+        public void SetSpeed(double speed) => _player.PlaybackSession.PlaybackRate = speed;
 
         public Playback(Action<bool> ended)
         {
             _ended = ended;
+            _player.CommandManager.IsEnabled = false;
             _player.MediaEnded += OnEnded;
             _player.MediaFailed += OnFailed;
         }
 
-        public void Start(Uri uri)
+        public void SetSource(Uri uri)
         {
             _source = Wave is { } wave ? MediaSource.CreateFromStream(wave, "audio/wav") : MediaSource.CreateFromUri(uri);
             _player.Source = _source;
-            _player.Play();
         }
 
         private void OnEnded(MediaPlayer sender, object args) => _ended(false);

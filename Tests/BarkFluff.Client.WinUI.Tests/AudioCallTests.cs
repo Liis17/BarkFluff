@@ -656,7 +656,7 @@ public sealed class AudioCallTests
         }
     }
 
-    private sealed class Signaling : ICallSignaling
+    internal sealed class Signaling : ICallSignaling
     {
         public Channel<(CallEvent Item, TaskCompletionSource Seen)> Events { get; private set; } =
             System.Threading.Channels.Channel.CreateUnbounded<(CallEvent, TaskCompletionSource)>();
@@ -743,7 +743,7 @@ public sealed class AudioCallTests
         }
     }
 
-    private sealed class Media : ICallMedia
+    internal sealed class Media : ICallMedia
     {
         public event Action<CallMediaEvent>? Received;
         public Guid? ConnectedTo { get; private set; }

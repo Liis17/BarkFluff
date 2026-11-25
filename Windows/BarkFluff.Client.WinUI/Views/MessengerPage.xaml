@@ -463,8 +463,35 @@
         </DataTemplate>
     </Page.Resources>
 
-    <Grid x:Name="ShortcutScope">
-        <Grid Visibility="{x:Bind ViewModel.SecretChats.IsMainMessengerVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+    <Grid x:Name="ShortcutScope" RowDefinitions="Auto,*">
+        <Grid Margin="12,8" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="8"
+              Visibility="{x:Bind ViewModel.VoicePlayer.IsVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Button Command="{x:Bind ViewModel.VoicePlayer.ToggleCommand}"
+                    IsEnabled="{x:Bind ViewModel.VoicePlayer.CanToggle, Mode=OneWay}"
+                    Content="{x:Bind ViewModel.VoicePlayer.Symbol, Mode=OneWay}"
+                    AutomationProperties.Name="{x:Bind ViewModel.VoicePlayer.PlaybackAction, Mode=OneWay}" />
+            <Slider x:Name="VoicePositionSlider" Grid.Column="1" VerticalAlignment="Center" Maximum="100" StepFrequency="1"
+                    Value="{x:Bind ViewModel.VoicePlayer.Progress, Mode=OneWay}"
+                    IsEnabled="{x:Bind ViewModel.VoicePlayer.CanSeek, Mode=OneWay}"
+                    ValueChanged="OnVoicePositionChanged"
+                    AutomationProperties.Name="{StaticResource Messenger_VoicePosition}"
+                    AutomationProperties.HelpText="{x:Bind ViewModel.VoicePlayer.Time, Mode=OneWay}" />
+            <TextBlock Grid.Column="2" VerticalAlignment="Center"
+                       Text="{x:Bind ViewModel.VoicePlayer.Time, Mode=OneWay}" />
+            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8">
+                <Button Command="{x:Bind ViewModel.VoicePlayer.CycleSpeedCommand}"
+                        Visibility="{x:Bind ViewModel.VoicePlayer.CanChangeSpeed, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Content="{x:Bind ViewModel.VoicePlayer.SpeedLabel, Mode=OneWay}"
+                        AutomationProperties.Name="{StaticResource Messenger_VoiceSpeed}"
+                        AutomationProperties.HelpText="{x:Bind ViewModel.VoicePlayer.SpeedLabel, Mode=OneWay}" />
+                <Button Command="{x:Bind ViewModel.OpenPlayingVoiceCommand}" Content="↗"
+                        AutomationProperties.Name="{StaticResource Messenger_VoiceJump}"
+                        Visibility="{x:Bind ViewModel.VoicePlayer.CanJump, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </StackPanel>
+            <Button Grid.Column="4" Command="{x:Bind ViewModel.VoicePlayer.StopCommand}" Content="×"
+                    AutomationProperties.Name="{StaticResource Messenger_VoiceClose}" />
+        </Grid>
+        <Grid Grid.Row="1" Visibility="{x:Bind ViewModel.SecretChats.IsMainMessengerVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="320" />
             <ColumnDefinition Width="*" />
@@ -1472,7 +1499,7 @@
             </Border>
         </Grid>
         </Grid>
-        <Grid x:Name="SecretChatsOverlay" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="16"
+        <Grid x:Name="SecretChatsOverlay" Grid.Row="1" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="16"
               ColumnSpacing="16" RowSpacing="12" ColumnDefinitions="280,*" RowDefinitions="Auto,*,Auto"
               Visibility="{x:Bind ViewModel.SecretChats.IsOpen, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
             <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="12">
@@ -1541,7 +1568,7 @@
                 </Grid>
             </StackPanel>
         </Grid>
-        <Grid x:Name="MediaOverlay" Visibility="Collapsed" Padding="16" RowSpacing="12"
+        <Grid x:Name="MediaOverlay" Grid.RowSpan="2" Visibility="Collapsed" Padding="16" RowSpacing="12"
               TabFocusNavigation="Cycle" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
               RowDefinitions="Auto,*,Auto">
             <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
