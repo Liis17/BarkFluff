@@ -1,4 +1,6 @@
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
 
@@ -11,6 +13,7 @@ namespace BarkFluff.WebApi.Core
     {
         private const int JPEG_QUALITY = 90;
         private const int MAX_DIMENSION = 2500;
+        private const int ATTACHMENT_TARGET_BYTES = 2 * 1024 * 1024;
         private const long MAX_IMAGE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB limit
 
         private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -204,8 +207,11 @@ namespace BarkFluff.WebApi.Core
         public static Task<string> ProcessImageForUploadAsync(string filePath) =>
             ProcessImageForUploadAsync(filePath, Path.GetTempPath());
 
-        internal static async Task<string> ProcessImageForUploadAsync(string filePath, string temporaryDirectory)
+        internal static async Task<string> ProcessImageForUploadAsync(string filePath, string temporaryDirectory,
+            bool optimizeAttachment = false, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new ArgumentNullException(nameof(filePath), "File path cannot be null or empty");
 
@@ -219,13 +225,18 @@ namespace BarkFluff.WebApi.Core
             // Create temp file for converted image
             var tempPath = Path.Combine(temporaryDirectory, $"converted_{Guid.NewGuid()}.jpg");
 
-            // Convert to JPEG
-            var success = await ConvertToJpegAsync(filePath, tempPath);
-
-            if (!success)
+            var success = false;
+            try
             {
-                // If conversion failed, return original file
-                if (File.Exists(tempPath))
+                success = optimizeAttachment
+                    ? await Task.Run(() => OptimizeAttachmentAsync(filePath, tempPath, cancellationToken), cancellationToken)
+                        .ConfigureAwait(false)
+                    : await ConvertToJpegAsync(filePath, tempPath);
+                return success ? tempPath : filePath;
+            }
+            finally
+            {
+                if (!success && File.Exists(tempPath))
                 {
                     try
                     {
@@ -236,10 +247,53 @@ namespace BarkFluff.WebApi.Core
                         System.Diagnostics.Debug.WriteLine($"ImageProcessor: Failed to delete temp file: {ex.GetType().Name}");
                     }
                 }
-                return filePath;
             }
+        }
 
-            return tempPath;
+        private static async Task<bool> OptimizeAttachmentAsync(string sourcePath, string outputPath,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                if (new FileInfo(sourcePath).Length > MAX_IMAGE_SIZE_BYTES)
+                    return false;
+
+                // ImageSharp 3.1.12 прекращает чтение APNG перед кадром с номером MaxFrames.
+                // Лимит 3 позволяет увидеть второй кадр и сохранить анимацию.
+                using var image = await Image.LoadAsync(new DecoderOptions { MaxFrames = 3 }, sourcePath, cancellationToken)
+                    .ConfigureAwait(false);
+                if (image.Frames.Count > 1 || image.Metadata.DecodedImageFormat == GifFormat.Instance)
+                    return false;
+
+                image.Mutate(context => context.AutoOrient());
+                ResizeIfNeeded(image);
+                image.Mutate(context => context.BackgroundColor(Color.White));
+
+                await using var output = new FileStream(outputPath, FileMode.CreateNew, FileAccess.Write);
+                for (var quality = JPEG_QUALITY; quality >= 50; quality -= 10)
+                {
+                    output.SetLength(0);
+                    output.Position = 0;
+                    await image.SaveAsync(output, new JpegEncoder
+                    {
+                        Quality = quality,
+                        ColorType = JpegEncodingColor.YCbCrRatio420,
+                        Interleaved = true
+                    }, cancellationToken).ConfigureAwait(false);
+
+                    if (output.Length <= ATTACHMENT_TARGET_BYTES)
+                        break;
+                }
+
+                // Как на macOS, после последней попытки оставляем JPEG с качеством 50.
+                cancellationToken.ThrowIfCancellationRequested();
+                return true;
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                System.Diagnostics.Debug.WriteLine($"ImageProcessor: JPEG attachment conversion failed: {ex.GetType().Name}");
+                return false;
+            }
         }
 
         /// <summary>

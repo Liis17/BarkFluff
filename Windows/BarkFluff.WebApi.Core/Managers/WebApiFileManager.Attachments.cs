@@ -15,6 +15,13 @@ internal partial class WebApiFileManager
     private static readonly TimeSpan UploadResponseTimeout = TimeSpan.FromSeconds(630);
     private static readonly TimeSpan MaxStatusWait = TimeSpan.FromSeconds(30);
 
+    internal static Task<string> PrepareAttachmentAsync(string path, UploadFileType type, string temporaryDirectory,
+        CancellationToken cancellationToken) =>
+        type == UploadFileType.MessageAttachmentImage
+            ? ImageProcessor.ProcessImageForUploadAsync(path, temporaryDirectory, optimizeAttachment: true,
+                cancellationToken: cancellationToken)
+            : Task.FromResult(path);
+
     public Task<long?> GetAttachmentStorageAvailableAsync(GlobalParam parameters, CancellationToken cancellationToken) =>
         _webApi.TokenManager.SafeCallAsync<long?>(async () =>
         {
@@ -31,8 +38,8 @@ internal partial class WebApiFileManager
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (type == UploadFileType.MessageAttachmentImage)
-                processed = await ImageProcessor.ProcessImageForUploadAsync(path).ConfigureAwait(false);
+            processed = await PrepareAttachmentAsync(path, type, Path.GetTempPath(), cancellationToken)
+                .ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
             if (processed is not null && processed != path)
@@ -95,9 +102,8 @@ internal partial class WebApiFileManager
                         cancellationToken.ThrowIfCancellationRequested();
                         if (!File.Exists(path))
                             return Failure("Messenger_AttachmentReadFailed");
-                        if (type == UploadFileType.MessageAttachmentImage)
-                            processed = await ImageProcessor.ProcessImageForUploadAsync(path,
-                                Path.GetDirectoryName(path)!).ConfigureAwait(false);
+                        processed = await PrepareAttachmentAsync(path, type, Path.GetDirectoryName(path)!,
+                            cancellationToken).ConfigureAwait(false);
 
                         var converted = processed is not null && processed != path;
                         return await PostAttachmentAsync(AttachmentHttpClient, url, processed ?? path,
