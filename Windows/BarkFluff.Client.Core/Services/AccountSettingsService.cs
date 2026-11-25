@@ -4,7 +4,6 @@ using BarkFluff.Client.Core.Services.Calls;
 using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData;
-using Microsoft.Data.Sqlite;
 
 using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 
@@ -169,10 +168,11 @@ public class AccountSettingsService : SessionScopedService, IAccountSettingsServ
     {
         try
         {
+            await _messengerViewModel.SecretChats.FlushDraftAsync();
             await Task.Run(() => _applicationData!.ForgetSecretChatsAsync(scope));
             return true;
         }
-        catch (SqliteException)
+        catch (Exception error) when (error is not OperationCanceledException)
         {
             return false;
         }

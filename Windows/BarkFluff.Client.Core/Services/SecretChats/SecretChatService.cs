@@ -16,14 +16,24 @@ public enum SecretChatStatus { Pending, Accepted, KeyChanged }
 public sealed record SecretChatInfo(string Id, long PeerUserId, string PeerDeviceId, SecretChatStatus Status);
 public sealed record SecretChatMessage(string Id, string? ChatId, long SenderUserId, string SenderDeviceId,
     DateTimeOffset SentAt, string Text, bool Outgoing = false, string? ServerId = null);
-public sealed record SecretMessageDelivery(SecretChatMessage? Message, bool Duplicate);
+public sealed record SecretMessageDelivery(SecretChatMessage? Message, bool Duplicate, bool Ignored = false)
+{
+    internal bool ConsumedPreKey { get; init; }
+}
+
+public enum SecretDeliveryState { Sending, Sent, Failed }
 
 public sealed partial class SecretChatService
 {
+    private const int MaxFailedReplayEntries = 128;
+    private static readonly TimeSpan DecryptionRetryWindow = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan FailedReplayRetention = TimeSpan.FromDays(1);
+
     private sealed record Peer(long UserId, string DeviceId);
     private sealed record Chat(SecretChatInfo Info, string[] OutgoingInvites, string[] PendingAccepts,
-        DateTimeOffset ExpiresAt = default, byte[]? PendingEnvelope = null, SecretChatMessage? Initial = null);
-    private sealed record Replay(string Key, string HistoryId, string? PendingAck = null, string? ChatId = null);
+        DateTimeOffset ExpiresAt = default, byte[]? PendingEnvelope = null, SecretChatMessage? Initial = null, string? Draft = null);
+    private sealed record Replay(string Key, string HistoryId, string? PendingAck = null, string? ChatId = null,
+        int FailedDecryptions = 0, bool PendingRejection = false, DateTimeOffset? FirstFailureAt = null, bool TerminalFailure = false);
 
     private readonly SqliteApplicationDataStore _store;
     private readonly ISecretChatGateway _gateway;
@@ -57,6 +67,19 @@ public sealed partial class SecretChatService
     }
 
     public event Action<SecretChatInfo>? PeerIdentityChanged;
+    internal event Action<string>? IncomingMessageStored;
+
+    internal Task<bool> ShouldOfferInviteAsync(SecretChatInviteEvent invite, CancellationToken cancellationToken) =>
+        RunAsync(_ => Task.FromResult(!string.IsNullOrWhiteSpace(invite.InviteId) &&
+            invite.SenderUserId > 0 && !string.IsNullOrWhiteSpace(invite.SenderDeviceId) &&
+            !invite.InitialEnvelope.IsEmpty &&
+            (invite.ExpiresAt is null || invite.ExpiresAt.ToDateTimeOffset() > _clock.GetUtcNow()) &&
+            !HasInviteDecision(invite)), cancellationToken);
+
+    private bool HasInviteDecision(SecretChatInviteEvent invite) =>
+        Read<Replay>(SecretTable.Replay, "rejected:" + invite.InviteId) is not null ||
+        Read<Replay>(SecretTable.Replay,
+            "accepted:" + PeerKey(invite.SenderUserId, invite.SenderDeviceId) + ":" + invite.InviteId) is not null;
 
     public Task<IReadOnlyList<SecretChatInfo>> ListChatsAsync(CancellationToken cancellationToken = default) =>
         RunAsync<IReadOnlyList<SecretChatInfo>>(_ => Task.FromResult<IReadOnlyList<SecretChatInfo>>(
@@ -64,8 +87,24 @@ public sealed partial class SecretChatService
 
     public Task<IReadOnlyList<SecretChatMessage>> ReadHistoryAsync(string chatId, CancellationToken cancellationToken = default) =>
         RunAsync<IReadOnlyList<SecretChatMessage>>(_ => Task.FromResult<IReadOnlyList<SecretChatMessage>>(
-            History().Where(message => message.ChatId == chatId).OrderBy(message => message.SentAt).ToList()),
+            History().Where(message => message.ChatId == chatId)
+            .Concat(Read<Chat>(SecretTable.Chats, chatId)?.Initial is { } initial ? [initial] : Array.Empty<SecretChatMessage>())
+            .OrderBy(message => message.SentAt).ToList()),
             cancellationToken);
+
+    internal Task<string> ReadDraftAsync(string chatId, CancellationToken token) =>
+        RunAsync(_ => Task.FromResult(Read<Chat>(SecretTable.Chats, chatId)?.Draft ?? ""), token);
+
+    internal Task WriteDraftAsync(string chatId, string text, CancellationToken token) =>
+        RunAsync(ct =>
+        {
+            if (Read<Chat>(SecretTable.Chats, chatId) is { } chat && (chat.Draft ?? "") != text)
+            {
+                var snapshot = _store.ReadSecretSnapshot(_scope);
+                Commit(snapshot, snapshot, writer => SaveChat(writer, chat with { Draft = text }), ct);
+            }
+            return Task.CompletedTask;
+        }, token);
 
     public Task<IReadOnlyList<PeerDeviceInfo>> ListPeerDevicesAsync(long userId, CancellationToken cancellationToken = default) =>
         RunAsync<IReadOnlyList<PeerDeviceInfo>>(async token =>
@@ -105,7 +144,7 @@ public sealed partial class SecretChatService
             var initialId = "init:" + outgoingReplayKey;
             var initial = new SecretChatMessage(initialId, info.Id, _scope.UserId, keys.DeviceId,
                 _clock.GetUtcNow(), text, Outgoing: true);
-            chat = new Chat(info, chat?.OutgoingInvites ?? [], [], _clock.GetUtcNow().AddDays(1), envelope, initial);
+            chat = new Chat(info, chat?.OutgoingInvites ?? [], [], _clock.GetUtcNow().AddDays(1), envelope, initial, chat?.Draft);
             snapshot = Commit(snapshot, Updated(snapshot, encrypted), writer =>
             {
                 SaveChat(writer, chat);
@@ -128,6 +167,9 @@ public sealed partial class SecretChatService
             var chat = Find(peer);
             RequireTrusted(chat);
             var replayKey = EnvelopeKey(peer.UserId, peer.DeviceId, invite.InitialEnvelope.Span);
+            if (Read<Replay>(SecretTable.Replay, "rejected:" + invite.InviteId) is not null)
+                throw new InvalidOperationException("The secret chat invitation has already been declined.");
+
             var inviteKey = "accepted:" + PeerKey(peer.UserId, peer.DeviceId) + ":" + invite.InviteId;
             var acceptedInvite = Read<Replay>(SecretTable.Replay, inviteKey);
             if (acceptedInvite is not null)
@@ -158,8 +200,10 @@ public sealed partial class SecretChatService
                     invite.InvitedAt?.ToDateTimeOffset() ?? _clock.GetUtcNow(), DecodeText(decrypted.Output));
             }
             var unattached = UnattachedHistory(peer);
+            var retryableFailures = RetryableFailures(peer);
             snapshot = Commit(snapshot, next, writer =>
             {
+                ClearFailures(writer, retryableFailures);
                 chat = PromoteInitial(writer, chat);
                 SaveChat(writer, chat);
                 foreach (var message in unattached)
@@ -180,7 +224,16 @@ public sealed partial class SecretChatService
         {
             if (string.IsNullOrWhiteSpace(inviteId))
                 throw new ArgumentException("The secret chat invitation ID is missing.", nameof(inviteId));
-            await RpcAsync(ct => _gateway.RejectSecretChatInviteAsync(new() { InviteId = inviteId }, ct), token);
+            var key = "rejected:" + inviteId;
+            var snapshot = _store.ReadSecretSnapshot(_scope);
+            var decision = Read<Replay>(SecretTable.Replay, key);
+            if (decision is null)
+            {
+                decision = new Replay(key, inviteId, PendingRejection: true);
+                snapshot = Commit(snapshot, snapshot, writer => writer.Set(SecretTable.Replay, key, decision), token);
+            }
+            if (decision.PendingRejection)
+                await RejectPendingInviteAsync(snapshot, decision, token);
         }, cancellationToken);
 
     public Task ApplyResolutionAsync(SecretChatInviteResolutionEvent resolution, CancellationToken cancellationToken = default)
@@ -220,8 +273,10 @@ public sealed partial class SecretChatService
                     DecodeText(decrypted.Output));
             }
             var unattached = UnattachedHistory(peer);
+            var retryableFailures = RetryableFailures(peer);
             Commit(snapshot, next, writer =>
             {
+                ClearFailures(writer, retryableFailures);
                 var accepted = chat with { Info = chat.Info with { Status = SecretChatStatus.Accepted } };
                 SaveChat(writer, PromoteInitial(writer, accepted));
                 foreach (var message in unattached)
@@ -236,7 +291,29 @@ public sealed partial class SecretChatService
         }, cancellationToken, peer);
     }
 
+    internal Task DeleteFailedMessageAsync(string chatId, string messageId, CancellationToken cancellationToken) =>
+        RunAsync(token =>
+        {
+            var message = Read<SecretChatMessage>(SecretTable.History, messageId);
+            if (message is { Outgoing: true, ServerId: null } && message.ChatId == chatId)
+            {
+                var snapshot = _store.ReadSecretSnapshot(_scope);
+                Commit(snapshot, snapshot, writer => writer.Set<SecretChatMessage>(SecretTable.History, messageId, null), token);
+            }
+            else if (Read<Chat>(SecretTable.Chats, chatId) is { Initial: { ServerId: null } initial } chat &&
+                initial.Id == messageId)
+            {
+                var snapshot = _store.ReadSecretSnapshot(_scope);
+                Commit(snapshot, snapshot, writer => SaveChat(writer,
+                    chat with { Initial = null, PendingEnvelope = null, ExpiresAt = default }), token);
+            }
+            return Task.CompletedTask;
+        }, cancellationToken);
+
     public Task<SecretChatMessage> SendMessageAsync(string chatId, string text, CancellationToken cancellationToken = default) =>
+        SendMessageAsync(chatId, text, "out:" + Guid.NewGuid().ToString("N"), cancellationToken);
+
+    internal Task<SecretChatMessage> SendMessageAsync(string chatId, string text, string localId, CancellationToken cancellationToken) =>
         RunAsync(async token =>
         {
             var keys = RequireKeys();
@@ -245,7 +322,7 @@ public sealed partial class SecretChatService
             if (chat?.Info.Status != SecretChatStatus.Accepted)
                 throw new InvalidOperationException("The secret chat is unavailable for sending.");
             var encrypted = Encrypt(snapshot.State, snapshot.Generation, chat.Info.PeerDeviceId, text);
-            var history = new SecretChatMessage("out:" + Guid.NewGuid().ToString("N"), chatId, _scope.UserId,
+            var history = new SecretChatMessage(localId, chatId, _scope.UserId,
                 keys.DeviceId, _clock.GetUtcNow(), text, Outgoing: true);
             snapshot = Commit(snapshot, Updated(snapshot, encrypted), writer => SaveMessage(writer, history), token);
             // У SendSecretMessage нет ключа идемпотентности. После потери ответа статус остаётся неизвестным.
@@ -262,21 +339,46 @@ public sealed partial class SecretChatService
         }, cancellationToken);
 
     public Task<SecretMessageDelivery> ReceiveMessageAsync(SecretEnvelope envelope, CancellationToken cancellationToken = default)
+        => ReceiveMessageAsync(envelope, cancellationToken, keepStreamOnAckFailure: false);
+
+    internal Task<SecretMessageDelivery> ReceiveMessageAsync(SecretEnvelope envelope, CancellationToken cancellationToken,
+        bool keepStreamOnAckFailure)
     {
         var peer = new Peer(envelope.SenderUserId, envelope.SenderDeviceId);
-        return RunAsync(async token =>
+        return RunAsync(ReceiveAsync, cancellationToken, peer);
+
+        async Task<SecretMessageDelivery> ReceiveAsync(CancellationToken token)
+        {
+            var replayKey = MessagePrefix(peer) + envelope.MessageId;
+            var previous = Read<Replay>(SecretTable.FailedReplay, replayKey);
+            var now = _clock.GetUtcNow();
+            if (previous is { FailedDecryptions: > 0, FirstFailureAt: { } since } &&
+                now - since < FailedReplayRetention && (previous.TerminalFailure || now - since >= DecryptionRetryWindow))
+                return new SecretMessageDelivery(null, Duplicate: false, Ignored: true);
+            return await ProcessAsync(replayKey, previous, token);
+        }
+
+        async Task<SecretMessageDelivery> ProcessAsync(string replayKey, Replay? previous, CancellationToken token)
         {
             var keys = RequireKeys();
-            if (peer.UserId <= 0 || string.IsNullOrWhiteSpace(peer.DeviceId) ||
-                string.IsNullOrWhiteSpace(envelope.MessageId) || envelope.Envelope.IsEmpty ||
-                envelope.RecipientDeviceId != keys.DeviceId)
-                throw new ArgumentException("The secret message envelope is invalid for this device.", nameof(envelope));
-            var snapshot = _store.ReadSecretSnapshot(_scope);
-            var replayKey = "message:" + PeerKey(peer.UserId, peer.DeviceId) + ":" + envelope.MessageId;
-            var previous = Read<Replay>(SecretTable.Replay, replayKey);
-            if (previous is not null)
+            DateTimeOffset? sentAt;
+            try
             {
-                await AckAsync(snapshot, previous with { PendingAck = envelope.MessageId }, token);
+                if (peer.UserId <= 0 || string.IsNullOrWhiteSpace(peer.DeviceId) ||
+                    string.IsNullOrWhiteSpace(envelope.MessageId) || envelope.Envelope.IsEmpty ||
+                    envelope.RecipientDeviceId != keys.DeviceId)
+                    throw new ArgumentException("The secret message envelope is invalid for this device.", nameof(envelope));
+                sentAt = envelope.SentAt?.ToDateTimeOffset();
+            }
+            catch (Exception error) when (keepStreamOnAckFailure && error is ArgumentException or InvalidOperationException)
+            {
+                RecordReplayFailure(replayKey, previous, terminal: true, token);
+                return new SecretMessageDelivery(null, Duplicate: false, Ignored: true);
+            }
+            var snapshot = _store.ReadSecretSnapshot(_scope);
+            if (Read<Replay>(SecretTable.Replay, replayKey) is { FailedDecryptions: 0 } delivered)
+            {
+                await AckAsync(snapshot, delivered with { PendingAck = envelope.MessageId }, token, keepStreamOnAckFailure);
                 return new SecretMessageDelivery(null, Duplicate: true);
             }
 
@@ -285,33 +387,112 @@ public sealed partial class SecretChatService
             if (matchingInvite is not null)
             {
                 var alias = new Replay(replayKey, matchingInvite.HistoryId, envelope.MessageId);
-                snapshot = Commit(snapshot, snapshot, writer => writer.Set(SecretTable.Replay, replayKey, alias), token);
-                await AckAsync(snapshot, alias, token);
+                snapshot = Commit(snapshot, snapshot, writer =>
+                {
+                    writer.Set(SecretTable.Replay, replayKey, alias);
+                    if (previous is not null)
+                        writer.Set<Replay>(SecretTable.FailedReplay, replayKey, null);
+                }, token);
+                await AckAsync(snapshot, alias, token, keepStreamOnAckFailure);
                 return new SecretMessageDelivery(null, Duplicate: true);
             }
 
             var chat = Find(peer);
-            RequireTrusted(chat);
-            var decrypted = Decrypt(snapshot, peer, envelope.Envelope, out var kind);
+            if (chat?.Info.Status == SecretChatStatus.KeyChanged)
+                return new SecretMessageDelivery(null, Duplicate: false, Ignored: true);
+            SignalResult<byte[]> decrypted;
+            SignalMessageKind kind;
+            try
+            {
+                decrypted = Decrypt(snapshot, peer, envelope.Envelope, out kind);
+            }
+            catch (SignalProtocolException error) when (error.Error is SignalError.DuplicateMessage or
+                SignalError.SessionNotFound or SignalError.Protocol or SignalError.InvalidInput)
+            {
+                // Конверт может прийти раньше сообщения, устанавливающего сессию.
+                // Ack отправляется только после сохранения сообщения.
+                var terminal = error.Error == SignalError.DuplicateMessage ||
+                    (error.Error == SignalError.InvalidInput && previous is { FailedDecryptions: >= 2, FirstFailureAt: { } since } &&
+                        _clock.GetUtcNow() - since < FailedReplayRetention);
+                RecordReplayFailure(replayKey, previous, terminal, token);
+                return new SecretMessageDelivery(null, Duplicate: false, Ignored: true);
+            }
+
             var message = new SecretChatMessage(replayKey, chat?.Info.Id, peer.UserId, peer.DeviceId,
-                envelope.SentAt?.ToDateTimeOffset() ?? _clock.GetUtcNow(), DecodeText(decrypted.Output),
+                sentAt ?? _clock.GetUtcNow(), DecodeText(decrypted.Output),
                 ServerId: envelope.MessageId);
             var replay = new Replay(replayKey, message.Id, envelope.MessageId);
+            var retryableFailures = kind == SignalMessageKind.PreKey ? RetryableFailures(peer, replayKey) : [];
             snapshot = Commit(snapshot, Updated(snapshot, decrypted), writer =>
             {
                 SaveMessage(writer, message);
                 writer.Set(SecretTable.Replay, replayKey, replay);
+                if (previous is not null)
+                    writer.Set<Replay>(SecretTable.FailedReplay, replayKey, null);
+                ClearFailures(writer, retryableFailures);
                 if (kind == SignalMessageKind.PreKey)
                     writer.Set(SecretTable.Replay, initialKey, new Replay(initialKey, message.Id));
             }, token);
-            await AckAsync(snapshot, replay, token);
-            return new SecretMessageDelivery(message, Duplicate: false);
-        }, cancellationToken, peer);
+            if (message.ChatId is { } chatId)
+                IncomingMessageStored?.Invoke(chatId);
+            await AckAsync(snapshot, replay, token, keepStreamOnAckFailure);
+            return new SecretMessageDelivery(message, Duplicate: false) { ConsumedPreKey = kind == SignalMessageKind.PreKey };
+        }
+    }
+
+    internal static bool CanRetryStreamOperation(Exception error) =>
+        error is not OperationCanceledException &&
+        error is not Grpc.Core.RpcException { StatusCode: Grpc.Core.StatusCode.Unimplemented or
+            Grpc.Core.StatusCode.Unauthenticated or Grpc.Core.StatusCode.Cancelled };
+
+    private void RecordReplayFailure(string key, Replay? previous, bool terminal, CancellationToken token)
+    {
+        var now = _clock.GetUtcNow();
+        var since = previous?.FirstFailureAt;
+        if (since is null || now - since.Value >= FailedReplayRetention)
+            previous = null;
+        var replay = new Replay(key, "", FailedDecryptions: Math.Min((previous?.FailedDecryptions ?? 0) + 1, 3),
+            FirstFailureAt: previous?.FirstFailureAt ?? now, TerminalFailure: terminal);
+        PruneFailedReplays(token, replay);
+    }
+
+    private void PruneFailedReplays(CancellationToken token, Replay? added = null)
+    {
+        var oldest = _clock.GetUtcNow() - FailedReplayRetention;
+        var failures = _store.ReadSecrets<Replay>(_scope, SecretTable.FailedReplay)
+            .Where(replay => replay.Key != added?.Key)
+            .OrderByDescending(replay => replay.FirstFailureAt).ToArray();
+        var expired = failures.Where((replay, index) => index >= MaxFailedReplayEntries - (added is null ? 0 : 1) ||
+            replay.FirstFailureAt is null || replay.FirstFailureAt <= oldest).ToArray();
+        if (expired.Length == 0 && added is null)
+            return;
+        var snapshot = _store.ReadSecretSnapshot(_scope);
+        Commit(snapshot, snapshot, writer =>
+        {
+            ClearFailures(writer, expired);
+            if (added is not null)
+                writer.Set(SecretTable.FailedReplay, added.Key, added);
+        }, token);
+    }
+
+    private Replay[] RetryableFailures(Peer peer, string? except = null)
+    {
+        var prefix = MessagePrefix(peer);
+        return _store.ReadSecrets<Replay>(_scope, SecretTable.FailedReplay)
+            .Where(replay => !replay.TerminalFailure && replay.Key != except &&
+                replay.Key.StartsWith(prefix, StringComparison.Ordinal)).ToArray();
+    }
+
+    private static void ClearFailures(SecretWriter writer, IEnumerable<Replay> failures)
+    {
+        foreach (var failure in failures)
+            writer.Set<Replay>(SecretTable.FailedReplay, failure.Key, null);
     }
 
     public Task RetryPendingOperationsAsync(CancellationToken cancellationToken = default) =>
         RunAsync(async token =>
         {
+            PruneFailedReplays(token);
             var snapshot = _store.ReadSecretSnapshot(_scope);
             foreach (var chat in Chats().Where(chat => chat.Info.Status != SecretChatStatus.KeyChanged))
             {
@@ -323,8 +504,13 @@ public sealed partial class SecretChatService
                 }
                 snapshot = await AcceptPendingInvitesAsync(current, snapshot, token);
             }
-            foreach (var replay in _store.ReadSecrets<Replay>(_scope, SecretTable.Replay).Where(row => row.PendingAck is not null))
-                snapshot = await AckAsync(snapshot, replay, token);
+            foreach (var replay in _store.ReadSecrets<Replay>(_scope, SecretTable.Replay))
+            {
+                if (replay.PendingAck is not null)
+                    snapshot = await AckAsync(snapshot, replay, token);
+                else if (replay.PendingRejection)
+                    snapshot = await RejectPendingInviteAsync(snapshot, replay, token);
+            }
         }, cancellationToken);
 
     public Task ClearHistoryAsync(CancellationToken cancellationToken = default) =>
@@ -384,7 +570,8 @@ public sealed partial class SecretChatService
         {
             OutgoingInvites = chat.OutgoingInvites.Append(sent.InviteId).Distinct().ToArray(),
             ExpiresAt = sent.InviteExpiresAt?.ToDateTimeOffset() ?? chat.ExpiresAt,
-            PendingEnvelope = null
+            PendingEnvelope = null,
+            Initial = chat.Initial is { } initial ? initial with { ServerId = sent.InviteId } : null
         };
         Commit(snapshot, snapshot, writer => SaveChat(writer, chat), token);
         return chat;
@@ -409,9 +596,32 @@ public sealed partial class SecretChatService
         return snapshot;
     }
 
-    private async Task<SecretSnapshot> AckAsync(SecretSnapshot snapshot, Replay replay, CancellationToken token)
+    private async Task<SecretSnapshot> RejectPendingInviteAsync(SecretSnapshot snapshot, Replay decision, CancellationToken token)
     {
-        await RpcAsync(ct => _gateway.AckSecretMessageAsync(new() { MessageId = replay.PendingAck! }, ct), token);
+        try
+        {
+            await RpcAsync(ct => _gateway.RejectSecretChatInviteAsync(new() { InviteId = decision.HistoryId }, ct), token);
+        }
+        catch (BarkFluff.Shared.Exceptions.Messages.SecretInviteNotFoundException)
+        {
+            CheckCurrent(token);
+        }
+        return Commit(snapshot, snapshot, writer => writer.Set(SecretTable.Replay, decision.Key,
+            decision with { PendingRejection = false }), token);
+    }
+
+    private async Task<SecretSnapshot> AckAsync(SecretSnapshot snapshot, Replay replay, CancellationToken token,
+        bool keepStreamOnAckFailure = false)
+    {
+        try
+        {
+            await RpcAsync(ct => _gateway.AckSecretMessageAsync(new() { MessageId = replay.PendingAck! }, ct), token);
+        }
+        catch (Exception error) when (keepStreamOnAckFailure && CanRetryStreamOperation(error))
+        {
+            // Ack повторится при следующей доставке или синхронизации.
+            return snapshot;
+        }
         return Commit(snapshot, snapshot, writer => writer.Set(SecretTable.Replay, replay.Key,
             replay with { PendingAck = null }), token);
     }
@@ -447,7 +657,12 @@ public sealed partial class SecretChatService
         {
             // Wire-конверт не содержит отдельного поля с типом сообщения.
             kind = SignalMessageKind.PreKey;
-            return SignalProtocol.Decrypt(snapshot.State, snapshot.Generation, peer.DeviceId, kind, bytes);
+            try { return SignalProtocol.Decrypt(snapshot.State, snapshot.Generation, peer.DeviceId, kind, bytes); }
+            catch (SignalProtocolException fallback) when (error.Error == SignalError.SessionNotFound &&
+                fallback.Error is SignalError.Protocol or SignalError.InvalidInput)
+            {
+                throw new SignalProtocolException(SignalError.SessionNotFound);
+            }
         }
     }
 
@@ -488,6 +703,7 @@ public sealed partial class SecretChatService
     }
 
     private static string PeerKey(long user, string device) => $"{user}:{device.Length}:{device}";
+    private static string MessagePrefix(Peer peer) => $"message:{PeerKey(peer.UserId, peer.DeviceId)}:";
     private static string EnvelopeKey(long user, string device, ReadOnlySpan<byte> envelope) =>
         $"invite:{PeerKey(user, device)}:{Convert.ToHexString(SHA256.HashData(envelope))}";
 

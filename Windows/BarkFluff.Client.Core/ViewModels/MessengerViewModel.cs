@@ -1,4 +1,5 @@
 using BarkFluff.Client.Core.Models;
+using BarkFluff.Client.Core.Infrastructure.Storage;
 using BarkFluff.Client.Core.ViewModels.Settings;
 using BarkFluff.Client.Core.Services;
 using BarkFluff.Client.Core.Services.Calls;
@@ -61,9 +62,21 @@ public sealed partial class MessengerViewModel : ObservableObject
         IAuthenticationService? authentication = null,
         IOnboardingNavigationService? navigation = null,
         AudioCallService? calls = null,
-        CallSignaling? callSignaling = null)
+        CallSignaling? callSignaling = null,
+        SqliteApplicationDataStore? secretStore = null,
+        IClientSession? clientSession = null,
+        BarkFluff.WebApi.Core.WebApi? webApi = null)
     {
         _messenger = messenger;
+        _secretStore = secretStore;
+        _secretClientSession = clientSession;
+        _secretApi = webApi;
+        SecretChats = new(uiDispatcher, localization);
+        SecretChats.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(SecretChatsViewModel.SelectedChat))
+                ClearSecretChatNotification();
+        };
         _chatCache = chatCache;
         _calls = calls;
         _callSignaling = callSignaling;

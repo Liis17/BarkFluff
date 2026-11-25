@@ -26,7 +26,7 @@ public sealed partial class SqliteApplicationDataStore
         internal static SecretSnapshot Empty { get; } = new([], 0, "");
     }
 
-    internal enum SecretTable { Chats, Replay, History, Counters }
+    internal enum SecretTable { Chats, Replay, History, Counters, FailedReplay }
 
     private static readonly ConcurrentDictionary<(string, SecretScope), SecretScopeLock> SecretLocks = new();
 
@@ -39,6 +39,7 @@ public sealed partial class SqliteApplicationDataStore
         SecretTable.Replay => "secret_replay",
         SecretTable.History => "secret_history",
         SecretTable.Counters => "secret_counters",
+        SecretTable.FailedReplay => "secret_failed_replay",
         _ => throw new ArgumentOutOfRangeException(nameof(table))
     };
 

@@ -52,7 +52,9 @@ internal static class StreamRetryLoop
         CancellationToken cancellationToken,
         Action? onStreamOpened = null,
         Func<TimeSpan, CancellationToken, Task>? delay = null,
-        bool stopOnUnimplemented = false)
+        bool stopOnUnimplemented = false,
+        Func<T, Task>? onItemAsync = null,
+        Action? onUnimplemented = null)
     {
         delay ??= Task.Delay;
         var attempt = 0;
@@ -100,19 +102,26 @@ internal static class StreamRetryLoop
                                 {
                                     onStreamOpened();
                                 }
-                                onItem(reader.Current);
+                                if (onItemAsync is not null)
+                                    await onItemAsync(reader.Current);
+                                else
+                                    onItem(reader.Current);
                             }
                         }
                     }
 
                     while (hasMore && await reader.MoveNextAsync())
                     {
-                        onItem(reader.Current);
+                        if (onItemAsync is not null)
+                            await onItemAsync(reader.Current);
+                        else
+                            onItem(reader.Current);
                     }
                 }
             }
             catch (RpcException ex) when (stopOnUnimplemented && ex.StatusCode == StatusCode.Unimplemented)
             {
+                onUnimplemented?.Invoke();
                 return;
             }
             catch (OperationCanceledException)

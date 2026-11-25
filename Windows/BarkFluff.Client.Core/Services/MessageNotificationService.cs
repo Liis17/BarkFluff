@@ -79,6 +79,9 @@ public sealed class MessageNotificationService(INotificationPresenter presenter,
         presenter.Show(new(target, title, preview));
     }
 
+    internal void ShowSecret(MessageNotificationTarget target) =>
+        presenter.Show(new(target, "BarkFluff", localization.GetString("Secret_Notification")));
+
     internal void ClearChat(MessageNotificationTarget target) => presenter.RemoveChat(target);
     internal long ClearVersion { get; private set; }
 

@@ -605,4 +605,26 @@
     <x:String x:Key="Calls_Ended">Звонок завершён.</x:String>
     <x:String x:Key="Calls_MediaError">Не удалось подключить звук. Проверьте сеть и доступ к микрофону.</x:String>
     <x:String x:Key="Calls_Runtime">Для звонков установите Microsoft Edge WebView2 Runtime.</x:String>
+    <x:String x:Key="Error_SessionExpired">Сессия завершена. Войдите снова.</x:String>
+    <x:String x:Key="Secret_Title">Секретные чаты</x:String>
+    <x:String x:Key="Secret_Create">Создать секретный чат</x:String>
+    <x:String x:Key="Secret_Back">К списку чатов</x:String>
+    <x:String x:Key="Secret_Forget">Удалить секретный чат</x:String>
+    <x:String x:Key="Secret_ForgetConfirm">Удалить секретный чат и его локальную историю?</x:String>
+    <x:String x:Key="Secret_Invitation">Приглашение в секретный чат</x:String>
+    <x:String x:Key="Secret_Accept">Принять</x:String>
+    <x:String x:Key="Secret_Reject">Отклонить</x:String>
+    <x:String x:Key="Secret_Message">Сообщение</x:String>
+    <x:String x:Key="Secret_History">История секретного чата</x:String>
+    <x:String x:Key="Secret_Device">Устройство получателя</x:String>
+    <x:String x:Key="Secret_NoDevices">У пользователя нет устройства, готового к секретному чату.</x:String>
+    <x:String x:Key="Secret_Error">Не удалось выполнить действие в секретном чате.</x:String>
+    <x:String x:Key="Secret_Pending">Ожидаем принятия приглашения.</x:String>
+    <x:String x:Key="Secret_KeyChanged">Ключ собеседника изменился. Отправка заблокирована.</x:String>
+    <x:String x:Key="Secret_Sending">Отправляется</x:String>
+    <x:String x:Key="Secret_Sent">Отправлено</x:String>
+    <x:String x:Key="Secret_Failed">Не доставлено</x:String>
+    <x:String x:Key="Secret_Received">Получено</x:String>
+    <x:String x:Key="Secret_User">Пользователь</x:String>
+    <x:String x:Key="Secret_Notification">Новое секретное сообщение</x:String>
 </ResourceDictionary>

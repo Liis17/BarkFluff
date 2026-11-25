@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using BarkFluff.Client.Core.Services.SecretChats;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
@@ -36,6 +37,14 @@ internal sealed class SecretChatTestServer
         internal readonly List<SecretEnvelope> Messages = [];
         internal readonly List<string> Acks = [];
 
+        internal readonly Channel<SecretChatInviteEvent> InviteStream = Channel.CreateUnbounded<SecretChatInviteEvent>();
+        internal readonly Channel<SecretChatInviteResolutionEvent> ResolutionStream = Channel.CreateUnbounded<SecretChatInviteResolutionEvent>();
+        internal readonly Channel<NewSecretMessageEvent> MessageStream = Channel.CreateUnbounded<NewSecretMessageEvent>();
+
+        internal SecretChatStreams OpenStreams() => new(InviteStream.Reader.ReadAllAsync,
+            ResolutionStream.Reader.ReadAllAsync, MessageStream.Reader.ReadAllAsync);
+
+        internal Action? AfterSend;
         internal Action? OnFetch;
         internal Action? OnSendInvite;
         internal Action? OnAccept;
@@ -136,6 +145,7 @@ internal sealed class SecretChatTestServer
                 InviteId = inviteId, SenderDeviceId = Id, SenderUserId = UserId, InitialEnvelope = request.InitialEnvelope,
                 InvitedAt = Timestamp.FromDateTimeOffset(DateTimeOffset.UtcNow), ExpiresAt = expiry
             });
+            peer.InviteStream.Writer.TryWrite(peer.Invites.Last());
             return Task.FromResult(new SendSecretChatInviteResponse { InviteId = inviteId, InviteExpiresAt = expiry });
         }
 
@@ -163,6 +173,7 @@ internal sealed class SecretChatTestServer
                 InviteId = inviteId, RecipientUserId = UserId, RecipientDeviceId = Id, Accepted = accepted,
                 ResponseEnvelope = response
             });
+            entry.Sender.ResolutionStream.Writer.TryWrite(entry.Sender.Resolutions.Last());
         }
 
         public Task<SendSecretMessageResponse> SendSecretMessageAsync(SendSecretMessageRequest request, CancellationToken ct)
@@ -176,6 +187,8 @@ internal sealed class SecretChatTestServer
                 RecipientDeviceId = peer.Id, Envelope = request.Envelope,
                 SentAt = Timestamp.FromDateTimeOffset(DateTimeOffset.UtcNow)
             });
+            peer.MessageStream.Writer.TryWrite(new() { Envelope = peer.Messages.Last() });
+            AfterSend?.Invoke();
             return Task.FromResult(new SendSecretMessageResponse { MessageId = messageId });
         }
 

@@ -1,5 +1,7 @@
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
+using BarkFluff.Proto.Updates;
+using System.Runtime.CompilerServices;
 using BarkFluff.WebApi.Core.MessengerData;
 using Grpc.Core;
 
@@ -8,7 +10,7 @@ namespace BarkFluff.WebApi.Core;
 public partial class WebApi
 {
     internal sealed record SecretClientBinding(GlobalParam Parameters,
-        UsersApi.UsersApiClient Users, MessagesApi.MessagesApiClient Messages);
+        UsersApi.UsersApiClient Users, MessagesApi.MessagesApiClient Messages, UpdatesApi.UpdatesApiClient Updates);
 
     internal volatile SecretClientBinding? SecretClient;
 
@@ -71,6 +73,71 @@ public partial class WebApi
         GlobalParam parameters, AckSecretMessageRequest request, CancellationToken cancellationToken) =>
         CallSecretRpcAsync(parameters, cancellationToken, (binding, options) =>
             binding.Messages.AckSecretMessageAsync(request, options).ResponseAsync);
+
+    public IAsyncEnumerable<SecretChatInviteEvent> ReadSecretChatInvitesAsync(GlobalParam parameters, CancellationToken token) =>
+        ReadSecretStreamAsync(parameters, (updates, ct) => updates.SubscribeSecretChatInvites(new(), cancellationToken: ct), token);
+
+    public IAsyncEnumerable<SecretChatInviteResolutionEvent> ReadSecretChatResolutionsAsync(GlobalParam parameters, CancellationToken token) =>
+        ReadSecretStreamAsync(parameters, (updates, ct) => updates.SubscribeSecretChatResolutions(new(), cancellationToken: ct), token);
+
+    public IAsyncEnumerable<NewSecretMessageEvent> ReadSecretMessagesAsync(GlobalParam parameters, CancellationToken token) =>
+        ReadSecretStreamAsync(parameters, (updates, ct) => updates.SubscribeSecretMessages(new(), cancellationToken: ct), token);
+
+    private async IAsyncEnumerable<T> ReadSecretStreamAsync<T>(GlobalParam parameters,
+        Func<UpdatesApi.UpdatesApiClient, CancellationToken, AsyncServerStreamingCall<T>> subscribe,
+        [EnumeratorCancellation] CancellationToken token)
+    {
+        var binding = SecretClient;
+        var userId = parameters.UserId;
+        if (binding is null || !ReferenceEquals(binding.Parameters, parameters))
+            throw new OperationCanceledException(token);
+        var valid = await EnsureTokenValidAsync(parameters).WaitAsync(token);
+        if (!valid.IsSuccess)
+            throw new RpcException(new Status(StatusCode.Unauthenticated, string.Empty));
+
+        using var refresh = CancellationTokenSource.CreateLinkedTokenSource(token);
+        void Restart(object? sender, EventArgs args)
+        {
+            try { refresh.Cancel(); }
+            catch (ObjectDisposedException) { }
+        }
+        TokenRefreshed += Restart;
+        try
+        {
+            CheckBinding();
+            using var call = subscribe(binding.Updates, refresh.Token);
+            while (await MoveNextAsync(call))
+            {
+                CheckBinding();
+                yield return call.ResponseStream.Current;
+            }
+        }
+        finally
+        {
+            TokenRefreshed -= Restart;
+        }
+
+        void CheckBinding()
+        {
+            token.ThrowIfCancellationRequested();
+            if (!ReferenceEquals(SecretClient, binding) || userId != parameters.UserId)
+                throw new OperationCanceledException(token);
+        }
+
+        async Task<bool> MoveNextAsync(AsyncServerStreamingCall<T> call)
+        {
+            try
+            {
+                return await call.ResponseStream.MoveNext(refresh.Token);
+            }
+            catch (RpcException error) when (error.StatusCode == StatusCode.Unauthenticated && !token.IsCancellationRequested)
+            {
+                CheckBinding();
+                await ForceRefreshTokenAsync(parameters).WaitAsync(token);
+                throw;
+            }
+        }
+    }
 
     private async Task<T> CallSecretRpcAsync<T>(GlobalParam parameters, CancellationToken cancellationToken,
         Func<SecretClientBinding, CallOptions, Task<T>> call, bool retry = true) where T : class

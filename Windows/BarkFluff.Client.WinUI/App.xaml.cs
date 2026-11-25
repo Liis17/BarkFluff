@@ -124,22 +124,26 @@ public partial class App : Application
             webApi.TokenInvalidated += (_, _) =>
             {
                 var errorResourceKey = webApi.LastTokenRefreshErrorResourceKey;
-                if (errorResourceKey is not ("Error_AccountBlocked" or "Error_AccountPendingDeletion")) return;
+                if (errorResourceKey is not ("Error_SessionExpired" or "Error_AccountBlocked" or "Error_AccountPendingDeletion"))
+                    return;
                 var session = services.GetRequiredService<IClientSession>();
                 var connection = session.CurrentConnection;
                 var userId = connection?.ConnectionParameters.UserId;
                 mainWindow.DispatcherQueue.TryEnqueue(async () =>
                 {
-                    if (!ReferenceEquals(connection, session.CurrentConnection) ||
-                        userId != connection?.ConnectionParameters.UserId ||
-                        navigation.CurrentViewModel is not MessengerViewModel messenger)
+                    if (connection is null || userId is not > 0 ||
+                        !ReferenceEquals(connection, session.CurrentConnection) ||
+                        userId != connection.ConnectionParameters.UserId ||
+                        navigation.CurrentViewModel is LoginViewModel)
                         return;
+                    var currentView = navigation.CurrentViewModel;
+                    var messenger = services.GetRequiredService<MessengerViewModel>();
                     var localCleanup = messenger.ResetAfterSessionRejectionAsync();
                     await services.GetRequiredService<ISecureSessionStore>().ClearAsync();
                     await localCleanup;
                     if (!ReferenceEquals(connection, session.CurrentConnection) ||
-                        userId != connection?.ConnectionParameters.UserId ||
-                        navigation.CurrentViewModel != messenger)
+                        userId != connection.ConnectionParameters.UserId ||
+                        navigation.CurrentViewModel != currentView)
                         return;
                     navigation.ShowRestrictedLogin(errorResourceKey);
                 });

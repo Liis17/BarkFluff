@@ -177,6 +177,10 @@ namespace BarkFluff.WebApi.Core.Managers
                 globalParam.AccessToken = response.AccessToken;
                 return (new ErrorReturner(true), response.AccessToken.Value);
             }
+            catch (BarkFluff.Shared.Exceptions.Identity.InvalidRefreshTokenException)
+            {
+                return (new ErrorReturner(false, "Ошибка обновления токена", errorResourceKey: "Error_SessionExpired"), string.Empty);
+            }
             catch (BarkFluff.Shared.Exceptions.Identity.AccountBlockedException)
             {
                 return (new ErrorReturner(false, "Account blocked", errorResourceKey: "Error_AccountBlocked"), string.Empty);

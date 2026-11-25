@@ -43,7 +43,9 @@ internal static class MessengerTestDoubles
         OutgoingMessageQueue? outgoing = null,
         ChatListCache? chatCache = null,
         IAuthenticationService? authentication = null,
-        IOnboardingNavigationService? navigation = null)
+        IOnboardingNavigationService? navigation = null,
+        SqliteApplicationDataStore? secretStore = null,
+        IClientSession? clientSession = null)
     {
         var effectiveMessenger = messenger ?? new FakeMessengerService();
         var effectivePresence = presence ?? new FakeOnlinePresenceService();
@@ -58,7 +60,8 @@ internal static class MessengerTestDoubles
             new ProfileViewModel(effectiveMessenger, effectivePresence, localization), outgoing,
             timeProvider, chatFolders, typing, notifications, notificationSettings, stickerPicker, stickerPreferences,
             voiceRecorder: voiceRecorder, voicePlayer: voicePlayer, draftStore: draftStore, draftRemote: draftRemote,
-            chatCache: chatCache, authentication: authentication, navigation: navigation);
+            chatCache: chatCache, authentication: authentication, navigation: navigation,
+            secretStore: secretStore, clientSession: clientSession);
     }
 
     internal static OutgoingMessageQueue CreateOutgoingQueue(FakeMessengerService messenger, TimeProvider clock) =>

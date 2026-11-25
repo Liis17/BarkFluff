@@ -81,6 +81,7 @@ public sealed partial class MessengerViewModel
                 }
 
                 IsOffline = false;
+                StartSecretChats(session);
                 await _outgoingReady;
                 if (!IsCurrent(session))
                     return false;
@@ -209,8 +210,10 @@ public sealed partial class MessengerViewModel
     {
         var outgoingCleanup = ClearOutgoingForLogoutAsync();
         var cacheCleanup = ClearChatCacheAsync();
+        var draftCleanup = StopDraftsForLogoutAsync();
+        var secretCleanup = ClearSecretChatsAsync();
         Reset();
-        await Task.WhenAll(outgoingCleanup, cacheCleanup);
+        await Task.WhenAll(outgoingCleanup, cacheCleanup, draftCleanup, secretCleanup);
     }
 }
 

@@ -19,7 +19,10 @@ public sealed partial class MessengerViewModel
         _notificationMessengerVisible = messengerVisible;
         if (messengerVisible && (!wasVisible || active && !wasActive))
         {
-            ClearChatNotifications(SelectedChat);
+            if (SecretChats.IsOpen)
+                ClearSecretChatNotification();
+            else
+                ClearChatNotifications(SelectedChat);
         }
     }
 
@@ -38,7 +41,7 @@ public sealed partial class MessengerViewModel
             return;
         }
 
-        bool IsChatVisible() => _notificationMessengerVisible && SelectedChat?.Id == update.ChatId;
+        bool IsChatVisible() => _notificationMessengerVisible && !SecretChats.IsOpen && SelectedChat?.Id == update.ChatId;
         if (_notificationSettings is null || IsChatVisible() && _notificationWindowActive || IsChatMuted(update.ChatId))
         {
             return;
@@ -133,7 +136,9 @@ public sealed partial class MessengerViewModel
     {
         var session = _realtimeSession;
         return session is not null && IsCurrent(session) && target.Matches(session.Node, session.UserId)
-            ? OpenChatByIdAsync(session, target.ChatId, session.Lifetime.Token)
+            ? target.ChatId.StartsWith("secret:", StringComparison.Ordinal)
+                ? Task.FromResult(SecretChats.OpenChat(target.ChatId["secret:".Length..]))
+                : OpenChatByIdAsync(session, target.ChatId, session.Lifetime.Token)
             : Task.FromResult(false);
     }
 

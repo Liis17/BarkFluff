@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using BarkFluff.Proto.Users;
 using Google.Protobuf;
 using static BarkFluff.Client.Core.Infrastructure.Storage.SqliteApplicationDataStore;
@@ -6,6 +7,7 @@ namespace BarkFluff.Client.Core.Services.SecretChats;
 
 public sealed partial class SecretChatService
 {
+    private static readonly ConditionalWeakTable<SecretScopeLock, SemaphoreSlim> PrekeyGates = new();
     private const int PoolSize = 100;
     private const int ReplenishThreshold = 10;
     private static readonly TimeSpan RotationInterval = TimeSpan.FromDays(7);
@@ -16,16 +18,42 @@ public sealed partial class SecretChatService
         uint Signed = 0, uint LastResort = 0,
         byte[]? Registration = null, byte[]? Rotation = null, byte[]? Replenishment = null);
 
-    public Task SynchronizePrekeysAsync(CancellationToken cancellationToken = default) =>
-        RunAsync(async token =>
+    public async Task SynchronizePrekeysAsync(CancellationToken cancellationToken = default)
+    {
+        var syncGate = PrekeyGates.GetValue(_scopeLock, _ => new SemaphoreSlim(1));
+        await syncGate.WaitAsync(cancellationToken);
+        try
         {
-            var device = (await RpcAsync(ct => _gateway.GetCurrentDeviceAsync(new(), ct), token)).Device;
+            await RunAsync(SynchronizeAsync, cancellationToken);
+        }
+        finally
+        {
+            syncGate.Release();
+        }
+
+        async Task<T> CallAsync<T>(Func<CancellationToken, Task<T>> call, CancellationToken ct) where T : class
+        {
+            // Сетевой запрос не держит блокировку снимка. Следующая запись читает свежий снимок.
+            _scopeLock.Gate.Release();
+            T result;
+            try { result = await RpcAsync(call, ct); }
+            finally { await _scopeLock.Gate.WaitAsync(CancellationToken.None); }
+            CheckCurrent(ct);
+            return result;
+        }
+
+        Task<GetOwnPrekeyStatusResponse> StatusAsync(CancellationToken ct) =>
+            CallAsync(c => _gateway.GetOwnPrekeyStatusAsync(new(), c), ct);
+
+        async Task SynchronizeAsync(CancellationToken token)
+        {
+            var device = (await CallAsync(ct => _gateway.GetCurrentDeviceAsync(new(), ct), token)).Device;
             if (device is null || string.IsNullOrWhiteSpace(device.DeviceId) || device.UserId != _scope.UserId)
                 throw new InvalidOperationException("The server returned an invalid current device.");
 
+            var status = await StatusAsync(token);
             var snapshot = _store.ReadSecretSnapshot(_scope);
             var keys = Read<PrekeyState>(SecretTable.Counters, PrekeyStateId);
-            var status = await StatusAsync(token);
             if (keys is null)
             {
                 if (status.HasBundle || snapshot.Revision.Length != 0)
@@ -71,8 +99,9 @@ public sealed partial class SecretChatService
                     if (status.SupportsPqxdh)
                         throw InvalidPrekeys("The server's PQXDH last-resort key differs from the local key.");
                     var request = RegisterPrekeyBundleRequest.Parser.ParseFrom(keys.Registration);
-                    await RpcAsync(ct => _gateway.RegisterPrekeyBundleAsync(request, ct), token);
+                    await CallAsync(ct => _gateway.RegisterPrekeyBundleAsync(request, ct), token);
                     status = await StatusAsync(token);
+                    snapshot = _store.ReadSecretSnapshot(_scope);
                     RequireIdentity(keys, status);
                 }
                 RequireLastResort(snapshot, keys, status);
@@ -97,8 +126,9 @@ public sealed partial class SecretChatService
                     snapshot = SaveKeys(generated.Snapshot, keys, token, snapshot);
                 }
                 var rotation = RotateSignedPrekeyRequest.Parser.ParseFrom(keys.Rotation);
-                await RpcAsync(ct => _gateway.RotateSignedPrekeyAsync(rotation, ct), token);
+                await CallAsync(ct => _gateway.RotateSignedPrekeyAsync(rotation, ct), token);
                 status = await StatusAsync(token);
+                snapshot = _store.ReadSecretSnapshot(_scope);
                 RequireIdentity(keys, status);
                 keys = FinalizeRotation(keys, rotation);
                 RequireLastResort(snapshot, keys, status);
@@ -121,15 +151,14 @@ public sealed partial class SecretChatService
                 snapshot = SaveKeys(generated.Snapshot, keys, token, snapshot);
             }
             var replenishment = ReplenishOneTimePrekeysRequest.Parser.ParseFrom(keys.Replenishment);
-            await RpcAsync(ct => _gateway.ReplenishOneTimePrekeysAsync(replenishment, ct), token);
+            await CallAsync(ct => _gateway.ReplenishOneTimePrekeysAsync(replenishment, ct), token);
             status = await StatusAsync(token);
+            snapshot = _store.ReadSecretSnapshot(_scope);
             RequireIdentity(keys, status);
             RequireLastResort(snapshot, keys, status);
             SaveKeys(snapshot, keys with { Replenishment = null }, token);
-        }, cancellationToken);
-
-    private Task<GetOwnPrekeyStatusResponse> StatusAsync(CancellationToken token) =>
-        RpcAsync(ct => _gateway.GetOwnPrekeyStatusAsync(new(), ct), token);
+        }
+    }
 
     private bool IsDue(SignalSignedPreKey key) =>
         _clock.GetUtcNow() - DateTimeOffset.FromUnixTimeMilliseconds(checked((long)key.Timestamp)) >= RotationInterval;

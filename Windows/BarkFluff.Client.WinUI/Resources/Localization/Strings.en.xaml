@@ -605,4 +605,26 @@
     <x:String x:Key="Calls_Ended">Call ended.</x:String>
     <x:String x:Key="Calls_MediaError">Audio connection failed. Check the network and microphone access.</x:String>
     <x:String x:Key="Calls_Runtime">Install Microsoft Edge WebView2 Runtime to use calls.</x:String>
+    <x:String x:Key="Error_SessionExpired">Your session has ended. Sign in again.</x:String>
+    <x:String x:Key="Secret_Title">Secret chats</x:String>
+    <x:String x:Key="Secret_Create">Start a secret chat</x:String>
+    <x:String x:Key="Secret_Back">Back to chats</x:String>
+    <x:String x:Key="Secret_Forget">Delete secret chat</x:String>
+    <x:String x:Key="Secret_ForgetConfirm">Delete this secret chat and its local history?</x:String>
+    <x:String x:Key="Secret_Invitation">Secret chat invitation</x:String>
+    <x:String x:Key="Secret_Accept">Accept</x:String>
+    <x:String x:Key="Secret_Reject">Decline</x:String>
+    <x:String x:Key="Secret_Message">Message</x:String>
+    <x:String x:Key="Secret_History">Secret chat history</x:String>
+    <x:String x:Key="Secret_Device">Recipient device</x:String>
+    <x:String x:Key="Secret_NoDevices">This user has no device ready for a secret chat.</x:String>
+    <x:String x:Key="Secret_Error">The secret chat operation failed.</x:String>
+    <x:String x:Key="Secret_Pending">Waiting for the recipient to accept.</x:String>
+    <x:String x:Key="Secret_KeyChanged">The recipient’s key has changed. Sending is blocked.</x:String>
+    <x:String x:Key="Secret_Sending">Sending</x:String>
+    <x:String x:Key="Secret_Sent">Sent</x:String>
+    <x:String x:Key="Secret_Failed">Not delivered</x:String>
+    <x:String x:Key="Secret_Received">Received</x:String>
+    <x:String x:Key="Secret_User">User</x:String>
+    <x:String x:Key="Secret_Notification">New secret message</x:String>
 </ResourceDictionary>

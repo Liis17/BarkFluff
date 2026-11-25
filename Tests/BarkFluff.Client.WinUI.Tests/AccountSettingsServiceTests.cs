@@ -86,6 +86,29 @@ public sealed class AccountSettingsServiceTests
         }
     }
 
+    [Fact]
+    public async Task SessionRejectionErasesOnlyTheRejectedAccountsSecretData()
+    {
+        using var database = await ChatDraftTests.DraftDatabase.CreateAsync();
+        var store = database.Store;
+        var client = new TestClientSession();
+        var node = client.CurrentConnection!.Profile.BeaconAddress;
+        var removed = SecretScope.Create(node, 1);
+        var retained = SecretScope.Create(node, 2);
+        foreach (var scope in new[] { removed, retained })
+            store.CommitSecret(scope, SecretSnapshot.Empty, [1], 1,
+                writer => writer.Set(SecretTable.History, "message", "protected text"));
+
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        var vm = MessengerTestDoubles.CreateViewModel(new FakeMessengerService { CurrentNodeAddress = node },
+            dispatcher: dispatcher, secretStore: store, clientSession: client);
+        await dispatcher.RunAsync(vm.ResetAfterSessionRejectionAsync);
+
+        Assert.Empty(store.ReadSecrets<string>(removed, SecretTable.History));
+        Assert.Equal(0UL, store.ReadSecretSnapshot(removed).Generation);
+        Assert.Single(store.ReadSecrets<string>(retained, SecretTable.History));
+    }
+
     private sealed class TestAccountSettingsService : AccountSettingsService
     {
         private readonly List<string> _calls;

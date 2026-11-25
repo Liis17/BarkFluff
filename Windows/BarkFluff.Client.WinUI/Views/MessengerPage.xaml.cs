@@ -24,7 +24,10 @@ public sealed partial class MessengerPage : Page
             Bindings.Update();
         }
         if (ViewModel is not null)
+        {
             _ = ViewModel.LoadStickerPreferencesAsync();
+            _ = ViewModel.RefreshSecretPreferenceAsync();
+        }
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -34,6 +37,7 @@ public sealed partial class MessengerPage : Page
             ViewModel.CloseCallHistory();
             _ = ViewModel.LeaveMessengerAsync();
         }
+        _secretDialog?.Hide();
         base.OnNavigatedFrom(e);
     }
 

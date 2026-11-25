@@ -67,6 +67,7 @@ public sealed partial class MessengerViewModel
             ? RefreshPinsAsync(chat, _chatVersion, reportError: false)
             : Task.FromResult(true), session.Lifetime.Token) { Delay = ResyncDelay };
         _realtimeSession = session;
+        StartSecretChats(session);
         StartDraftSession(session);
         StartOutgoing(session);
         _stickerFrames?.StartSession();
@@ -116,6 +117,7 @@ public sealed partial class MessengerViewModel
             return;
         }
 
+        StopSecretChats();
         EndOutgoing();
         _realtimeSession = null;
         _ = StopDraftsAsync();
