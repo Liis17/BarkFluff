@@ -653,4 +653,15 @@
     <x:String x:Key="Messenger_MediaSaved">Вложение сохранено.</x:String>
     <x:String x:Key="Error_MediaNotFound">Вложение не найдено среди медиа чата.</x:String>
     <x:String x:Key="Error_MediaSave">Не удалось сохранить вложение.</x:String>
+    <x:String x:Key="Messenger_ChatSound">Звук уведомлений</x:String>
+    <x:String x:Key="Messenger_ChatSoundDefault">Системный звук по умолчанию</x:String>
+    <x:String x:Key="Messenger_ChatSoundSilent">Без звука</x:String>
+    <x:String x:Key="Messenger_ChatSoundInstantMessage">Мгновенное сообщение</x:String>
+    <x:String x:Key="Messenger_ChatSoundMail">Почта</x:String>
+    <x:String x:Key="Messenger_ChatSoundReminder">Напоминание</x:String>
+    <x:String x:Key="Messenger_ChatSoundSms">СМС</x:String>
+    <x:String x:Key="Messenger_ChatSoundPreview">Прослушать</x:String>
+    <x:String x:Key="Messenger_ChatSoundPreviewTitle">Проверка звука уведомлений</x:String>
+    <x:String x:Key="Messenger_ChatSoundDeviceOnly">Настройка действует только на этом устройстве.</x:String>
+    <x:String x:Key="Messenger_ChatSoundFailed">Не удалось загрузить или сохранить звук уведомлений чата.</x:String>
 </ResourceDictionary>

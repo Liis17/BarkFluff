@@ -44,6 +44,7 @@ public sealed partial class MessengerPage : Page
         }
         BindMediaViewer(null);
         _secretDialog?.Hide();
+        _chatSoundDialog?.Hide();
         base.OnNavigatedFrom(e);
     }
 

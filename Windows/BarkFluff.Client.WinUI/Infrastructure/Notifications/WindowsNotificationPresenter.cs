@@ -5,11 +5,13 @@ using Microsoft.Windows.AppNotifications.Builder;
 
 namespace BarkFluff.Client.WinUI.Infrastructure.Notifications;
 
-internal sealed record NotificationActivation(MessageNotificationTarget? Target, NotificationReply? Reply = null);
+internal sealed record NotificationActivation(MessageNotificationTarget? Target, NotificationReply? Reply = null,
+    bool IsSoundPreview = false);
 
 internal sealed class WindowsNotificationPresenter : INotificationPresenter
 {
     private const string ReplyInput = "replyText";
+    private const string SoundPreview = "soundPreview";
     private AppNotificationManager? _manager;
     private Action<NotificationActivation>? _invoke;
     private Task _pending = Task.CompletedTask;
@@ -69,11 +71,15 @@ internal sealed class WindowsNotificationPresenter : INotificationPresenter
             // При недоступных аргументах достаточно показать окно.
         }
 
-        _invoke?.Invoke(activation);
+        if (!activation.IsSoundPreview)
+            _invoke?.Invoke(activation);
     }
 
     private static NotificationActivation ParseActivation(AppNotificationActivatedEventArgs args)
     {
+        if (args.Arguments.TryGetValue(SoundPreview, out var preview) && preview == "1")
+            return new(null, IsSoundPreview: true);
+
         var (target, reply) = MessageNotificationPayload.ParseActivation(
             args.Arguments, args.UserInput.TryGetValue(ReplyInput, out var text) ? text : null);
         return new(target, reply);
@@ -82,32 +88,59 @@ internal sealed class WindowsNotificationPresenter : INotificationPresenter
     public void Show(MessageNotification notification) => Enqueue(manager =>
     {
         AppNotification toast;
-        if (notification.Reply is { } reply)
+        if (notification.Reply is null && notification.Sound == ChatNotificationSound.Default)
         {
-            var target = MessageNotificationPayload.Encode(notification.Target);
-            var operation = Guid.NewGuid().ToString("N");
-            toast = new AppNotificationBuilder()
-                .AddArgument(MessageNotificationPayload.ArgumentName, target)
-                .AddText(MessageNotificationPayload.RemoveInvalidXmlCharacters(notification.Title))
-                .AddText(MessageNotificationPayload.RemoveInvalidXmlCharacters(notification.Text))
-                .AddTextBox(ReplyInput, reply.Placeholder, string.Empty)
-                .AddButton(new AppNotificationButton(reply.Label)
-                    .SetInputId(ReplyInput)
-                    .AddArgument(MessageNotificationPayload.ArgumentName, target)
-                    .AddArgument(MessageNotificationPayload.ReplyOperationArgument, operation)
-                    .AddArgument(MessageNotificationPayload.ReplyMessageArgument, reply.MessageId.ToString(
-                        System.Globalization.CultureInfo.InvariantCulture)))
-                .BuildNotification();
-            toast.Tag = operation;
+            toast = new AppNotification(MessageNotificationPayload.CreateXml(notification));
         }
         else
         {
-            toast = new AppNotification(MessageNotificationPayload.CreateXml(notification));
+            var target = MessageNotificationPayload.Encode(notification.Target);
+            var builder = new AppNotificationBuilder()
+                .AddArgument(MessageNotificationPayload.ArgumentName, target)
+                .AddText(MessageNotificationPayload.RemoveInvalidXmlCharacters(notification.Title))
+                .AddText(MessageNotificationPayload.RemoveInvalidXmlCharacters(notification.Text));
+            string? operation = null;
+            if (notification.Reply is { } reply)
+            {
+                operation = Guid.NewGuid().ToString("N");
+                builder.AddTextBox(ReplyInput, reply.Placeholder, string.Empty)
+                    .AddButton(new AppNotificationButton(reply.Label)
+                        .SetInputId(ReplyInput)
+                        .AddArgument(MessageNotificationPayload.ArgumentName, target)
+                        .AddArgument(MessageNotificationPayload.ReplyOperationArgument, operation)
+                        .AddArgument(MessageNotificationPayload.ReplyMessageArgument, reply.MessageId.ToString(
+                            System.Globalization.CultureInfo.InvariantCulture)));
+            }
+            toast = WithSound(builder, notification.Sound).BuildNotification();
+            if (operation is not null)
+                toast.Tag = operation;
         }
         toast.Group = MessageNotificationPayload.Group(notification.Target);
         manager.Show(toast);
         return Task.CompletedTask;
     });
+
+    public void PreviewSound(ChatNotificationSound sound, string text) => Enqueue(manager =>
+    {
+        var toast = WithSound(new AppNotificationBuilder().AddArgument(SoundPreview, "1").AddText(text), sound)
+            .BuildNotification();
+        toast.Tag = SoundPreview;
+        toast.Group = SoundPreview;
+        toast.Expiration = DateTimeOffset.UtcNow.AddSeconds(10);
+        manager.Show(toast);
+        return Task.CompletedTask;
+    });
+
+    private static AppNotificationBuilder WithSound(AppNotificationBuilder builder, ChatNotificationSound sound) =>
+        sound switch
+        {
+            ChatNotificationSound.Silent => builder.MuteAudio(),
+            ChatNotificationSound.InstantMessage => builder.SetAudioEvent(AppNotificationSoundEvent.IM),
+            ChatNotificationSound.Mail => builder.SetAudioEvent(AppNotificationSoundEvent.Mail),
+            ChatNotificationSound.Reminder => builder.SetAudioEvent(AppNotificationSoundEvent.Reminder),
+            ChatNotificationSound.Sms => builder.SetAudioEvent(AppNotificationSoundEvent.SMS),
+            _ => builder
+        };
 
     public void RemoveReply(NotificationReply reply) => Enqueue(async manager =>
         await manager.RemoveByTagAndGroupAsync(reply.OperationId.ToString("N"), MessageNotificationPayload.Group(reply.Target)));
@@ -164,11 +197,17 @@ internal sealed class WindowsNotificationPresenter : INotificationPresenter
 
         _manager = null;
         _invoke = null;
-        return RunAsync(_pending, () =>
+        return RunAsync(_pending, async () =>
         {
             manager.NotificationInvoked -= OnInvoked;
-            manager.Unregister();
-            return Task.CompletedTask;
+            try
+            {
+                await manager.RemoveByTagAndGroupAsync(SoundPreview, SoundPreview);
+            }
+            finally
+            {
+                manager.Unregister();
+            }
         });
     }
 }

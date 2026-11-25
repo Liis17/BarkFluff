@@ -53,9 +53,16 @@ public partial class App : Application
     {
         try
         {
-            VoiceComposer.CleanTemporaryFiles();
-            if (_notificationPresenter.ReadStartupActivation() is { } activation)
+            var activation = _notificationPresenter.ReadStartupActivation();
+            if (activation is { IsSoundPreview: true })
+            {
+                await _notificationPresenter.StopAsync();
+                Exit();
+                return;
+            }
+            if (activation is not null)
                 _pendingNotifications.Enqueue(activation);
+            VoiceComposer.CleanTemporaryFiles();
             _host = CreateHost();
             await _host.StartAsync();
 
@@ -331,6 +338,7 @@ public partial class App : Application
         builder.Services.AddSingleton<IChatFoldersState, ChatFoldersState>();
         builder.Services.AddSingleton<IDeviceSettingsService, DeviceSettingsService>();
         builder.Services.AddSingleton<INotificationPresenter>(_notificationPresenter);
+        builder.Services.AddSingleton<IChatNotificationSoundStore>(services => services.GetRequiredService<SqliteApplicationDataStore>());
         builder.Services.AddSingleton<MessageNotificationService>();
         builder.Services.AddSingleton<ISettingsPreferences, SettingsPreferences>();
         builder.Services.AddSingleton<IAboutSettingsService, AboutSettingsService>();

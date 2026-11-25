@@ -653,4 +653,15 @@
     <x:String x:Key="Messenger_MediaSaved">Attachment saved.</x:String>
     <x:String x:Key="Error_MediaNotFound">This attachment was not found in the chat media.</x:String>
     <x:String x:Key="Error_MediaSave">Could not save this attachment.</x:String>
+    <x:String x:Key="Messenger_ChatSound">Notification sound</x:String>
+    <x:String x:Key="Messenger_ChatSoundDefault">System default</x:String>
+    <x:String x:Key="Messenger_ChatSoundSilent">No sound</x:String>
+    <x:String x:Key="Messenger_ChatSoundInstantMessage">Instant message</x:String>
+    <x:String x:Key="Messenger_ChatSoundMail">Mail</x:String>
+    <x:String x:Key="Messenger_ChatSoundReminder">Reminder</x:String>
+    <x:String x:Key="Messenger_ChatSoundSms">SMS</x:String>
+    <x:String x:Key="Messenger_ChatSoundPreview">Play preview</x:String>
+    <x:String x:Key="Messenger_ChatSoundPreviewTitle">Notification sound preview</x:String>
+    <x:String x:Key="Messenger_ChatSoundDeviceOnly">This setting applies only on this device.</x:String>
+    <x:String x:Key="Messenger_ChatSoundFailed">Could not load or save the chat notification sound.</x:String>
 </ResourceDictionary>

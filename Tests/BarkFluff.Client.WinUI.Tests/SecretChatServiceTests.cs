@@ -425,6 +425,7 @@ public sealed class SecretChatServiceTests
     {
         internal MessageNotification? Notification { get; private set; }
         public void Show(MessageNotification notification) => Notification = notification;
+        public void PreviewSound(ChatNotificationSound sound, string text) { }
         public void RemoveChat(MessageNotificationTarget target) { }
         public void RemoveAll() { }
         public void RemoveReply(NotificationReply reply) { }

@@ -110,11 +110,25 @@ public sealed partial class MessengerViewModel
             // При недоступном снимке превью всё равно можно показать.
         }
 
+        if (!CanShow())
+            return;
+
+        var target = new MessageNotificationTarget(session.Node, session.UserId, update.ChatId);
+        ChatNotificationSound sound;
+        try
+        {
+            sound = await _notifications.ResolveSoundAsync(target, token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return;
+        }
+
         PostSession(session, _ =>
         {
             if (CanShow())
             {
-                _notifications.Show(new(session.Node, session.UserId, update.ChatId), update, chat, sender);
+                _notifications.Show(target, update, chat, sender, sound);
             }
         });
     }

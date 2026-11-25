@@ -139,6 +139,7 @@ public sealed class OutgoingMessageQueueTests : IDisposable
     {
         public List<NotificationReply> Removed { get; } = [];
         public void Show(MessageNotification notification) { }
+        public void PreviewSound(ChatNotificationSound sound, string text) { }
         public void RemoveChat(MessageNotificationTarget target) { }
         public void RemoveAll() { }
         public void RemoveReply(NotificationReply reply) => Removed.Add(reply);

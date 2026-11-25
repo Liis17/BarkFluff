@@ -12,7 +12,7 @@ public sealed record MessageNotificationTarget(string Node, long UserId, string 
 }
 
 public sealed record MessageNotification(MessageNotificationTarget Target, string Title, string Text,
-    NotificationReplyAction? Reply = null);
+    NotificationReplyAction? Reply = null, ChatNotificationSound Sound = ChatNotificationSound.Default);
 
 public sealed record NotificationReplyAction(long MessageId, string Label, string Placeholder);
 public sealed record NotificationReply(MessageNotificationTarget Target, Guid OperationId, long MessageId, string Text);
@@ -20,12 +20,14 @@ public sealed record NotificationReply(MessageNotificationTarget Target, Guid Op
 public interface INotificationPresenter
 {
     void Show(MessageNotification notification);
+    void PreviewSound(ChatNotificationSound sound, string text);
     void RemoveChat(MessageNotificationTarget target);
     void RemoveAll();
     void RemoveReply(NotificationReply reply);
 }
 
-public sealed class MessageNotificationService(INotificationPresenter presenter, ILocalizationService localization)
+public sealed class MessageNotificationService(INotificationPresenter presenter, ILocalizationService localization,
+    IChatNotificationSoundStore? sounds = null)
 {
     private const int RecentMessageLimit = 4096;
     private readonly HashSet<(string ChatId, bool Private, long Id)> _seen = [];
@@ -60,11 +62,38 @@ public sealed class MessageNotificationService(INotificationPresenter presenter,
     internal static bool Allows(bool enabled, bool muted, bool chatVisible, bool windowActive) =>
         enabled && !muted && !(chatVisible && windowActive);
 
-    internal void Show(MessageNotificationTarget target, MessageUpdate update, ChatItemViewModel? chat, string? sender)
+    internal bool CanEditSound => sounds is not null;
+
+    internal Task<ChatNotificationSound> LoadSoundAsync(MessageNotificationTarget target, CancellationToken token) =>
+        sounds?.LoadAsync(target, token) ?? Task.FromResult(ChatNotificationSound.Default);
+
+    internal async Task<ChatNotificationSound> ResolveSoundAsync(MessageNotificationTarget target, CancellationToken token)
+    {
+        try
+        {
+            return await LoadSoundAsync(target, token);
+        }
+        catch (Exception) when (!token.IsCancellationRequested)
+        {
+            return ChatNotificationSound.Default;
+        }
+    }
+
+    internal Task SaveSoundAsync(MessageNotificationTarget target, ChatNotificationSound sound, CancellationToken token) =>
+        sounds!.SaveAsync(target, sound, token);
+
+    internal void PreviewSound(ChatNotificationSound sound, bool muted)
+    {
+        if (!muted && sound != ChatNotificationSound.Silent)
+            presenter.PreviewSound(sound, localization.GetString("Messenger_ChatSoundPreviewTitle"));
+    }
+
+    internal void Show(MessageNotificationTarget target, MessageUpdate update, ChatItemViewModel? chat, string? sender,
+        ChatNotificationSound sound)
     {
         if (update.IsPrivate)
         {
-            presenter.Show(new(target, "BarkFluff", localization.GetString("Notifications_PrivateMessage")));
+            presenter.Show(new(target, "BarkFluff", localization.GetString("Notifications_PrivateMessage"), Sound: sound));
             return;
         }
 
@@ -85,7 +114,7 @@ public sealed class MessageNotificationService(INotificationPresenter presenter,
             ? new NotificationReplyAction(update.MessageId, localization.GetString("Notifications_Reply"),
                 localization.GetString("Notifications_ReplyPlaceholder"))
             : null;
-        presenter.Show(new(target, title, preview, reply));
+        presenter.Show(new(target, title, preview, reply, sound));
     }
 
     internal void ShowSecret(MessageNotificationTarget target) =>

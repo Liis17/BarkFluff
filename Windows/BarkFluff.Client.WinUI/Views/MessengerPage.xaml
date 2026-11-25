@@ -722,6 +722,7 @@
                                 <MenuFlyoutItem Text="{x:Bind ViewModel.SelectedChat.MuteMenuHeader, Mode=OneWay}"
                                                 Command="{x:Bind ViewModel.ToggleChatMuteCommand}"
                                                 CommandParameter="{x:Bind ViewModel.SelectedChat, Mode=OneWay}" />
+                                <MenuFlyoutItem Text="{StaticResource Messenger_ChatSound}" Click="OnChatSoundClick" />
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>

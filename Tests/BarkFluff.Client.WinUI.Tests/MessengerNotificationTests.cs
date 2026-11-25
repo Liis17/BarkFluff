@@ -7,12 +7,141 @@ using BarkFluff.Proto.Shared;
 using BarkFluff.Proto.Users;
 using BarkFluff.WebApi.Core;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+using Google.Protobuf.WellKnownTypes;
+using Microsoft.Extensions.Time.Testing;
 using static BarkFluff.Client.WinUI.Tests.MessengerTestDoubles;
 
 namespace BarkFluff.Client.WinUI.Tests;
 
 public sealed class MessengerNotificationTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ChatSoundAppliesToNotificationsAndPreviewUnlessMuted(bool muted)
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        await dispatcher.RunAsync(async () =>
+        {
+            var sounds = new SoundStore();
+            var fixture = new Fixture(dispatcher: dispatcher, sounds: sounds);
+            if (muted)
+                fixture.Messenger.MutedChats = [new() { ChatId = "known" }];
+            await fixture.ViewModel.LoadAsync();
+            fixture.ViewModel.SelectedChat = Assert.Single(fixture.ViewModel.Chats);
+
+            await fixture.ViewModel.EditChatSoundAsync((current, canPreview, preview, _) =>
+            {
+                Assert.Equal(ChatNotificationSound.Default, current);
+                Assert.Equal(!muted, canPreview());
+                preview(ChatNotificationSound.Silent);
+                preview(ChatNotificationSound.Mail);
+                return Task.FromResult<ChatNotificationSound?>(ChatNotificationSound.Silent);
+            });
+
+            Assert.Equal(ChatNotificationSound.Silent, sounds.Sound);
+            Assert.Equal(new MessageNotificationTarget(fixture.Messenger.CurrentNodeAddress!, 1, "known"), sounds.Target);
+            fixture.Receive(1);
+            if (muted)
+            {
+                Assert.Empty(fixture.Presenter.Previews);
+                Assert.Empty(fixture.Presenter.Shown);
+            }
+            else
+            {
+                Assert.Equal(ChatNotificationSound.Mail, Assert.Single(fixture.Presenter.Previews));
+                Assert.Equal(ChatNotificationSound.Silent, Assert.Single(fixture.Presenter.Shown).Sound);
+            }
+        });
+    }
+
+    [Fact]
+    public async Task ChatSoundEditorErrorsAreNotReportedAsStorageErrors()
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        await dispatcher.RunAsync(async () =>
+        {
+            var fixture = new Fixture(dispatcher: dispatcher, sounds: new SoundStore());
+            await fixture.ViewModel.LoadAsync();
+            fixture.ViewModel.SelectedChat = Assert.Single(fixture.ViewModel.Chats);
+
+            var error = new InvalidOperationException("Editor failed");
+            Assert.Same(error, await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                fixture.ViewModel.EditChatSoundAsync((_, _, _, _) => Task.FromException<ChatNotificationSound?>(error))));
+            Assert.Null(fixture.ViewModel.ActionError);
+        });
+    }
+
+    [Fact]
+    public async Task ResolveSoundUsesDefaultWhenStoreFails()
+    {
+        var sounds = new SoundStore { LoadError = new IOException("Store is unavailable") };
+        var notifications = new MessageNotificationService(new CapturingPresenter(), new StubLocalizationService(), sounds);
+
+        Assert.Equal(ChatNotificationSound.Default,
+            await notifications.ResolveSoundAsync(new("node", 1, "known"), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ChatSoundAppliesAgainAfterMuteExpires()
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        await dispatcher.RunAsync(async () =>
+        {
+            var clock = new FakeTimeProvider();
+            var duration = TimeSpan.FromMinutes(1);
+            var sounds = new SoundStore();
+            var fixture = new Fixture(dispatcher: dispatcher, sounds: sounds, timeProvider: clock);
+            fixture.Messenger.MutedChats =
+                [new() { ChatId = "known", MutedUntil = Timestamp.FromDateTimeOffset(clock.GetUtcNow() + duration) }];
+            await sounds.SaveAsync(new(fixture.Messenger.CurrentNodeAddress, 1, "known"), ChatNotificationSound.Mail,
+                CancellationToken.None);
+            await fixture.ViewModel.LoadAsync();
+
+            fixture.Receive(1);
+            Assert.Empty(fixture.Presenter.Shown);
+            clock.Advance(duration);
+            fixture.Receive(2);
+            Assert.Equal(ChatNotificationSound.Mail, Assert.Single(fixture.Presenter.Shown).Sound);
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ChatSoundDialogIsCancelledWhenChatOrSessionChanges(bool changeSession)
+    {
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        await dispatcher.RunAsync(async () =>
+        {
+            var sounds = new SoundStore();
+            var fixture = new Fixture(dispatcher: dispatcher, sounds: sounds);
+            fixture.Messenger.Chats.Add(CreateChat("other"));
+            await fixture.ViewModel.LoadAsync();
+            fixture.ViewModel.SelectedChat = fixture.ViewModel.Chats.Single(chat => chat.Id == "known");
+
+            await fixture.ViewModel.EditChatSoundAsync(async (_, canPreview, preview, lifetime) =>
+            {
+                if (changeSession)
+                {
+                    fixture.Messenger.CurrentUserId = 5;
+                    await fixture.ViewModel.LoadAsync();
+                }
+                else
+                {
+                    fixture.ViewModel.SelectedChat = fixture.ViewModel.Chats.Single(chat => chat.Id == "other");
+                }
+                Assert.True(lifetime.IsCancellationRequested);
+                Assert.False(canPreview());
+                preview(ChatNotificationSound.Mail);
+                return ChatNotificationSound.Mail;
+            });
+
+            Assert.Null(sounds.Target);
+            Assert.Empty(fixture.Presenter.Previews);
+        });
+    }
+
     [Theory]
     [InlineData(ChatType.Regular, AccountStatus.Active, true)]
     [InlineData(ChatType.Regular, AccountStatus.Blocked, false)]
@@ -130,24 +259,32 @@ public sealed class MessengerNotificationTests
     [Fact]
     public async Task PreviewIsPlainXmlAndPrivateMessageDoesNotExposeChatOrMessage()
     {
-        var fixture = new Fixture();
-        fixture.Messenger.Chats[0].Title = "Chat <A> & B";
-        fixture.Messenger.UserData = new() { FirstName = "Alice" };
-        fixture.Messenger.Chats.Add(CreateChat("private", "Private title", chatType: ChatType.Private));
-        await fixture.ViewModel.LoadAsync();
-        fixture.Realtime.Raise(new IncomingMessage("known", CreateMessage(1, "known", 2, "**hello** & world")));
-        fixture.Realtime.Raise(new MessageUpdate("private", true, 2, MessageUpdateKind.New,
-            Encrypted: new EncryptedMessage { Id = 2, ChatId = "private", SenderId = 2 }));
+        var dispatcher = new InlineUiDispatcher(serializeContinuations: true);
+        await dispatcher.RunAsync(async () =>
+        {
+            var sounds = new SoundStore();
+            var fixture = new Fixture(dispatcher: dispatcher, sounds: sounds);
+            fixture.Messenger.Chats[0].Title = "Chat <A> & B";
+            fixture.Messenger.UserData = new() { FirstName = "Alice" };
+            fixture.Messenger.Chats.Add(CreateChat("private", "Private title", chatType: ChatType.Private));
+            await sounds.SaveAsync(new(fixture.Messenger.CurrentNodeAddress, 1, "private"), ChatNotificationSound.Sms,
+                CancellationToken.None);
+            await fixture.ViewModel.LoadAsync();
+            fixture.Realtime.Raise(new IncomingMessage("known", CreateMessage(1, "known", 2, "**hello** & world")));
+            fixture.Realtime.Raise(new MessageUpdate("private", true, 2, MessageUpdateKind.New,
+                Encrypted: new EncryptedMessage { Id = 2, ChatId = "private", SenderId = 2 }));
 
-        var normal = fixture.Presenter.Shown[0];
-        var xml = MessageNotificationPayload.CreateXml(normal);
-        Assert.Contains("&lt;A&gt; &amp; B", xml);
-        Assert.Equal(new[] { "Chat <A> & B · Alice", "hello & world" },
-            XElement.Parse(xml).Descendants("text").Select(text => text.Value));
+            var normal = fixture.Presenter.Shown[0];
+            var xml = MessageNotificationPayload.CreateXml(normal);
+            Assert.Contains("&lt;A&gt; &amp; B", xml);
+            Assert.Equal(new[] { "Chat <A> & B · Alice", "hello & world" },
+                XElement.Parse(xml).Descendants("text").Select(text => text.Value));
 
-        var encrypted = fixture.Presenter.Shown[1];
-        Assert.Equal("BarkFluff", encrypted.Title);
-        Assert.Equal("Notifications_PrivateMessage", encrypted.Text);
+            var encrypted = fixture.Presenter.Shown[1];
+            Assert.Equal("BarkFluff", encrypted.Title);
+            Assert.Equal("Notifications_PrivateMessage", encrypted.Text);
+            Assert.Equal(ChatNotificationSound.Sms, encrypted.Sound);
+        });
     }
 
     [Theory]
@@ -297,14 +434,15 @@ public sealed class MessengerNotificationTests
 
     private sealed class Fixture
     {
-        public Fixture(bool enabled = true, InlineUiDispatcher? dispatcher = null)
+        public Fixture(bool enabled = true, InlineUiDispatcher? dispatcher = null, IChatNotificationSoundStore? sounds = null,
+            TimeProvider? timeProvider = null)
         {
             Device.CurrentDevice!.NotificationsEnabled = enabled;
             Messenger.Chats.Add(CreateChat("known"));
             var localization = new StubLocalizationService();
-            var notifications = new MessageNotificationService(Presenter, localization);
+            var notifications = new MessageNotificationService(Presenter, localization, sounds);
             Settings = new(Device, localization, notifications);
-            ViewModel = CreateViewModel(Messenger, Realtime, dispatcher: dispatcher, notifications: notifications,
+            ViewModel = CreateViewModel(Messenger, Realtime, dispatcher: dispatcher, timeProvider: timeProvider, notifications: notifications,
                 notificationSettings: Settings);
         }
 
@@ -319,13 +457,33 @@ public sealed class MessengerNotificationTests
             Realtime.Raise(new IncomingMessage(chat, CreateMessage(id, chat, 2)));
     }
 
+    private sealed class SoundStore : IChatNotificationSoundStore
+    {
+        public ChatNotificationSound Sound { get; private set; }
+        public MessageNotificationTarget? Target { get; private set; }
+        public Exception? LoadError { get; init; }
+
+        public Task<ChatNotificationSound> LoadAsync(MessageNotificationTarget target, CancellationToken cancellationToken) =>
+            LoadError is { } error ? Task.FromException<ChatNotificationSound>(error) :
+                Task.FromResult(target == Target ? Sound : ChatNotificationSound.Default);
+
+        public Task SaveAsync(MessageNotificationTarget target, ChatNotificationSound sound, CancellationToken cancellationToken)
+        {
+            Target = target;
+            Sound = sound;
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class CapturingPresenter : INotificationPresenter
     {
         public List<MessageNotification> Shown { get; } = [];
+        public List<ChatNotificationSound> Previews { get; } = [];
         public List<MessageNotificationTarget> ClearedChats { get; } = [];
         public int ClearCount { get; private set; }
 
         public void Show(MessageNotification notification) => Shown.Add(notification);
+        public void PreviewSound(ChatNotificationSound sound, string text) => Previews.Add(sound);
         public void RemoveReply(NotificationReply reply) { }
         public void RemoveChat(MessageNotificationTarget target)
         {
