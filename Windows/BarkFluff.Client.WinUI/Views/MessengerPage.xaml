@@ -555,8 +555,40 @@
                 </Button>
             </Grid>
 
-            <Grid Grid.Row="2" Margin="0,12,0,0">
-                <ScrollViewer Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid Grid.Row="2" Margin="0,12,0,0" RowDefinitions="Auto,*">
+                <ListView ItemsSource="{x:Bind ViewModel.ChatFolderTabs}"
+                          SelectedItem="{x:Bind ViewModel.ActiveFolderTab, Mode=TwoWay}"
+                          SelectionMode="Single"
+                          SingleSelectionFollowsFocus="True"
+                          AutomationProperties.Name="{StaticResource Messenger_ChatFolderTabs}"
+                          ScrollViewer.HorizontalScrollMode="Enabled"
+                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                          ScrollViewer.VerticalScrollMode="Disabled"
+                          ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                          Visibility="{x:Bind ViewModel.IsChatListVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ListView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ChatFolderTabViewModel">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock MaxWidth="128" TextTrimming="CharacterEllipsis"
+                                           Text="{x:Bind Title, Mode=OneWay}"
+                                           ToolTipService.ToolTip="{x:Bind Title, Mode=OneWay}" />
+                                <TextBlock Text="{x:Bind BadgeText, Mode=OneWay}"
+                                           Visibility="{x:Bind BadgeText, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <ScrollViewer Grid.Row="1" Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <StackPanel Spacing="8">
                         <StackPanel Visibility="{x:Bind ViewModel.IsChatSearchResultsVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Messenger_SearchChats}" />
@@ -594,7 +626,7 @@
                 </ScrollViewer>
 
                 <!--  Свойства списка заданы прямо на контроле: WinUI не публикует базовый стиль ListView.  -->
-                <ListView Visibility="{x:Bind ViewModel.IsChatListVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                <ListView Grid.Row="1" Visibility="{x:Bind ViewModel.IsChatListVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                           ToolTipService.ToolTip="{StaticResource Messenger_ShortcutChats}"
                           Padding="0"
                           Background="Transparent"
@@ -604,10 +636,10 @@
                           ItemsSource="{x:Bind ViewModel.VisibleChats}"
                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                           ScrollViewer.VerticalScrollBarVisibility="Auto"
-                          SelectedItem="{x:Bind ViewModel.SelectedChat, Mode=TwoWay}">
+                          SelectedItem="{x:Bind ViewModel.SelectedVisibleChat, Mode=TwoWay}">
                 </ListView>
 
-                <ProgressRing
+                <ProgressRing Grid.Row="1"
                               HorizontalAlignment="Center"
                               VerticalAlignment="Top"
                               IsActive="True"

@@ -156,6 +156,9 @@
     <x:String x:Key="Messenger_ShortcutCancel">Отменить правку или ответ (Esc)</x:String>
     <x:String x:Key="Messenger_SearchResults">Пользователи</x:String>
     <x:String x:Key="Messenger_SearchChats">Чаты</x:String>
+    <x:String x:Key="Messenger_ChatFolderTabs">Папки чатов</x:String>
+    <x:String x:Key="Messenger_AllChatFolders">Все</x:String>
+    <x:String x:Key="Messenger_FolderUnread">{0}, непрочитанных сообщений: {1}</x:String>
     <x:String x:Key="Messenger_SearchMessages">Сообщения</x:String>
     <x:String x:Key="Messenger_SearchRegularOnly">Поиск сообщений доступен только в обычных чатах.</x:String>
     <x:String x:Key="Messenger_SearchEmpty">Сообщения не найдены.</x:String>

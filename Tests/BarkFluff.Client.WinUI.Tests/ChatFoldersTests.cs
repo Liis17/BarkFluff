@@ -1,9 +1,12 @@
+using System.Collections.Specialized;
 using BarkFluff.Client.Core.Models;
 using BarkFluff.Client.Core.Services;
+using BarkFluff.Client.Core.ViewModels;
 using BarkFluff.Client.Core.ViewModels.Settings;
 using BarkFluff.Proto.Users;
 using BarkFluff.WebApi.Core.MessengerData;
 using Grpc.Core;
+using Microsoft.Extensions.Time.Testing;
 using System.Reflection;
 using WebApiClient = BarkFluff.WebApi.Core.WebApi;
 
@@ -11,6 +14,114 @@ namespace BarkFluff.Client.WinUI.Tests;
 
 public sealed class ChatFoldersTests
 {
+    [Fact]
+    public async Task FolderTabs_FilterNavigationButKeepSearchGlobalAndChatOpen()
+    {
+        var ui = new InlineUiDispatcher(serializeContinuations: true);
+        var work = Folder("work", "a", "b");
+        work.SortOrder = 1;
+        var home = Folder("home", "a");
+        var (state, preferences, _) = CreateState(ui, work, home, Folder("empty"));
+        var api = new FakeMessengerService();
+        api.Chats.AddRange([
+            MessengerTestDoubles.CreateChat("a", "Alpha"),
+            MessengerTestDoubles.CreateChat("b", "Beta"),
+            MessengerTestDoubles.CreateChat("c", "Outside")
+        ]);
+        var realtime = new FakeRealtimeMessengerService();
+        var vm = MessengerTestDoubles.CreateViewModel(api, realtime, dispatcher: ui, chatFolders: state);
+        await ui.RunAsync(vm.LoadAsync);
+
+        ui.Post(() =>
+        {
+            var all = vm.ChatFolderTabs[0];
+            Assert.Equal([null, "empty", "home", "work"], vm.ChatFolderTabs.Select(tab => tab.Id));
+            Assert.Same(all, vm.ActiveFolderTab);
+            var outside = Assert.Single(vm.VisibleChats);
+            Assert.Equal("c", outside.Id);
+            vm.SelectedVisibleChat = outside;
+
+            var changes = new List<NotifyCollectionChangedAction>();
+            vm.VisibleChats.CollectionChanged += (_, args) => changes.Add(args.Action);
+            var workTab = vm.ChatFolderTabs[^1];
+            vm.ActiveFolderTab = workTab;
+            vm.SelectedVisibleChat = null;
+            Assert.Same(outside, vm.SelectedChat);
+            Assert.Null(vm.SelectedVisibleChat);
+            Assert.Equal(["a", "b"], vm.VisibleChats.Select(chat => chat.Id).Order());
+
+            vm.SelectedVisibleChat = vm.VisibleChats[0];
+            var second = vm.VisibleChats[1];
+            Assert.True(vm.TryInvokeShortcut(MessengerShortcutKey.CtrlDown, MessengerShortcutFocus.Composer, () => false));
+            Assert.Same(second, vm.SelectedChat);
+            Assert.False(vm.TryInvokeShortcut(MessengerShortcutKey.CtrlDown, MessengerShortcutFocus.Composer, () => false));
+            vm.SearchText = "outside";
+            Assert.Same(outside, Assert.Single(vm.ChatSearchResults));
+            vm.SearchText = "";
+            Assert.Same(workTab, vm.ActiveFolderTab);
+
+            preferences.Folders.Remove(work);
+            realtime.SignalFoldersChanged();
+            Assert.Same(all, vm.ActiveFolderTab);
+            Assert.Same(second, vm.SelectedChat);
+            Assert.Contains(outside, vm.VisibleChats);
+            Assert.DoesNotContain(NotifyCollectionChangedAction.Reset, changes);
+            vm.ActiveFolderTab = vm.ChatFolderTabs.Single(tab => tab.Id == "home");
+            vm.Reset();
+            Assert.Same(all, Assert.Single(vm.ChatFolderTabs));
+            Assert.Same(all, vm.ActiveFolderTab);
+        });
+    }
+
+    [Fact]
+    public async Task FolderTabs_CountMutedUnreadAndIncludeNewRealtimeChats()
+    {
+        var ui = new InlineUiDispatcher(serializeContinuations: true);
+        var (state, _, _) = CreateState(ui, Folder("work", "muted", "new"));
+        var api = new FakeMessengerService();
+        var muted = MessengerTestDoubles.CreateChat("muted");
+        muted.Muted = true;
+        muted.CountUnread = 100;
+        var outside = MessengerTestDoubles.CreateChat("outside");
+        outside.CountUnread = 3;
+        api.Chats.AddRange([muted, outside]);
+        var realtime = new FakeRealtimeMessengerService();
+        var clock = new FakeTimeProvider();
+        var vm = MessengerTestDoubles.CreateViewModel(api, realtime, dispatcher: ui, chatFolders: state);
+        vm.UnreadBadgeClock = clock;
+        await ui.RunAsync(vm.LoadAsync);
+
+        ui.Post(() =>
+        {
+            var work = vm.ChatFolderTabs[1];
+            vm.ActiveFolderTab = work;
+            var existing = Assert.Single(vm.VisibleChats);
+            Assert.True(existing.IsMuted);
+            Assert.Equal(100, work.UnreadCount);
+            Assert.Equal("99+", work.BadgeText);
+            Assert.Empty(vm.ChatFolderTabs[0].BadgeText);
+            clock.Advance(MessengerViewModel.UnreadBadgeUpdateInterval);
+            Assert.Equal(3, vm.UnreadBadgeCount);
+
+            var added = MessengerTestDoubles.CreateChat("new");
+            added.CountUnread = 1;
+            api.Chats.Add(added);
+            realtime.Raise(new IncomingMessage("new", MessengerTestDoubles.CreateMessage(1, "new", 2)));
+            Assert.Equal(["muted", "new"], vm.VisibleChats.Select(chat => chat.Id).Order());
+            Assert.Same(existing, vm.VisibleChats.Single(chat => chat.Id == "muted"));
+            Assert.Equal(101, work.UnreadCount);
+            realtime.Raise(new IncomingMessage("new", MessengerTestDoubles.CreateMessage(2, "new", 2)));
+            Assert.Equal(102, work.UnreadCount);
+            clock.Advance(MessengerViewModel.UnreadBadgeUpdateInterval);
+            Assert.Equal(5, vm.UnreadBadgeCount);
+
+            existing.UnreadCount = 0;
+            clock.Advance(MessengerViewModel.UnreadBadgeUpdateInterval);
+            Assert.Equal(2, work.UnreadCount);
+            vm.Reset();
+        });
+    }
+
     [Fact]
     public async Task MenuAndSettings_ModifyMembershipWithoutReplacingOtherChats()
     {
@@ -213,13 +324,17 @@ public sealed class ChatFoldersTests
         Assert.Equal("new", Assert.Single(state.Folders).FolderId);
     }
 
-    private static (ChatFoldersState, Preferences, ClientSession) CreateState(params ChatFolderData[] folders)
+    private static (ChatFoldersState, Preferences, ClientSession) CreateState(params ChatFolderData[] folders) =>
+        CreateState(new InlineUiDispatcher(), folders);
+
+    private static (ChatFoldersState, Preferences, ClientSession) CreateState(
+        InlineUiDispatcher ui, params ChatFolderData[] folders)
     {
         var session = new ClientSession();
         session.SetConnection(Connection("test-node", 1));
         var api = new Preferences();
         api.Folders.AddRange(folders);
-        return (new ChatFoldersState(api, session, new InlineUiDispatcher()), api, session);
+        return (new ChatFoldersState(api, session, ui), api, session);
     }
 
     private static NodeConnection Connection(string node, long userId) =>

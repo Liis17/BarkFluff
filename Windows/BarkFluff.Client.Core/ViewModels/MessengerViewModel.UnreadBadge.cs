@@ -34,6 +34,7 @@ public sealed partial class MessengerViewModel
         var timer = UnreadBadgeClock.CreateTimer(_ => PostSession(session, _ =>
         {
             scheduled = false;
+            UpdateFolderUnreadCounts();
             UnreadBadgeCount = Chats
                 .Where(chat => !chat.IsMuted && chat.Definition.ChatType != ChatType.Secret)
                 .Sum(chat => Math.Max(0L, chat.UnreadCount));

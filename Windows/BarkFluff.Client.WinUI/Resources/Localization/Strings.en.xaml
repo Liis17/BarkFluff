@@ -157,6 +157,9 @@
     <x:String x:Key="Messenger_ShortcutCancel">Cancel edit or reply (Esc)</x:String>
     <x:String x:Key="Messenger_SearchResults">People</x:String>
     <x:String x:Key="Messenger_SearchChats">Chats</x:String>
+    <x:String x:Key="Messenger_ChatFolderTabs">Chat folders</x:String>
+    <x:String x:Key="Messenger_AllChatFolders">All</x:String>
+    <x:String x:Key="Messenger_FolderUnread">{0}, unread messages: {1}</x:String>
     <x:String x:Key="Messenger_SearchMessages">Messages</x:String>
     <x:String x:Key="Messenger_SearchRegularOnly">Message search covers ordinary chats only.</x:String>
     <x:String x:Key="Messenger_SearchEmpty">No messages found.</x:String>

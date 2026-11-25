@@ -117,6 +117,9 @@ public sealed partial class MessengerViewModel : ObservableObject
         _stickerFrames = stickerFrames;
         _muteClock = timeProvider ?? TimeProvider.System;
         _chatFolders = chatFolders;
+        _allChatsTab = new(null, _localization);
+        _allChatsTab.Title = _localization.GetString("Messenger_AllChatFolders");
+        ChatFolderTabs.Add(_allChatsTab);
         _typing = typing;
         _notifications = notifications;
         _notificationSettings = notificationSettings;
@@ -132,7 +135,7 @@ public sealed partial class MessengerViewModel : ObservableObject
 
     public ObservableCollection<ChatItemViewModel> Chats { get; } = [];
 
-    /// <summary>Отфильтрованная поиском проекция <see cref="Chats"/>; к ней привязан список в разметке.</summary>
+    /// <summary>Видимая проекция <see cref="Chats"/>; к ней привязан список в разметке.</summary>
     public ObservableCollection<ChatItemViewModel> VisibleChats { get; } = [];
     public ObservableCollection<UserSearchResultViewModel> SearchResults { get; } = [];
     public ObservableCollection<MessageItemViewModel> Messages { get; } = [];
@@ -260,7 +263,7 @@ public sealed partial class MessengerViewModel : ObservableObject
         IsProfileVisible = false;
         Profile.Reset();
         Chats.Clear();
-        VisibleChats.Clear();
+        UpdateVisibleChats([]);
         Messages.Clear();
         DraftText = string.Empty;
         SearchText = string.Empty;
@@ -275,53 +278,73 @@ public sealed partial class MessengerViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Выбранный чат остаётся в выборке даже когда не подходит под фильтр: иначе список
-    /// сбросил бы <c>SelectedItem</c> и открытая переписка закрылась бы на середине фразы.
+    /// Поиск по всем чатам обновляется отдельно от списка, ограниченного папкой.
     /// </summary>
     private void ApplyChatFilter()
     {
         var query = SearchText.Trim();
         UpdateChatSearchResults(query);
-        var filtered = Chats.Where(chat =>
+        var filtered = Chats.Where(IsInActiveFolder).Where(chat =>
             query.Length == 0
             || chat == SelectedChat
             || MatchesChat(chat, query)).ToArray();
+        UpdateVisibleChats(filtered);
+        UpdateFolderUnreadCounts();
+    }
 
-        var wanted = filtered.ToHashSet();
-        for (var index = VisibleChats.Count - 1; index >= 0; index--)
+    private void UpdateVisibleChats(IReadOnlyList<ChatItemViewModel> chats)
+    {
+        _syncingVisibleChats = true;
+        try
         {
-            if (!wanted.Contains(VisibleChats[index]))
+            SyncList(VisibleChats, chats, SelectedChat);
+        }
+        finally
+        {
+            _syncingVisibleChats = false;
+        }
+        OnPropertyChanged(nameof(SelectedVisibleChat));
+    }
+
+    private static void SyncList<T>(ObservableCollection<T> visible, IReadOnlyList<T> filtered, T? selected)
+        where T : class
+    {
+        var wanted = filtered.ToHashSet();
+        for (var index = visible.Count - 1; index >= 0; index--)
+        {
+            if (!wanted.Contains(visible[index]))
             {
-                VisibleChats.RemoveAt(index);
+                visible.RemoveAt(index);
             }
         }
 
-        for (var index = 0; index < filtered.Length; index++)
+        for (var index = 0; index < filtered.Count; index++)
         {
             var item = filtered[index];
-            if (index < VisibleChats.Count && VisibleChats[index] == item)
+            if (index < visible.Count && visible[index] == item)
             {
                 continue;
             }
 
             // WinUI 2.5 превращает Move в Reset. Удаляем и вставляем только соседей
             // выбранного элемента, чтобы привязка SelectedItem не потеряла выбор.
-            if (item == SelectedChat && VisibleChats.Contains(item))
+            if (item == selected && visible.Contains(item))
             {
-                while (VisibleChats[index] != item)
+                while (visible[index] != item)
                 {
-                    VisibleChats.RemoveAt(index);
+                    visible.RemoveAt(index);
                 }
                 continue;
             }
 
-            VisibleChats.Remove(item);
-            VisibleChats.Insert(index, item);
+            visible.Remove(item);
+            visible.Insert(index, item);
         }
     }
 
     partial void OnSelectedChatChanged(ChatItemViewModel? oldValue, ChatItemViewModel? newValue)
     {
+        OnPropertyChanged(nameof(SelectedVisibleChat));
         MediaViewer.Close();
         if (oldValue is not null)
         {

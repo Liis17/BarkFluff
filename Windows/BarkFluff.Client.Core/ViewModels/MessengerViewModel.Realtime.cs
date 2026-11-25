@@ -90,10 +90,12 @@ public sealed partial class MessengerViewModel
         _realtimeMessenger.PrivateMessageRead += privateRead;
         var unsubscribeCache = ObserveChatCache(session);
         var unsubscribeUnreadBadge = ObserveUnreadBadge(session);
+        var unsubscribeFolderTabs = ObserveFolderTabs(session);
         session.Unsubscribe = () =>
         {
             unsubscribeCache();
             unsubscribeUnreadBadge();
+            unsubscribeFolderTabs();
             _realtimeMessenger.ChatFoldersChanged -= foldersChanged;
             _realtimeMessenger.MessageReceived -= received;
             _realtimeMessenger.MessageChanged -= changed;
@@ -126,10 +128,11 @@ public sealed partial class MessengerViewModel
         _ = StopDraftsAsync();
         _notificationSettings?.EndSession();
         _notifications?.EndSession();
-        _chatFolders?.Reset();
-        FolderActionError = null;
         session.MuteExpiryTimer?.Dispose();
         session.Unsubscribe();
+        _chatFolders?.Reset();
+        RefreshFolderTabs([]);
+        FolderActionError = null;
         UnreadBadgeCount = 0;
         session.Lifetime.Cancel();
         session.Lifetime.Dispose();
