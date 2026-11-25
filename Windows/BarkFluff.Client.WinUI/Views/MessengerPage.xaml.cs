@@ -10,7 +10,11 @@ namespace BarkFluff.Client.WinUI.Views;
 
 public sealed partial class MessengerPage : Page
 {
-    public MessengerPage() => InitializeComponent();
+    public MessengerPage()
+    {
+        InitializeComponent();
+        InitializeShortcuts();
+    }
 
     public MessengerViewModel ViewModel { get; private set; } = null!;
 

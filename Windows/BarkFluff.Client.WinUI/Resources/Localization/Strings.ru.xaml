@@ -149,6 +149,10 @@
     <x:String x:Key="Error_TwoFactorLocked">Операция 2FA временно заблокирована.</x:String>
     <x:String x:Key="Error_TwoFactorProtectionUnavailable">Защита 2FA временно недоступна. Попробуйте позже.</x:String>
     <x:String x:Key="Messenger_Search">Поиск чатов и пользователей</x:String>
+    <x:String x:Key="Messenger_ShortcutSearch">Поиск в боковой панели (Ctrl+K) • Поиск сообщений из открытого чата (Ctrl+F)</x:String>
+    <x:String x:Key="Messenger_ShortcutEdit">Править последнее доступное сообщение (↑ в пустом поле ввода)</x:String>
+    <x:String x:Key="Messenger_ShortcutChats">Предыдущий или следующий чат видимого списка (Ctrl+↑ / Ctrl+↓ из поля ввода)</x:String>
+    <x:String x:Key="Messenger_ShortcutCancel">Отменить правку или ответ (Esc)</x:String>
     <x:String x:Key="Messenger_SearchResults">Пользователи</x:String>
     <x:String x:Key="Messenger_SearchChats">Чаты</x:String>
     <x:String x:Key="Messenger_SearchMessages">Сообщения</x:String>

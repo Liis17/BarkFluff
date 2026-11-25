@@ -473,7 +473,7 @@
         </DataTemplate>
     </Page.Resources>
 
-    <Grid>
+    <Grid x:Name="ShortcutScope">
         <Grid Visibility="{x:Bind ViewModel.SecretChats.IsMainMessengerVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="320" />
@@ -523,8 +523,9 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBox PlaceholderText="{StaticResource Messenger_Search}"
+                <TextBox x:Name="SidebarSearchBox" PlaceholderText="{StaticResource Messenger_Search}"
                          AutomationProperties.Name="{StaticResource Messenger_Search}"
+                         ToolTipService.ToolTip="{StaticResource Messenger_ShortcutSearch}"
                          Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 <Button Grid.Column="1" AutomationProperties.Name="{StaticResource Messenger_SearchFilters}">
                     <FontIcon Glyph="&#xE71C;" />
@@ -604,6 +605,7 @@
 
                 <!--  Свойства списка заданы прямо на контроле: WinUI не публикует базовый стиль ListView.  -->
                 <ListView Visibility="{x:Bind ViewModel.IsChatListVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                          ToolTipService.ToolTip="{StaticResource Messenger_ShortcutChats}"
                           Padding="0"
                           Background="Transparent"
                           BorderThickness="0"
@@ -869,7 +871,8 @@
                     <Button Grid.Column="1"
                             Margin="8,0,0,0"
                             Command="{x:Bind ViewModel.CancelComposerHintCommand}"
-                            ToolTipService.ToolTip="{StaticResource Messenger_Cancel}">
+                            AutomationProperties.Name="{StaticResource Messenger_Cancel}"
+                            ToolTipService.ToolTip="{StaticResource Messenger_ShortcutCancel}">
                         <FontIcon FontSize="12" Glyph="&#xE711;" />
                     </Button>
                 </Grid>
@@ -1057,10 +1060,11 @@
                         </Button.Flyout>
                     </Button>
                 </StackPanel>
-                <TextBox Grid.Column="1" MinHeight="42"
+                <TextBox x:Name="ComposerBox" Grid.Column="1" MinHeight="42"
                          MaxHeight="120"
                          AcceptsReturn="True"
                          Paste="OnComposerPaste"
+                         ToolTipService.ToolTip="{StaticResource Messenger_ShortcutEdit}"
                          IsEnabled="{x:Bind ViewModel.CanEditComposerText, Mode=OneWay}"
                          Text="{x:Bind ViewModel.DraftText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          TextWrapping="Wrap"
@@ -1092,7 +1096,7 @@
             а не ContentDialog: вьюмодель уже управляет ими флагами и командами отмены, и перевод
             на диалоги потребовал бы абстракции диалогов в Core ради того же поведения.
         -->
-        <Grid Grid.ColumnSpan="2"
+        <Grid x:Name="ForwardOverlay" Grid.ColumnSpan="2"
               Background="{StaticResource MessengerModalScrimBrush}"
               Canvas.ZIndex="12"
               Visibility="{x:Bind ViewModel.IsForwardVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -1163,7 +1167,7 @@
             </Border>
         </Grid>
 
-        <Grid Grid.ColumnSpan="2"
+        <Grid x:Name="DeleteConfirmOverlay" Grid.ColumnSpan="2"
               Background="{StaticResource MessengerModalScrimBrush}"
               Canvas.ZIndex="11"
               Visibility="{x:Bind ViewModel.IsDeleteConfirmVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -1192,7 +1196,7 @@
             </Border>
         </Grid>
 
-        <Grid Grid.ColumnSpan="2"
+        <Grid x:Name="PrivateUnlockOverlay" Grid.ColumnSpan="2"
               Background="{StaticResource MessengerModalScrimBrush}"
               Canvas.ZIndex="10"
               Visibility="{x:Bind ViewModel.IsPrivateUnlockVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -1233,7 +1237,7 @@
             Профиль — оверлей, а не отдельная страница (Frame): у него нет своего шага навигации,
             открывается из шапки чата и нав-панели, закрывается тем же CloseProfileCommand.
         -->
-        <Grid Grid.ColumnSpan="2"
+        <Grid x:Name="ProfileOverlay" Grid.ColumnSpan="2"
               Background="{StaticResource MessengerModalScrimBrush}"
               Canvas.ZIndex="13"
               Visibility="{x:Bind ViewModel.IsProfileVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -1430,11 +1434,11 @@
             </Border>
         </Grid>
         </Grid>
-        <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="16"
+        <Grid x:Name="SecretChatsOverlay" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="16"
               ColumnSpacing="16" RowSpacing="12" ColumnDefinitions="280,*" RowDefinitions="Auto,*,Auto"
               Visibility="{x:Bind ViewModel.SecretChats.IsOpen, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
             <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="12">
-                <Button Click="OnCloseSecretChats" Content="{StaticResource Secret_Back}" />
+                <Button x:Name="SecretChatsBackButton" Click="OnCloseSecretChats" Content="{StaticResource Secret_Back}" />
                 <TextBlock VerticalAlignment="Center" Style="{StaticResource SubtitleTextBlockStyle}" Text="{StaticResource Secret_Title}" />
             </StackPanel>
             <Grid Grid.Row="1" RowDefinitions="Auto,*">

@@ -11,7 +11,12 @@ public sealed partial class MessengerPage
 
     private string SecretText(string key) => (string)Application.Current.Resources[key];
 
-    private void OnOpenSecretChats(object sender, RoutedEventArgs e) => ViewModel.SecretChats.Open();
+    private void OnOpenSecretChats(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SecretChats.Open();
+        if (ViewModel.SecretChats.IsOpen)
+            SecretChatsBackButton.Focus(FocusState.Programmatic);
+    }
     private void OnCloseSecretChats(object sender, RoutedEventArgs e) => ViewModel.SecretChats.Close();
 
     private void OnSecretChatItemClick(object sender, ItemClickEventArgs e)

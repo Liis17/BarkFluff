@@ -150,6 +150,10 @@
     <x:String x:Key="Error_TwoFactorLocked">The two-factor operation is temporarily locked.</x:String>
     <x:String x:Key="Error_TwoFactorProtectionUnavailable">Two-factor protection is temporarily unavailable. Try again later.</x:String>
     <x:String x:Key="Messenger_Search">Search chats and people</x:String>
+    <x:String x:Key="Messenger_ShortcutSearch">Sidebar search (Ctrl+K) • Message search from an open chat (Ctrl+F)</x:String>
+    <x:String x:Key="Messenger_ShortcutEdit">Edit the last editable message (↑ in the empty composer)</x:String>
+    <x:String x:Key="Messenger_ShortcutChats">Previous or next visible chat (Ctrl+↑ / Ctrl+↓ from the composer)</x:String>
+    <x:String x:Key="Messenger_ShortcutCancel">Cancel edit or reply (Esc)</x:String>
     <x:String x:Key="Messenger_SearchResults">People</x:String>
     <x:String x:Key="Messenger_SearchChats">Chats</x:String>
     <x:String x:Key="Messenger_SearchMessages">Messages</x:String>
