@@ -92,6 +92,8 @@
                     <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Settings_Security_PasswordStep2Hint}" />
                     <TextBox Header="{StaticResource Settings_Security_ConfirmationCode}"
                              MaxLength="6"
+                             IsSpellCheckEnabled="False"
+                             IsTextPredictionEnabled="False"
                              Text="{x:Bind ViewModel.ConfirmationCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <Button Command="{x:Bind ViewModel.ConfirmPasswordCodeCommand}" Content="{StaticResource Common_Next}" />
@@ -133,10 +135,14 @@
                            Visibility="{x:Bind ViewModel.QrCode, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
                     <TextBox Header="{StaticResource Settings_Security_TwoFactorManualCode}"
                              IsReadOnly="True"
+                             IsSpellCheckEnabled="False"
+                             IsTextPredictionEnabled="False"
                              Text="{x:Bind ViewModel.ManualCode, Mode=OneWay}"
                              Visibility="{x:Bind ViewModel.ManualCode, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
                     <TextBox Header="{StaticResource Settings_Security_ConfirmationCode}"
                              MaxLength="6"
+                             IsSpellCheckEnabled="False"
+                             IsTextPredictionEnabled="False"
                              Text="{x:Bind ViewModel.ConfirmationCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <Button Command="{x:Bind ViewModel.ConfirmTwoFactorCommand}" Content="{StaticResource Common_Save}" />
@@ -153,6 +159,8 @@
                     <TextBlock Style="{StaticResource MutedText}" Text="{StaticResource Settings_Security_TwoFactorDisableHint}" />
                     <TextBox Header="{StaticResource Settings_Security_ConfirmationCode}"
                              MaxLength="6"
+                             IsSpellCheckEnabled="False"
+                             IsTextPredictionEnabled="False"
                              Text="{x:Bind ViewModel.ConfirmationCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <Button Command="{x:Bind ViewModel.ConfirmTwoFactorCommand}"

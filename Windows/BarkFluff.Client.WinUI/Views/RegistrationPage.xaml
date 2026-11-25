@@ -42,6 +42,8 @@
                     <TextBlock Style="{StaticResource SectionTitle}" Text="{StaticResource Registration_ConfirmationCode}" />
                     <TextBox Margin="0,8,0,20"
                              MaxLength="6"
+                             IsSpellCheckEnabled="False"
+                             IsTextPredictionEnabled="False"
                              Text="{x:Bind ViewModel.ConfirmationCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <Button HorizontalAlignment="Left"
                             Command="{x:Bind ViewModel.ConfirmAccountCommand}"
