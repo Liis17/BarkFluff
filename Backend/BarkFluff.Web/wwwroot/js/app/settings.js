@@ -1,6 +1,6 @@
 /**
- * Settings dialog — multi-view panel: profile, name/username, bio, password, 2FA, sessions.
- * Requires: BF.api, BF.files, BF.tokens, BF.realtime, BF.device, BF.utils, BF.icons
+ * Settings dialog — multi-view panel: dashboard (profile header, stats, theme, sections), profile, password, 2FA, sessions.
+ * Requires: BF.api, BF.files, BF.tokens, BF.realtime, BF.device, BF.utils, BF.icons, BF.confirmations
  * Exposes: BF.settings
  */
 (function () {
@@ -38,18 +38,7 @@
     var ERR_WRONG_OLD_PASSWORD = 'A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04';
 
     var ICONS = {
-        settings: BF.icons.html('general'),
-        edit: BF.icons.html('edit-profile'),
-        fileText: BF.icons.html('document'),
-        privacy: BF.icons.html('privacy'),
-        security: BF.icons.html('security'),
-        palette: BF.icons.html('personalization'),
-        smartphone: BF.icons.html('active-sessions'),
-        info: BF.icons.html('about-app'),
-        server: BF.icons.html('about-server'),
-        globe: BF.icons.html('language'),
-        badge: BF.icons.html('badge'),
-        storage: BF.icons.html('storage-data')
+        settings: BF.icons.html('general')
     };
     function init(opts) {
         myUserId = opts.myUserId;
@@ -60,10 +49,7 @@
         confirmOverlay = document.querySelector('#confirmOverlay');
 
         // Кнопка видна только на мобильном: закрывает раздел и возвращает к списку чатов.
-        document.querySelector('#sdClose').addEventListener('click', function () {
-            close();
-            if (window.__mobileShowList) window.__mobileShowList();
-        });
+        document.querySelector('#sdClose').addEventListener('click', closeFromButton);
         backBtn.addEventListener('click', goBack);
         body.addEventListener('animationend', function (e) {
             if (e.target === body) clearSlide();
@@ -157,8 +143,8 @@
         switch (name) {
             case 'main':            renderMain(); break;
             case 'profile':         renderProfile(); break;
-            case 'name':            renderName(); break;
-            case 'bio':             renderBio(); break;
+            case 'account':         renderAccount(); break;
+            case 'notifications':   renderNotifications(); break;
             case 'password':        renderPassword(); break;
             case 'twofa':           renderTwoFA(); break;
             case 'sessions':        renderSessions(); break;
@@ -170,6 +156,7 @@
             case 'storage':         renderStorage(); break;
             case 'linkDevice':      renderLinkDevice(); break;
         }
+        if (name !== 'main') decorateTitle(name);
     }
 
     // ========== HELPERS ==========
@@ -320,88 +307,323 @@
 
     // ========== VIEWS ==========
 
+    // Тайл экрана: иконка, цвет и подзаголовок — в строке главного экрана и в шапке подстраницы.
+    var VIEW_META = {
+        account: { label: 'settings.profile', icon: 'identity', color: '#d9542c', desc: 'settings.desc.account' },
+        profile: { label: 'settings.profilePhoto', icon: 'image', color: '#d9542c', desc: 'settings.profilePhoto.hint' },
+        badges: { label: 'settings.badges', icon: 'badge', color: '#d9542c', desc: 'settings.desc.badges' },
+        storage: { label: 'settings.storage', icon: 'storage-data', color: '#ca8a04', desc: 'settings.desc.storage' },
+        privacy: { label: 'settings.privacy', icon: 'privacy', color: '#0e9f6e', desc: 'settings.desc.privacy' },
+        password: { label: 'common.password', icon: 'password', color: '#2563eb', desc: 'settings.desc.password' },
+        twofa: { label: 'settings.twofa', icon: 'two-factor', color: '#2563eb', desc: 'settings.desc.twofa' },
+        sessions: { label: 'settings.sessions', icon: 'active-sessions', color: '#7c3aed', desc: 'settings.desc.sessions' },
+        linkDevice: { label: 'fastAuthLink.title', icon: 'qr-code', color: '#7c3aed' },
+        personalization: { label: 'settings.personalization', icon: 'personalization', color: '#c026d3', desc: 'settings.desc.personalization' },
+        language: { label: 'settings.language.item', icon: 'language', color: '#0891b2', desc: 'settings.desc.language' },
+        notifications: { label: 'settings.section.notifications', icon: 'notifications', color: '#e11d48', desc: 'settings.desc.notifications' },
+        about: { label: 'settings.about', icon: 'about-app', color: '#78716c', desc: 'settings.desc.about' }
+    };
+
+    function tileHtml(icon, color) {
+        return '<span class="sd-tile" style="--sd-tile:' + color + '">' + BF.icons.html(icon) + '</span>';
+    }
+
+    // Шапка подстраницы: тайл, заголовок (его ставит экран) и подзаголовок.
+    function decorateTitle(name) {
+        var meta = VIEW_META[name];
+        if (!meta) return;
+        var text = titleEl.textContent;
+        titleEl.innerHTML =
+            tileHtml(meta.icon, meta.color) +
+            '<span class="sd-title-text"><span>' + BF.utils.escapeHtml(text) + '</span>' +
+            (meta.desc ? '<span class="sd-title-desc">' + BF.utils.escapeHtml(BF.i18n.t(meta.desc)) + '</span>' : '') +
+            '</span>';
+    }
+
+    // Мини-превью темы: фон и два пузыря в цветах темы.
+    var THEMES = [
+        { id: 'light', key: 'theme.light', bg: '#efebe5', inBg: '#e2dcd5', outBg: '#c49a80' },
+        { id: 'dark', key: 'theme.dark', bg: '#141210', inBg: '#272320', outBg: '#4a2e1e' },
+        { id: 'midnight', key: 'theme.midnight', bg: '#0d0f1a', inBg: '#191c30', outBg: '#2e295e' }
+    ];
+
+    function buildThemePicker() {
+        var cur = window.__getTheme ? window.__getTheme() : 'light';
+        var row = document.createElement('div');
+        row.className = 'sd-themes';
+        row.setAttribute('role', 'radiogroup');
+        row.setAttribute('aria-label', BF.i18n.t('theme.title'));
+        var buttons = [];
+        THEMES.forEach(function (theme) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'sd-theme' + (cur === theme.id ? ' active' : '');
+            btn.setAttribute('role', 'radio');
+            btn.setAttribute('aria-checked', cur === theme.id ? 'true' : 'false');
+            btn.innerHTML =
+                '<span class="sd-theme-preview" style="background:' + theme.bg + '">' +
+                '<i style="background:' + theme.inBg + '"></i><i style="background:' + theme.outBg + '"></i>' +
+                '<i style="background:' + theme.inBg + '"></i></span>' +
+                '<span class="sd-theme-name"><span>' + BF.utils.escapeHtml(BF.i18n.t(theme.key)) + '</span>' +
+                '<span class="sd-theme-radio"></span></span>';
+            btn.addEventListener('click', function () {
+                if (window.__setTheme) window.__setTheme(theme.id);
+                buttons.forEach(function (b) {
+                    var active = b === btn;
+                    b.classList.toggle('active', active);
+                    b.setAttribute('aria-checked', active ? 'true' : 'false');
+                });
+            });
+            buttons.push(btn);
+            row.appendChild(btn);
+        });
+        return row;
+    }
+
+    function makeStat(view, label) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sd-stat';
+        var value = document.createElement('span');
+        value.className = 'sd-stat-value';
+        value.textContent = '…';
+        var caption = document.createElement('span');
+        caption.className = 'sd-stat-label';
+        caption.textContent = label;
+        btn.appendChild(value);
+        btn.appendChild(caption);
+        btn.addEventListener('click', function () { navigate(view); });
+        return { el: btn, value: value, caption: caption };
+    }
+
     function renderMain() {
         titleEl.innerHTML = ICONS.settings + '<span>' + BF.utils.escapeHtml(BF.i18n.t('settings.title')) + '</span>';
         body.innerHTML = '';
+        var isMain = function () { return body.dataset.view === 'main'; };
 
-        // Profile block (avatar + name + username) → navigate to profile
-        var profileBlock = document.createElement('div');
-        profileBlock.className = 'sd-profile-block';
-        var avatarEl = document.createElement('div');
-        avatarEl.className = 'sd-avatar';
+        // Шапка: постер, аватар (→ фото), имя и кнопка «Изменить» (→ профиль)
+        var hero = document.createElement('div');
+        hero.className = 'sd-hero';
+        var poster = document.createElement('div');
+        poster.className = 'sd-hero-poster';
+        var heroTop = document.createElement('div');
+        heroTop.className = 'sd-hero-top';
+        heroTop.innerHTML = '<span class="sd-hero-title">' + ICONS.settings + '<span>' +
+            BF.utils.escapeHtml(BF.i18n.t('settings.title')) + '</span></span>';
+        var heroClose = document.createElement('button');
+        heroClose.type = 'button';
+        heroClose.className = 'sd-close';
+        heroClose.setAttribute('aria-label', BF.i18n.t('common.close'));
+        heroClose.innerHTML = BF.icons.html('close');
+        heroClose.addEventListener('click', closeFromButton);
+        heroTop.appendChild(heroClose);
+
+        var heroBody = document.createElement('div');
+        heroBody.className = 'sd-hero-body';
+        var avatarBtn = document.createElement('button');
+        avatarBtn.type = 'button';
+        avatarBtn.className = 'sd-hero-avatar';
+        avatarBtn.setAttribute('aria-label', BF.i18n.t('settings.profilePhoto'));
+        var avatarEl = renderAvatarEl(null, 'sd-avatar');
         avatarEl.textContent = '…';
+        var camera = document.createElement('span');
+        camera.className = 'sd-hero-camera';
+        camera.innerHTML = BF.icons.html('image');
+        avatarBtn.appendChild(avatarEl);
+        avatarBtn.appendChild(camera);
+        avatarBtn.addEventListener('click', function () { navigate('profile'); });
+
         var userInfo = document.createElement('div');
+        userInfo.className = 'sd-hero-who';
         var nameEl = document.createElement('div');
         nameEl.className = 'sd-user-name';
         nameEl.textContent = '…';
         var unameEl = document.createElement('div');
         unameEl.className = 'sd-user-username';
-        var arrowEl = document.createElement('div');
-        arrowEl.className = 'sd-user-arrow';
-        arrowEl.innerHTML = BF.icons.html('chevron-right');
         userInfo.appendChild(nameEl);
         userInfo.appendChild(unameEl);
-        profileBlock.appendChild(avatarEl);
-        profileBlock.appendChild(userInfo);
-        profileBlock.appendChild(arrowEl);
-        makeActivatable(profileBlock, function () { navigate('profile'); });
-        body.appendChild(profileBlock);
+
+        var editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'sd-btn sd-hero-edit';
+        editBtn.setAttribute('aria-label', BF.i18n.t('settings.profile'));
+        editBtn.innerHTML = BF.icons.html('edit') + '<span>' + BF.utils.escapeHtml(BF.i18n.t('settings.edit')) + '</span>';
+        editBtn.addEventListener('click', function () { navigate('account'); });
+
+        heroBody.appendChild(avatarBtn);
+        heroBody.appendChild(userInfo);
+        heroBody.appendChild(editBtn);
+        hero.appendChild(poster);
+        hero.appendChild(heroTop);
+        hero.appendChild(heroBody);
+        body.appendChild(hero);
+
+        // Счётчики: бейджи, сессии, хранилище
+        var stats = document.createElement('div');
+        stats.className = 'sd-stats';
+        var statBadges = makeStat('badges', BF.i18n.tp('settings.stats.badges', 0));
+        var statSessions = makeStat('sessions', BF.i18n.tp('settings.stats.sessions', 0));
+        var statStorage = makeStat('storage', BF.i18n.t('settings.stats.storage'));
+        stats.appendChild(statBadges.el);
+        stats.appendChild(statSessions.el);
+        stats.appendChild(statStorage.el);
+        body.appendChild(stats);
+
+        // Предупреждение: вход только по паролю
+        var alertEl = document.createElement('div');
+        alertEl.className = 'sd-alert';
+        alertEl.hidden = true;
+        alertEl.innerHTML = tileHtml('two-factor', 'var(--sd-warn)') +
+            '<div class="sd-alert-text"><div class="sd-alert-title">' + BF.utils.escapeHtml(BF.i18n.t('settings.twofa.alert.title')) +
+            '</div><div class="sd-alert-desc">' + BF.utils.escapeHtml(BF.i18n.t('settings.twofa.alert.text')) + '</div></div>';
+        var alertBtn = document.createElement('button');
+        alertBtn.type = 'button';
+        alertBtn.className = 'sd-btn sd-btn-primary';
+        alertBtn.textContent = BF.i18n.t('settings.twofa.alert.action');
+        alertBtn.addEventListener('click', function () { navigate('twofa'); });
+        alertEl.appendChild(alertBtn);
+        body.appendChild(alertEl);
+
+        var themeSection = document.createElement('div');
+        themeSection.className = 'sd-section';
+        var themeTitle = document.createElement('div');
+        themeTitle.className = 'sd-section-title';
+        themeTitle.textContent = BF.i18n.t('theme.title');
+        themeSection.appendChild(themeTitle);
+        themeSection.appendChild(buildThemePicker());
+        body.appendChild(themeSection);
+
+        var rows = {};
+        var addSection = function (titleKey, views) {
+            var section = makeSection(BF.i18n.t(titleKey), views);
+            body.appendChild(section.el);
+            Object.assign(rows, section.values);
+            return section;
+        };
+        addSection('settings.section.account', ['account', 'badges', 'storage']);
+        addSection('settings.section.confidentiality', ['privacy']);
+        addSection('settings.section.security', ['password', 'twofa', 'sessions']);
+        addSection('settings.section.appearance', ['personalization', 'language']);
+        addSection('settings.section.notifications', ['notifications']);
+        var about = addSection('settings.section.about', ['about']);
+
+        // Смена ноды: на самой ноде (pinned) переключаться некуда — строки нет.
+        if (!BF.node.pinned()) {
+            var nodeMeta = BF.node.meta();
+            var nodeRow = makeRow('about-server', VIEW_META.about.color, BF.i18n.t('settings.server.change'),
+                (nodeMeta && nodeMeta.name) || BF.node.origin() || '');
+            makeActivatable(nodeRow.el, switchNode);
+            about.group.appendChild(nodeRow.el);
+        }
+        if (BF.push && BF.push.canInstall && BF.push.canInstall()) {
+            var installRow = makeRow('download', VIEW_META.about.color, BF.i18n.t('settings.installApp'));
+            makeActivatable(installRow.el, function () { BF.push.install().then(function () { renderMain(); }); });
+            about.group.appendChild(installRow.el);
+        }
+
+        var logoutGroup = document.createElement('div');
+        logoutGroup.className = 'sd-section';
+        var logoutInner = document.createElement('div');
+        logoutInner.className = 'sd-group';
+        var logoutRow = makeRow('logout', 'var(--error)', BF.i18n.t('settings.logout'));
+        logoutRow.el.classList.add('sd-item-danger');
+        logoutRow.el.id = 'settingsLogoutBtn';
+        makeActivatable(logoutRow.el, function () { BF.utils.openOverlay(confirmOverlay); });
+        logoutInner.appendChild(logoutRow.el);
+        logoutGroup.appendChild(logoutInner);
+        body.appendChild(logoutGroup);
+
+        var lang = (BF.i18n.langs ? BF.i18n.langs() : []).filter(function (l) {
+            return l.code === BF.i18n.current();
+        })[0];
+        if (lang) rows.language.textContent = lang.name;
 
         loadCurrentUser().then(function (user) {
-            if (!user) return;
-            // Update avatar
-            profileBlock.replaceChild(renderAvatarEl(user, 'sd-avatar'), avatarEl);
+            if (!user || !isMain()) return;
+            avatarBtn.replaceChild(renderAvatarEl(user, 'sd-avatar'), avatarEl);
             nameEl.textContent = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || '';
             nameEl.appendChild(BF.userBadges.createSlot(myUserId));
             unameEl.textContent = user.username ? '@' + user.username : '';
+            rows.account.textContent = unameEl.textContent;
+            if (user.profilePosterFileId) {
+                BF.files.getFileUrls([user.profilePosterFileId]).then(function (urls) {
+                    var u = urls && urls[0];
+                    var url = u && (u.url || u.previewUrl);
+                    if (url && isMain()) {
+                        poster.style.backgroundImage = 'url("' + url + '")';
+                        poster.classList.add('has-image');
+                    }
+                }).catch(function () {});
+            }
         });
 
-        // Section: Account
-        var secAccount = makeSection(BF.i18n.t('settings.section.account'), [
-            { icon: ICONS.edit, label: BF.i18n.t('settings.nameAndUsername'), view: 'name' },
-            { icon: ICONS.fileText, label: BF.i18n.t('settings.bio'), view: 'bio' },
-            { icon: ICONS.badge, label: BF.i18n.t('settings.badges'), view: 'badges' },
-            { icon: ICONS.storage, label: BF.i18n.t('settings.storage'), view: 'storage' }
-        ]);
-        body.appendChild(secAccount);
+        // Сводка для счётчиков и значений строк; ошибка оставляет прочерк.
+        var failed = function (stat) {
+            return function () { if (isMain()) stat.value.textContent = '—'; };
+        };
+        BF.api.getUserBadges(myUserId).then(function (data) {
+            var badges = (data && data.badges) || [];
+            BF.userBadges.set(myUserId, badges);
+            if (!isMain()) return;
+            statBadges.value.textContent = String(badges.length);
+            statBadges.caption.textContent = BF.i18n.tp('settings.stats.badges', badges.length);
+            var primary = badges.filter(function (b) { return b.isPrimary; })[0];
+            rows.badges.textContent = primary ? primary.name : '';
+        }).catch(failed(statBadges));
+        BF.api.getActiveSessions().then(function (data) {
+            if (!isMain()) return;
+            var count = ((data && data.sessions) || []).length;
+            statSessions.value.textContent = String(count);
+            statSessions.caption.textContent = BF.i18n.tp('settings.stats.sessions', count);
+            rows.sessions.textContent = BF.i18n.tp('settings.sessions.count', count);
+        }).catch(failed(statSessions));
+        BF.api.getUserStorageInfo().then(function (info) {
+            if (!isMain()) return;
+            var size = BF.utils.formatFileSize;
+            if (info.limit > 0) {
+                var percent = Math.min(100, Math.round((info.totalUsed / info.limit) * 100));
+                statStorage.value.textContent = percent + '%';
+                var bar = document.createElement('span');
+                bar.className = 'sd-stat-bar';
+                var fill = document.createElement('span');
+                fill.style.width = percent + '%';
+                bar.appendChild(fill);
+                statStorage.el.appendChild(bar);
+                rows.storage.textContent = size(info.totalUsed) + ' / ' + size(info.limit);
+            } else {
+                statStorage.value.textContent = size(info.totalUsed);
+                rows.storage.textContent = size(info.totalUsed);
+            }
+        }).catch(failed(statStorage));
+        loadSecuritySettings().then(function (security) {
+            if (!isMain() || !security) return;
+            // 1 — вход только по паролю, 3 — пароль и подтверждение (LoginMode)
+            if (security.loginMode === 1) {
+                alertEl.hidden = false;
+                rows.twofa.innerHTML = '<span class="sd-tag sd-tag-warn">' + BF.utils.escapeHtml(BF.i18n.t('settings.twofa.off')) + '</span>';
+            } else if (security.loginMode === 3) {
+                rows.twofa.innerHTML = '<span class="sd-tag sd-tag-ok">' + BF.utils.escapeHtml(BF.i18n.t('settings.twofa.on')) + '</span>';
+            }
+        }).catch(function () {});
+    }
 
-        // Section: Privacy
-        var secPrivacy = makeSection(BF.i18n.t('settings.section.confidentiality'), [
-            { icon: ICONS.privacy, label: BF.i18n.t('settings.privacy'), view: 'privacy' }
-        ]);
-        body.appendChild(secPrivacy);
+    function loadSecuritySettings() {
+        return BF.confirmations
+            .call('getSecuritySettings', 'GetSecuritySettingsRequest', {}, { auth: true, read: true, origin: BF.node.origin() })
+            .then(function (res) { return res && res.toObject(); });
+    }
 
-        // Section: Security
-        var secSecurity = makeSection(BF.i18n.t('settings.section.security'), [
-            { icon: ICONS.security, label: BF.i18n.t('common.password'), view: 'password' },
-            { icon: ICONS.security, label: BF.i18n.t('settings.twofa'), view: 'twofa' }
-        ]);
-        body.appendChild(secSecurity);
+    function closeFromButton() {
+        close();
+        if (window.__mobileShowList) window.__mobileShowList();
+    }
 
-        // Section: Personalization
-        var secPers = makeSection(BF.i18n.t('settings.section.personalization'), [
-            { icon: ICONS.palette, label: BF.i18n.t('settings.personalization'), view: 'personalization' }
-        ]);
-        body.appendChild(secPers);
-
-        // Section: Language
-        var secLanguage = makeSection(BF.i18n.t('settings.language.section'), [
-            { icon: ICONS.globe, label: BF.i18n.t('settings.language.item'), view: 'language' }
-        ]);
-        body.appendChild(secLanguage);
-
-        // Section: Devices
-        var secDevices = makeSection(BF.i18n.t('settings.section.devices'), [
-            { icon: ICONS.smartphone, label: BF.i18n.t('settings.sessions'), view: 'sessions' }
-        ]);
-        body.appendChild(secDevices);
-
+    // --- Notifications: браузерные уведомления и канал уведомлений о входах ---
+    function renderNotifications() {
+        titleEl.textContent = BF.i18n.t('settings.section.notifications');
+        body.innerHTML = '';
         var secNotifications = document.createElement('div');
         secNotifications.className = 'sd-section';
-        var notificationsTitle = document.createElement('div');
-        notificationsTitle.className = 'sd-section-title';
-        notificationsTitle.textContent = BF.i18n.t('settings.section.notifications');
-        secNotifications.appendChild(notificationsTitle);
         var pushSupported = !!(BF.push && BF.push.isSupported && BF.push.isSupported());
         var pushStatus = BF.push && BF.push.status ? BF.push.status() : 'unsupported';
         var pushDescription = pushStatus === 'denied'
@@ -418,7 +640,7 @@
                 pushToggle.setDisabled(true);
                 (next ? BF.push.enable() : BF.push.disable()).then(function (success) {
                     pushToggle.setValue(next && !!success);
-                    if (next && !success && BF.push.status && BF.push.status() === 'denied') renderMain();
+                    if (next && !success && BF.push.status && BF.push.status() === 'denied') renderNotifications();
                 }).finally(function () { pushToggle.setDisabled(false); });
             });
         if (!pushSupported || pushStatus === 'denied') pushToggle.setDisabled(true);
@@ -483,59 +705,6 @@
             loginAlertsDescription.textContent = BF.i18n.t('settings.loginAlerts.loadError');
         });
         body.appendChild(secNotifications);
-
-        if (BF.push && BF.push.canInstall && BF.push.canInstall()) {
-            var secInstall = document.createElement('div');
-            secInstall.className = 'sd-section';
-            var installBtn = document.createElement('button');
-            installBtn.type = 'button';
-            installBtn.className = 'sd-item';
-            installBtn.textContent = BF.i18n.t('settings.installApp');
-            installBtn.addEventListener('click', function () { BF.push.install().then(function () { renderMain(); }); });
-            secInstall.appendChild(installBtn);
-            body.appendChild(secInstall);
-        }
-
-        // Section: About
-        var secAbout = makeSection(BF.i18n.t('settings.section.about'), [
-            { icon: ICONS.info, label: BF.i18n.t('settings.about'), view: 'about' }
-        ]);
-        body.appendChild(secAbout);
-
-        // Смена ноды: на самой ноде (pinned) переключаться некуда — секции нет.
-        // Строку строим руками: makeSection умеет только переходы на view.
-        if (!BF.node.pinned()) {
-            var nodeMeta = BF.node.meta();
-            var secNode = document.createElement('div');
-            secNode.className = 'sd-section';
-            var secNodeTitle = document.createElement('div');
-            secNodeTitle.className = 'sd-section-title';
-            secNodeTitle.textContent = BF.i18n.t('settings.section.server');
-            secNode.appendChild(secNodeTitle);
-
-            var nodeRow = document.createElement('div');
-            nodeRow.className = 'sd-item';
-            nodeRow.innerHTML =
-                '<span class="sd-item-icon">' + ICONS.server + '</span>' +
-                '<span class="sd-item-label">' +
-                BF.utils.escapeHtml((nodeMeta && nodeMeta.name) || BF.node.origin() || '') +
-                '</span><span class="sd-item-arrow">' + BF.icons.html('chevron-right') + '</span>';
-            makeActivatable(nodeRow, switchNode);
-            secNode.appendChild(nodeRow);
-            body.appendChild(secNode);
-        }
-
-        // Logout button with SVG icon
-        var logoutBtn = document.createElement('button');
-        logoutBtn.className = 'btn-logout-settings';
-        logoutBtn.id = 'settingsLogoutBtn';
-        logoutBtn.innerHTML =
-            BF.icons.html('logout') +
-            '<span>' + BF.utils.escapeHtml(BF.i18n.t('settings.logout')) + '</span>';
-        logoutBtn.addEventListener('click', function () {
-            BF.utils.openOverlay(confirmOverlay);
-        });
-        body.appendChild(logoutBtn);
     }
 
     /**
@@ -562,24 +731,41 @@
         });
     }
 
-    function makeSection(title, items) {
+    function makeRow(icon, color, label, value) {
+        var row = document.createElement('div');
+        row.className = 'sd-item';
+        row.innerHTML = tileHtml(icon, color) + '<span class="sd-item-label">' + BF.utils.escapeHtml(label) + '</span>';
+        var valueEl = document.createElement('span');
+        valueEl.className = 'sd-item-value';
+        valueEl.textContent = value || '';
+        var arrow = document.createElement('span');
+        arrow.className = 'sd-item-arrow';
+        arrow.innerHTML = BF.icons.html('chevron-right');
+        row.appendChild(valueEl);
+        row.appendChild(arrow);
+        return { el: row, value: valueEl };
+    }
+
+    // Раздел главного экрана: заголовок и карточка строк-переходов; values — элементы значений по имени экрана.
+    function makeSection(title, views) {
         var sec = document.createElement('div');
         sec.className = 'sd-section';
         var titleEl2 = document.createElement('div');
         titleEl2.className = 'sd-section-title';
         titleEl2.textContent = title;
         sec.appendChild(titleEl2);
-        items.forEach(function (item) {
-            var row = document.createElement('div');
-            row.className = 'sd-item';
-            row.innerHTML =
-                '<span class="sd-item-icon">' + item.icon + '</span>' +
-                '<span class="sd-item-label">' + item.label + '</span>' +
-                '<span class="sd-item-arrow">' + BF.icons.html('chevron-right') + '</span>';
-            makeActivatable(row, function () { navigate(item.view); });
-            sec.appendChild(row);
+        var group = document.createElement('div');
+        group.className = 'sd-group';
+        sec.appendChild(group);
+        var values = {};
+        views.forEach(function (view) {
+            var meta = VIEW_META[view];
+            var row = makeRow(meta.icon, meta.color, BF.i18n.t(meta.label));
+            makeActivatable(row.el, function () { navigate(view); });
+            group.appendChild(row.el);
+            values[view] = row.value;
         });
-        return sec;
+        return { el: sec, group: group, values: values };
     }
 
     // --- Badges: выбор основного бейджа (SetPrimaryBadge) ---
@@ -819,9 +1005,11 @@
         });
     }
 
-    // --- Name & Username ---
-    function renderName() {
-        titleEl.textContent = BF.i18n.t('settings.nameAndUsername');
+    // --- Profile: имя, фамилия, юзернейм и биография одной формой ---
+    var ERR_USERNAME_FORMAT = 'E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47';
+
+    function renderAccount() {
+        titleEl.textContent = BF.i18n.t('settings.profile');
         body.innerHTML = '';
 
         var form = document.createElement('div');
@@ -830,29 +1018,62 @@
         var fnInput = makeInput('text', BF.i18n.t('profile.firstName'), '');
         var lnInput = makeInput('text', BF.i18n.t('profile.lastName'), '');
         var unInput = makeInput('text', BF.i18n.t('profile.username'), '');
+        var bioInput = document.createElement('textarea');
+        bioInput.className = 'sd-input';
+        bioInput.rows = 4;
+        bioInput.placeholder = BF.i18n.t('profile.bio.placeholder');
+        bioInput.style.resize = 'vertical';
+        var nameHint = makeHint('', true);
         var unHint = makeHint('');
+        var bioHint = makeHint('', true);
+        var statusEl = makeHint('');
         var saveBtn = makeSaveBtn();
 
-        form.appendChild(makeField(BF.i18n.t('profile.firstName'), fnInput));
-        form.appendChild(makeField(BF.i18n.t('profile.lastName'), lnInput));
-        var unField = makeField(BF.i18n.t('profile.username'), unInput);
+        var nameRow = document.createElement('div');
+        nameRow.className = 'sd-field-row';
+        nameRow.appendChild(makeField(BF.i18n.t('profile.firstName'), fnInput));
+        nameRow.appendChild(makeField(BF.i18n.t('profile.lastName'), lnInput));
+        form.appendChild(nameRow);
+        form.appendChild(nameHint);
+
+        var unWrap = document.createElement('div');
+        unWrap.className = 'sd-input-prefixed';
+        var at = document.createElement('span');
+        at.textContent = '@';
+        unWrap.appendChild(at);
+        unWrap.appendChild(unInput);
+        var unField = makeField(BF.i18n.t('profile.username'), unWrap);
         unField.appendChild(unHint);
         form.appendChild(unField);
+
+        var bioField = makeField(BF.i18n.t('settings.bio'), bioInput);
+        bioField.appendChild(bioHint);
+        form.appendChild(bioField);
         form.appendChild(saveBtn);
+        form.appendChild(statusEl);
         body.appendChild(form);
 
-        var origFirstName = '';
-        var origLastName = '';
-        var origUsername = '';
+        var orig = { firstName: '', lastName: '', username: '', bio: '' };
+        function fill(user) {
+            orig = {
+                firstName: user.firstName || '',
+                lastName: user.lastName || '',
+                username: user.username || '',
+                bio: user.bio || ''
+            };
+            fnInput.value = orig.firstName;
+            lnInput.value = orig.lastName;
+            unInput.value = orig.username;
+            bioInput.value = orig.bio;
+        }
         loadCurrentUser().then(function (user) {
-            if (!user) return;
-            fnInput.value = user.firstName || '';
-            lnInput.value = user.lastName || '';
-            unInput.value = user.username || '';
-            origFirstName = user.firstName || '';
-            origLastName = user.lastName || '';
-            origUsername = user.username || '';
+            if (user && body.dataset.view === 'account') fill(user);
         });
+
+        function setHint(el, text, isError) {
+            el.textContent = text;
+            el.className = 'sd-hint' + (isError ? ' error' : '');
+        }
 
         // Debounce username check
         var unTimer = null;
@@ -860,15 +1081,13 @@
         unInput.addEventListener('input', function () {
             clearTimeout(unTimer);
             var val = unInput.value.trim();
-            if (!val || val === origUsername) {
-                unHint.textContent = '';
-                unHint.className = 'sd-hint';
+            if (!val || val === orig.username) {
+                setHint(unHint, '');
                 unAvailable = true;
                 return;
             }
             if (val.length < 3 || val.length > 32 || !/^[a-zA-Z0-9_]+$/.test(val)) {
-                unHint.textContent = BF.i18n.t('profile.username.rules');
-                unHint.className = 'sd-hint error';
+                setHint(unHint, BF.i18n.t('profile.username.rules'), true);
                 unAvailable = false;
                 return;
             }
@@ -876,107 +1095,90 @@
                 BF.api.checkExistUsername(val).then(function (r) {
                     if (unInput.value.trim() !== val) return;
                     if (r.exist) {
-                        unHint.textContent = BF.i18n.t('profile.username.taken');
-                        unHint.className = 'sd-hint error';
+                        setHint(unHint, BF.i18n.t('profile.username.taken'), true);
                         unAvailable = false;
                         BF.sound.play('droplet');
                     } else {
-                        unHint.textContent = BF.i18n.t('profile.username.available');
-                        unHint.className = 'sd-hint';
+                        setHint(unHint, BF.i18n.t('profile.username.available'));
+                        unHint.classList.add('ok');
                         unAvailable = true;
                     }
                 });
             }, 500);
         });
 
+        // Имя, юзернейм и биография сохраняются разными вызовами: ошибка одного не отменяет остальные
+        // и показывается у своего поля.
         saveBtn.addEventListener('click', function () {
             if (!unAvailable) return;
-            saveBtn.disabled = true;
             var fn = fnInput.value.trim();
             var ln = lnInput.value.trim();
             var un = unInput.value.trim();
-
-            var usernameChanged = un !== origUsername && un;
-            var saveChain = Promise.resolve();
-            if (fn !== origFirstName || ln !== origLastName) {
-                saveChain = saveChain.then(function () { return BF.api.changeName(fn, ln); });
+            var bio = bioInput.value.trim();
+            var steps = [];
+            if (fn !== orig.firstName || ln !== orig.lastName) {
+                steps.push({ hint: nameHint, run: function () { return BF.api.changeName(fn, ln); } });
             }
+            var usernameChanged = un && un !== orig.username;
             if (usernameChanged) {
-                saveChain = saveChain.then(function () { return BF.api.changeUsername(un); });
+                steps.push({ hint: unHint, username: true, run: function () { return BF.api.changeUsername(un); } });
             }
+            if (bio !== orig.bio) {
+                steps.push({ hint: bioHint, run: function () { return BF.api.changeBio(bio); } });
+            }
+            if (!steps.length) return;
 
-            saveChain.then(function () {
+            saveBtn.disabled = true;
+            setHint(nameHint, '', true);
+            setHint(bioHint, '', true);
+            setHint(statusEl, '');
+            var failures = [];
+            var chain = Promise.resolve();
+            steps.forEach(function (step) {
+                chain = chain.then(function () {
+                    return step.run().catch(function (err) { failures.push({ step: step, err: err }); });
+                });
+            });
+            chain.then(function () {
                 return BF.api.getUser(myUserId);
             }).then(function (data) {
                 var savedUser = data && data.user;
                 if (!savedUser) throw new Error('profile_not_loaded');
-                if (usernameChanged && savedUser.username !== un) {
-                    throw new Error('username_not_changed');
-                }
                 currentUser = savedUser;
-                fnInput.value = savedUser.firstName || '';
-                lnInput.value = savedUser.lastName || '';
-                unInput.value = savedUser.username || '';
-                origFirstName = savedUser.firstName || '';
-                origLastName = savedUser.lastName || '';
-                origUsername = savedUser.username || '';
-                saveBtn.disabled = false;
-                // Show success feedback
-                var ok = document.createElement('div');
-                ok.className = 'sd-hint';
-                ok.textContent = BF.i18n.t('common.saved');
-                form.appendChild(ok);
-                setTimeout(function () { if (ok.parentNode) ok.parentNode.removeChild(ok); }, 2000);
-            }).catch(function (err) {
-                saveBtn.disabled = false;
-                if (extractErrorCode(err) === 'E7A4C9D2-3B61-4F82-A5E0-9C1D8F2B6A47') {
-                    unHint.textContent = BF.i18n.t('profile.username.invalidFormat');
-                    unHint.className = 'sd-hint error';
-                    BF.sound.play('droplet');
-                } else if (err && err.message === 'username_not_changed') {
-                    unHint.textContent = BF.i18n.t('profile.username.notConfirmed');
-                    unHint.className = 'sd-hint error';
-                    BF.sound.play('droplet');
+                var usernameFailed = failures.some(function (f) { return f.step.username; });
+                if (usernameChanged && !usernameFailed && savedUser.username !== un) {
+                    failures.push({ step: { hint: unHint, username: true }, err: new Error('username_not_changed') });
                 }
+                if (body.dataset.view !== 'account') return;
+                // Поля с ошибкой сохраняют введённое значение, остальные берут сохранённое с сервера.
+                var keep = { fn: fn, ln: ln, un: un, bio: bio };
+                fill(savedUser);
+                failures.forEach(function (f) {
+                    if (f.step.hint === nameHint) { fnInput.value = keep.fn; lnInput.value = keep.ln; }
+                    if (f.step.hint === unHint) unInput.value = keep.un;
+                    if (f.step.hint === bioHint) bioInput.value = keep.bio;
+                    setHint(f.step.hint, failureText(f), true);
+                });
+                if (failures.length) {
+                    BF.sound.play('droplet');
+                } else {
+                    setHint(statusEl, BF.i18n.t('common.saved'));
+                    setTimeout(function () { if (statusEl.textContent === BF.i18n.t('common.saved')) setHint(statusEl, ''); }, 2000);
+                }
+            }).catch(function () {
+                setHint(statusEl, BF.i18n.t('common.error'), true);
+            }).then(function () {
+                saveBtn.disabled = false;
             });
         });
-    }
 
-    // --- Bio ---
-    function renderBio() {
-        titleEl.textContent = BF.i18n.t('settings.bio');
-        body.innerHTML = '';
-
-        var form = document.createElement('div');
-        form.className = 'sd-form';
-
-        var bioInput = document.createElement('textarea');
-        bioInput.className = 'sd-input';
-        bioInput.rows = 4;
-        bioInput.placeholder = BF.i18n.t('profile.bio.placeholder');
-        bioInput.style.resize = 'vertical';
-
-        var saveBtn = makeSaveBtn();
-        form.appendChild(makeField(BF.i18n.t('settings.bio'), bioInput));
-        form.appendChild(saveBtn);
-        body.appendChild(form);
-
-        loadCurrentUser().then(function (user) {
-            if (user) bioInput.value = user.bio || '';
-        });
-
-        saveBtn.addEventListener('click', function () {
-            saveBtn.disabled = true;
-            BF.api.changeBio(bioInput.value.trim()).then(function () {
-                if (currentUser) currentUser.bio = bioInput.value.trim();
-                saveBtn.disabled = false;
-                var ok = document.createElement('div');
-                ok.className = 'sd-hint';
-                ok.textContent = BF.i18n.t('common.saved');
-                form.appendChild(ok);
-                setTimeout(function () { if (ok.parentNode) ok.parentNode.removeChild(ok); }, 2000);
-            }).catch(function () { saveBtn.disabled = false; });
-        });
+        function failureText(f) {
+            if (f.step.username) {
+                if (extractErrorCode(f.err) === ERR_USERNAME_FORMAT) return BF.i18n.t('profile.username.invalidFormat');
+                if (f.err && f.err.message === 'username_not_changed') return BF.i18n.t('profile.username.notConfirmed');
+            }
+            return BF.i18n.t('settings.profile.saveFailed');
+        }
     }
 
     // --- Password ---
