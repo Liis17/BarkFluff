@@ -10,13 +10,18 @@ namespace Barkfluff.AdminPanel.Services;
 /// In-memory registry of pending step-up confirmations.
 /// A confirmation is single-use, tied to the session token, the action key and
 /// a hash of the action's critical parameters, and expires shortly after approval.
+/// A successfully used confirmation opens a session grace window: for
+/// <see cref="SessionGraceWindow"/> after approval, step-up protected actions of the
+/// same session pass without a new Telegram confirmation.
 /// </summary>
 public class StepUpService : IDisposable
 {
     public static readonly TimeSpan PendingTimeout = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan ApprovalValidFor = TimeSpan.FromMinutes(5);
+    public static readonly TimeSpan SessionGraceWindow = TimeSpan.FromMinutes(10);
 
     private readonly ConcurrentDictionary<string, PendingStepUp> _requests = new();
+    private readonly ConcurrentDictionary<Guid, DateTime> _sessionGraceUntil = new();
     private readonly Timer _cleanupTimer;
     private readonly object _stateLock = new();
 
@@ -115,13 +120,38 @@ public class StepUpService : IDisposable
             }
 
             request.Status = StepUpStatus.Used;
+            var graceUntil = resolvedAt + SessionGraceWindow;
+            _sessionGraceUntil.AddOrUpdate(tokenId, graceUntil, (_, current) => current > graceUntil ? current : graceUntil);
             return true;
         }
     }
 
+    /// <summary>
+    /// End of the session grace window, or null when the session has no active window.
+    /// </summary>
+    public DateTime? GetSessionGraceUntil(Guid tokenId)
+    {
+        if (!_sessionGraceUntil.TryGetValue(tokenId, out var until))
+            return null;
+
+        if (DateTime.UtcNow < until)
+            return until;
+
+        _sessionGraceUntil.TryRemove(new KeyValuePair<Guid, DateTime>(tokenId, until));
+        return null;
+    }
+
+    public bool HasSessionGrace(Guid tokenId) => GetSessionGraceUntil(tokenId) is not null;
+
     private void CleanupExpired(object? state)
     {
         var now = DateTime.UtcNow;
+        foreach (var grace in _sessionGraceUntil)
+        {
+            if (now >= grace.Value)
+                _sessionGraceUntil.TryRemove(grace);
+        }
+
         foreach (var kvp in _requests)
         {
             lock (_stateLock)

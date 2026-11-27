@@ -306,10 +306,11 @@
                                         <th>Создана</th>
                                         <th>Завершена</th>
                                         <th>Итог</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody id="recentOpsBody">
-                                    <tr><td colspan="5" class="empty-cell">Загрузка...</td></tr>
+                                    <tr><td colspan="6" class="empty-cell">Загрузка...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -430,7 +431,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=8"></script>
+<script src="assets/api.js?v=9"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=5"></script>
 <script src="assets/terminal.js?v=2"></script>
@@ -596,6 +597,7 @@
                         ${bfIcon(getServiceIconPath(svc.name), 'size-18 service-icon')}
                         ${escapeHtml(svc.name)}
                         ${svc.updateAvailable ? `<span class="md-status md-status-warn" title="Доступно обновление">${bfIcon('update-available', 'size-16')}Обновление</span>` : ''}
+                        ${queuedActionBadgeHtml(containerName)}
                     </div>
                 </td>
                 <td>${statusBadgeHtml(svc.dockerState)}</td>
@@ -682,6 +684,7 @@
             if (container === 'admin-panel') { window.location.href = '/updating'; return; }
 
             showNotification('success', result.message || 'Задача в очереди');
+            selfTrackedJobs.add(result.jobId);
             const job = await waitDeployJob(result.jobId);
             if (job.state === 'Completed') {
                 showNotification('success', `${container} переключён на ветку ${branch}`);
@@ -707,7 +710,13 @@
 
     async function handleContainerAction(event, container, action) {
         event.stopPropagation();
-        const names = { start:'запуска', stop:'остановки', restart:'перезапуска', pull:'обновления образа и пересоздания' };
+        // Перезапуск и обновление уходят в серверную очередь: без подтверждения и без ожидания,
+        // чтобы можно было быстро поставить несколько действий подряд (задачу в очереди можно отменить)
+        if (action === 'restart' || action === 'pull') {
+            await enqueueContainerAction(container, action);
+            return;
+        }
+        const names = { start:'запуска', stop:'остановки' };
         if (!confirm(`Выполнить действие "${names[action]}" для контейнера "${container}"?`)) return;
 
         const btn = event.currentTarget;
@@ -723,15 +732,7 @@
                 return;
             }
 
-            if (action === 'pull' && result.jobId) {
-                // Обновление ушло в очередь деплоя — ждём завершения (кнопка крутится)
-                const job = await waitDeployJob(result.jobId);
-                const failed = (job.steps || []).find(s => s.state === 'Failed');
-                if (job.state === 'Completed') showNotification('success', `${container} обновлён`);
-                else showNotification('error', `Обновление не удалось: ${failed?.message || job.error || 'ошибка'}`);
-            } else {
-                showNotification('success', result.message);
-            }
+            showNotification('success', result.message);
             setTimeout(loadServices, 1000);
         } catch (e) {
             showNotification('error', 'Ошибка: ' + e.message);
@@ -739,6 +740,22 @@
             btn.disabled = false;
             btn.innerHTML = orig;
         }
+    }
+
+    async function enqueueContainerAction(container, action) {
+        try {
+            const result = await BF.request(`/api/docker/containers/${container}/${action}`, {
+                method:'POST', headers:{'Content-Type':'application/json'}, errorToast:false
+            });
+            if (!result.success) {
+                showNotification('error', result.message || 'Ошибка');
+                return;
+            }
+            showNotification('success', result.message || 'Поставлено в очередь');
+        } catch (e) {
+            showNotification('error', 'Ошибка: ' + e.message);
+        }
+        loadRecentJobs();
     }
 
     function showNotification(type, message) {
@@ -853,9 +870,11 @@
         document.getElementById('progressCount').textContent = '0 / 0';
         document.getElementById('progressBar').style.width = '0%';
         document.getElementById('servicesList').innerHTML = '';
-        document.getElementById('modalFooter').style.display = 'none';
+        // Окно можно скрыть в любой момент: задача продолжает выполняться на сервере
+        document.getElementById('modalFooter').style.display = '';
         document.getElementById('progressScrim').classList.add('open');
         setProgressModalLock(true);
+        selfTrackedJobs.add(jobId);
 
         const token = ++deployJobToken;
         waitDeployJob(jobId, true).then(job => {
@@ -879,8 +898,6 @@
                     progressCloseTimer = null;
                     if (token === deployJobToken) closeProgressModal();
                 }, 3000);
-            } else {
-                document.getElementById('modalFooter').style.display = '';
             }
             loadServices();
         });
@@ -934,26 +951,85 @@
         setProgressModalLock(false);
     }
 
-    // При перезагрузке страницы подхватить активную задачу деплоя
-    async function resumeActiveDeployJob() {
-        try {
-            const jobs = await BF.request('/api/docker/deploy/jobs', { errorToast: false });
-            const active = jobs.find(j => j.state === 'Queued' || j.state === 'Running');
-            if (active) openJobModal(`${DEPLOY_KIND_LABELS[active.kind] || 'Задача деплоя'} — продолжение`, active.id, active.kind === 'Update');
-        } catch { /* ignore */ }
-    }
-
     // ---- Недавние операции ----
     // Список берётся из истории панели (переживает перезапуск); обновляется при старте, по опросу,
     // при начале и завершении задач со страницы
     let recentJobs = [];
     let recentJobsLoaded = false;
+    // Задачи, за которыми страница следит сама (модалка, смена ветки): итог они показывают сами
+    const selfTrackedJobs = new Set();
+    let activeJobIds = new Set();
+    let jobsPollTimer = null;
+    const ACTIVE_JOBS_POLL_MS = 3000;
+
+    function isActiveJob(job) {
+        return job.state === 'Queued' || job.state === 'Running';
+    }
+
+    // Бейдж у строки сервиса, если для него есть шаг в очереди или выполняется
+    function queuedActionBadgeHtml(service) {
+        const key = String(service || '').toLowerCase();
+        for (const job of recentJobs) {
+            if (!isActiveJob(job)) continue;
+            const step = (job.steps || []).find(s =>
+                String(s.service).toLowerCase() === key && (s.state === 'Pending' || s.state === 'InProgress'));
+            if (!step) continue;
+            const kind = DEPLOY_KIND_LABELS[job.kind] || 'Задача';
+            return step.state === 'InProgress'
+                ? `<span class="md-status md-status-info" title="${escapeHtml(kind)} выполняется">${bfIcon('sync', 'size-16')}${escapeHtml(kind)}</span>`
+                : `<span class="md-status md-status-neutral" title="${escapeHtml(kind)} ждёт в очереди">${bfIcon('pending', 'size-16')}${escapeHtml(kind)} · в очереди</span>`;
+        }
+        return '';
+    }
+
+    // Сервисы задачи: имена для коротких задач, число — для массовых
+    function jobServicesLabel(job) {
+        const steps = job.steps || [];
+        if (steps.length > 0 && steps.length <= 3) return steps.map(s => s.service).join(', ');
+        return String(steps.length);
+    }
+
+    // Итоги задач, которые завершились, пока страница была открыта
+    function notifyFinishedJobs(jobs) {
+        const nowActive = new Set(jobs.filter(isActiveJob).map(j => j.id));
+        let finished = false;
+        for (const id of activeJobIds) {
+            if (nowActive.has(id)) continue;
+            finished = true;
+            const job = jobs.find(j => j.id === id);
+            if (!job || selfTrackedJobs.has(id) || job.state === 'Cancelled') continue;
+            const kind = DEPLOY_KIND_LABELS[job.kind] || 'Задача';
+            const failed = (job.steps || []).filter(s => s.state === 'Failed');
+            if (job.state === 'Completed' && failed.length === 0)
+                showNotification('success', `${kind}: ${jobServicesLabel(job)} — готово`);
+            else
+                showNotification('error', `${kind}: ${failed.map(f => `${f.service}: ${f.message || 'ошибка'}`).join('; ') || job.error || 'ошибка'}`.slice(0, 300));
+        }
+        activeJobIds = nowActive;
+        return finished;
+    }
+
+    function scheduleJobsPoll() {
+        clearTimeout(jobsPollTimer);
+        jobsPollTimer = activeJobIds.size > 0 ? setTimeout(loadRecentJobs, ACTIVE_JOBS_POLL_MS) : null;
+    }
+
+    async function cancelDeployJob(jobId) {
+        try {
+            const result = await BF.request(`/api/docker/deploy/jobs/${jobId}/cancel`, { method: 'POST', errorToast: false });
+            showNotification('success', result.message || 'Задача снята из очереди');
+        } catch (e) {
+            showNotification('error', e.message || 'Не удалось отменить задачу');
+        }
+        loadRecentJobs();
+    }
 
     // Итог задачи в списке: активные — по состоянию, завершённые — успешно или с ошибками
     function recentJobResult(job) {
         if (job.state === 'Queued') return { text: 'В очереди', cls: 'md-status-neutral' };
         if (job.state === 'Running') return { text: 'Выполняется', cls: 'md-status-info' };
         if (job.state === 'Completed') return { text: 'Успешно', cls: 'md-status-success' };
+        if (job.state === 'Cancelled') return { text: 'Отменена', cls: 'md-status-neutral' };
         return { text: 'С ошибками', cls: 'md-status-error' };
     }
 
@@ -969,23 +1045,29 @@
     }
 
     async function loadRecentJobs() {
+        let finished = false;
         try {
             recentJobs = await BF.request('/api/docker/deploy/jobs', { errorToast: false });
             recentJobsLoaded = true;
+            finished = notifyFinishedJobs(recentJobs);
         } catch { /* оставляем прежний список */ }
         renderRecentJobs();
+        if (servicesData.length) renderServicesTable();
+        if (finished) loadServices();
+        scheduleJobsPoll();
     }
 
     function renderRecentJobs() {
         const body = document.getElementById('recentOpsBody');
         if (!recentJobsLoaded) {
-            body.innerHTML = '<tr><td colspan="5" class="empty-cell">Не удалось загрузить историю операций</td></tr>';
+            body.innerHTML = '<tr><td colspan="6" class="empty-cell">Не удалось загрузить историю операций</td></tr>';
             return;
         }
         if (recentJobs.length === 0) {
-            body.innerHTML = '<tr><td colspan="5" class="empty-cell">Операций пока нет. Обновления, перезапуски и переключения веток появятся здесь.</td></tr>';
+            body.innerHTML = '<tr><td colspan="6" class="empty-cell">Операций пока нет. Обновления, перезапуски и переключения веток появятся здесь.</td></tr>';
             return;
         }
+        const canControl = window.BF && BF.can('docker.control');
         body.innerHTML = recentJobs.map(job => {
             const steps = job.steps || [];
             const failed = steps.filter(s => s.state === 'Failed').length;
@@ -993,10 +1075,13 @@
             return `
                 <tr class="recent-op-row" tabindex="0" data-job-id="${escapeHtml(job.id)}" title="Открыть результат">
                     <td>${escapeHtml(DEPLOY_KIND_LABELS[job.kind] || 'Задача деплоя')}</td>
-                    <td>${steps.length}</td>
+                    <td>${escapeHtml(jobServicesLabel(job))}</td>
                     <td>${formatDate(job.createdAtUtc)}</td>
                     <td>${job.finishedAtUtc ? formatDate(job.finishedAtUtc) : '—'}</td>
                     <td><span class="md-status ${result.cls}">${result.text}</span>${failed ? ` · ошибок: ${failed}` : ''}</td>
+                    <td>${job.state === 'Queued' && canControl
+                        ? `<button class="md-btn md-btn-text md-btn-xs" data-cancel-job="${escapeHtml(job.id)}" title="Снять задачу из очереди">Отменить</button>`
+                        : ''}</td>
                 </tr>`;
         }).join('');
     }
@@ -1036,11 +1121,17 @@
     }
 
     document.getElementById('recentOpsBody').addEventListener('click', e => {
+        const cancel = e.target.closest('[data-cancel-job]');
+        if (cancel) {
+            e.stopPropagation();
+            cancelDeployJob(cancel.dataset.cancelJob);
+            return;
+        }
         const row = e.target.closest('.recent-op-row');
         if (row) openRecentJob(row.dataset.jobId);
     });
     document.getElementById('recentOpsBody').addEventListener('keydown', e => {
-        if (e.key !== 'Enter') return;
+        if (e.key !== 'Enter' || e.target.closest('[data-cancel-job]')) return;
         const row = e.target.closest('.recent-op-row');
         if (row) openRecentJob(row.dataset.jobId);
     });
@@ -1497,7 +1588,6 @@
         if (!auth) return;
         applyPermissions();
         await Promise.all([loadServices(), loadAdminPanelUpdateStatus(), loadRemoteServers(), loadRecentJobs()]);
-        resumeActiveDeployJob();
         BF.pageReady();
         refreshInterval = setInterval(() => {
             loadServices();

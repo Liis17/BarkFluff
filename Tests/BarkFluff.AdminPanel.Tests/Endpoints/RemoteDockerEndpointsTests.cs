@@ -47,6 +47,18 @@ public class RemoteDockerEndpointsTests
         Assert.Equal(StatusCodes.Status502BadGateway, context.Response.StatusCode);
     }
 
+    [Fact]
+    public async Task RunConsoleAsync_WhenBrowserClosesSocket_ClosesShellWithBlockedRead()
+    {
+        var socket = new ClosingWebSocket();
+        var shell = new BlockingShell();
+
+        await RemoteDockerEndpoints.RunConsoleAsync(socket, shell, CancellationToken.None)
+            .WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(shell.Disposed);
+    }
+
     private sealed class FailingWebSocketFeature : IHttpWebSocketFeature
     {
         public bool IsWebSocketRequest => true;
@@ -64,6 +76,66 @@ public class RemoteDockerEndpointsTests
             Task.CompletedTask;
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    /// <summary>Как SSH.NET ShellStream: чтение не видит отмену и завершается только при закрытии shell</summary>
+    private sealed class BlockingShell : IRemoteSshShell
+    {
+        private readonly TaskCompletionSource<int> _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public bool Disposed { get; private set; }
+
+        public Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) =>
+            _closed.Task;
+
+        public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public ValueTask DisposeAsync()
+        {
+            Disposed = true;
+            _closed.TrySetResult(0);
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    /// <summary>Браузер сразу закрывает консоль</summary>
+    private sealed class ClosingWebSocket : WebSocket
+    {
+        private WebSocketState _state = WebSocketState.Open;
+        public override WebSocketCloseStatus? CloseStatus => null;
+        public override string? CloseStatusDescription => null;
+        public override WebSocketState State => _state;
+        public override string? SubProtocol => null;
+
+        public override Task SendAsync(ArraySegment<byte> buffer, WebSocketMessageType messageType,
+            bool endOfMessage, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public override async Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer,
+            CancellationToken cancellationToken)
+        {
+            // Закрытие приходит, когда чтение из shell уже ждёт данных
+            await Task.Delay(50, cancellationToken);
+            _state = WebSocketState.CloseReceived;
+            return new WebSocketReceiveResult(0, WebSocketMessageType.Close, true,
+                WebSocketCloseStatus.NormalClosure, "Консоль закрыта");
+        }
+
+        public override Task CloseAsync(WebSocketCloseStatus closeStatus, string? statusDescription,
+            CancellationToken cancellationToken)
+        {
+            _state = WebSocketState.Closed;
+            return Task.CompletedTask;
+        }
+
+        public override Task CloseOutputAsync(WebSocketCloseStatus closeStatus, string? statusDescription,
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public override void Abort() => _state = WebSocketState.Aborted;
+
+        public override void Dispose() { }
     }
 
     private sealed class OutputShell(byte[] output) : IRemoteSshShell

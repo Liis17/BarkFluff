@@ -71,8 +71,14 @@ public class SshNetRemoteSshClient : IRemoteSshClient
     {
         private int _disposed;
 
-        public Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) =>
-            stream.ReadAsync(buffer, offset, count, cancellationToken);
+        // ShellStream не переопределяет ReadAsync: базовая реализация блокируется в Read и не видит отмену.
+        // Закрытие потока будит ожидающий Read, и он возвращает 0
+        public async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await using var registration = cancellationToken.Register(() => _ = DisposeAsync());
+            return await stream.ReadAsync(buffer, offset, count, CancellationToken.None);
+        }
 
         public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) =>
             WriteToShellAsync(stream, buffer, offset, count, cancellationToken);

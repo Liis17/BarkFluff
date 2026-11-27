@@ -31,6 +31,10 @@ public static class StepUpEndpoints
             if (!context.HasPermission(permission))
                 return Results.Forbid();
 
+            // Окно сессии ещё открыто — Telegram-запрос не нужен (например, для SSH-консоли)
+            if (stepUpService.GetSessionGraceUntil(token.Id) is { } graceUntil)
+                return Results.Ok(new { confirmationId = (string?)null, grace = true, graceUntilUtc = graceUntil, title = StepUpActions.Title(dto.Action) });
+
             var request = stepUpService.CreateRequest(new PendingStepUp
             {
                 ActionKey = dto.Action,

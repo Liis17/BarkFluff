@@ -7,13 +7,17 @@ namespace Barkfluff.AdminPanel.Middleware;
 /// Endpoint filter enforcing a Telegram step-up confirmation for critical actions.
 /// Reads the confirmation id from the X-Confirmation-Id header (or the
 /// "confirmation" query parameter, used by the WebSocket SSH console).
-/// Responds with 428 Precondition Required and the data needed by the client
+/// Within the session grace window after a used confirmation
+/// (<see cref="StepUpService.SessionGraceWindow"/>) the action passes without one.
+/// Otherwise responds with 428 Precondition Required and the data needed by the client
 /// to request the confirmation.
 /// </summary>
 public class RequireStepUpFilter : IEndpointFilter
 {
     public const string HeaderName = "X-Confirmation-Id";
     public const string QueryParameter = "confirmation";
+    /// <summary>Исход аудита для действия, пропущенного по окну сессии после подтверждения</summary>
+    public const string GraceOutcome = "grace";
 
     private readonly string _actionKey;
     private readonly Func<EndpointFilterInvocationContext, string> _paramsSelector;
@@ -61,7 +65,26 @@ public class RequireStepUpFilter : IEndpointFilter
 
                 return await next(context);
             }
+        }
 
+        // Окно сессии после недавнего подтверждения: действие проходит без нового запроса в Telegram
+        if (stepUpService.HasSessionGrace(token.Id))
+        {
+            http.RequestServices.GetRequiredService<AuditService>().Log(new AuditLogEntry
+            {
+                AdminUsername = token.AdminUsername,
+                TelegramUserId = token.ApprovedByTelegramUserId,
+                Action = _actionKey,
+                Details = StepUpActions.AuditDetails(_actionKey, parameters),
+                IpAddress = http.Connection.RemoteIpAddress?.ToString(),
+                Outcome = GraceOutcome
+            });
+
+            return await next(context);
+        }
+
+        if (!string.IsNullOrEmpty(confirmationId))
+        {
             http.RequestServices.GetRequiredService<AuditService>().Log(new AuditLogEntry
             {
                 AdminUsername = token.AdminUsername,

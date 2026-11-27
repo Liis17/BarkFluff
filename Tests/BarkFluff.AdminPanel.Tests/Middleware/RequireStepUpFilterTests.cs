@@ -157,7 +157,48 @@ public sealed class RequireStepUpFilterTests : IDisposable
         second.Headers.Add("X-Confirmation-Id", confirmationId);
 
         Assert.Equal(HttpStatusCode.OK, (await _client.SendAsync(first)).StatusCode);
-        Assert.Equal(StatusCodes.Status428PreconditionRequired, (int)(await _client.SendAsync(second)).StatusCode);
+        Assert.False(_stepUpService.TryConsume(confirmationId, _token.Id, "docker.branch", "container=users"));
+
+        // Повтор проходит только по окну сессии, а не повторным использованием подтверждения
+        Assert.Equal(HttpStatusCode.OK, (await _client.SendAsync(second)).StatusCode);
+        var outcomes = _auditService.GetEntries(10, beforeUtc: null).Select(entry => entry.Outcome).ToList();
+        Assert.Equal(1, outcomes.Count(outcome => outcome == "confirmed"));
+        Assert.Equal(1, outcomes.Count(outcome => outcome == RequireStepUpFilter.GraceOutcome));
+    }
+
+    [Fact]
+    public async Task AfterConfirmedAction_SessionGraceSkipsConfirmationForOtherActions()
+    {
+        var confirmationId = Approve("docker.branch", "container=users");
+        var confirmed = new HttpRequestMessage(HttpMethod.Post, "/api/critical/users") { Content = JsonContent.Create(new { }) };
+        confirmed.Headers.Add("X-Confirmation-Id", confirmationId);
+        Assert.Equal(HttpStatusCode.OK, (await _client.SendAsync(confirmed)).StatusCode);
+
+        var otherParams = await _client.PostAsJsonAsync("/api/critical/messages", new { });
+        var otherAction = await _client.PostAsJsonAsync("/api/reasoned", new ReasonedPayload("причина"));
+
+        Assert.Equal(HttpStatusCode.OK, otherParams.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, otherAction.StatusCode);
+        var entries = _auditService.GetEntries(10, beforeUtc: null);
+        Assert.Equal(2, entries.Count(entry => entry.Outcome == RequireStepUpFilter.GraceOutcome));
+    }
+
+    [Fact]
+    public async Task SessionGrace_DoesNotApplyToOtherSession()
+    {
+        var confirmationId = Approve("docker.branch", "container=users");
+        var confirmed = new HttpRequestMessage(HttpMethod.Post, "/api/critical/users") { Content = JsonContent.Create(new { }) };
+        confirmed.Headers.Add("X-Confirmation-Id", confirmationId);
+        Assert.Equal(HttpStatusCode.OK, (await _client.SendAsync(confirmed)).StatusCode);
+
+        var otherTokenId = _tokenService.CreateToken(null, null, "other", "alice", AdminId);
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/critical/messages") { Content = JsonContent.Create(new { }) };
+        using var otherClient = _app.GetTestClient();
+        otherClient.DefaultRequestHeaders.Add("Cookie", $"auth_token={otherTokenId}");
+
+        var response = await otherClient.SendAsync(request);
+
+        Assert.Equal(StatusCodes.Status428PreconditionRequired, (int)response.StatusCode);
     }
 
     [Fact]

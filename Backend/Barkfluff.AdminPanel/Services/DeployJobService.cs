@@ -15,6 +15,8 @@ namespace Barkfluff.AdminPanel.Services;
 /// должны оставаться доступными для отката.
 /// История задач сохраняется в LiteDB на переходах состояний (не на опросах health) и
 /// поднимается при старте; незавершённые задачи после перезапуска панели помечаются прерванными.
+/// Задачу в состоянии Queued можно отменить; повторная постановка такой же задачи, пока
+/// она ещё ждёт в очереди, возвращает уже стоящую задачу.
 /// </summary>
 public class DeployJobService : BackgroundService
 {
@@ -46,6 +48,7 @@ public class DeployJobService : BackgroundService
     private static readonly TimeSpan InitialSettleDelay = TimeSpan.FromSeconds(2);
     private const int MaxFinishedJobs = 20;
     private const string InterruptedReason = "Прервано перезапуском панели";
+    private const string CancelledReason = "Отменено до запуска";
 
     private readonly Channel<DeployJob> _queue = Channel.CreateUnbounded<DeployJob>();
     private readonly ConcurrentDictionary<Guid, DeployJob> _jobs = new();
@@ -57,6 +60,8 @@ public class DeployJobService : BackgroundService
     // Все обращения к LiteDB и очистка истории идут под одним замком: запись из фонового потока
     // и очистка из HTTP-запроса постановки задачи не должны перекрываться
     private readonly object _historyLock = new();
+    // Переходы Queued → Running/Cancelled и поиск дубликата в очереди
+    private readonly object _queueLock = new();
 
     public DeployJobService(
         DockerService docker,
@@ -81,14 +86,29 @@ public class DeployJobService : BackgroundService
     private DeployJob Enqueue(DeployJobKind kind, IEnumerable<string> services, string? branch)
     {
         var ordered = OrderServices(services);
-        var job = new DeployJob
+        DeployJob job;
+        lock (_queueLock)
         {
-            Id = Guid.NewGuid(),
-            Kind = kind,
-            Steps = ordered.Select(service => new DeployStep { Service = service, Branch = branch }).ToList(),
-            CreatedAtUtc = DateTime.UtcNow
-        };
-        _jobs[job.Id] = job;
+            // Повторный клик по тому же действию не ставит вторую такую же задачу
+            var duplicate = _jobs.Values.FirstOrDefault(existing =>
+                existing.State == DeployJobState.Queued
+                && existing.Kind == kind
+                && existing.Steps.Count == ordered.Count
+                && existing.Steps.Select(step => step.Service).SequenceEqual(ordered, StringComparer.OrdinalIgnoreCase)
+                && existing.Steps.All(step => string.Equals(step.Branch, branch, StringComparison.Ordinal)));
+            if (duplicate is not null)
+                return duplicate;
+
+            job = new DeployJob
+            {
+                Id = Guid.NewGuid(),
+                Kind = kind,
+                Steps = ordered.Select(service => new DeployStep { Service = service, Branch = branch }).ToList(),
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            _jobs[job.Id] = job;
+        }
+
         Persist(job);
         TrimFinishedJobs();
         _queue.Writer.TryWrite(job);
@@ -116,6 +136,32 @@ public class DeployJobService : BackgroundService
 
     public DeployJob? GetJob(Guid id) => _jobs.TryGetValue(id, out var job) ? job : null;
 
+    /// <summary>
+    /// Отменить задачу, которая ещё ждёт в очереди. Запущенную или завершённую задачу отменить нельзя.
+    /// </summary>
+    public bool TryCancel(Guid id)
+    {
+        if (!_jobs.TryGetValue(id, out var job))
+            return false;
+
+        lock (_queueLock)
+        {
+            if (job.State != DeployJobState.Queued)
+                return false;
+
+            foreach (var step in job.Steps)
+                step.Message = CancelledReason;
+            job.State = DeployJobState.Cancelled;
+            job.Error = CancelledReason;
+            job.FinishedAtUtc = DateTime.UtcNow;
+        }
+
+        Persist(job);
+        TrimFinishedJobs();
+        _logger.LogInformation("Deploy job {JobId} ({Kind}) отменён до запуска", job.Id, job.Kind);
+        return true;
+    }
+
     /// <summary>Недавние задачи: активные первыми, затем новые сверху</summary>
     public IReadOnlyList<DeployJob> GetRecentJobs() =>
         _jobs.Values
@@ -128,7 +174,7 @@ public class DeployJobService : BackgroundService
         lock (_historyLock)
         {
             var stale = _jobs.Values
-                .Where(j => j.State is DeployJobState.Completed or DeployJobState.Failed)
+                .Where(j => j.State is DeployJobState.Completed or DeployJobState.Failed or DeployJobState.Cancelled)
                 .OrderByDescending(j => j.FinishedAtUtc ?? j.CreatedAtUtc)
                 .Skip(MaxFinishedJobs)
                 .ToList();
@@ -158,8 +204,15 @@ public class DeployJobService : BackgroundService
 
     private async Task RunJobAsync(DeployJob job, CancellationToken ct)
     {
-        job.State = DeployJobState.Running;
-        job.StartedAtUtc = DateTime.UtcNow;
+        lock (_queueLock)
+        {
+            // Задача отменена, пока ждала в очереди
+            if (job.State != DeployJobState.Queued)
+                return;
+
+            job.State = DeployJobState.Running;
+            job.StartedAtUtc = DateTime.UtcNow;
+        }
         Persist(job);
         _logger.LogInformation("Deploy job {JobId} ({Kind}) запущен", job.Id, job.Kind);
 

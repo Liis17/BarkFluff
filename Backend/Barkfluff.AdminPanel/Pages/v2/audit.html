@@ -123,7 +123,7 @@
 </div>
 
 <script src="assets/icons.js?v=3"></script>
-<script src="assets/api.js?v=8"></script>
+<script src="assets/api.js?v=9"></script>
 <script src="assets/sidebar.js?v=4"></script>
 <script src="assets/command-palette.js?v=5"></script>
 <script>
@@ -284,6 +284,7 @@
 
     function outcomeCell(outcome) {
         if (outcome === 'confirmed' || outcome === 'ok') return '<span class="outcome-ok">успешно</span>';
+        if (outcome === 'grace') return '<span class="outcome-ok">успешно (окно сессии)</span>';
         if (outcome === 'invalid_confirmation') return '<span class="outcome-invalid">невалидное подтверждение</span>';
         return escapeHtml(outcome || '—');
     }

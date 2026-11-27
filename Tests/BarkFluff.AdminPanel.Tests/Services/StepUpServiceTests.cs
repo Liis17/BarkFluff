@@ -153,6 +153,36 @@ public class StepUpServiceTests
     }
 
     [Fact]
+    public void SessionGrace_OpensOnlyAfterConsumedConfirmation()
+    {
+        var service = new StepUpService();
+        var request = ApprovedRequest(service);
+
+        Assert.False(service.HasSessionGrace(TokenId));
+
+        Assert.True(service.TryConsume(request.ConfirmationId, TokenId, Action, Params));
+
+        var until = service.GetSessionGraceUntil(TokenId);
+        Assert.NotNull(until);
+        Assert.Equal(request.ResolvedAt!.Value + StepUpService.SessionGraceWindow, until.Value);
+        Assert.False(service.HasSessionGrace(Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void SessionGrace_IsCountedFromApproval()
+    {
+        var service = new StepUpService();
+        var request = ApprovedRequest(service);
+        // Одобрено почти 5 минут назад — подтверждение ещё действует, окну осталось около 5 минут
+        request.ResolvedAt = DateTime.UtcNow - StepUpService.ApprovalValidFor + TimeSpan.FromSeconds(5);
+
+        Assert.True(service.TryConsume(request.ConfirmationId, TokenId, Action, Params));
+
+        var remaining = service.GetSessionGraceUntil(TokenId)!.Value - DateTime.UtcNow;
+        Assert.InRange(remaining, TimeSpan.Zero, StepUpService.SessionGraceWindow - StepUpService.ApprovalValidFor + TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public void ComputeParamsHash_IsStableAndActionBound()
     {
         var hash1 = StepUpService.ComputeParamsHash(Action, Params);
