@@ -37,174 +37,314 @@
         .info .uname { color: var(--md-on-surface-variant); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .uid { color: var(--md-on-surface-variant); font-size: 13px; flex-shrink: 0; font-family: 'Roboto Mono', monospace; }
 
-        /* Compact user modal */
-        .user-dialog { max-width: 760px; }
-        .user-dialog .md-dialog-header {
-            min-height: 56px;
-            padding: 12px 20px;
-        }
-        .user-dialog .md-dialog-header h3 { font-size: 18px; }
+        /* User modal: profile hero + tabs */
+        .user-dialog { max-width: 760px; position: relative; }
         .user-dialog .md-dialog-body { padding: 0; }
-        .user-modal-cover {
+        .user-dialog .md-dialog-body > * + * { margin-top: 0; }
+        .user-dialog-close {
+            position: absolute; top: 12px; right: 12px; z-index: 4;
+            background: color-mix(in srgb, var(--md-surface-container-high) 82%, transparent);
+            backdrop-filter: blur(6px);
+        }
+        .user-hero-cover {
             position: relative;
-            aspect-ratio: 3 / 1;
-            background: var(--md-surface-container-high);
+            height: 120px;
             background-image: linear-gradient(135deg, var(--md-primary-container), var(--md-tertiary-container));
-            display: flex; align-items: center; justify-content: center;
-            color: var(--md-on-surface-variant);
-            cursor: pointer;
             overflow: hidden;
         }
-        .user-modal-cover > img { width: 100%; height: 100%; object-fit: cover; }
-        .user-modal-cover .overlay {
-            position: absolute; inset: 0;
-            background: rgba(0,0,0,0.4);
-            display: flex; align-items: center; justify-content: center;
-            color: white; gap: 8px;
-            opacity: 0; transition: opacity .2s;
-            font-size: 14px; font-weight: 500;
+        .user-hero-cover > img { width: 100%; height: 100%; object-fit: cover; }
+        .user-hero-cover-btn {
+            position: absolute; top: 14px; right: 60px;
+            height: 32px; padding: 0 12px;
+            background: color-mix(in srgb, var(--md-surface-container-high) 82%, transparent);
+            backdrop-filter: blur(6px);
+            color: var(--md-on-surface);
         }
-        @media (hover: hover) and (pointer: fine) {
-            .user-modal-cover:hover .overlay { opacity: 1; }
+        .user-hero {
+            position: relative;
+            display: flex; align-items: flex-start; gap: 16px;
+            padding: 0 20px;
         }
-        .user-modal-avatar-wrap {
-            position: absolute;
-            bottom: -80px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 160px; height: 160px;
-            aspect-ratio: 1;
-            border-radius: 50%;
+        .user-hero-avatar {
+            position: relative;
+            flex-shrink: 0;
+            width: 96px; height: 96px;
+            margin-top: -48px;
+            padding: 0;
             border: 4px solid var(--md-surface-container-high);
+            border-radius: 50%;
             background: var(--md-tertiary-container);
             color: var(--md-on-tertiary-container);
             display: inline-flex; align-items: center; justify-content: center;
-            font-weight: 600; font-size: 28px;
+            font: inherit; font-weight: 600; font-size: 28px;
             cursor: pointer;
             overflow: hidden;
         }
-        .user-modal-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
-        .user-modal-avatar-overlay {
-            position: absolute; inset: 0; border-radius: 50%;
+        .user-hero-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .user-hero-avatar-overlay {
+            position: absolute; inset: 0;
             background: rgba(0,0,0,.45);
             display: flex; align-items: center; justify-content: center;
-            color: white; opacity: 0; transition: opacity .2s;
+            color: white; opacity: 0;
+            transition: opacity var(--md-dur-2) var(--md-easing-standard);
         }
+        .user-hero-avatar:focus-visible .user-hero-avatar-overlay { opacity: 1; }
         @media (hover: hover) and (pointer: fine) {
-            .user-modal-avatar-wrap:hover .user-modal-avatar-overlay { opacity: 1; }
+            .user-hero-avatar:hover .user-hero-avatar-overlay { opacity: 1; }
         }
-
-        .user-modal-profile { padding: 92px 20px 0; }
-        .user-modal-identity { margin-bottom: 14px; }
-        .user-modal-name { font-size: 18px; font-weight: 600; line-height: 1.25; }
-        .user-modal-username { margin-top: 2px; color: var(--md-on-surface-variant); }
-        .user-modal-profile h4 {
-            margin: 0 0 10px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .8px;
+        .user-hero-main { flex: 1; min-width: 0; padding-top: 10px; }
+        .user-hero-name {
+            display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px;
+            font-size: 20px; font-weight: 600; line-height: 1.25;
+            color: var(--md-on-surface);
+        }
+        .user-hero-name .user-status-badge { margin-left: 0; }
+        .user-hero-sub {
+            display: flex; flex-wrap: wrap; gap: 2px 12px;
+            margin-top: 4px;
+            font-size: 13px;
             color: var(--md-on-surface-variant);
         }
-        .user-modal-meta {
-            display: flex; flex-wrap: wrap; gap: 8px 12px;
-            margin: 14px 0 12px;
-            font-size: 12px;
-            color: var(--md-on-surface-variant);
-        }
-        .user-modal-section { padding: 0 20px; }
-        .user-modal-section h4 {
-            margin: 22px 0 10px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .8px;
-            color: var(--md-on-surface-variant);
-        }
-        .user-modal-section-last { padding-bottom: 20px; }
-
-        .badge-tiles {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .badge-tile {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            width: 88px;
-            min-height: 78px;
-            padding: 10px 7px 8px;
-            border: 1px solid var(--md-outline-variant);
+        .user-hero-sub .mono { font-family: 'Roboto Mono', monospace; font-size: 12px; }
+        .user-actions { position: relative; padding-top: 12px; }
+        .user-actions-menu {
+            position: absolute; right: 0; top: calc(100% - 2px); z-index: 5;
+            min-width: 232px;
+            padding: 6px 0;
             border-radius: var(--md-shape-md);
             background: var(--md-surface-container);
+            box-shadow: var(--md-elev-2);
+            opacity: 0; transform: translateY(-4px) scale(.98); transform-origin: top right;
+            pointer-events: none;
+            transition: opacity 120ms var(--md-easing-standard), transform 120ms var(--md-easing-standard);
+        }
+        .user-actions-menu.open { opacity: 1; transform: none; pointer-events: auto; }
+        .user-actions-menu button {
+            display: flex; align-items: center; gap: 12px;
+            width: 100%; padding: 10px 16px;
+            border: 0; background: none;
+            font: inherit; font-size: 14px; text-align: left;
             color: var(--md-on-surface);
+            cursor: pointer;
+        }
+        .user-actions-menu button:hover,
+        .user-actions-menu button:focus-visible { background: var(--md-surface-container-highest); outline: none; }
+        .user-actions-menu button.danger { color: var(--md-error); }
+        .user-dialog .user-restriction-note {
+            display: flex; flex-wrap: wrap; gap: 4px 14px;
+            margin: 12px 20px 0;
+            padding: 10px 12px;
+            border-radius: var(--md-shape-md);
+            background: var(--md-error-container);
+            color: var(--md-on-error-container);
+            font-size: 13px;
+        }
+        .user-hero-badges { padding: 14px 20px 0; }
+        .user-dialog .user-data-warning { margin: 12px 20px 0; }
+
+        .badge-tiles { display: flex; flex-wrap: wrap; gap: 8px; }
+        .badge-tile {
+            position: relative;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 6px;
+            width: 84px; min-height: 76px;
+            padding: 10px 6px 8px;
+            border: 1px solid var(--md-outline-variant);
+            border-radius: var(--md-shape-md);
+            background: var(--md-surface-container-lowest);
+            color: var(--md-on-surface);
+            font: inherit;
             text-align: center;
         }
-        .badge-tile img {
-            width: 32px; height: 32px;
-            object-fit: contain;
-            flex-shrink: 0;
+        button.badge-tile {
+            cursor: pointer;
+            transition: background var(--md-dur-2) var(--md-easing-standard),
+                        border-color var(--md-dur-2) var(--md-easing-standard),
+                        transform 100ms ease-out;
         }
+        button.badge-tile:active { transform: scale(.97); }
+        .badge-tile img { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
         .badge-tile .badge-name {
             width: 100%;
             overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            font-size: 11px;
-            line-height: 1.2;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            font-size: 11px; line-height: 1.2;
         }
-        .badge-primary-label {
-            color: var(--md-primary);
-            font-size: 10px;
-            font-weight: 600;
-        }
-        .badge-tile-add {
-            border-style: dashed;
-            background: transparent;
-            color: var(--md-primary);
-            cursor: pointer;
-            font: inherit;
-            transition: background var(--md-dur-2) var(--md-easing-standard),
-                        border-color var(--md-dur-2) var(--md-easing-standard),
-                        transform 160ms ease-out;
-        }
-        .badge-tile-add:active { transform: scale(.97); }
-        .badge-tile-remove {
-            position: absolute;
-            top: 4px; right: 4px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 22px; height: 22px;
-            padding: 0;
-            border: 0;
-            border-radius: 50%;
-            background: var(--md-error-container);
-            color: var(--md-on-error-container);
-            cursor: pointer;
-            pointer-events: none;
-            opacity: 0;
-            transform: scale(.9);
-            transition: opacity 160ms ease-out, transform 160ms ease-out, background 160ms ease-out;
-        }
-        .badge-tile-remove .bf-icon { font-size: 16px; }
+        .badge-primary-label { color: var(--md-primary); font-size: 10px; font-weight: 600; }
+        .badge-tile-add { border-style: dashed; background: transparent; color: var(--md-primary); }
+        .badges-empty { font-size: 13px; color: var(--md-on-surface-variant); }
         @media (hover: hover) and (pointer: fine) {
-            .badge-tile-add:hover { background: var(--md-primary-container); border-color: var(--md-primary); }
-            .badge-tile:hover .badge-tile-remove,
-            .badge-tile-remove:focus-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
-            .badge-tile-remove:hover { background: var(--md-error); color: var(--md-on-error); }
+            button.badge-tile:hover { border-color: var(--md-primary); }
+            .badge-tile-add:hover { background: var(--md-primary-container); }
         }
-        @media (hover: none) {
-            .badge-tile-remove { opacity: 1; transform: scale(1); pointer-events: auto; }
+
+        .user-dialog .user-tabs {
+            position: sticky; top: 0; z-index: 3;
+            display: flex; gap: 2px;
+            margin-top: 14px;
+            padding: 0 12px;
+            border-bottom: 1px solid var(--md-outline-variant);
+            background: var(--md-surface-container-high);
+            overflow-x: auto;
+            scrollbar-width: none;
         }
-        .badge-add-dialog { max-width: 420px; }
-        .badge-add-dialog .md-dialog-body { padding: 0 20px 8px; }
-        #badgeAddScrim { z-index: 90; }
+        .user-tab {
+            flex-shrink: 0;
+            padding: 12px 12px 10px;
+            border: 0; border-bottom: 3px solid transparent;
+            border-radius: 8px 8px 0 0;
+            background: none;
+            font: inherit; font-size: 14px; font-weight: 500;
+            color: var(--md-on-surface-variant);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color var(--md-dur-2) var(--md-easing-standard),
+                        background var(--md-dur-2) var(--md-easing-standard);
+        }
+        .user-tab[aria-selected="true"] { color: var(--md-primary); border-bottom-color: var(--md-primary); }
+        .user-tab .count { color: var(--md-on-surface-variant); font-weight: 400; }
+        @media (hover: hover) and (pointer: fine) {
+            .user-tab:hover { background: var(--md-surface-container-highest); }
+        }
+        .user-tab-panel { padding: 16px 20px 20px; min-height: 300px; }
+        .user-panel-section + .user-panel-section { margin-top: 22px; }
+        .user-panel-section h4 {
+            margin: 0 0 10px;
+            font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .8px;
+            color: var(--md-on-surface-variant);
+        }
+        .user-profile-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+        .user-deleted { padding: 56px 20px 24px; }
+
+        /* Account restriction confirmation */
+        #restrictionScrim { z-index: 90; }
+        .restriction-dialog { max-width: 440px; }
+        .restriction-dialog .md-dialog-body p { margin: 0 0 12px; }
+        .reason-counter { margin-top: 4px; font-size: 11px; text-align: right; color: var(--md-on-surface-variant); }
+        .md-btn-danger { background: var(--md-error); color: var(--md-on-error); }
+
+        /* Badge picker */
+        #badgePickerScrim { z-index: 90; }
+        .badge-picker-dialog { max-width: 920px; }
+        .badge-picker-dialog .md-dialog-header { padding: 18px 16px 12px 24px; border-bottom: 1px solid var(--md-outline-variant); }
+        .badge-picker-dialog .md-dialog-header h3 { font-size: 20px; }
+        .badge-picker-dialog .md-dialog-header .subtitle { font-size: 13px; color: var(--md-on-surface-variant); margin-top: 2px; }
+        .badge-picker-dialog .md-dialog-body { padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) 232px; min-height: 0; }
+        .badge-picker-dialog .md-dialog-body > * + * { margin-top: 0; }
+        .bp-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--md-outline-variant); }
+        .bp-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 16px 10px; }
+        .bp-toolbar .md-search { flex: 1 1 220px; min-width: 0; }
+        .bp-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+            gap: 8px;
+            align-content: start;
+            padding: 4px 16px 16px;
+            height: min(52vh, 460px);
+            overflow-y: auto;
+        }
+        .bp-tile {
+            position: relative;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 6px;
+            padding: 14px 6px 10px;
+            border: 1px solid var(--md-outline-variant);
+            border-radius: 14px;
+            background: var(--md-surface-container-lowest);
+            color: var(--md-on-surface);
+            font: inherit; font-size: 12px; line-height: 1.25; text-align: center;
+            cursor: pointer;
+            transition: background 150ms var(--md-easing-standard),
+                        border-color 150ms var(--md-easing-standard),
+                        box-shadow 150ms var(--md-easing-standard),
+                        transform 100ms ease-out;
+        }
+        .bp-tile:active { transform: scale(.97); }
+        .bp-tile:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+        .bp-tile img, .bp-tile .bp-fallback { width: 48px; height: 48px; object-fit: contain; flex-shrink: 0; }
+        .bp-tile .bp-fallback { display: grid; place-items: center; color: var(--md-primary); }
+        .bp-tile-name { width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .bp-check {
+            position: absolute; top: 6px; right: 6px;
+            display: grid; place-items: center;
+            width: 20px; height: 20px;
+            border: 2px solid var(--md-outline);
+            border-radius: 6px;
+            background: var(--md-surface-container-lowest);
+            color: transparent;
+        }
+        .bp-check .bf-icon { font-size: 14px; }
+        .bp-tag {
+            position: absolute; top: 7px; left: 7px;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 9px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
+        }
+        .bp-tile[data-state="assigned"] { background: var(--md-surface-container); }
+        .bp-tile[data-state="assigned"] .bp-check { background: var(--md-on-surface-variant); border-color: var(--md-on-surface-variant); color: var(--md-surface); }
+        .bp-tile[data-state="assigned"] .bp-tag { background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); }
+        .bp-tile[data-state="add"] { background: var(--md-primary-container); border-color: var(--md-primary); box-shadow: inset 0 0 0 1px var(--md-primary); }
+        .bp-tile[data-state="add"] .bp-check { background: var(--md-primary); border-color: var(--md-primary); color: var(--md-on-primary); }
+        .bp-tile[data-state="add"] .bp-tag { background: var(--md-primary); color: var(--md-on-primary); }
+        .bp-tile[data-state="remove"] { border: 1px dashed var(--md-error); box-shadow: inset 0 0 0 1px var(--md-error); }
+        .bp-tile[data-state="remove"] img, .bp-tile[data-state="remove"] .bp-tile-name { opacity: .55; filter: grayscale(1); }
+        .bp-tile[data-state="remove"] .bp-check { background: var(--md-error); border-color: var(--md-error); color: var(--md-on-error); }
+        .bp-tile[data-state="remove"] .bp-tag { background: var(--md-error); color: var(--md-on-error); }
+        @media (hover: hover) and (pointer: fine) {
+            .bp-tile[data-state="none"]:hover { border-color: var(--md-primary); }
+        }
+        .bp-empty { grid-column: 1 / -1; padding: 32px 0; text-align: center; color: var(--md-on-surface-variant); }
+        .bp-preview {
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            padding: 16px;
+            background: var(--md-surface-container-low);
+            text-align: center;
+            overflow-y: auto;
+        }
+        .bp-preview h4 {
+            align-self: flex-start; margin: 0;
+            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
+            color: var(--md-on-surface-variant);
+        }
+        .bp-preview-image {
+            display: grid; place-items: center;
+            width: 136px; height: 136px;
+            border-radius: 24px;
+            background: var(--md-surface-container-lowest);
+            border: 1px solid var(--md-outline-variant);
+        }
+        .bp-preview-image img { width: 112px; height: 112px; object-fit: contain; }
+        .bp-preview-name { font-weight: 600; color: var(--md-on-surface); overflow-wrap: anywhere; }
+        .bp-preview-desc { font-size: 12px; color: var(--md-on-surface-variant); overflow-wrap: anywhere; }
+        .bp-preview-mini { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--md-on-surface-variant); }
+        .bp-preview-mini img { width: 24px; height: 24px; object-fit: contain; }
+        .bp-preview-state { font-size: 12px; font-weight: 500; }
+        .bp-preview-placeholder { margin: auto 0; font-size: 13px; color: var(--md-on-surface-variant); }
+        .badge-picker-dialog .md-dialog-actions {
+            align-items: center; flex-wrap: wrap;
+            padding: 12px 16px;
+            border-top: 1px solid var(--md-outline-variant);
+        }
+        .bp-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 1; min-width: 0; font-size: 12px; color: var(--md-on-surface-variant); }
+        .bp-summary .pill { padding: 4px 10px; border-radius: 8px; font-weight: 500; font-size: 13px; }
+        .bp-summary .pill.add { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+        .bp-summary .pill.remove { background: var(--md-error-container); color: var(--md-on-error-container); }
+        @media (max-width: 720px) {
+            .badge-picker-dialog .md-dialog-body { grid-template-columns: 1fr; }
+            .bp-main { border-right: 0; }
+            .bp-preview { display: none; }
+        }
+        @media (max-width: 600px) {
+            .user-hero { flex-wrap: wrap; row-gap: 4px; }
+            .user-hero-avatar { width: 80px; height: 80px; margin-top: -40px; font-size: 24px; }
+            .user-actions { order: 2; margin-left: auto; }
+            .user-hero-main { order: 3; flex-basis: 100%; padding-top: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .bp-tile, button.badge-tile, .user-actions-menu { transition: none; }
+            .bp-tile:active, button.badge-tile:active { transform: none; }
+        }
 
         .session-list { display: flex; flex-direction: column; gap: 6px; }
         .session-row { margin-bottom: 0; }
@@ -227,7 +367,8 @@
             gap: 12px;
             margin-top: 22px;
         }
-        .user-modal-section .user-section-heading h4 { margin: 0; }
+        .user-panel-section .user-section-heading h4 { margin: 0; }
+        .user-section-heading { margin: 0 0 10px; }
         .admin-reason {
             width: 100%;
             min-height: 64px;
@@ -388,31 +529,64 @@
 
 <!-- User modal -->
 <div id="userScrim" class="md-scrim" onclick="if(event.target===this)closeUserModal()">
-    <div class="md-dialog user-dialog">
-        <div class="md-dialog-header" style="border-bottom:1px solid var(--md-outline-variant);background:var(--md-surface-container-high);">
-            <h3 id="modalUserTitle">Пользователь</h3>
-            <button class="md-icon-btn" onclick="closeUserModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
-        </div>
-        <div class="md-dialog-body" id="modalContent" style="padding:0;"></div>
+    <div class="md-dialog user-dialog" role="dialog" aria-modal="true" aria-labelledby="userModalName">
+        <button class="md-icon-btn user-dialog-close" onclick="closeUserModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
+        <div class="md-dialog-body" id="modalContent"></div>
     </div>
 </div>
 
-<!-- Add badge modal -->
-<div id="badgeAddScrim" class="md-scrim" onclick="if(event.target===this)closeBadgeAddModal()">
-    <div class="md-dialog badge-add-dialog">
+<!-- Account restriction confirmation -->
+<div id="restrictionScrim" class="md-scrim" onclick="if(event.target===this)closeRestrictionDialog()">
+    <div class="md-dialog restriction-dialog" role="dialog" aria-modal="true" aria-labelledby="restrictionTitle">
         <div class="md-dialog-header">
-            <h3>Добавить бейдж</h3>
-            <button class="md-icon-btn" onclick="closeBadgeAddModal()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
+            <h3 id="restrictionTitle">Действие</h3>
+            <button class="md-icon-btn" onclick="closeRestrictionDialog()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
         </div>
         <div class="md-dialog-body">
-            <label class="field-label" for="badgeAddSelect">Бейдж</label>
-            <select id="badgeAddSelect" class="md-input-outlined" style="width:100%;">
-                <option value="">Загрузка...</option>
-            </select>
+            <p id="restrictionText"></p>
+            <label class="field-label" for="accountRestrictionReason">Причина</label>
+            <textarea id="accountRestrictionReason" maxlength="500" class="md-input-outlined admin-reason" placeholder="Обязательная причина для аудита"
+                oninput="document.getElementById('restrictionReasonCounter').textContent = this.value.length + ' / 500'"></textarea>
+            <div class="reason-counter" id="restrictionReasonCounter">0 / 500</div>
         </div>
         <div class="md-dialog-actions">
-            <button class="md-btn md-btn-text" onclick="closeBadgeAddModal()">Отмена</button>
-            <button id="addBadgeSubmit" class="md-btn md-btn-filled md-btn-square-press" onclick="addUserBadge()">Добавить</button>
+            <button class="md-btn md-btn-text" onclick="closeRestrictionDialog()">Отмена</button>
+            <button id="restrictionSubmit" class="md-btn md-btn-filled md-btn-square-press" onclick="submitAccountRestriction()">Подтвердить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Badge picker -->
+<div id="badgePickerScrim" class="md-scrim" onclick="if(event.target===this)closeBadgePicker()">
+    <div class="md-dialog badge-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="badgePickerTitle">
+        <div class="md-dialog-header">
+            <div>
+                <h3 id="badgePickerTitle">Бейджи пользователя</h3>
+                <div class="subtitle" id="badgePickerSubtitle"></div>
+            </div>
+            <button class="md-icon-btn" onclick="closeBadgePicker()" aria-label="Закрыть"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span></button>
+        </div>
+        <div class="md-dialog-body">
+            <div class="bp-main">
+                <div class="bp-toolbar">
+                    <div class="md-search">
+                        <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/search.svg);" aria-hidden="true"></span>
+                        <input id="badgePickerSearch" type="search" placeholder="Поиск бейджа..." aria-label="Поиск бейджа" oninput="setBadgePickerQuery(this.value)">
+                    </div>
+                    <div id="badgePickerFilters" role="group" aria-label="Фильтр бейджей" style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button type="button" class="md-chip selected" data-filter="all" onclick="setBadgePickerFilter('all')">Все</button>
+                        <button type="button" class="md-chip" data-filter="changes" onclick="setBadgePickerFilter('changes')">Изменения</button>
+                        <button type="button" class="md-chip" data-filter="assigned" onclick="setBadgePickerFilter('assigned')">У пользователя</button>
+                    </div>
+                </div>
+                <div class="bp-grid" id="badgePickerGrid" role="group" aria-label="Каталог бейджей"></div>
+            </div>
+            <aside class="bp-preview" id="badgePickerPreview" aria-live="polite"></aside>
+        </div>
+        <div class="md-dialog-actions">
+            <div class="bp-summary" id="badgePickerSummary"></div>
+            <button class="md-btn md-btn-text" onclick="closeBadgePicker()">Отмена</button>
+            <button id="badgePickerApply" class="md-btn md-btn-filled md-btn-square-press" onclick="applyBadgePicker()" disabled>Применить</button>
         </div>
     </div>
 </div>
@@ -460,7 +634,8 @@
     let allBadges = [];
     let currentUserData = null;
     let sessionsExpanded = false;
-    let badgeAddUserId = null;
+    let userModalTab = 'profile';
+    let restrictionRequest = null;
     const PAGE_SIZE = 50;
     const USER_STATUSES = ['all', 'blocked', 'pending_deletion', 'deleted'];
     const MAX_RESTORED_PAGES = 20;
@@ -573,50 +748,80 @@
 
     // ---- USER MODAL ----
     window.openUserModal = async function (userId) {
+        const sameUser = openedUserId === String(userId);
         sessionsExpanded = false;
-        closeBadgeAddModal();
+        closeBadgePicker(true);
+        closeRestrictionDialog();
+        if (!sameUser) userModalTab = 'profile';
         openedUserId = String(userId);
         syncUsersUrl();
         document.getElementById('userScrim').classList.add('open');
-        document.getElementById('modalContent').innerHTML = '<div style="padding:48px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
-        try {
-            currentUserData = await BF.request(`/api/users/${userId}`, { errorToast: false });
-            renderUserModal(currentUserData);
-        } catch (e) {
-            document.getElementById('modalContent').innerHTML = `<div style="padding:48px;text-align:center;color:var(--md-error);">Ошибка загрузки</div>`;
+        if (!sameUser || !currentUserData) {
+            document.getElementById('modalContent').innerHTML = '<div style="padding:72px 48px;text-align:center;"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
         }
+        await refreshUserModal(userId);
     };
+
+    async function refreshUserModal(userId) {
+        try {
+            const data = await BF.request(`/api/users/${userId}`, { errorToast: false });
+            if (openedUserId !== String(userId)) return;
+            currentUserData = data;
+            renderUserModal(data);
+        } catch (e) {
+            if (openedUserId !== String(userId)) return;
+            document.getElementById('modalContent').innerHTML = `<div style="padding:72px 48px;text-align:center;color:var(--md-error);">Ошибка загрузки</div>`;
+        }
+    }
+
     window.closeUserModal = function () {
+        if (document.getElementById('badgePickerScrim').classList.contains('open')) {
+            closeBadgePicker();
+            if (badgePicker.userId) return;
+        }
+        closeRestrictionDialog();
         document.getElementById('userScrim').classList.remove('open');
         currentUserData = null;
         openedUserId = null;
+        userModalTab = 'profile';
         syncUsersUrl();
     };
+
+    const restrictionLabels = {
+        block: { label: 'Заблокировать', icon: 'ban', danger: false },
+        unblock: { label: 'Разблокировать', icon: 'unlock', danger: false },
+        deletion: { label: 'Удалить аккаунт', icon: 'delete', danger: true },
+        'cancel-deletion': { label: 'Отменить удаление', icon: 'undo', danger: false }
+    };
+
+    function availableRestrictionActions(status) {
+        const canChangeBlock = !window.BF || BF.can('users.block');
+        const canScheduleDeletion = !window.BF || BF.can('users.delete');
+        const actions = [];
+        if (status === 'Active' && canChangeBlock) actions.push('block');
+        if (status === 'Blocked' && canChangeBlock) actions.push('unblock');
+        if ((status === 'Active' || status === 'Blocked') && canScheduleDeletion) actions.push('deletion');
+        if (status === 'PendingDeletion' && canScheduleDeletion) actions.push('cancel-deletion');
+        return actions;
+    }
 
     function renderUserModal(data) {
         const p = data.profile;
         const status = p.accountStatus || 'Active';
+        const content = document.getElementById('modalContent');
         if (status === 'Deleted') {
-            document.getElementById('modalUserTitle').textContent = 'Удалённый пользователь';
-            document.getElementById('modalContent').innerHTML = `
-                <section class="user-modal-profile">
-                    <div class="user-status-info">${accountStatusBadge(status)}<span>ID: ${escapeHtml(p.id)}</span></div>
+            content.innerHTML = `
+                <section class="user-deleted">
+                    <div class="user-hero-name" id="userModalName"><span>Удалённый пользователь</span>${accountStatusBadge(status)}</div>
+                    <div class="user-hero-sub"><span>ID <span class="mono">${escapeHtml(p.id)}</span></span></div>
                     <p>Аккаунт окончательно удалён.</p>
                 </section>`;
             return;
         }
+
+        const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Пользователь';
         const canChangePassword = !window.BF || BF.can('users.password.set');
-        const canChangeBlock = !window.BF || BF.can('users.block');
-        const canScheduleDeletion = !window.BF || BF.can('users.delete');
-        const restrictionActions = [];
-        if (status === 'Active' && canChangeBlock)
-            restrictionActions.push(`<button class="md-btn md-btn-tonal" onclick="changeAccountRestriction(${p.id}, 'block')">Заблокировать</button>`);
-        if (status === 'Blocked' && canChangeBlock)
-            restrictionActions.push(`<button class="md-btn md-btn-tonal" onclick="changeAccountRestriction(${p.id}, 'unblock')">Разблокировать</button>`);
-        if ((status === 'Active' || status === 'Blocked') && canScheduleDeletion)
-            restrictionActions.push(`<button class="md-btn md-btn-text" style="color:var(--md-error);" onclick="changeAccountRestriction(${p.id}, 'deletion')">Удалить аккаунт</button>`);
-        if (status === 'PendingDeletion' && canScheduleDeletion)
-            restrictionActions.push(`<button class="md-btn md-btn-tonal" onclick="changeAccountRestriction(${p.id}, 'cancel-deletion')">Отменить удаление</button>`);
+        const actions = availableRestrictionActions(status);
         const unavailableLabels = {
             contacts: 'контакты',
             devices: 'устройства',
@@ -634,136 +839,209 @@
                     <span>Часть данных временно недоступна: ${unavailable.map(escapeHtml).join(', ')}. Остальные сведения актуальны.</span>
                </div>`
             : '';
-        document.getElementById('modalUserTitle').textContent = `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Пользователь';
-
-        let html = `
-        <section class="user-modal-section">
-            <div class="user-status-info">
-                ${accountStatusBadge(status)}
-                ${p.restrictionReason ? `<span>Причина: ${escapeHtml(p.restrictionReason)}</span>` : ''}
-                ${p.deletionScheduledAt ? `<span>Окончательное удаление: ${escapeHtml(formatDateTime(p.deletionScheduledAt))}</span>` : ''}
-            </div>
-            ${restrictionActions.length ? `
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                    ${restrictionActions.join('')}
+        const restrictionNote = p.restrictionReason || p.deletionScheduledAt
+            ? `<div class="user-restriction-note">
+                    ${p.restrictionReason ? `<span>Причина: ${escapeHtml(p.restrictionReason)}</span>` : ''}
+                    ${p.deletionScheduledAt ? `<span>Окончательное удаление: ${escapeHtml(formatDateTime(p.deletionScheduledAt))}</span>` : ''}
+               </div>`
+            : '';
+        const actionsMenu = actions.length ? `
+            <div class="user-actions">
+                <button type="button" id="userActionsButton" class="md-btn md-btn-outlined" aria-haspopup="menu" aria-expanded="false" aria-controls="userActionsMenu" onclick="toggleUserActionsMenu()">
+                    Действия <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/chevron-down.svg);" aria-hidden="true"></span>
+                </button>
+                <div class="user-actions-menu" id="userActionsMenu" role="menu">
+                    ${actions.map(action => `
+                        <button type="button" role="menuitem" class="${restrictionLabels[action].danger ? 'danger' : ''}" onclick="openRestrictionDialog(${p.id}, '${action}')">
+                            <span class="bf-icon size-20" style="--bf-icon-url:url(/assets/icons/${restrictionLabels[action].icon}.svg);" aria-hidden="true"></span>
+                            ${restrictionLabels[action].label}
+                        </button>`).join('')}
                 </div>
-                <label class="field-label" for="accountRestrictionReason" style="margin-top:10px;">Причина действия</label>
-                <textarea id="accountRestrictionReason" maxlength="500" class="md-input-outlined admin-reason" placeholder="Обязательная причина, до 500 символов"></textarea>
-            ` : ''}
-        </section>
-        <section style="position:relative;">
-            <div class="user-modal-cover" onclick="document.getElementById('posterFileInput').click()">
-                ${p.profilePosterUrl
-                    ? `<img src="${escapeHtml(p.profilePosterUrl)}" alt="Постер профиля">`
-                    : `<span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/image.svg);opacity:.55;" aria-hidden="true"></span>`}
-                <div class="overlay"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/image.svg);" aria-hidden="true"></span> Изменить постер</div>
+            </div>` : '';
+
+        const sessionsAvailable = data.availability?.sessions !== false;
+        const tabs = [
+            { id: 'profile', label: 'Профиль' },
+            { id: 'security', label: 'Безопасность' },
+            { id: 'devices', label: 'Устройства', count: sessionsAvailable ? (data.sessions || []).length : null },
+            data.storage ? { id: 'storage', label: 'Хранилище' } : null
+        ].filter(Boolean);
+        if (!tabs.some(tab => tab.id === userModalTab)) userModalTab = 'profile';
+
+        const panels = {
+            profile: `
+                <div class="field-grid">
+                    <div><label class="field-label" for="editFirstName">Имя</label>
+                        <input id="editFirstName" type="text" value="${escapeHtml(p.firstName)}" class="md-input-outlined" style="width:100%;"></div>
+                    <div><label class="field-label" for="editLastName">Фамилия</label>
+                        <input id="editLastName" type="text" value="${escapeHtml(p.lastName)}" class="md-input-outlined" style="width:100%;"></div>
+                    <div class="full"><label class="field-label" for="editUsername">Username</label>
+                        <div style="display:flex;align-items:stretch;">
+                            <span style="display:inline-flex;align-items:center;padding:0 12px;background:var(--md-surface-container);border:1px solid var(--md-outline);border-right:0;border-radius:var(--md-shape-sm) 0 0 var(--md-shape-sm);color:var(--md-on-surface-variant);">@</span>
+                            <input id="editUsername" type="text" value="${escapeHtml(p.username)}" class="md-input-outlined" style="flex:1;border-radius:0 var(--md-shape-sm) var(--md-shape-sm) 0;">
+                        </div>
+                    </div>
+                    <div class="full"><label class="field-label" for="editBio">Био</label>
+                        <textarea id="editBio" rows="3" class="md-input-outlined" style="width:100%;padding:10px 14px;height:auto;resize:vertical;">${escapeHtml(p.bio || '')}</textarea>
+                    </div>
+                </div>
+                <div class="user-profile-actions">
+                    <button type="button" class="md-btn md-btn-text" onclick="resetProfileForm()">Отменить</button>
+                    <button type="button" class="md-btn md-btn-filled md-btn-square-press" onclick="saveProfileChanges(${p.id})">
+                        <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/save.svg);" aria-hidden="true"></span> Сохранить
+                    </button>
+                </div>`,
+            security: `
+                <section class="user-panel-section" id="tfa-section">
+                    <h4>Двухфакторная аутентификация</h4>
+                    ${data.twoFactor ? `
+                        <div class="tfa-row">
+                            <div>
+                                <div style="font-weight:500;">Authenticator</div>
+                                <div style="font-size:12px;color:${data.twoFactor.authenticatorEnabled ? 'var(--md-success)' : 'var(--md-on-surface-variant)'};">${data.twoFactor.authenticatorEnabled ? 'Включён' : 'Выключен'}</div>
+                            </div>
+                            <button class="md-btn md-btn-text tfa-disable-btn" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 1)" ${!data.twoFactor.authenticatorEnabled ? 'disabled' : ''}>Отключить</button>
+                        </div>
+                        <div class="tfa-row">
+                            <div>
+                                <div style="font-weight:500;">Email</div>
+                                <div style="font-size:12px;color:${data.twoFactor.emailEnabled ? 'var(--md-success)' : 'var(--md-on-surface-variant)'};">${data.twoFactor.emailEnabled ? 'Включён' : 'Выключен'}</div>
+                            </div>
+                            <button class="md-btn md-btn-text tfa-disable-btn" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 2)" ${!data.twoFactor.emailEnabled ? 'disabled' : ''}>Отключить</button>
+                        </div>
+                        <label class="field-label" for="twoFactorReason">Причина отключения</label>
+                        <textarea id="twoFactorReason" maxlength="500" class="md-input-outlined admin-reason" placeholder="Обязательная причина для аудита"></textarea>
+                    ` : '<div style="color:var(--md-on-surface-variant);font-size:13px;">Данные недоступны</div>'}
+                </section>
+                ${canChangePassword ? `
+                <section class="user-panel-section">
+                    <h4>Смена пароля</h4>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input id="newPasswordInput" type="password" placeholder="Новый пароль (мин. 6 символов)" aria-label="Новый пароль" class="md-input-outlined" style="flex:1;">
+                        <button class="md-btn md-btn-square-press" style="background:var(--md-tertiary);color:var(--md-on-tertiary);" onclick="changeUserPassword(${p.id})">Применить</button>
+                    </div>
+                    <label class="field-label" for="passwordReason" style="margin-top:10px;">Причина смены пароля</label>
+                    <textarea id="passwordReason" maxlength="500" class="md-input-outlined admin-reason" placeholder="Обязательная причина для аудита"></textarea>
+                    <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:8px;">Пользователь получит email об изменении пароля.</p>
+                </section>` : ''}`,
+            devices: `
+                <section class="user-panel-section">
+                    <div class="user-section-heading">
+                        <h4>Устройства и сессии</h4>
+                        ${sessionsAvailable && (data.sessions || []).length > 0 && (!window.BF || BF.can('users.sessions.revoke')) ? `
+                            <button id="revokeAllSessionsButton" type="button" class="md-btn md-btn-text" style="color:var(--md-error);" onclick="revokeAllSessions(${p.id})">
+                                Завершить все
+                            </button>` : ''}
+                    </div>
+                    <div id="sessionsList" class="session-list"></div>
+                    <button id="sessionsToggle" type="button" class="md-btn md-btn-text sessions-toggle" onclick="toggleSessions(${p.id})"></button>
+                </section>`,
+            storage: data.storage ? renderStorageSection(data.storage, p) : ''
+        };
+
+        content.innerHTML = `
+            <div class="user-hero-cover">
+                ${p.profilePosterUrl ? `<img src="${escapeHtml(p.profilePosterUrl)}" alt="Постер профиля">` : ''}
+                <button type="button" class="md-btn user-hero-cover-btn" onclick="document.getElementById('posterFileInput').click()">
+                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/image.svg);" aria-hidden="true"></span> Постер
+                </button>
             </div>
-            <div class="user-modal-avatar-wrap" onclick="document.getElementById('avatarFileInput').click()">
-                ${p.profilePicture
-                    ? `<img src="${escapeHtml(p.profilePicture)}" alt="Аватар профиля">`
-                    : `<span>${escapeHtml(getInitials(p.firstName, p.lastName))}</span>`}
-                <div class="user-modal-avatar-overlay"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/image.svg);" aria-hidden="true"></span></div>
+            <div class="user-hero">
+                <button type="button" class="user-hero-avatar" onclick="document.getElementById('avatarFileInput').click()" aria-label="Изменить аватар">
+                    ${p.profilePicture
+                        ? `<img src="${escapeHtml(p.profilePicture)}" alt="">`
+                        : `<span>${escapeHtml(getInitials(p.firstName, p.lastName))}</span>`}
+                    <span class="user-hero-avatar-overlay"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/image.svg);" aria-hidden="true"></span></span>
+                </button>
+                <div class="user-hero-main">
+                    <div class="user-hero-name" id="userModalName"><span>${escapeHtml(fullName)}</span>${accountStatusBadge(status)}</div>
+                    <div class="user-hero-sub">
+                        <span>@${escapeHtml(p.username || '')}</span>
+                        <span>ID <span class="mono">${escapeHtml(p.id)}</span></span>
+                        <span>Email: ${escapeHtml(data.contacts?.email || '—')}</span>
+                        <span>Регистрация: ${p.registrationDate ? formatDate(p.registrationDate) : '—'}</span>
+                    </div>
+                </div>
+                ${actionsMenu}
             </div>
             <input type="file" id="posterFileInput" accept="image/*" style="display:none;" onchange="handlePosterUpload(this, ${p.id})">
             <input type="file" id="avatarFileInput" accept="image/*" style="display:none;" onchange="handleAvatarUpload(this, ${p.id})">
-        </section>
-
-        <section class="user-modal-profile">
+            ${restrictionNote}
             ${availabilityWarning}
-            <div class="user-modal-identity">
-                <div class="user-modal-name">${escapeHtml(`${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Пользователь')}</div>
-                <div class="user-modal-username">@${escapeHtml(p.username || '')}</div>
+            <div class="user-hero-badges">${renderBadgeTiles(p)}</div>
+            <div class="user-tabs" role="tablist" aria-label="Разделы пользователя" onkeydown="handleUserTabKeys(event)">
+                ${tabs.map(tab => `
+                    <button type="button" role="tab" class="user-tab" id="userTab-${tab.id}" data-tab="${tab.id}"
+                        aria-controls="userTabPanel-${tab.id}" aria-selected="${tab.id === userModalTab}" tabindex="${tab.id === userModalTab ? 0 : -1}"
+                        onclick="selectUserTab('${tab.id}')">
+                        ${tab.label}${tab.count != null ? ` <span class="count">${tab.count}</span>` : ''}
+                    </button>`).join('')}
             </div>
-            <h4>Бейджи</h4>
-            <div class="badge-tiles">
-                ${renderBadgeTiles(p)}
-            </div>
-            <div class="user-modal-meta">
-                <span>ID: <strong>${p.id}</strong></span>
-                <span>•</span>
-                <span>Email: ${escapeHtml(data.contacts?.email || '—')}</span>
-                <span>•</span>
-                <span>Регистрация: ${p.registrationDate ? formatDate(p.registrationDate) : '—'}</span>
-            </div>
-            <div class="field-grid">
-                <div><label class="field-label">Имя</label>
-                    <input id="editFirstName" type="text" value="${escapeHtml(p.firstName)}" class="md-input-outlined" style="width:100%;"></div>
-                <div><label class="field-label">Фамилия</label>
-                    <input id="editLastName" type="text" value="${escapeHtml(p.lastName)}" class="md-input-outlined" style="width:100%;"></div>
-                <div class="full"><label class="field-label">Username</label>
-                    <div style="display:flex;align-items:stretch;">
-                        <span style="display:inline-flex;align-items:center;padding:0 12px;background:var(--md-surface-container);border:1px solid var(--md-outline);border-right:0;border-radius:var(--md-shape-sm) 0 0 var(--md-shape-sm);color:var(--md-on-surface-variant);">@</span>
-                        <input id="editUsername" type="text" value="${escapeHtml(p.username)}" class="md-input-outlined" style="flex:1;border-radius:0 var(--md-shape-sm) var(--md-shape-sm) 0;">
-                    </div>
-                </div>
-                <div class="full"><label class="field-label">Био</label>
-                    <textarea id="editBio" rows="2" class="md-input-outlined" style="width:100%;padding:10px 14px;height:auto;resize:vertical;">${escapeHtml(p.bio || '')}</textarea>
-                </div>
-            </div>
-            <div style="margin-top:12px;">
-                <button class="md-btn md-btn-filled md-btn-square-press" onclick="saveProfileChanges(${p.id})">
-                    <span class="bf-icon size-18" style="--bf-icon-url:url(/assets/icons/save.svg);" aria-hidden="true"></span> Сохранить профиль
-                </button>
-            </div>
-        </section>
+            ${tabs.map(tab => `
+                <div class="user-tab-panel" role="tabpanel" id="userTabPanel-${tab.id}" aria-labelledby="userTab-${tab.id}" ${tab.id === userModalTab ? '' : 'hidden'}>
+                    ${panels[tab.id]}
+                </div>`).join('')}`;
 
-        <section class="user-modal-section">
-            <div class="user-section-heading">
-                <h4>Устройства и сессии</h4>
-                ${data.availability?.sessions !== false && (data.sessions || []).length > 0 && (!window.BF || BF.can('users.sessions.revoke')) ? `
-                    <button id="revokeAllSessionsButton" type="button" class="md-btn md-btn-text" style="color:var(--md-error);" onclick="revokeAllSessions(${p.id})">
-                        Завершить все
-                    </button>` : ''}
-            </div>
-            <div id="sessionsList" class="session-list"></div>
-            <button id="sessionsToggle" type="button" class="md-btn md-btn-text sessions-toggle" onclick="toggleSessions(${p.id})"></button>
-        </section>
-
-        <section class="user-modal-section" id="tfa-section">
-            <h4>Двухфакторная аутентификация</h4>
-            ${data.twoFactor ? `
-                <div class="tfa-row">
-                    <div>
-                        <div style="font-weight:500;">Authenticator</div>
-                        <div style="font-size:12px;color:${data.twoFactor.authenticatorEnabled ? 'var(--md-success)' : 'var(--md-on-surface-variant)'};">${data.twoFactor.authenticatorEnabled ? 'Включён' : 'Выключен'}</div>
-                    </div>
-                    <button class="md-btn md-btn-text tfa-disable-btn" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 1)" ${!data.twoFactor.authenticatorEnabled ? 'disabled' : ''}>Отключить</button>
-                </div>
-                <div class="tfa-row">
-                    <div>
-                        <div style="font-weight:500;">Email</div>
-                        <div style="font-size:12px;color:${data.twoFactor.emailEnabled ? 'var(--md-success)' : 'var(--md-on-surface-variant)'};">${data.twoFactor.emailEnabled ? 'Включён' : 'Выключен'}</div>
-                    </div>
-                    <button class="md-btn md-btn-text tfa-disable-btn" style="color:var(--md-error);" onclick="disableOtp(${p.id}, 2)" ${!data.twoFactor.emailEnabled ? 'disabled' : ''}>Отключить</button>
-                </div>
-                <label class="field-label" for="twoFactorReason">Причина отключения</label>
-                <textarea id="twoFactorReason" maxlength="500" class="md-input-outlined admin-reason" placeholder="Обязательная причина для аудита"></textarea>
-            ` : '<div style="color:var(--md-on-surface-variant);font-size:13px;">Данные недоступны</div>'}
-        </section>
-
-        ${canChangePassword ? `
-        <section class="user-modal-section">
-            <h4>Смена пароля</h4>
-            <div style="display:flex;gap:8px;align-items:center;">
-                <input id="newPasswordInput" type="password" placeholder="Новый пароль (мин. 6 символов)" class="md-input-outlined" style="flex:1;">
-                <button class="md-btn md-btn-square-press" style="background:var(--md-tertiary);color:var(--md-on-tertiary);" onclick="changeUserPassword(${p.id})">Применить</button>
-            </div>
-            <label class="field-label" for="passwordReason" style="margin-top:10px;">Причина смены пароля</label>
-            <textarea id="passwordReason" maxlength="500" class="md-input-outlined admin-reason" placeholder="Обязательная причина для аудита"></textarea>
-            <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:8px;">Пользователь получит email об изменении пароля.</p>
-        </section>` : ''}`;
-
-        if (data.storage) html += renderStorageSection(data.storage, p);
-
-        document.getElementById('modalContent').innerHTML = html;
         if (window.BF && !BF.can('users.2fa.disable')) {
             document.querySelectorAll('.tfa-disable-btn').forEach(b => b.style.display = 'none');
         }
-        if (window.BF && !BF.can('badges.manage')) {
-            document.querySelectorAll('.badge-tile-add, .badge-tile-remove').forEach(b => b.style.display = 'none');
-        }
-        renderSessionList(p.id, data.sessions || [], data.availability?.sessions !== false);
+        renderSessionList(p.id, data.sessions || [], sessionsAvailable);
     }
+
+    window.selectUserTab = function (tabId, focus = false) {
+        userModalTab = tabId;
+        document.querySelectorAll('#modalContent .user-tab').forEach(tab => {
+            const selected = tab.dataset.tab === tabId;
+            tab.setAttribute('aria-selected', String(selected));
+            tab.tabIndex = selected ? 0 : -1;
+            if (selected && focus) tab.focus();
+        });
+        document.querySelectorAll('#modalContent .user-tab-panel').forEach(panel => {
+            panel.hidden = panel.id !== `userTabPanel-${tabId}`;
+        });
+    };
+
+    window.handleUserTabKeys = function (event) {
+        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+        const tabs = [...document.querySelectorAll('#modalContent .user-tab')];
+        const index = tabs.findIndex(tab => tab.dataset.tab === userModalTab);
+        const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+        event.preventDefault();
+        selectUserTab(next.dataset.tab, true);
+    };
+
+    window.resetProfileForm = function () {
+        const p = currentUserData?.profile;
+        if (!p) return;
+        document.getElementById('editFirstName').value = p.firstName || '';
+        document.getElementById('editLastName').value = p.lastName || '';
+        document.getElementById('editUsername').value = p.username || '';
+        document.getElementById('editBio').value = p.bio || '';
+    };
+
+    window.toggleUserActionsMenu = function (force) {
+        const menu = document.getElementById('userActionsMenu');
+        const button = document.getElementById('userActionsButton');
+        if (!menu || !button) return;
+        const open = force ?? !menu.classList.contains('open');
+        menu.classList.toggle('open', open);
+        button.setAttribute('aria-expanded', String(open));
+        if (open) menu.querySelector('button')?.focus();
+    };
+
+    document.addEventListener('click', event => {
+        if (!event.target.closest('.user-actions')) toggleUserActionsMenu(false);
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        if (document.getElementById('restrictionScrim').classList.contains('open')) closeRestrictionDialog();
+        else if (document.getElementById('badgePickerScrim').classList.contains('open')) closeBadgePicker();
+        else if (document.getElementById('userActionsMenu')?.classList.contains('open')) {
+            toggleUserActionsMenu(false);
+            document.getElementById('userActionsButton')?.focus();
+        }
+    });
 
     const storageTypeNames = {
         1: 'Аватарки', 2: 'Изображения', 3: 'Видео', 4: 'GIF', 5: 'Документы',
@@ -776,6 +1054,7 @@
     ];
 
     function renderBadgeTiles(profile) {
+        const canManage = !window.BF || BF.can('badges.manage');
         const tiles = (profile.badges || []).map(userBadge => {
             const badge = userBadge.badge || {};
             const badgeId = Number(badge.id);
@@ -784,23 +1063,23 @@
             const image = imageUrl
                 ? `<img src="${escapeHtml(imageUrl)}" alt="">`
                 : '<span class="bf-icon size-32" style="--bf-icon-url:url(/assets/icons/badge.svg);color:var(--md-primary);" aria-hidden="true"></span>';
-            return `
-                <div class="badge-tile" title="${escapeHtml(badgeName)}">
-                    ${image}
-                    <span class="badge-name">${escapeHtml(badgeName)}</span>
-                    ${userBadge.isPrimary ? '<span class="badge-primary-label">Основной</span>' : ''}
-                    <button type="button" class="badge-tile-remove" aria-label="Удалить бейдж «${escapeHtml(badgeName)}»"
-                        onclick="event.stopPropagation();removeUserBadge(${profile.id}, ${badgeId})">
-                        <span class="bf-icon" style="--bf-icon-url:url(/assets/icons/close.svg);" aria-hidden="true"></span>
-                    </button>
-                </div>`;
+            const inner = `
+                ${image}
+                <span class="badge-name">${escapeHtml(badgeName)}</span>
+                ${userBadge.isPrimary ? '<span class="badge-primary-label">Основной</span>' : ''}`;
+            return canManage
+                ? `<button type="button" class="badge-tile" title="${escapeHtml(badgeName)}" onclick="openBadgePicker(${profile.id}, ${badgeId})">${inner}</button>`
+                : `<div class="badge-tile" title="${escapeHtml(badgeName)}">${inner}</div>`;
         }).join('');
 
-        return `${tiles}
-            <button type="button" class="badge-tile badge-tile-add" onclick="openBadgeAddModal(${profile.id})" aria-label="Добавить бейдж">
-                <span class="bf-icon size-28" style="--bf-icon-url:url(/assets/icons/add.svg);" aria-hidden="true"></span>
-                <span class="badge-name">Добавить</span>
-            </button>`;
+        const add = canManage
+            ? `<button type="button" class="badge-tile badge-tile-add" onclick="openBadgePicker(${profile.id})">
+                    <span class="bf-icon size-28" style="--bf-icon-url:url(/assets/icons/${tiles ? 'edit' : 'add'}.svg);" aria-hidden="true"></span>
+                    <span class="badge-name">${tiles ? 'Изменить' : 'Добавить'}</span>
+               </button>`
+            : '';
+        if (!tiles && !add) return '<div class="badges-empty">Бейджей нет</div>';
+        return `<div class="badge-tiles" role="group" aria-label="Бейджи">${tiles}${add}</div>`;
     }
 
     function renderSessionList(uid, sessions, available = true) {
@@ -901,7 +1180,7 @@
             : '<div class="storage-empty">Нет загруженных файлов</div>';
 
         return `
-            <section class="user-modal-section user-modal-section-last">
+            <section class="user-panel-section">
                 <h4>Хранилище</h4>
                 <div class="storage-card">
                     <div class="storage-ring${overflow ? ' is-overflow' : ''}" style="${chartStyle}" role="img" aria-label="${escapeHtml(ariaLabel)}">
@@ -931,63 +1210,258 @@
         return (b/1073741824).toFixed(2) + ' ГБ';
     }
 
-    window.openBadgeAddModal = async function (uid) {
-        if (window.BF && !BF.can('badges.manage')) return;
-        badgeAddUserId = uid;
-        document.getElementById('badgeAddScrim').classList.add('open');
-        const select = document.getElementById('badgeAddSelect');
-        const submit = document.getElementById('addBadgeSubmit');
-        select.innerHTML = '<option value="">Загрузка...</option>';
-        submit.disabled = true;
-        await loadAllBadgesForSelect();
-    };
-    window.closeBadgeAddModal = function () {
-        document.getElementById('badgeAddScrim').classList.remove('open');
-        badgeAddUserId = null;
-    };
+    // ---- BADGE PICKER ----
+    // Selection is local until "Применить": the whole diff goes in one request under one step-up.
+    const badgePicker = { userId: null, assigned: new Set(), add: new Set(), remove: new Set(), filter: 'all', query: '', previewId: null };
 
-    async function loadAllBadgesForSelect() {
-        const select = document.getElementById('badgeAddSelect');
-        const submit = document.getElementById('addBadgeSubmit');
-        if (!select) return;
-        try {
-            if (allBadges.length === 0) {
-                allBadges = await BF.request('/api/badges', { errorToast: false });
-            }
-            const existing = new Set((currentUserData?.profile?.badges || []).map(ub => ub.badge.id));
-            const available = allBadges.filter(b => b.isActive && !existing.has(b.id));
-            select.innerHTML = available.length
-                ? '<option value="">Выберите бейдж...</option>' + available.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('')
-                : '<option value="">Нет доступных бейджей</option>';
-            submit.disabled = available.length === 0;
-        } catch {
-            select.innerHTML = '<option value="">Ошибка загрузки</option>';
-            submit.disabled = true;
-        }
+    function badgePickerChangeCount() { return badgePicker.add.size + badgePicker.remove.size; }
+
+    function badgePickerState(id) {
+        if (badgePicker.remove.has(id)) return 'remove';
+        if (badgePicker.add.has(id)) return 'add';
+        if (badgePicker.assigned.has(id)) return 'assigned';
+        return 'none';
     }
 
-    window.addUserBadge = async function (uid = badgeAddUserId) {
+    function badgePickerCatalog() {
+        const byId = new Map();
+        allBadges.forEach(badge => byId.set(Number(badge.id), badge));
+        (currentUserData?.profile?.badges || []).forEach(userBadge => {
+            const id = Number(userBadge.badge?.id);
+            if (id && !byId.has(id)) byId.set(id, { ...userBadge.badge, isActive: false });
+        });
+        // Inactive badges cannot be assigned; they stay visible only while assigned, so they can be removed.
+        const items = [...byId.values()].filter(badge => badge.isActive || badgePicker.assigned.has(Number(badge.id)));
+        return items.sort((left, right) =>
+            Number(badgePicker.assigned.has(Number(right.id))) - Number(badgePicker.assigned.has(Number(left.id))));
+    }
+
+    function badgePickerTileHtml(badge) {
+        const id = Number(badge.id);
+        const state = badgePickerState(id);
+        const imageUrl = badge.imageUrl || badge.miniImageUrl;
+        const tag = {
+            assigned: badge.isActive === false ? 'Неактивен' : 'Есть',
+            add: 'Новый',
+            remove: 'Снять'
+        }[state];
+        const checkIcon = state === 'remove' ? 'close' : 'check';
+        return `
+            <button type="button" class="bp-tile" data-badge-id="${id}" data-state="${state}"
+                aria-pressed="${state === 'add' || state === 'assigned'}" title="${escapeHtml(badge.name || 'Бейдж')}">
+                ${tag ? `<span class="bp-tag">${tag}</span>` : ''}
+                <span class="bp-check"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/${checkIcon}.svg);" aria-hidden="true"></span></span>
+                ${imageUrl
+                    ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy">`
+                    : '<span class="bp-fallback"><span class="bf-icon size-32" style="--bf-icon-url:url(/assets/icons/badge.svg);" aria-hidden="true"></span></span>'}
+                <span class="bp-tile-name">${escapeHtml(badge.name || 'Бейдж')}</span>
+            </button>`;
+    }
+
+    function renderBadgePicker() {
+        const grid = document.getElementById('badgePickerGrid');
+        const query = badgePicker.query.trim().toLocaleLowerCase('ru');
+        const items = badgePickerCatalog().filter(badge => {
+            const id = Number(badge.id);
+            if (badgePicker.filter === 'changes' && !badgePicker.add.has(id) && !badgePicker.remove.has(id)) return false;
+            if (badgePicker.filter === 'assigned' && !badgePicker.assigned.has(id)) return false;
+            return !query || (badge.name || '').toLocaleLowerCase('ru').includes(query);
+        });
+        const empty = {
+            changes: 'Изменений пока нет — отметьте бейджи в списке «Все»',
+            assigned: 'У пользователя нет бейджей'
+        }[badgePicker.filter] || 'Ничего не найдено';
+        grid.innerHTML = items.length ? items.map(badgePickerTileHtml).join('') : `<div class="bp-empty">${empty}</div>`;
+        renderBadgePickerSummary();
+        renderBadgePreview();
+    }
+
+    function renderBadgePickerSummary() {
+        const total = badgePickerChangeCount();
+        const counts = {
+            all: badgePickerCatalog().length,
+            changes: total,
+            assigned: badgePicker.assigned.size
+        };
+        const labels = { all: 'Все', changes: 'Изменения', assigned: 'У пользователя' };
+        document.querySelectorAll('#badgePickerFilters .md-chip').forEach(chip => {
+            const filter = chip.dataset.filter;
+            chip.classList.toggle('selected', filter === badgePicker.filter);
+            chip.setAttribute('aria-pressed', String(filter === badgePicker.filter));
+            chip.textContent = `${labels[filter]} ${counts[filter]}`;
+        });
+        document.getElementById('badgePickerSummary').innerHTML = total
+            ? `${badgePicker.add.size ? `<span class="pill add">+${badgePicker.add.size} добавить</span>` : ''}
+               ${badgePicker.remove.size ? `<span class="pill remove">−${badgePicker.remove.size} снять</span>` : ''}
+               <span>Одно подтверждение в Telegram</span>`
+            : '<span>Отметьте бейджи — изменения применятся разом</span>';
+        const apply = document.getElementById('badgePickerApply');
+        apply.disabled = total === 0;
+        apply.textContent = total ? `Применить (${total})` : 'Применить';
+    }
+
+    function renderBadgePreview() {
+        const preview = document.getElementById('badgePickerPreview');
+        const badge = badgePickerCatalog().find(item => Number(item.id) === badgePicker.previewId);
+        if (!badge) {
+            preview.innerHTML = '<h4>Превью</h4><div class="bp-preview-placeholder">Наведите на бейдж, чтобы увидеть его крупно</div>';
+            return;
+        }
+        const state = badgePickerState(Number(badge.id));
+        const stateText = {
+            none: ['Не назначен', 'var(--md-on-surface-variant)'],
+            assigned: [badge.isActive === false ? 'Назначен, бейдж неактивен' : 'Назначен пользователю', 'var(--md-on-surface-variant)'],
+            add: ['Будет добавлен', 'var(--md-primary)'],
+            remove: ['Будет снят', 'var(--md-error)']
+        }[state];
+        const full = badge.imageUrl || badge.miniImageUrl;
+        preview.innerHTML = `
+            <h4>Превью</h4>
+            <div class="bp-preview-image">
+                ${full ? `<img src="${escapeHtml(full)}" alt="">` : '<span class="bf-icon size-48" style="--bf-icon-url:url(/assets/icons/badge.svg);color:var(--md-primary);" aria-hidden="true"></span>'}
+            </div>
+            <div class="bp-preview-name">${escapeHtml(badge.name || 'Бейдж')}</div>
+            ${badge.description ? `<div class="bp-preview-desc">${escapeHtml(badge.description)}</div>` : ''}
+            ${badge.miniImageUrl ? `<div class="bp-preview-mini"><img src="${escapeHtml(badge.miniImageUrl)}" alt=""> MINI-версия</div>` : ''}
+            <div class="bp-preview-state" style="color:${stateText[1]};">${stateText[0]}</div>`;
+    }
+
+    function setBadgePreview(id) {
+        if (badgePicker.previewId === id) return;
+        badgePicker.previewId = id;
+        renderBadgePreview();
+    }
+
+    function toggleBadgeInPicker(id) {
+        if (badgePicker.assigned.has(id)) {
+            if (!badgePicker.remove.delete(id)) badgePicker.remove.add(id);
+        } else if (!badgePicker.add.delete(id)) {
+            badgePicker.add.add(id);
+        }
+        const tile = document.querySelector(`#badgePickerGrid .bp-tile[data-badge-id="${id}"]`);
+        const badge = badgePickerCatalog().find(item => Number(item.id) === id);
+        if (tile && badge) {
+            tile.outerHTML = badgePickerTileHtml(badge);
+            document.querySelector(`#badgePickerGrid .bp-tile[data-badge-id="${id}"]`)?.focus({ preventScroll: true });
+        }
+        badgePicker.previewId = id;
+        renderBadgePickerSummary();
+        renderBadgePreview();
+    }
+
+    (function bindBadgePickerGrid() {
+        const grid = document.getElementById('badgePickerGrid');
+        grid.addEventListener('click', event => {
+            const tile = event.target.closest('.bp-tile');
+            if (tile) toggleBadgeInPicker(Number(tile.dataset.badgeId));
+        });
+        grid.addEventListener('mouseover', event => {
+            const tile = event.target.closest('.bp-tile');
+            if (tile) setBadgePreview(Number(tile.dataset.badgeId));
+        });
+        grid.addEventListener('focusin', event => {
+            const tile = event.target.closest('.bp-tile');
+            if (tile) setBadgePreview(Number(tile.dataset.badgeId));
+        });
+    })();
+
+    window.openBadgePicker = async function (uid, focusBadgeId) {
         if (window.BF && !BF.can('badges.manage')) return;
-        const select = document.getElementById('badgeAddSelect');
-        const submit = document.getElementById('addBadgeSubmit');
-        const id = parseInt(select?.value);
-        if (!uid || !id) return;
+        const profile = currentUserData?.profile;
+        badgePicker.userId = uid;
+        badgePicker.assigned = new Set((profile?.badges || []).map(userBadge => Number(userBadge.badge?.id)));
+        badgePicker.add.clear();
+        badgePicker.remove.clear();
+        badgePicker.filter = 'all';
+        badgePicker.query = '';
+        badgePicker.previewId = focusBadgeId ?? null;
+        const search = document.getElementById('badgePickerSearch');
+        search.value = '';
+        document.getElementById('badgePickerSubtitle').textContent =
+            `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim() + (profile?.username ? ` · @${profile.username}` : '');
+        document.getElementById('badgePickerGrid').innerHTML = '<div class="bp-empty"><div class="md-loader-expressive" style="display:inline-block;"></div></div>';
+        renderBadgePickerSummary();
+        renderBadgePreview();
+        document.getElementById('badgePickerScrim').classList.add('open');
         try {
-            await BF.request(`/api/users/${uid}/badges`, {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({badgeId:id}),
-                loading: submit
-            });
-            closeBadgeAddModal();
-            await openUserModal(uid);
-        } catch (_) {}
+            allBadges = await BF.request('/api/badges', { errorToast: false });
+        } catch {
+            if (badgePicker.userId === uid) {
+                document.getElementById('badgePickerGrid').innerHTML = '<div class="bp-empty" style="color:var(--md-error);">Не удалось загрузить бейджи</div>';
+            }
+            return;
+        }
+        if (badgePicker.userId !== uid) return;
+        renderBadgePicker();
+        const focusTile = focusBadgeId != null
+            ? document.querySelector(`#badgePickerGrid .bp-tile[data-badge-id="${focusBadgeId}"]`)
+            : null;
+        if (focusTile) focusTile.focus();
+        else search.focus();
     };
-    window.removeUserBadge = async function (uid, bid) {
+
+    window.closeBadgePicker = function (force = false) {
+        if (!force && badgePickerChangeCount() > 0 && !confirm('Сбросить выбранные изменения бейджей?')) return;
+        document.getElementById('badgePickerScrim').classList.remove('open');
+        badgePicker.userId = null;
+        badgePicker.add.clear();
+        badgePicker.remove.clear();
+    };
+
+    window.setBadgePickerFilter = function (filter) {
+        badgePicker.filter = filter;
+        renderBadgePicker();
+    };
+
+    window.setBadgePickerQuery = function (query) {
+        badgePicker.query = query;
+        renderBadgePicker();
+    };
+
+    window.applyBadgePicker = async function () {
         if (window.BF && !BF.can('badges.manage')) return;
-        if (!confirm('Удалить бейдж?')) return;
-        try { await BF.request(`/api/users/${uid}/badges/${bid}`, { method:'DELETE' }); await openUserModal(uid); } catch (_) {}
+        const uid = badgePicker.userId;
+        const add = [...badgePicker.add];
+        const remove = [...badgePicker.remove];
+        if (!uid || add.length + remove.length === 0) return;
+        let result;
+        try {
+            result = await BF.request(`/api/users/${uid}/badges/batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ add, remove }),
+                loading: '#badgePickerApply'
+            });
+        } catch (_) {
+            return;
+        }
+        if (badgePicker.userId !== uid) return;
+
+        (result.removed || []).forEach(id => {
+            badgePicker.assigned.delete(Number(id));
+            badgePicker.remove.delete(Number(id));
+        });
+        (result.added || []).forEach(userBadge => {
+            const id = Number(userBadge.badge?.id);
+            badgePicker.assigned.add(id);
+            badgePicker.add.delete(id);
+        });
+        const failed = result.failed || [];
+        await refreshUserModal(uid);
+        if (failed.length === 0) {
+            BF.toast('Бейджи обновлены', 'success');
+            closeBadgePicker(true);
+            return;
+        }
+        // Failed changes stay selected, so "Применить" retries only them.
+        const catalog = badgePickerCatalog();
+        const names = failed.map(item => catalog.find(badge => Number(badge.id) === Number(item.badgeId))?.name || `#${item.badgeId}`);
+        const reason = failed.find(item => item.message)?.message;
+        BF.toast(`Не применено: ${names.join(', ')}${reason ? ` — ${reason}` : ''}`, 'warning');
+        badgePicker.filter = 'changes';
+        renderBadgePicker();
     };
+
     window.removeSession = async function (uid, did) {
         if (window.BF && !BF.can('users.sessions.revoke')) return;
         if (!confirm('Завершить сессию?')) return;
@@ -1039,23 +1513,49 @@
             await openUserModal(uid);
         } catch (_) {}
     };
-    window.changeAccountRestriction = async function (uid, action) {
+    const restrictionConfig = {
+        block: { path: 'block', method: 'POST', title: 'Заблокировать аккаунт', text: 'Аккаунт будет заблокирован до ручной разблокировки.', submit: 'Заблокировать', danger: true, success: 'Аккаунт заблокирован' },
+        unblock: { path: 'unblock', method: 'POST', title: 'Разблокировать аккаунт', text: 'Пользователь снова получит доступ к аккаунту.', submit: 'Разблокировать', danger: false, success: 'Аккаунт разблокирован' },
+        deletion: { path: 'deletion', method: 'POST', title: 'Удалить аккаунт', text: 'Аккаунт будет поставлен на удаление и окончательно удалён через 7 дней. До этого удаление можно отменить.', submit: 'Поставить на удаление', danger: true, success: 'Удаление аккаунта запланировано' },
+        'cancel-deletion': { path: 'deletion', method: 'DELETE', title: 'Отменить удаление', text: 'Запланированное удаление аккаунта будет отменено.', submit: 'Отменить удаление', danger: false, success: 'Удаление аккаунта отменено' }
+    };
+
+    window.openRestrictionDialog = function (uid, action) {
         const permission = action === 'block' || action === 'unblock' ? 'users.block' : 'users.delete';
         if (window.BF && !BF.can(permission)) return;
-        const reason = document.getElementById('accountRestrictionReason')?.value.trim();
+        const config = restrictionConfig[action];
+        if (!config) return;
+        toggleUserActionsMenu(false);
+        restrictionRequest = { uid, action };
+        document.getElementById('restrictionTitle').textContent = config.title;
+        document.getElementById('restrictionText').textContent = config.text;
+        const reason = document.getElementById('accountRestrictionReason');
+        reason.value = '';
+        document.getElementById('restrictionReasonCounter').textContent = '0 / 500';
+        const submit = document.getElementById('restrictionSubmit');
+        submit.textContent = config.submit;
+        submit.classList.toggle('md-btn-danger', config.danger);
+        document.getElementById('restrictionScrim').classList.add('open');
+        reason.focus();
+    };
+
+    window.closeRestrictionDialog = function () {
+        document.getElementById('restrictionScrim').classList.remove('open');
+        restrictionRequest = null;
+    };
+
+    window.submitAccountRestriction = async function () {
+        if (!restrictionRequest) return;
+        const { uid, action } = restrictionRequest;
+        const config = restrictionConfig[action];
+        const reason = document.getElementById('accountRestrictionReason').value.trim();
         if (!reason || reason.length > 500) { BF.toast('Укажите причину (не более 500 символов)', 'warning'); return; }
-        const config = {
-            block: { path: 'block', method: 'POST', confirm: 'Заблокировать аккаунт пользователя?', success: 'Аккаунт заблокирован' },
-            unblock: { path: 'unblock', method: 'POST', confirm: 'Разблокировать аккаунт пользователя?', success: 'Аккаунт разблокирован' },
-            deletion: { path: 'deletion', method: 'POST', confirm: 'Поставить аккаунт на удаление через 7 дней?', success: 'Удаление аккаунта запланировано' },
-            'cancel-deletion': { path: 'deletion', method: 'DELETE', confirm: 'Отменить запланированное удаление?', success: 'Удаление аккаунта отменено' }
-        }[action];
-        if (!config || !confirm(config.confirm)) return;
         try {
             const result = await BF.request(`/api/users/${uid}/${config.path}`, {
                 method: config.method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reason })
+                body: JSON.stringify({ reason }),
+                loading: '#restrictionSubmit'
             });
             const success = action === 'cancel-deletion'
                 ? result.accountStatus === 'Blocked'
@@ -1063,7 +1563,8 @@
                     : 'Удаление отменено, аккаунт активен'
                 : config.success;
             BF.toast(success, 'success');
-            await openUserModal(uid);
+            closeRestrictionDialog();
+            await refreshUserModal(uid);
             await loadUsers(true);
         } catch (_) {}
     };
