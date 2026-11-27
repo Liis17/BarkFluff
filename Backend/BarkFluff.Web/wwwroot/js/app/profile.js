@@ -22,6 +22,9 @@
     var profilePrimaryBadge = null;
     var profileRegDate;
     var profileMediaPanels;
+    var badgeTooltip = null;
+    var badgeTooltipName;
+    var badgeTooltipDesc;
     var currentProfileUserId = null;
 
     function $(selector) {
@@ -105,14 +108,69 @@
         });
     }
 
+    // Подсказка с названием и описанием бейджа: одна на модалку, позиционируется над бейджем.
+    function ensureBadgeTooltip() {
+        if (badgeTooltip) return badgeTooltip;
+        badgeTooltip = document.createElement('div');
+        badgeTooltip.className = 'profile-badge-tooltip';
+        badgeTooltip.id = 'profileBadgeTooltip';
+        badgeTooltip.setAttribute('role', 'tooltip');
+        badgeTooltip.hidden = true;
+        badgeTooltipName = document.createElement('div');
+        badgeTooltipName.className = 'profile-badge-tooltip-name';
+        badgeTooltipDesc = document.createElement('div');
+        badgeTooltipDesc.className = 'profile-badge-tooltip-desc';
+        badgeTooltip.appendChild(badgeTooltipName);
+        badgeTooltip.appendChild(badgeTooltipDesc);
+        document.body.appendChild(badgeTooltip);
+        return badgeTooltip;
+    }
+
+    function showBadgeTooltip(button, badge) {
+        if (!badge.name && !badge.description) return;
+        var tip = ensureBadgeTooltip();
+        badgeTooltipName.textContent = badge.name || '';
+        badgeTooltipDesc.textContent = badge.description || '';
+        tip.classList.remove('visible');
+        tip.hidden = false;
+        var r = button.getBoundingClientRect();
+        var t = tip.getBoundingClientRect();
+        var margin = 8;
+        var left = Math.min(Math.max(r.left + r.width / 2 - t.width / 2, margin), window.innerWidth - t.width - margin);
+        var top = r.top - t.height - margin;
+        if (top < margin) top = r.bottom + margin;
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
+        requestAnimationFrame(function () {
+            if (!tip.hidden) tip.classList.add('visible');
+        });
+    }
+
+    function hideBadgeTooltip() {
+        if (!badgeTooltip) return;
+        badgeTooltip.classList.remove('visible');
+        badgeTooltip.hidden = true;
+    }
+
     function badgeButton(badge, className) {
         var button = document.createElement('button');
         button.type = 'button';
         button.className = className;
-        button.title = badge.name || '';
         button.setAttribute('aria-label', badge.name || '');
-        button.appendChild(BF.userBadges.miniImage(badge));
+        button.setAttribute('aria-describedby', 'profileBadgeTooltip');
+        var image = BF.userBadges.miniImage(badge);
+        image.removeAttribute('title');
+        button.appendChild(image);
+        button.addEventListener('mouseenter', function () {
+            showBadgeTooltip(button, badge);
+        });
+        button.addEventListener('focus', function () {
+            showBadgeTooltip(button, badge);
+        });
+        button.addEventListener('mouseleave', hideBadgeTooltip);
+        button.addEventListener('blur', hideBadgeTooltip);
         button.addEventListener('click', function () {
+            hideBadgeTooltip();
             BF.userBadges.showViewer(badge);
         });
         return button;
@@ -120,6 +178,7 @@
 
     // Основной бейдж — рядом с именем, остальные — в карточке «Бейджи»; без остальных карточка скрыта.
     function renderBadges(badges) {
+        hideBadgeTooltip();
         var primary = BF.userBadges.primaryOf(badges);
         if (profilePrimaryBadge && profilePrimaryBadge.parentNode)
             profilePrimaryBadge.parentNode.removeChild(profilePrimaryBadge);
@@ -174,10 +233,19 @@
         });
 
         $('#profileClose').addEventListener('click', function () {
+            hideBadgeTooltip();
             BF.utils.closeOverlay(profileOverlay);
         });
+        profileOverlay.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') hideBadgeTooltip();
+        });
+        var profilePanel = $('#profileOverlay .profile-panel');
+        if (profilePanel) profilePanel.addEventListener('scroll', hideBadgeTooltip, { passive: true });
         profileOverlay.addEventListener('click', function (e) {
-            if (e.target === profileOverlay) BF.utils.closeOverlay(profileOverlay);
+            if (e.target === profileOverlay) {
+                hideBadgeTooltip();
+                BF.utils.closeOverlay(profileOverlay);
+            }
         });
 
         var msgBtn = $('#profileMsgBtn');
