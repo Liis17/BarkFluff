@@ -14,7 +14,7 @@ ASP.NET Core-хост браузерного клиента и gRPC-Web-шлюз
 
 YARP перенаправляет gRPC-Web к внутренним gRPC-сервисам. Для потоков Updates, Onliner, FastAuth и Calls задан таймаут активности 24 часа; для остальных кластеров — 100 секунд. `GrpcWebTrailersMiddleware` сохраняет gRPC trailers для клиента. `/node-config.js` сообщает клиенту режим выбора ноды, а `/pwa-config.js` отдаёт публичную конфигурацию PWA.
 
-`wwwroot/messenger.html` загружает модули из `wwwroot/js/app/`; основные области — авторизация, API и соединение, сообщения и realtime, файлы, presence и звонки, папки и закреплённые сообщения, профиль, настройки, поиск и PWA. Proto-бандл браузера находится в `wwwroot/js/proto/`; после изменений proto его генерируют `scripts/generate-proto.*`. Контракты задаёт `Shared/BarkFluff.Proto`.
+`wwwroot/messenger.html` загружает модули из `wwwroot/js/app/`; основные области — авторизация, API и соединение, сообщения и realtime, файлы, presence и звонки, папки и закреплённые сообщения, профиль, настройки, поиск и PWA. Proto-бандл браузера находится в `wwwroot/js/proto/`; после изменений proto его генерируют `scripts/generate-proto.*`. Контракты задаёт `Shared/BarkFluff.Proto`. `GET /addstickers/{shortName}` перенаправляет на `/messenger?stickers=<shortName>` — ссылка на набор стикеров.
 
 ## Кэш PWA
 

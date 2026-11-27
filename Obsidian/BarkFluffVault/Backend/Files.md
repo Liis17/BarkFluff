@@ -21,14 +21,21 @@ Files хранит метаданные в PostgreSQL, объекты — в S3-
 
 Удалённое вложение также выдаётся по временной capability: Files проверяет право пользователя через Messages, затем получает файл через Federation и передаёт поток/диапазон байтов. `FetchFileStream` отдаёт разрешённые данные Federation; перед этим Messages проверяет доступ узла через `CheckFileFederationAccess`. Снимок метаданных федеративного вложения позволяет рендерить его без запроса в Files исходного узла.
 
+## Наборы стикеров
+
+Наборы стикеров (`StickerPack`, `Sticker`) создаёт и наполняет AdminPanel через `FilesServerApi`. У набора есть уникальное короткое имя `ShortName` (нижний регистр, `^[a-z][a-z0-9_]{2,63}$`) для ссылки `/addstickers/<short_name>`; если AdminPanel не передал имя, Files генерирует `pack_<12 hex из id>`, этим же правилом миграция `AddUserStickerPacks` заполнила существующие наборы. Пустое имя в `UpdateStickerPack` оставляет прежнее. Сравнение без учёта регистра; занятое или неверное имя — `StickerPackShortNameTakenException`/`StickerPackShortNameNotValidException`.
+
+Клиент видит только наборы, которые пользователь добавил к себе: `UserStickerPack` (PK `UserId`+`StickerPackId`, каскад при удалении набора). `FilesApi.ListMyStickerPacks` отдаёт добавленные наборы вместе со стикерами одним ответом, недавно добавленные первыми; новый пользователь начинает с пустого списка. `AddMyStickerPack`/`RemoveMyStickerPack` идемпотентны; лимит — 200 наборов на пользователя (`StickerPackLimitExceededException`). `GetStickerPack`, `GetStickerPackByFile` (клик по стикеру в чате) и `GetStickerPackByName` (ссылка) в `FilesApi` заполняют `is_added` для текущего пользователя; ненайденный набор — `StickerPackNotFoundException`. `FilesApi.ListStickerPacks` (все наборы ноды) оставлен для старых клиентов и помечен устаревшим. Событий об изменении списка между устройствами нет: клиенты перечитывают список при открытии панели.
+
 ## Хранение и обработка
 
 - `UploadFile` содержит метаданные и связи с загрузившими пользователями; уникальный индекс SHA-256 используется для дедупликации.
 - `UploadOperation` хранит ключ идемпотентности, зарезервированный и итоговый ID и состояние lease.
+- `UserStickerPack` хранит наборы стикеров, добавленные пользователем; `StickerPack.ShortName` — уникальный индекс.
 - `TempFile` содержит истекающие capability-ссылки для локальных и федеративных загрузок. `TempFileCleanupService` удаляет просроченные записи.
 - `S3BucketRegistry` выбирает бакет по типу файла; инициализатор создаёт отсутствующие бакеты без публичной read-политики.
 - `ImageCompressor`, `FileTypeDetector` и `VideoThumbnailExtractor` выполняют проверку/обработку; размеры графических файлов возвращаются в метаданных.
 
-Источники: `Host/FilesApiService.cs`, `Host/FilesServerApiService.cs`, `Host/FilesController.cs`, `Features/UploadBadgeImage/`, `Features/GetUploadUrl/`, `Features/UploadFile/`, `Features/GetTempDownloadUrl/`, `Features/FetchFileStream/`, `Features/DownloadFile/FederatedDownloadService.cs`, `Infrastructure/S3Uploader.cs`, `Persistence/FilesContext.cs`.
+Источники: `Host/FilesApiService.cs`, `Host/FilesServerApiService.cs`, `Host/FilesController.cs`, `Features/UploadBadgeImage/`, `Features/GetUploadUrl/`, `Features/UploadFile/`, `Features/GetTempDownloadUrl/`, `Features/FetchFileStream/`, `Features/DownloadFile/FederatedDownloadService.cs`, `Features/ListMyStickerPacks/`, `Features/AddMyStickerPack/`, `Features/GetStickerPackByName/`, `Helpers/StickerPackShortName.cs`, `Persistence/UserStickerPacksStorage.cs`, `Infrastructure/S3Uploader.cs`, `Persistence/FilesContext.cs`.
 
 Связанные сервисы: [[Backend/Users]], [[Backend/Messages]], [[Backend/Federation]], [[Backend/Beacon]]. Тесты: `Tests/BarkFluff.Files.Tests` (общий helper использует SQLite in-memory).
