@@ -12,7 +12,9 @@ public enum DeployJobState
     Queued,
     Running,
     Completed,
-    Failed
+    Failed,
+    /// <summary>Снята из очереди до запуска; ни один шаг не выполнялся</summary>
+    Cancelled
 }
 
 public enum DeployStepState
