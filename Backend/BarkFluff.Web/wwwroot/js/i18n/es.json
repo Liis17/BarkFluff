@@ -562,6 +562,8 @@
   "search.period.from": "Desde",
   "search.period.through": "Hasta",
   "search.retry": "Reintentar",
+  "search.chats": "Chats",
+  "search.people": "Personas",
   "sessions.device": "Dispositivo",
   "sessions.deviceName": "Nombre del dispositivo",
   "sessions.empty": "No hay sesiones activas",
@@ -619,6 +621,8 @@
   "settings.title": "Ajustes",
   "settings.twofa": "Autenticación en dos pasos",
   "sidebar.search.placeholder": "Buscar",
+  "sidebar.collapse": "Contraer la lista de chats",
+  "sidebar.expand": "Expandir la lista de chats",
   "status.online": "en línea",
   "status.typing": "escribiendo…",
   "status.typing.many": "{names} están escribiendo…",
@@ -740,5 +744,14 @@
   "loginFlow.otherMethod": "Otro método de inicio de sesión",
   "loginFlow.retry": "Reintentar",
   "loginFlow.identifierRequired": "Introduce tu nombre de usuario o correo",
-  "security.prerequisite.onlyFactorDisable": "Este es el único factor que protege el método de acceso actual. Cambia y guarda el método antes de desactivar este factor."
+  "security.prerequisite.onlyFactorDisable": "Este es el único factor que protege el método de acceso actual. Cambia y guarda el método antes de desactivar este factor.",
+  "savedMessages.title": "Mensajes guardados",
+  "newchat.tab.message": "Mensaje",
+  "newchat.tab.group": "Grupo",
+  "newchat.tab.private": "Privado",
+  "newchat.search.placeholder": "Buscar usuarios",
+  "newchat.recent": "Recientes",
+  "newchat.hint.select": "elegir",
+  "newchat.hint.open": "abrir",
+  "newchat.hint.close": "cerrar"
 }

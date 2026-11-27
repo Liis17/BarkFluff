@@ -162,14 +162,14 @@
     }
 
     function open() {
-        BF.utils.openOverlay(overlay);
+        BF.pages.show('calls');
         setFilter(missedOnly);
     }
 
     function close() {
         loadToken++;
         loading = false;
-        BF.utils.closeOverlay(overlay);
+        BF.pages.hide('calls');
     }
 
     function init(options) {
@@ -186,9 +186,10 @@
         moreBtn.addEventListener('click', function () {
             load(false);
         });
-        document.getElementById('callHistoryClose').addEventListener('click', close);
-        overlay.addEventListener('click', function (e) {
-            if (e.target === overlay) close();
+        BF.pages.register('calls', overlay, close);
+        document.getElementById('callHistoryClose').addEventListener('click', function () {
+            close();
+            if (window.__mobileShowList) window.__mobileShowList();
         });
     }
 

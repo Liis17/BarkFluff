@@ -295,8 +295,39 @@
             });
     }
 
+    // «Избранное» — обычный личный чат, все участники которого — сам пользователь (как на Android).
+    // Принимает строку списка (members) и ответ GetChatInfo (membersId).
+    function isSavedMessages(chat, myUserId) {
+        if (!chat || chat.isGroupChat || (chat.chatType || 0) !== 0 || !myUserId) return false;
+        var ids =
+            chat.membersId ||
+            (chat.members || []).map(function (member) {
+                return member.userId;
+            });
+        return (
+            ids.length > 0 &&
+            ids.every(function (id) {
+                return id === myUserId;
+            })
+        );
+    }
+
+    // Положение непрочитанного чата в группе соседних непрочитанных: строки группы
+    // рисуются одной карточкой со скруглением только по краям (как на Android).
+    function unreadGroupPosition(index) {
+        if (!(visibleChats[index].countUnread > 0)) return null;
+        var prev = index > 0 && visibleChats[index - 1].countUnread > 0;
+        var next = index < visibleChats.length - 1 && visibleChats[index + 1].countUnread > 0;
+        if (!prev && !next) return 'single';
+        if (!prev) return 'first';
+        return next ? 'middle' : 'last';
+    }
+
+    var UNREAD_GROUP_CLASSES = ['unread-single', 'unread-first', 'unread-middle', 'unread-last'];
+
     function rowHtml(chat) {
         var myUserId = deps.getMyUserId();
+        var saved = isSavedMessages(chat, myUserId);
         var isPrivate = chat.chatType === 1;
         var lm = chat.lastMessage;
         var hasDraft = chat.chatType === 0 && (chat.hasDraft === true || (BF.drafts && BF.drafts.has(chat.id)));
@@ -348,10 +379,18 @@
         var peerUser = peerUserId ? deps.getCachedUser(peerUserId) : null;
         var isBot = !!(peerUser && peerUser.isBot);
         var restricted = u.isRestrictedUser(peerUser);
-        var title = restricted ? u.restrictedUserName(peerUser) : chat.title || BF.i18n.t('common.chat');
-        var picture = restricted ? '' : chat.picture;
+        var title = saved
+            ? BF.i18n.t('savedMessages.title')
+            : restricted
+              ? u.restrictedUserName(peerUser)
+              : chat.title || BF.i18n.t('common.chat');
+        var picture = restricted || saved ? '' : chat.picture;
         var avatarInitial = (title || '?')[0].toUpperCase();
-        var avatarHtml = picture ? '<img src="' + u.escapeHtml(picture) + '" alt="">' : avatarInitial;
+        var avatarHtml = saved
+            ? BF.icons.html('favorites')
+            : picture
+              ? '<img src="' + u.escapeHtml(picture) + '" alt="">'
+              : avatarInitial;
         var onlineDot =
             peerUser && !isBot && !restricted
                 ? '<div class="online-dot' +
@@ -362,7 +401,9 @@
                 : '';
 
         return (
-            '<div class="chat-avatar">' +
+            '<div class="chat-avatar' +
+            (saved ? ' saved' : '') +
+            '">' +
             avatarHtml +
             onlineDot +
             '</div>' +
@@ -398,7 +439,8 @@
 
     // Метка option для скринридера: название, непрочитанные, превью и время.
     function rowLabel(el, chat) {
-        var parts = [chat.title || BF.i18n.t('common.chat')];
+        var title = el.querySelector('.chat-name-text');
+        var parts = [(title && title.textContent) || chat.title || BF.i18n.t('common.chat')];
         var unread = chat.countUnread || 0;
         if (unread > 0) parts.push(BF.i18n.tp('a11y.chat.unread', unread));
         var preview = el.querySelector('.chat-preview');
@@ -587,6 +629,10 @@
                 row.index = index;
             }
             el.setAttribute('aria-setsize', String(n));
+            var group = unreadGroupPosition(index);
+            UNREAD_GROUP_CLASSES.forEach(function (name) {
+                el.classList.toggle(name, name === 'unread-' + group);
+            });
             var isActive = key === activeKey;
             el.classList.toggle('active', isActive);
             el.setAttribute('aria-selected', isActive ? 'true' : 'false');
@@ -1116,6 +1162,7 @@
         init: init,
         load: load,
         render: render,
-        refreshQuiet: refreshQuiet
+        refreshQuiet: refreshQuiet,
+        isSavedMessages: isSavedMessages
     };
 })();

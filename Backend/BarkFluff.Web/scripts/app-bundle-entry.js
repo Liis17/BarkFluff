@@ -7,6 +7,7 @@ import '../wwwroot/js/app/metadata.js';
 import '../wwwroot/js/app/network.js';
 import '../wwwroot/js/app/clients.js';
 import '../wwwroot/js/app/utils.js';
+import '../wwwroot/js/app/pages.js';
 import '../wwwroot/js/app/sound.js';
 import '../wwwroot/js/app/api.js';
 import '../wwwroot/js/app/user-badges.js';

@@ -59,14 +59,16 @@
         body = document.querySelector('#sdBody');
         confirmOverlay = document.querySelector('#confirmOverlay');
 
-        document.querySelector('#sdClose').addEventListener('click', close);
+        // Кнопка видна только на мобильном: закрывает раздел и возвращает к списку чатов.
+        document.querySelector('#sdClose').addEventListener('click', function () {
+            close();
+            if (window.__mobileShowList) window.__mobileShowList();
+        });
         backBtn.addEventListener('click', goBack);
         body.addEventListener('animationend', function (e) {
             if (e.target === body) clearSlide();
         });
-        overlay.addEventListener('click', function (e) {
-            if (e.target === overlay) close();
-        });
+        BF.pages.register('settings', overlay, close);
 
         document.querySelector('#confirmCancel').addEventListener('click', function () {
             BF.utils.closeOverlay(confirmOverlay);
@@ -103,13 +105,13 @@
         // Первое открытие без перехода: остаток класса от прерванного перехода (оверлей закрыт) не должен сработать.
         clearSlide();
         showView(target);
-        BF.utils.openOverlay(overlay);
+        BF.pages.show('settings');
     }
 
     function close() {
         runViewCleanup();
         BF.authUI.cancelAll();
-        BF.utils.closeOverlay(overlay);
+        BF.pages.hide('settings');
         viewStack = [];
     }
 

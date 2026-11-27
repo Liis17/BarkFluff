@@ -205,8 +205,31 @@
         if (window.__mobileShowList) window.__mobileShowList();
     }
 
+    // «Избранное» в шапке: своё название и иконка вместо собственного аватара.
+    function setSavedMessagesHeader(saved) {
+        chatHeaderAvatar.classList.toggle('saved', saved);
+        if (!saved) return;
+        chatHeaderName.textContent = BF.i18n.t('savedMessages.title');
+        chatHeaderAvatar.innerHTML = BF.icons.html('favorites');
+    }
+
+    function openSavedMessages() {
+        BF.api
+            .getPersonChatId(myUserId)
+            .then(function (d) {
+                if (!d || !d.chatId) return;
+                openChat(d.chatId);
+                if (window.__mobileShowChat) window.__mobileShowChat();
+            })
+            .catch(function () {
+                showToast(BF.i18n.t('common.loadError'), true);
+            });
+    }
+
     // focusMessageId — прыжок к сообщению после открытия (результат поиска сообщений).
     function openChat(chatId, focusMessageId) {
+        // «Звонки» и «Настройки» занимают место чата: выбор чата возвращает к нему.
+        BF.pages.closeAll();
         if (chatId === currentChatId) {
             if (focusMessageId) scrollToMessage(focusMessageId);
             return;
@@ -217,6 +240,7 @@
         BF.chatCalls.hideJoinBanner();
 
         var chatMeta = chats.find(function (c) { return c.id === chatId; });
+        setSavedMessagesHeader(false);
         if (chatMeta && chatMeta.chatType === 1) { openPrivateChat(chatMeta); return; }
 
         if (BF.pinned && BF.pinned.openForChat) BF.pinned.openForChat(chatId);
@@ -252,6 +276,7 @@
         chatHeaderName.textContent = chatMeta ? chatMeta.title || BF.i18n.t('common.chat') : '';
         if (chatMeta && chatMeta.picture) chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(chatMeta.picture) + '" alt="">';
         else chatHeaderAvatar.textContent = chatMeta ? (chatMeta.title || '?')[0].toUpperCase() : '';
+        if (BF.chatList.isSavedMessages(chatMeta, myUserId)) setSavedMessagesHeader(true);
         setChatCallButtonsVisible(true);
 
         // Reset unread count for the opened chat
@@ -271,8 +296,12 @@
             chatHeaderName.textContent = info.title || BF.i18n.t('common.chat');
             if (info.picture) chatHeaderAvatar.innerHTML = '<img src="' + u.escapeHtml(info.picture) + '" alt="">';
             else chatHeaderAvatar.textContent = (info.title || '?')[0].toUpperCase();
-
-            if (!info.isGroupChat && info.membersId && info.membersId.length > 0) {
+            if (BF.chatList.isSavedMessages(info, myUserId)) {
+                setSavedMessagesHeader(true);
+                chatHeaderStatus.hidden = true;
+                setChatCallButtonsVisible(false);
+                resetChatTabContext();
+            } else if (!info.isGroupChat && info.membersId && info.membersId.length > 0) {
                 var peerId = info.membersId.find(function (id) { return id !== myUserId; });
                 if (peerId) {
                     getUser(peerId).then(function (peer) {
@@ -553,7 +582,13 @@
     }
     if (BF.drafts) BF.drafts.init(myUserId);
     if (BF.imageEditor) BF.imageEditor.init();
-    $('#navChats').addEventListener('click', function () { /* already on chats page */ });
+    $('#navChats').addEventListener('click', function () {
+        if (!BF.pages.isOpen()) return;
+        BF.pages.closeAll();
+        // На мобильном список чатов — основной экран: раздел закрывается к нему, а не к чату под ним.
+        if (window.__mobileShowList) window.__mobileShowList();
+    });
+    $('#savedMessagesBtn').addEventListener('click', openSavedMessages);
     $('#navSettings').addEventListener('click', function () { BF.settings.open(); });
     BF.callHistory.init({
         getChats: function () { return chats; },
@@ -719,6 +754,8 @@
         BF.newchat.init({
             openChat: openChat,
             getMyUserId: function () { return myUserId; },
+            getChats: function () { return chats; },
+            getCachedUser: function (userId) { return userCache.get(userId); },
             showToast: showToast,
             upsertChat: function (chat) {
                 var idx = chats.findIndex(function (c) { return c.id === chat.id; });

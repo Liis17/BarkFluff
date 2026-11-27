@@ -562,6 +562,8 @@
   "search.period.from": "从",
   "search.period.through": "至",
   "search.retry": "重试",
+  "search.chats": "聊天",
+  "search.people": "用户",
   "sessions.device": "设备",
   "sessions.deviceName": "设备名称",
   "sessions.empty": "没有活动会话",
@@ -619,6 +621,8 @@
   "settings.title": "设置",
   "settings.twofa": "双重验证",
   "sidebar.search.placeholder": "搜索",
+  "sidebar.collapse": "收起聊天列表",
+  "sidebar.expand": "展开聊天列表",
   "status.online": "在线",
   "status.typing": "正在输入…",
   "status.typing.many": "{names} 正在输入…",
@@ -740,5 +744,14 @@
   "loginFlow.otherMethod": "其他登录方式",
   "loginFlow.retry": "重试",
   "loginFlow.identifierRequired": "请输入用户名或邮箱",
-  "security.prerequisite.onlyFactorDisable": "此验证方式是当前登录方式唯一的保护因素。请先更改并保存登录方式，再关闭此验证方式。"
+  "security.prerequisite.onlyFactorDisable": "此验证方式是当前登录方式唯一的保护因素。请先更改并保存登录方式，再关闭此验证方式。",
+  "savedMessages.title": "收藏夹",
+  "newchat.tab.message": "消息",
+  "newchat.tab.group": "群组",
+  "newchat.tab.private": "私密",
+  "newchat.search.placeholder": "搜索用户",
+  "newchat.recent": "最近",
+  "newchat.hint.select": "选择",
+  "newchat.hint.open": "打开",
+  "newchat.hint.close": "关闭"
 }

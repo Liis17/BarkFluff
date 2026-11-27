@@ -65,11 +65,20 @@
 
     <div class="app">
         <div class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="sidebar-title" data-i18n="nav.chats">Чаты</h1>
+                <button type="button" class="sidebar-saved-btn" id="savedMessagesBtn" data-i18n-title="savedMessages.title" data-i18n-aria-label="savedMessages.title" title="Избранное" aria-label="Избранное">
+                    <span class="bf-icon" data-bf-icon="favorites" aria-hidden="true"></span>
+                </button>
+            </div>
             <div class="search-container">
                 <div class="search-wrapper">
                     <span class="search-icon"><span class="bf-icon" data-bf-icon="search" aria-hidden="true"></span></span>
                     <input type="text" class="search-input" id="searchInput" data-i18n-placeholder="sidebar.search.placeholder" placeholder="Поиск">
                 </div>
+                <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-pressed="false" title="Свернуть список чатов" aria-label="Свернуть список чатов">
+                    <span class="bf-icon" data-bf-icon="sidebar" aria-hidden="true"></span>
+                </button>
             </div>
 
             <div class="search-filters" id="searchFilters" hidden></div>
@@ -77,33 +86,37 @@
             <div class="folder-tabs" id="folderTabs"></div>
             <div class="chat-list" id="chatList" role="listbox" data-i18n-aria-label="a11y.chatList" aria-label="Список чатов"></div>
 
-            <button class="newchat-fab" id="newChatFab" data-i18n-title="newchat.fab" data-i18n-aria-label="newchat.fab" title="Новый чат" aria-label="Новый чат">
-                <span class="bf-icon" data-bf-icon="edit" aria-hidden="true"></span>
-            </button>
+            <div class="newchat-scrim" id="newChatScrim" aria-hidden="true"></div>
             <div class="newchat-menu" id="newChatMenu">
-                <button data-mode="message"><span class="bf-icon" data-bf-icon="messages" aria-hidden="true"></span><span data-i18n="newchat.mode.message">Новое сообщение</span></button>
-                <button data-mode="group"><span class="bf-icon" data-bf-icon="groups" aria-hidden="true"></span><span data-i18n="newchat.mode.group">Новая группа</span></button>
-                <button data-mode="private"><span class="bf-icon" data-bf-icon="private" aria-hidden="true"></span><span data-i18n="newchat.mode.private">Приватный чат</span></button>
+                <button type="button" data-mode="message"><span class="newchat-menu-icon"><span class="bf-icon" data-bf-icon="messages" aria-hidden="true"></span></span><span data-i18n="newchat.mode.message">Новое сообщение</span></button>
+                <button type="button" data-mode="group"><span class="newchat-menu-icon"><span class="bf-icon" data-bf-icon="groups" aria-hidden="true"></span></span><span data-i18n="newchat.mode.group">Новая группа</span></button>
+                <button type="button" data-mode="private"><span class="newchat-menu-icon"><span class="bf-icon" data-bf-icon="private" aria-hidden="true"></span></span><span data-i18n="newchat.mode.private">Приватный чат</span></button>
             </div>
 
-            <div class="sidebar-nav" id="sidebarNav">
-                <button class="nav-btn active" id="navChats" aria-current="page">
-                    <span class="nav-icon">
-                        <span class="bf-icon" data-bf-icon="all-chats" aria-hidden="true"></span>
-                    </span>
-                    <span data-i18n="nav.chats">Чаты</span>
-                </button>
-                <button class="nav-btn" id="navCalls">
-                    <span class="nav-icon">
-                        <span class="bf-icon" data-bf-icon="calls" aria-hidden="true"></span>
-                    </span>
-                    <span data-i18n="nav.calls">Звонки</span>
-                </button>
-                <button class="nav-btn" id="navSettings">
-                    <span class="nav-icon">
-                        <span class="bf-icon" data-bf-icon="general" aria-hidden="true"></span>
-                    </span>
-                    <span data-i18n="nav.settings">Настройки</span>
+            <div class="sidebar-dock">
+                <div class="sidebar-nav" id="sidebarNav">
+                    <button type="button" class="nav-btn active" id="navChats" aria-current="page">
+                        <span class="nav-icon">
+                            <span class="bf-icon" data-bf-icon="all-chats" aria-hidden="true"></span>
+                        </span>
+                        <span class="nav-label" data-i18n="nav.chats">Чаты</span>
+                    </button>
+                    <button type="button" class="nav-btn" id="navCalls">
+                        <span class="nav-icon">
+                            <span class="bf-icon" data-bf-icon="calls" aria-hidden="true"></span>
+                        </span>
+                        <span class="nav-label" data-i18n="nav.calls">Звонки</span>
+                    </button>
+                    <button type="button" class="nav-btn" id="navSettings">
+                        <span class="nav-icon">
+                            <span class="bf-icon" data-bf-icon="general" aria-hidden="true"></span>
+                        </span>
+                        <span class="nav-label" data-i18n="nav.settings">Настройки</span>
+                    </button>
+                </div>
+                <button type="button" class="newchat-fab" id="newChatFab" aria-expanded="false" aria-controls="newChatMenu" data-i18n-title="newchat.fab" data-i18n-aria-label="newchat.fab" title="Новый чат" aria-label="Новый чат">
+                    <span class="bf-icon newchat-fab-open" data-bf-icon="edit" aria-hidden="true"></span>
+                    <span class="bf-icon newchat-fab-close" data-bf-icon="close" aria-hidden="true"></span>
                 </button>
             </div>
         </div>
@@ -117,6 +130,34 @@
         </div>
 
         <div class="chat-area">
+            <!-- Раздел «Настройки»: на месте чата (BF.pages) -->
+            <div class="app-page settings-page" id="settingsOverlay" tabindex="-1" role="region" data-i18n-aria-label="settings.title" aria-label="Настройки">
+                <div class="page-card settings-dialog" id="settingsDialog">
+                    <div class="sd-header">
+                        <button class="sd-back" id="sdBack" data-i18n-aria-label="common.back" aria-label="Назад"><span class="bf-icon" data-bf-icon="back" aria-hidden="true"></span></button>
+                        <div class="sd-title" id="sdTitle"><span class="bf-icon" data-bf-icon="general" aria-hidden="true"></span><span data-i18n="settings.title">Настройки</span></div>
+                        <button class="sd-close" id="sdClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
+                    </div>
+                    <div class="sd-body" id="sdBody"></div>
+                </div>
+            </div>
+
+            <!-- Раздел «Звонки»: на месте чата (BF.pages) -->
+            <div class="app-page call-history-page" id="callHistoryOverlay" tabindex="-1" role="region" data-i18n-aria-label="nav.calls" aria-label="Звонки">
+                <div class="page-card call-history-dialog">
+                    <div class="call-history-header">
+                        <div class="call-history-title" data-i18n="nav.calls">Звонки</div>
+                        <div class="call-history-filter">
+                            <button type="button" data-filter="all" aria-pressed="true" class="active" data-i18n="callHistory.all">Все</button>
+                            <button type="button" data-filter="missed" aria-pressed="false" data-i18n="callHistory.missed">Пропущенные</button>
+                        </div>
+                        <button class="folder-edit-close" id="callHistoryClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
+                    </div>
+                    <div class="call-history-list" id="callHistoryList"></div>
+                    <button type="button" class="call-history-more" id="callHistoryMore" hidden data-i18n="callHistory.more">Показать ещё</button>
+                </div>
+            </div>
+
             <div class="messages-bg-layer" id="messagesBgLayer"></div>
             <div class="messages-bg-dim" id="messagesBgDim"></div>
             <div class="connection-synced" id="connectionSynced" role="status" aria-live="polite">
@@ -209,18 +250,6 @@
         </div>
     </div>
 
-    <!-- Settings dialog (centered) -->
-    <div class="settings-overlay" id="settingsOverlay">
-        <div class="settings-dialog" id="settingsDialog">
-            <div class="sd-header">
-                <button class="sd-back" id="sdBack" data-i18n-aria-label="common.back" aria-label="Назад"><span class="bf-icon" data-bf-icon="back" aria-hidden="true"></span></button>
-                <div class="sd-title" id="sdTitle"><span class="bf-icon" data-bf-icon="general" aria-hidden="true"></span><span data-i18n="settings.title">Настройки</span></div>
-                <button class="sd-close" id="sdClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
-            </div>
-            <div class="sd-body" id="sdBody"></div>
-        </div>
-    </div>
-
     <!-- Delete message confirmation dialog -->
     <div class="confirm-overlay" id="deleteMsgConfirmOverlay">
         <div class="confirm-dialog">
@@ -256,10 +285,23 @@
                 <h3 id="newChatTitle" data-i18n="newchat.title">Новый чат</h3>
                 <button class="newchat-close" id="newChatClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
+            <div class="newchat-modes" id="newChatModes" role="tablist" data-i18n-aria-label="newchat.title" aria-label="Новый чат">
+                <button type="button" role="tab" data-mode="message" aria-selected="true"><span class="bf-icon" data-bf-icon="messages" aria-hidden="true"></span><span data-i18n="newchat.tab.message">Сообщение</span></button>
+                <button type="button" role="tab" data-mode="group" aria-selected="false"><span class="bf-icon" data-bf-icon="groups" aria-hidden="true"></span><span data-i18n="newchat.tab.group">Группа</span></button>
+                <button type="button" role="tab" data-mode="private" aria-selected="false"><span class="bf-icon" data-bf-icon="private" aria-hidden="true"></span><span data-i18n="newchat.tab.private">Приватный</span></button>
+            </div>
             <input type="text" class="private-pass-input" id="newChatGroupTitle" data-i18n-placeholder="newchat.groupTitle.placeholder" placeholder="Название группы" maxlength="128">
             <div class="newchat-chips" id="newChatChips"></div>
-            <input type="text" class="private-pass-input" id="newChatSearch" data-i18n-placeholder="sidebar.search.placeholder" placeholder="Поиск пользователей..." autocomplete="off">
-            <div class="newchat-results" id="newChatResults"></div>
+            <div class="newchat-search">
+                <span class="bf-icon" data-bf-icon="search" aria-hidden="true"></span>
+                <input type="text" id="newChatSearch" data-i18n-placeholder="newchat.search.placeholder" placeholder="Поиск пользователей" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="newChatResults" aria-autocomplete="list">
+            </div>
+            <div class="newchat-results" id="newChatResults" role="listbox"></div>
+            <div class="newchat-hints" id="newChatHints" aria-hidden="true">
+                <span><kbd>↑</kbd><kbd>↓</kbd> <span data-i18n="newchat.hint.select">выбор</span></span>
+                <span><kbd>Enter</kbd> <span data-i18n="newchat.hint.open">открыть</span></span>
+                <span><kbd>Esc</kbd> <span data-i18n="newchat.hint.close">закрыть</span></span>
+            </div>
             <div id="newChatPrivateFields">
                 <input type="password" class="private-pass-input" id="newChatPass" data-i18n-placeholder="newchat.password.placeholder" placeholder="Пароль чата (мин. 6 символов)" autocomplete="off">
                 <label class="private-pass-remember"><input type="checkbox" id="newChatRemember" checked> <span data-i18n="privatechat.rememberPassword">Запомнить пароль в этом браузере</span></label>
@@ -601,22 +643,6 @@
                 <button class="folder-edit-close" id="pinnedListClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
             </div>
             <div class="pinned-list-inner" id="pinnedListInner"></div>
-        </div>
-    </div>
-
-    <!-- Call history modal -->
-    <div class="overlay call-history-overlay" id="callHistoryOverlay">
-        <div class="dialog call-history-dialog">
-            <div class="call-history-header">
-                <div class="call-history-title" data-i18n="nav.calls">Звонки</div>
-                <div class="call-history-filter">
-                    <button type="button" data-filter="all" aria-pressed="true" class="active" data-i18n="callHistory.all">Все</button>
-                    <button type="button" data-filter="missed" aria-pressed="false" data-i18n="callHistory.missed">Пропущенные</button>
-                </div>
-                <button class="folder-edit-close" id="callHistoryClose" data-i18n-title="common.close" title="Закрыть" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
-            </div>
-            <div class="call-history-list" id="callHistoryList"></div>
-            <button type="button" class="call-history-more" id="callHistoryMore" hidden data-i18n="callHistory.more">Показать ещё</button>
         </div>
     </div>
 

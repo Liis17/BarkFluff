@@ -571,6 +571,8 @@
   "search.period.from": "С",
   "search.period.through": "По",
   "search.retry": "Повторить",
+  "search.chats": "Чаты",
+  "search.people": "Люди",
   "sessions.device": "Устройство",
   "sessions.deviceName": "Имя устройства",
   "sessions.empty": "Нет активных сессий",
@@ -628,6 +630,8 @@
   "settings.title": "Настройки",
   "settings.twofa": "Двухфакторная аутентификация",
   "sidebar.search.placeholder": "Поиск",
+  "sidebar.collapse": "Свернуть список чатов",
+  "sidebar.expand": "Развернуть список чатов",
   "status.online": "в сети",
   "status.typing": "печатает…",
   "status.typing.many": "{names} печатают…",
@@ -749,5 +753,14 @@
   "loginFlow.otherMethod": "Другой способ входа",
   "loginFlow.retry": "Повторить",
   "loginFlow.identifierRequired": "Введите имя пользователя или email",
-  "security.prerequisite.onlyFactorDisable": "Это единственный фактор, который защищает текущий сценарий входа. Сначала смените и сохраните сценарий, затем отключите фактор."
+  "security.prerequisite.onlyFactorDisable": "Это единственный фактор, который защищает текущий сценарий входа. Сначала смените и сохраните сценарий, затем отключите фактор.",
+  "savedMessages.title": "Избранное",
+  "newchat.tab.message": "Сообщение",
+  "newchat.tab.group": "Группа",
+  "newchat.tab.private": "Приватный",
+  "newchat.search.placeholder": "Поиск пользователей",
+  "newchat.recent": "Недавние",
+  "newchat.hint.select": "выбор",
+  "newchat.hint.open": "открыть",
+  "newchat.hint.close": "закрыть"
 }

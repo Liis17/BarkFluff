@@ -129,6 +129,7 @@ function createHarness(api) {
                 langChanges.push(code);
             }
         },
+        pages: { register: function () {}, show: function () {}, hide: function () {} },
         utils: {
             openOverlay: function () {},
             closeOverlay: function () {},

@@ -339,6 +339,43 @@
         hideFilters();
     }
 
+    // Экранированный текст с совпадениями запроса в <mark>. Если смена регистра меняет длину строки,
+    // позиции совпадений не сходятся с исходным текстом — тогда без подсветки.
+    function highlight(text, query) {
+        var u = BF.utils;
+        var source = String(text || '');
+        var lower = source.toLowerCase();
+        var needle = String(query || '').toLowerCase();
+        if (!needle || lower.length !== source.length) return u.escapeHtml(source);
+        var html = '';
+        var from = 0;
+        var at;
+        while ((at = lower.indexOf(needle, from)) >= 0) {
+            html +=
+                u.escapeHtml(source.slice(from, at)) +
+                '<mark>' +
+                u.escapeHtml(source.slice(at, at + needle.length)) +
+                '</mark>';
+            from = at + needle.length;
+        }
+        return html + u.escapeHtml(source.slice(from));
+    }
+
+    function sectionTitle(key) {
+        var header = document.createElement('div');
+        header.className = 'search-section-title';
+        header.textContent = BF.i18n.t(key);
+        return header;
+    }
+
+    function isSavedChat(chat) {
+        return !!(BF.chatList && BF.chatList.isSavedMessages(chat, deps.getMyUserId()));
+    }
+
+    function chatTitle(chat) {
+        return isSavedChat(chat) ? BF.i18n.t('savedMessages.title') : chat.title || '';
+    }
+
     function onInput() {
         var u = BF.utils;
         clearTimeout(searchTimer);
@@ -361,7 +398,7 @@
         // Локальный фильтр по уже загруженным чатам (синхронно, как в cmdpalette).
         var matchedChats = query
             ? deps.getChats().filter(function (c) {
-                  return (c.title || '').toLowerCase().indexOf(qLower) >= 0;
+                  return chatTitle(c).toLowerCase().indexOf(qLower) >= 0;
               })
             : [];
 
@@ -385,19 +422,28 @@
             var peer =
                 !hit.isGroupChat && hit.otherUserId && deps.getCachedUser ? deps.getCachedUser(hit.otherUserId) : null;
             var restricted = u.isRestrictedUser(peer);
-            var title = restricted
-                ? u.restrictedUserName(peer)
-                : hit.chatTitle || (chat && chat.title) || BF.i18n.t('common.chat');
-            var picture = !restricted && chat && chat.picture ? chat.picture : null;
-            var avHtml = picture ? '<img src="' + u.escapeHtml(picture) + '" alt="">' : (title || '?')[0].toUpperCase();
+            var saved = !!chat && isSavedChat(chat);
+            var title = saved
+                ? BF.i18n.t('savedMessages.title')
+                : restricted
+                  ? u.restrictedUserName(peer)
+                  : hit.chatTitle || (chat && chat.title) || BF.i18n.t('common.chat');
+            var picture = !restricted && !saved && chat && chat.picture ? chat.picture : null;
+            var avHtml = saved
+                ? BF.icons.html('favorites')
+                : picture
+                  ? '<img src="' + u.escapeHtml(picture) + '" alt="">'
+                  : (title || '?')[0].toUpperCase();
             var body = hit.text
-                ? u.escapeHtml(hit.text)
+                ? highlight(hit.text, query)
                 : hit.attachmentTypes.length
                   ? u.attachmentPreviewHtml(hit.attachmentTypes[0])
                   : '';
             var author = hit.isGroupChat && hit.authorName ? u.escapeHtml(hit.authorName) + ': ' : '';
             el.innerHTML =
-                '<div class="chat-avatar">' +
+                '<div class="chat-avatar' +
+                (saved ? ' saved' : '') +
+                '">' +
                 avHtml +
                 '</div>' +
                 '<div class="search-result-info"><div class="user-name">' +
@@ -445,6 +491,7 @@
                     '</div>';
                 return;
             }
+            if (matchedChats.length) searchResults.appendChild(sectionTitle('search.chats'));
             matchedChats.forEach(function (chat) {
                 var el = document.createElement('div');
                 el.className = 'search-result-item';
@@ -458,16 +505,22 @@
                           )
                         : null;
                 var restricted = u.isRestrictedUser(peer);
-                var title = restricted ? u.restrictedUserName(peer) : chat.title || BF.i18n.t('common.chat');
+                var saved = isSavedChat(chat);
+                var title = restricted ? u.restrictedUserName(peer) : chatTitle(chat) || BF.i18n.t('common.chat');
                 var initial = (title || '?')[0].toUpperCase();
-                var avHtml =
-                    !restricted && chat.picture ? '<img src="' + u.escapeHtml(chat.picture) + '" alt="">' : initial;
+                var avHtml = saved
+                    ? BF.icons.html('favorites')
+                    : !restricted && chat.picture
+                      ? '<img src="' + u.escapeHtml(chat.picture) + '" alt="">'
+                      : u.escapeHtml(initial);
                 el.innerHTML =
-                    '<div class="chat-avatar">' +
+                    '<div class="chat-avatar' +
+                    (saved ? ' saved' : '') +
+                    '">' +
                     avHtml +
                     '</div>' +
                     '<div class="search-result-info"><div class="user-name">' +
-                    u.escapeHtml(title) +
+                    (restricted ? u.escapeHtml(title) : highlight(title, query)) +
                     (peer && !restricted ? BF.userBadges.slotHtml(peer.id) : '') +
                     '</div></div>';
                 el.addEventListener('click', function () {
@@ -476,6 +529,7 @@
                 });
                 searchResults.appendChild(el);
             });
+            if (users && users.length) searchResults.appendChild(sectionTitle('search.people'));
             if (users) {
                 users.forEach(function (user) {
                     var el = document.createElement('div');
@@ -494,12 +548,12 @@
                         avHtml +
                         '</div>' +
                         '<div class="search-result-info"><div class="user-name">' +
-                        u.escapeHtml(name) +
+                        (restricted ? u.escapeHtml(name) : highlight(name, query)) +
                         (restricted ? '' : BF.userBadges.slotHtml(user.id)) +
                         '</div>' +
                         (restricted
                             ? ''
-                            : '<div class="user-username">@' + u.escapeHtml(user.username || '') + '</div>') +
+                            : '<div class="user-username">@' + highlight(user.username || '', query) + '</div>') +
                         '</div>';
                     el.addEventListener('click', function () {
                         clearSearch();
@@ -522,10 +576,7 @@
                 });
             }
             if (hits.length || messagesNote) {
-                var header = document.createElement('div');
-                header.className = 'search-section-title';
-                header.textContent = BF.i18n.t('search.messages');
-                searchResults.appendChild(header);
+                searchResults.appendChild(sectionTitle('search.messages'));
                 if (messagesNote) {
                     var note = document.createElement('div');
                     note.className = 'search-section-note';

@@ -44,6 +44,14 @@
             --sidebar-width: 340px;
             --chat-content-width: 800px;
             --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+            /* Сайдбар: док навигации, заливка непрочитанных (как на Android), фон полей */
+            --dock-bg: #4a413b;
+            --dock-fg: rgba(255, 255, 255, 0.68);
+            --dock-active-bg: #faf8f5;
+            --dock-active-fg: #1c1917;
+            --unread-row-bg: #f1e2da;
+            --unread-row-text: #5c2210;
+            --sidebar-fill: rgba(0, 0, 0, 0.05);
         }
         [data-theme="dark"] {
             --bg: #141210;
@@ -85,6 +93,13 @@
             --card-bg: var(--dialog-bg);
             --msg-incoming-bg: var(--msg-in-bg);
             --msg-outgoing-bg: var(--msg-out-bg);
+            --dock-bg: #2f2a26;
+            --dock-fg: rgba(229, 223, 215, 0.62);
+            --dock-active-bg: #4a3426;
+            --dock-active-fg: #f2d3c1;
+            --unread-row-bg: rgba(192, 122, 82, 0.17);
+            --unread-row-text: #f2d3c1;
+            --sidebar-fill: rgba(255, 255, 255, 0.06);
             --sidebar-width: 340px;
         }
         [data-theme="midnight"] {
@@ -127,6 +142,13 @@
             --card-bg: var(--dialog-bg);
             --msg-incoming-bg: var(--msg-in-bg);
             --msg-outgoing-bg: var(--msg-out-bg);
+            --dock-bg: #1f2340;
+            --dock-fg: rgba(216, 221, 242, 0.6);
+            --dock-active-bg: #2e295e;
+            --dock-active-fg: #e0dbff;
+            --unread-row-bg: rgba(124, 109, 224, 0.18);
+            --unread-row-text: #dcd6ff;
+            --sidebar-fill: rgba(255, 255, 255, 0.06);
             --sidebar-width: 340px;
         }
 
@@ -322,99 +344,195 @@
             display: none;
         }
 
-        html.sidebar-compact .search-container,
+        html.sidebar-compact .sidebar-title,
+        html.sidebar-compact .search-wrapper,
         html.sidebar-compact .search-results,
-        html.sidebar-compact .folder-tabs,
-        html.sidebar-compact .newchat-fab,
-        html.sidebar-compact .newchat-menu {
+        html.sidebar-compact .folder-tabs {
             display: none;
         }
 
-        html.sidebar-compact .nav-btn > span:not(.nav-icon) {
-            display: none;
+        html.sidebar-compact .sidebar-header,
+        html.sidebar-compact .search-container {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
         }
 
-        /* === SIDEBAR NAV (floating) === */
+        html.sidebar-compact .nav-btn.active .nav-label {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip-path: inset(50%);
+            white-space: nowrap;
+        }
+
+        /* Док в узкой панели — вертикальный; меню создания раскрывается вправо поверх чата */
+        html.sidebar-compact .sidebar-dock {
+            left: 8px;
+            right: 8px;
+            flex-direction: column;
+        }
+        html.sidebar-compact .sidebar-nav {
+            flex: none;
+            flex-direction: column;
+            width: 100%;
+            height: auto;
+        }
+        html.sidebar-compact .nav-btn,
+        html.sidebar-compact .nav-btn.active { flex: none; height: 46px; padding: 0; }
+        html.sidebar-compact .newchat-fab { width: 48px; height: 48px; }
+        html.sidebar-compact .newchat-menu { right: auto; left: 8px; bottom: 228px; align-items: flex-start; }
+        html.sidebar-compact .chat-list { padding-bottom: 232px; }
+
+        /* === SIDEBAR HEADER === */
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 14px 10px 18px;
+        }
+
+        .sidebar-title {
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: var(--text-main);
+        }
+
+        .sidebar-saved-btn {
+            width: 38px;
+            height: 38px;
+            flex-shrink: 0;
+            border: none;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(140, 53, 28, 0.28);
+            transition: transform 160ms var(--ease-out), background 0.15s;
+        }
+        .sidebar-saved-btn .bf-icon { width: 19px; height: 19px; }
+        .sidebar-saved-btn:hover { background: var(--primary-hover); }
+        .sidebar-saved-btn:active { transform: scale(0.95); }
+
+        /* === SIDEBAR DOCK: вкладки навигации + кнопка создания чата === */
 
         .chat-list {
-            padding-bottom: 80px;
+            padding-bottom: 84px;
+        }
+
+        .sidebar-dock {
+            position: absolute;
+            left: 12px;
+            right: 12px;
+            bottom: 12px;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .sidebar-nav {
-            position: absolute;
-            bottom: 8px;
-            left: 8px;
-            right: 8px;
-            height: 60px;
+            flex: 1;
+            min-width: 0;
+            height: 56px;
             display: flex;
-            background: var(--nav-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            /* M3 Expressive: Floating Toolbar — pill shape (corner.full) */
-            border-radius: 9999px;
-            /* Elevation 3 */
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08), 0 6px 18px rgba(0,0,0,0.12);
-            z-index: 10;
-            overflow: hidden;
+            gap: 2px;
+            padding: 5px;
+            background: var(--dock-bg);
+            border-radius: 28px;
+            box-shadow: 0 8px 22px rgba(28, 25, 23, 0.22);
         }
 
         .nav-btn {
-            flex: 1;
+            flex: 1 1 0;
+            min-width: 0;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: 6px;
+            padding: 0 10px;
             border: none;
+            border-radius: 23px;
             background: none;
             font-family: 'Inter', sans-serif;
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--text-sub);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--dock-fg);
             cursor: pointer;
-            padding: 6px;
-            transition: color 0.2s;
+            transition: background 0.2s, color 0.2s, flex-grow 200ms var(--ease-out);
         }
 
-        /* M3 Expressive: nav indicator pill под иконкой */
-        .nav-btn .nav-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 4px 20px;
-            border-radius: 9999px;
-            transition: background 0.2s;
-        }
+        .nav-btn .nav-icon { display: flex; }
 
         .nav-btn .nav-icon svg,
         .nav-btn .nav-icon .bf-icon {
-            width: 22px;
-            height: 22px;
+            width: 20px;
+            height: 20px;
         }
 
+        /* Подпись видна только у активной вкладки; у остальных остаётся для скринридера */
+        .nav-btn:not(.active) .nav-label {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip-path: inset(50%);
+            white-space: nowrap;
+        }
+        .nav-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Активная вкладка шире: в ней помещается подпись */
         .nav-btn.active {
-            color: var(--primary);
+            flex-grow: 2.6;
+            background: var(--dock-active-bg);
+            color: var(--dock-active-fg);
         }
-
-        .nav-btn.active .nav-icon {
-            background: var(--primary-alpha);
-        }
-
-        .nav-btn:hover:not(.active) .nav-icon {
-            background: rgba(0,0,0,0.05);
-        }
+        .nav-btn.active .nav-icon { color: var(--primary); }
+        .nav-btn:hover:not(.active) { color: var(--dock-active-bg); }
 
         .search-container {
-            padding: 16px 16px 12px;
+            display: flex;
+            gap: 8px;
+            padding: 0 14px 8px;
         }
+
+        .search-container .search-wrapper { flex: 1; min-width: 0; }
+
+        .sidebar-collapse-btn {
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+            border: none;
+            border-radius: 12px;
+            background: var(--sidebar-fill);
+            color: var(--text-sub);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .sidebar-collapse-btn .bf-icon { width: 20px; height: 20px; transition: transform 200ms var(--ease-out); }
+        .sidebar-collapse-btn:hover { color: var(--text-main); }
+        .sidebar-collapse-btn[aria-pressed="true"] { background: var(--primary-alpha); color: var(--primary); }
+        .sidebar-collapse-btn[aria-pressed="true"] .bf-icon { transform: scaleX(-1); }
 
         .search-input {
             width: 100%;
-            min-height: 48px;
-            padding: 10px 14px 10px 36px;
-            background: var(--input-bg);
-            border: 1px solid var(--input-border);
-            border-radius: 10px;
+            min-height: 42px;
+            padding: 10px 14px 10px 38px;
+            background: var(--sidebar-fill);
+            border: 1px solid transparent;
+            border-radius: 12px;
             color: var(--text-main);
             font-size: 14px;
             font-family: 'Inter', sans-serif;
@@ -423,6 +541,7 @@
         }
 
         .search-input:focus {
+            background: var(--input-bg);
             border-color: var(--primary);
             box-shadow: 0 0 0 3px var(--input-focus);
         }
@@ -449,7 +568,7 @@
             scrollbar-width: thin;
             scrollbar-color: var(--scrollbar) transparent;
             /* Виртуализация (chat-list.js): фиксированная высота строки, без scroll anchoring */
-            --chat-row-height: 75px;
+            --chat-row-height: 72px;
             overflow-anchor: none;
         }
 
@@ -464,8 +583,7 @@
             align-items: center;
             gap: 12px;
             height: var(--chat-row-height);
-            padding: 12px 16px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            padding: 0 20px;
         }
 
         .chat-skeleton-avatar { width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0; }
@@ -483,24 +601,72 @@
         .chat-item {
             position: absolute;
             top: 0;
-            left: 0;
-            right: 0;
+            left: 8px;
+            right: 8px;
             height: var(--chat-row-height);
             overflow: hidden;
+            isolation: isolate;
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 16px;
+            padding: 0 12px;
+            border-radius: 14px;
             cursor: pointer;
             transition: background 0.15s;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
         }
 
         /* Соседние строки перекрывают внешний контур — рисуем его внутри */
         .chat-item:focus-visible { outline-offset: -2px; }
 
-        .chat-item:hover { background: rgba(0, 0, 0, 0.04); }
-        .chat-item.active { background: rgba(140, 53, 28, 0.08); }
+        .chat-item:hover { background: var(--sidebar-fill); }
+        .chat-item.active { background: var(--primary-alpha); }
+        .chat-item.active::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 20px;
+            bottom: 20px;
+            width: 3px;
+            border-radius: 0 3px 3px 0;
+            background: var(--primary);
+        }
+
+        /* Непрочитанные (как на Android): заливка-карточка, соседние склеиваются в группу со скруглением по краям.
+           Класс положения ставит chat-list.js; высота строки фиксирована (виртуализация), зазоры — отступы карточки. */
+        .chat-item.unread-single,
+        .chat-item.unread-first,
+        .chat-item.unread-middle,
+        .chat-item.unread-last { background: transparent; }
+        .chat-item.unread-single::before,
+        .chat-item.unread-first::before,
+        .chat-item.unread-middle::before,
+        .chat-item.unread-last::before {
+            content: '';
+            position: absolute;
+            inset: 1px 0;
+            z-index: -1;
+            border-radius: 6px;
+            background: var(--unread-row-bg);
+            transition: filter 0.15s;
+        }
+        .chat-item.unread-first::before { top: 4px; border-top-left-radius: 22px; border-top-right-radius: 22px; }
+        .chat-item.unread-last::before { bottom: 4px; border-bottom-left-radius: 22px; border-bottom-right-radius: 22px; }
+        .chat-item.unread-single::before { inset: 4px 0; border-radius: 22px; }
+        .chat-item[class*="unread-"]:hover::before { filter: brightness(0.97); }
+        .chat-item.unread-single .chat-avatar,
+        .chat-item.unread-first .chat-avatar,
+        .chat-item.unread-middle .chat-avatar,
+        .chat-item.unread-last .chat-avatar { transform: scale(1.06); }
+        .chat-item[class*="unread-"] .chat-name { font-weight: 700; color: var(--unread-row-text); }
+        .chat-item[class*="unread-"] .chat-preview,
+        .chat-item[class*="unread-"] .chat-time { color: var(--unread-row-text); }
+        .chat-item[class*="unread-"] .chat-preview { font-weight: 500; }
+
+        /* «Избранное»: иконка вместо собственного аватара */
+        .chat-avatar.saved,
+        .chat-header-avatar.saved { background: var(--primary); color: #fff; }
+        .chat-avatar.saved .bf-icon { width: 46%; height: 46%; }
+        .chat-header-avatar.saved .bf-icon { width: 20px; height: 20px; }
 
         /* Переезд строки при изменении порядка: класс ставит chat-list.js и снимает таймером; у новых строк его нет */
         .chat-item.is-moving { transition: transform 220ms var(--ease-out), background 0.15s; }
@@ -681,21 +847,33 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 16px;
+            padding: 10px 12px;
+            margin: 0 8px;
+            border-radius: 14px;
             cursor: pointer;
             transition: background 0.15s;
         }
 
-        .search-result-item:hover { background: rgba(0, 0, 0, 0.04); }
+        .search-result-item:hover { background: var(--sidebar-fill); }
 
         .search-result-info .user-name { font-size: 15px; font-weight: 600; }
         .search-result-info .user-username { font-size: 13px; color: var(--text-sub); }
 
         .search-section-title {
-            padding: 12px 16px 4px;
-            font-size: 13px;
+            padding: 14px 18px 4px;
+            font-size: 11.5px;
             font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
             color: var(--text-sub);
+        }
+
+        .search-results mark,
+        .newchat-results mark {
+            background: var(--primary-alpha);
+            color: var(--primary);
+            border-radius: 3px;
+            font-weight: 600;
         }
 
         .search-hit .search-result-info { flex: 1; min-width: 0; }
@@ -3207,29 +3385,51 @@
 
         /* === SETTINGS DIALOG (centered) === */
 
-        .settings-overlay {
+        /* Разделы «Настройки» и «Звонки» (BF.pages): открываются на месте чата, колонка по центру как у ленты */
+        .app-page {
             display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 90;
-            background: rgba(0, 0, 0, 0.45);
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            left: calc(var(--sidebar-width) + 6px);
+            z-index: 2;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
+            padding: 12px 20px;
+            transition: left 0.15s ease;
+        }
+        /* Фокус переносится на раздел при открытии (для скринридера); рамка не нужна */
+        .app-page:focus,
+        .app-page:focus-visible { outline: none; }
+        .app-page.visible { display: flex; animation: appPageIn 180ms var(--ease-out); }
+        @keyframes appPageIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
         }
 
-        .settings-overlay.visible { display: flex; }
+        /* Открыт раздел: содержимое чата под ним не видно и не получает фокус */
+        .chat-area.page-open > :not(.app-page) { visibility: hidden; }
 
-        .settings-dialog {
-            background: var(--dialog-bg);
-            border-radius: 20px;
-            width: 480px;
-            max-width: 95vw;
-            max-height: 85vh;
-            overflow: hidden;
+        .page-card {
+            width: 100%;
+            max-width: var(--chat-content-width);
+            flex: 1;
+            min-height: 0;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+            overflow: hidden;
+            background: var(--header-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+            -webkit-backdrop-filter: blur(18px);
+            backdrop-filter: blur(18px);
         }
+
+        /* Закрытие раздела на десктопе — вкладка «Чаты» или выбор чата; кнопка нужна только на мобильном */
+        .app-page .sd-close,
+        .app-page #callHistoryClose { display: none; }
 
         @keyframes fadeScaleIn {
             from { opacity: 0; transform: scale(0.95); }
@@ -4516,13 +4716,11 @@
         /* === NEW CHAT (FAB + меню + диалог) === */
 
         .newchat-fab {
-            position: absolute;
-            right: 14px;
-            bottom: 78px;
-            z-index: 30;
-            width: 52px;
-            height: 52px;
-            border-radius: 16px;
+            position: relative;
+            width: 56px;
+            height: 56px;
+            flex-shrink: 0;
+            border-radius: 50%;
             border: none;
             background: var(--primary);
             color: white;
@@ -4530,30 +4728,54 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-            transition: transform 0.15s, opacity 0.15s;
+            box-shadow: 0 8px 22px rgba(140, 53, 28, 0.38);
+            transition: transform 160ms var(--ease-out), background 0.15s;
         }
 
-        .newchat-fab svg,
-        .newchat-fab .bf-icon { width: 22px; height: 22px; }
-        .newchat-fab:hover { transform: scale(1.05); }
+        .newchat-fab .bf-icon {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            transition: opacity 160ms var(--ease-out), transform 200ms var(--ease-out);
+        }
+        .newchat-fab .newchat-fab-close { opacity: 0; transform: rotate(-90deg); }
+        .newchat-fab.open .newchat-fab-open { opacity: 0; transform: rotate(90deg); }
+        .newchat-fab.open .newchat-fab-close { opacity: 1; transform: none; }
+        .newchat-fab:hover { background: var(--primary-hover); }
+        .newchat-fab:active { transform: scale(0.95); }
+
+        /* Под открытым меню создания список размывается; клик по фону закрывает меню */
+        .newchat-scrim {
+            position: absolute;
+            inset: 0;
+            z-index: 29;
+            border-radius: inherit;
+            background: color-mix(in srgb, var(--sidebar-bg) 50%, transparent);
+            -webkit-backdrop-filter: blur(3px);
+            backdrop-filter: blur(3px);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 160ms var(--ease-out), visibility 0s linear 160ms;
+        }
+        .newchat-scrim.visible {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 200ms var(--ease-out), visibility 0s linear;
+        }
 
         .newchat-menu {
-            display: block;
             position: absolute;
-            right: 14px;
-            bottom: 138px;
+            right: 12px;
+            bottom: 80px;
             z-index: 31;
-            background: var(--dialog-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 14px;
-            padding: 6px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-            min-width: 210px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
             opacity: 0;
             visibility: hidden;
             pointer-events: none;
-            transform: translateY(6px) scale(0.98);
+            transform: translateY(8px);
             transform-origin: bottom right;
             transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms;
         }
@@ -4562,28 +4784,46 @@
             opacity: 1;
             visibility: visible;
             pointer-events: auto;
-            transform: translateY(0) scale(1);
-            transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out), visibility 0s linear;
+            transform: none;
+            transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out), visibility 0s linear;
         }
 
         .newchat-menu button {
             display: flex;
             align-items: center;
             gap: 10px;
-            width: 100%;
-            padding: 10px 12px;
+            height: 44px;
+            padding: 0 18px 0 7px;
             border: none;
-            border-radius: 10px;
-            background: transparent;
+            border-radius: 22px;
+            background: var(--dialog-bg);
             color: var(--text-main);
             font-family: 'Inter', sans-serif;
             font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
             cursor: pointer;
-            text-align: left;
+            box-shadow: 0 0 0 1px var(--card-border), 0 8px 20px rgba(60, 40, 20, 0.14);
+            transition: background 0.15s, color 0.15s;
         }
 
-        .newchat-menu button:hover { background: rgba(0, 0, 0, 0.06); }
-        .newchat-menu button .bf-icon { width: 18px; height: 18px; flex-shrink: 0; }
+        .newchat-menu-icon {
+            width: 30px;
+            height: 30px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            background: var(--primary-alpha);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+        .newchat-menu-icon .bf-icon { width: 16px; height: 16px; }
+        .newchat-menu button:hover,
+        .newchat-menu button:focus-visible { background: var(--primary); color: #fff; }
+        .newchat-menu button:hover .newchat-menu-icon,
+        .newchat-menu button:focus-visible .newchat-menu-icon { background: rgba(255, 255, 255, 0.18); color: #fff; }
 
         .newchat-dialog { max-width: 420px; display: flex; flex-direction: column; }
 
@@ -4591,14 +4831,111 @@
         .newchat-header h3 { margin-bottom: 0; }
 
         .newchat-close {
+            width: 30px;
+            height: 30px;
             border: none;
+            border-radius: 9px;
+            background: var(--sidebar-fill);
+            color: var(--text-sub);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .newchat-close .bf-icon { width: 16px; height: 16px; }
+        .newchat-close:hover { color: var(--text-main); }
+
+        /* Переключатель режима (сообщение / группа / приватный) */
+        .newchat-modes {
+            display: flex;
+            padding: 3px;
+            margin-bottom: 10px;
+            border-radius: 11px;
+            background: var(--sidebar-fill);
+        }
+        .newchat-modes button {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 7px 4px;
+            border: none;
+            border-radius: 8px;
             background: transparent;
             color: var(--text-sub);
-            font-size: 22px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12.5px;
+            font-weight: 500;
             cursor: pointer;
-            line-height: 1;
-            padding: 2px 6px;
+            transition: background 0.15s, color 0.15s;
         }
+        .newchat-modes button .bf-icon { width: 14px; height: 14px; flex-shrink: 0; }
+        .newchat-modes button.active {
+            background: var(--dialog-bg);
+            color: var(--text-main);
+            font-weight: 600;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .newchat-search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            padding: 0 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            background: var(--input-bg);
+            color: var(--text-sub);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .newchat-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--input-focus); }
+        /* Кольцо фокуса рисует обёртка (:focus-within); id перебивает общее правило :focus-visible для полей */
+        #newChatSearch:focus-visible { box-shadow: none; outline: none; }
+        .newchat-search .bf-icon { width: 16px; height: 16px; flex-shrink: 0; }
+        .newchat-search input {
+            flex: 1;
+            min-width: 0;
+            min-height: 42px;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+
+        .newchat-section {
+            padding: 10px 8px 4px;
+            font-size: 11.5px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .newchat-hints {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin-top: 4px;
+            padding-top: 10px;
+            border-top: 1px solid var(--card-border);
+            font-size: 11.5px;
+            color: var(--text-sub);
+        }
+        .newchat-hints kbd {
+            margin-right: 2px;
+            padding: 0 5px;
+            border: 1px solid var(--input-border);
+            border-radius: 5px;
+            background: var(--input-bg);
+            font: inherit;
+            font-size: 11px;
+        }
+        @media (hover: none) { .newchat-hints { display: none !important; } }
 
         .newchat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
         .newchat-chips:empty { display: none; }
@@ -4630,9 +4967,10 @@
             margin-bottom: 8px;
         }
 
-        .newchat-results .search-result-item.selected {
+        .newchat-results .search-result-item { margin: 0; padding: 8px; border-radius: 12px; }
+        .newchat-results .search-result-item.selected,
+        .newchat-results .search-result-item.kb-active {
             background: var(--primary-alpha);
-            border-radius: 10px;
         }
 
         .newchat-empty { padding: 14px; text-align: center; color: var(--text-sub); font-size: 14px; }
@@ -4995,18 +5333,21 @@
                 align-items: flex-end;
             }
 
-            /* Settings dialog full width on mobile */
-            .settings-dialog {
-                width: 100%;
+            /* Разделы на мобильном — во весь экран, как открытый чат */
+            .app-page {
+                left: 0;
+                padding: 0;
+            }
+            .page-card {
                 max-width: 100%;
-                max-height: 92vh;
-                border-bottom-left-radius: 0;
-                border-bottom-right-radius: 0;
-                margin-top: auto;
+                border: none;
+                border-radius: 0;
+                box-shadow: none;
             }
-            .settings-overlay {
-                align-items: flex-end;
-            }
+            .app-page .sd-close,
+            .app-page #callHistoryClose { display: flex; }
+
+            .sidebar-collapse-btn { display: none; }
 
             /* Scroll-to-bottom button position */
             .scroll-to-bottom-btn {
@@ -5530,11 +5871,11 @@
         /* === FOLDER TABS === */
         .folder-tabs {
             display: flex;
-            gap: 6px;
-            padding: 8px 12px;
+            gap: 18px;
+            padding: 0 18px;
             overflow-x: auto;
             overflow-y: hidden;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            border-bottom: 1px solid var(--card-border);
             scrollbar-width: none;
         }
         .folder-tabs::-webkit-scrollbar { display: none; }
@@ -5549,14 +5890,14 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 6px 14px;
-            border-radius: 999px;
-            border: 1px solid var(--card-border);
+            padding: 10px 0 9px;
+            border: none;
+            border-radius: 0;
             background: transparent;
             font-family: 'Inter', sans-serif;
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-main);
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text-sub);
             cursor: pointer;
             white-space: nowrap;
             transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
@@ -5586,18 +5927,22 @@
             vertical-align: -3px;
         }
         .folder-tab:hover {
-            background: var(--primary-alpha);
+            color: var(--text-main);
         }
         .folder-tab.active {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: inset 0 -2.5px 0 var(--primary);
+        }
+        .folder-tab:not(.active) .folder-unread {
+            background: var(--sidebar-fill);
+            color: var(--text-sub);
         }
         .folder-tab.dragging {
             opacity: 0.4;
         }
         .folder-tab.drop-target {
-            box-shadow: inset 0 0 0 2px var(--primary);
+            box-shadow: inset 0 -2.5px 0 var(--primary);
+            color: var(--primary);
         }
 
         /* === PINNED BAR === */
@@ -5746,27 +6091,27 @@
             }
         }
 
-        .confirm-overlay, .settings-overlay, .profile-overlay, .overlay, .forward-modal-overlay,
+        .confirm-overlay, .profile-overlay, .overlay, .forward-modal-overlay,
         .attach-overlay, .ie-overlay, .sd-crop-overlay {
             transition: opacity var(--overlay-exit) var(--ease-out);
         }
-        .confirm-overlay.visible, .settings-overlay.visible, .profile-overlay.visible, .overlay.visible,
+        .confirm-overlay.visible, .profile-overlay.visible, .overlay.visible,
         .forward-modal-overlay.visible, .attach-overlay.visible, .ie-overlay.visible, .sd-crop-overlay.visible {
             opacity: 1;
             transition: opacity var(--overlay-enter) var(--ease-out);
         }
-        .confirm-overlay.is-closing, .settings-overlay.is-closing, .profile-overlay.is-closing, .overlay.is-closing,
+        .confirm-overlay.is-closing, .profile-overlay.is-closing, .overlay.is-closing,
         .forward-modal-overlay.is-closing, .attach-overlay.is-closing, .ie-overlay.is-closing, .sd-crop-overlay.is-closing {
             display: flex;
             opacity: 0;
             pointer-events: none;
         }
 
-        .confirm-dialog, .settings-dialog, .profile-panel, .dialog, .forward-modal, .attach-dialog,
+        .confirm-dialog, .profile-panel, .dialog, .forward-modal, .attach-dialog,
         .ie-dialog, .sd-crop-dialog {
             transition: opacity var(--overlay-panel-exit) var(--ease-out), transform var(--overlay-panel-exit) var(--ease-out);
         }
-        .confirm-overlay.visible > .confirm-dialog, .settings-overlay.visible > .settings-dialog,
+        .confirm-overlay.visible > .confirm-dialog,
         .profile-overlay.visible > .profile-panel, .overlay.visible > .dialog,
         .forward-modal-overlay.visible > .forward-modal, .attach-overlay.visible > .attach-dialog,
         .ie-overlay.visible > .ie-dialog, .sd-crop-overlay.visible > .sd-crop-dialog {
@@ -5774,7 +6119,7 @@
             transform: none;
             transition: opacity var(--overlay-panel-enter) var(--ease-out), transform var(--overlay-panel-enter) var(--ease-out);
         }
-        .confirm-overlay.is-closing > .confirm-dialog, .settings-overlay.is-closing > .settings-dialog,
+        .confirm-overlay.is-closing > .confirm-dialog,
         .profile-overlay.is-closing > .profile-panel, .overlay.is-closing > .dialog,
         .forward-modal-overlay.is-closing > .forward-modal, .attach-overlay.is-closing > .attach-dialog,
         .ie-overlay.is-closing > .ie-dialog, .sd-crop-overlay.is-closing > .sd-crop-dialog {
@@ -5783,11 +6128,11 @@
         }
 
         @starting-style {
-            .confirm-overlay.visible, .settings-overlay.visible, .profile-overlay.visible, .overlay.visible,
+            .confirm-overlay.visible, .profile-overlay.visible, .overlay.visible,
             .forward-modal-overlay.visible, .attach-overlay.visible, .ie-overlay.visible, .sd-crop-overlay.visible {
                 opacity: 0;
             }
-            .confirm-overlay.visible > .confirm-dialog, .settings-overlay.visible > .settings-dialog,
+            .confirm-overlay.visible > .confirm-dialog,
             .profile-overlay.visible > .profile-panel, .overlay.visible > .dialog,
             .forward-modal-overlay.visible > .forward-modal, .attach-overlay.visible > .attach-dialog,
             .ie-overlay.visible > .ie-dialog, .sd-crop-overlay.visible > .sd-crop-dialog {
@@ -5945,11 +6290,7 @@
         }
 
         /* === CALL HISTORY MODAL === */
-        .call-history-dialog {
-            width: 480px;
-            max-width: 95vw;
-            max-height: 85vh;
-        }
+        .call-history-dialog .call-history-more { margin-bottom: 12px; }
         .call-history-header {
             display: flex;
             align-items: center;

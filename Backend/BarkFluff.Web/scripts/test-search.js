@@ -228,15 +228,18 @@ async function main() {
         var h = createHarness({ chats: [{ id: 1, title: 'Alice Cooper' }, { id: 2, title: 'Bob' }, { id: 3 }] });
         h.type('ALI');
         assert.equal(h.results.classList.contains('visible'), true);
-        assert.equal(h.results.children.length, 1, 'only the matching chat, synchronously');
+        assert.equal(h.results.children.length, 2, 'the chats header and only the matching chat, synchronously');
+        assert.equal(h.results.children[0].textContent, 'search.chats');
+        assert.match(h.results.children[1].innerHTML, /<mark>Ali<\/mark>ce Cooper/, 'the match is highlighted');
         assert.deepEqual(h.userSearches, [], 'no request before the debounce fires');
         h.fireDebounce();
         assert.deepEqual(h.userSearches, ['ALI']);
         h.answer(0, [{ id: 10, username: 'alina', firstName: 'Alina', lastName: 'K' }]);
         await settle();
-        assert.equal(h.results.children.length, 2, 'the chat plus the found user');
-        assert.match(h.results.children[1].innerHTML, /@alina/);
-        assert.match(h.results.children[1].innerHTML, /data-badge-user="10"/, 'the found user gets a primary badge slot');
+        assert.equal(h.results.children.length, 4, 'the chat and the found user, each under its header');
+        assert.equal(h.results.children[2].textContent, 'search.people');
+        assert.match(h.results.children[3].innerHTML, /@<mark>ali<\/mark>na/);
+        assert.match(h.results.children[3].innerHTML, /data-badge-user="10"/, 'the found user gets a primary badge slot');
     });
 
     await test('typing again cancels the pending debounce and drops a stale response', async function () {
@@ -250,8 +253,8 @@ async function main() {
         await settle();
         h.answer(0, [{ id: 1, username: 'stale' }]); // запоздалый ответ на «a»
         await settle();
-        assert.equal(h.results.children.length, 1);
-        assert.match(h.results.children[0].innerHTML, /@fresh/);
+        assert.equal(h.results.children.length, 2, 'people header and the fresh user');
+        assert.match(h.results.children[1].innerHTML, /@fresh/);
     });
 
     await test('nothing found shows a message only when chats, users and messages are all empty', async function () {
@@ -269,7 +272,7 @@ async function main() {
     await test('clicking a chat opens it; clicking a user opens the chat with them; both reset the search', async function () {
         var h = createHarness({ chats: [{ id: 5, title: 'Team' }] });
         h.type('team');
-        h.results.children[0].listeners.click();
+        h.results.children[1].listeners.click();
         assert.deepEqual(h.opened, [5]);
         assert.equal(h.input.value, '');
         assert.equal(h.results.classList.contains('visible'), false);
@@ -278,7 +281,7 @@ async function main() {
         h.fireDebounce();
         h.answer(0, [{ id: 77, username: 'tea' }]);
         await settle();
-        h.results.children[1].listeners.click();
+        h.results.children[3].listeners.click();
         await settle();
         assert.deepEqual(h.opened, [5, 'chat-of-77']);
     });
@@ -299,11 +302,11 @@ async function main() {
             profilePicturePreview: 'https://example.test/avatar.png'
         }]);
         await settle();
-        var result = h.results.children[0].innerHTML;
+        var result = h.results.children[1].innerHTML;
         assert.match(result, /accountRestriction\.userBlocked/);
         assert.doesNotMatch(result, /private-name|avatar\.png/);
         assert.deepEqual(h.badgeSlots, [], 'restricted users get no badge');
-        h.results.children[0].listeners.click();
+        h.results.children[1].listeners.click();
         await settle();
         assert.deepEqual(h.toastCalls, [['accountRestriction.userUnavailable', true]]);
     });
@@ -339,7 +342,7 @@ async function main() {
         assert.equal(h.results.children[0].textContent, 'search.messages');
         var item = h.results.children[1].innerHTML;
         assert.match(item, /team\.png/, 'picture comes from the loaded chat, not the file id');
-        assert.match(item, /Bob: release notes/);
+        assert.match(item, /Bob: <mark>release<\/mark> notes/);
         h.results.children[1].listeners.click();
         assert.deepEqual(h.opened, ['7']);
         assert.deepEqual(h.focused, [900]);
@@ -377,8 +380,8 @@ async function main() {
         await settle();
         h.answerMessages(0, [hit()]); // запоздалый ответ на «re»
         await settle();
-        assert.equal(h.results.children.length, 1, 'only the fresh user; no stale hit, no error');
-        assert.match(h.results.children[0].innerHTML, /@rel/);
+        assert.equal(h.results.children.length, 2, 'only the fresh user under its header; no stale hit, no error');
+        assert.match(h.results.children[1].innerHTML, /@<mark>rel<\/mark>/);
     });
 
     // Элементы фильтров: [0] — строка чипов, [1] — панель.

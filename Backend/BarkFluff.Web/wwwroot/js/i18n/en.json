@@ -571,6 +571,8 @@
   "search.period.from": "From",
   "search.period.through": "To",
   "search.retry": "Retry",
+  "search.chats": "Chats",
+  "search.people": "People",
   "sessions.device": "Device",
   "sessions.deviceName": "Device name",
   "sessions.empty": "No active sessions",
@@ -628,6 +630,8 @@
   "settings.title": "Settings",
   "settings.twofa": "Two-factor authentication",
   "sidebar.search.placeholder": "Search",
+  "sidebar.collapse": "Collapse chat list",
+  "sidebar.expand": "Expand chat list",
   "status.online": "online",
   "status.typing": "typing…",
   "status.typing.many": "{names} are typing…",
@@ -749,5 +753,14 @@
   "loginFlow.otherMethod": "Another sign-in method",
   "loginFlow.retry": "Try again",
   "loginFlow.identifierRequired": "Enter your username or email",
-  "security.prerequisite.onlyFactorDisable": "This is the only factor protecting the current sign-in method. Change and save the method before disabling this factor."
+  "security.prerequisite.onlyFactorDisable": "This is the only factor protecting the current sign-in method. Change and save the method before disabling this factor.",
+  "savedMessages.title": "Saved Messages",
+  "newchat.tab.message": "Message",
+  "newchat.tab.group": "Group",
+  "newchat.tab.private": "Private",
+  "newchat.search.placeholder": "Search users",
+  "newchat.recent": "Recent",
+  "newchat.hint.select": "select",
+  "newchat.hint.open": "open",
+  "newchat.hint.close": "close"
 }
