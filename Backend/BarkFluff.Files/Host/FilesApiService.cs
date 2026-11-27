@@ -1,10 +1,14 @@
+using BarkFluff.Files.Features.AddMyStickerPack;
 using BarkFluff.Files.Features.CheckFileHash;
 using BarkFluff.Files.Features.GetStickerPack;
 using BarkFluff.Files.Features.GetStickerPackByFile;
+using BarkFluff.Files.Features.GetStickerPackByName;
 using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUploadUrl;
 using BarkFluff.Files.Features.GetUserStorageInfo;
+using BarkFluff.Files.Features.ListMyStickerPacks;
 using BarkFluff.Files.Features.ListStickerPacks;
+using BarkFluff.Files.Features.RemoveMyStickerPack;
 using BarkFluff.Proto.Files;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Shared.Exceptions.Files;
@@ -119,22 +123,67 @@ public class FilesApiService : FilesApi.FilesApiBase
     {
         var command = new GetStickerPackCommand
         {
-            PackId = Guid.Parse(request.PackId)
+            PackId = ParsePackId(request.PackId),
+            UserId = _userContext.UserId
         };
 
-        return _mediator.Send(command);
+        return _mediator.Send(command, context.CancellationToken);
     }
 
     public override Task<GetStickerPackResponse> GetStickerPackByFile(GetStickerPackByFileRequest request, ServerCallContext context)
     {
         if (!Guid.TryParse(request.FileId, out var fileId))
-            throw new Exception("Стикер не найден");
+            throw new StickerPackNotFoundException();
 
         var command = new GetStickerPackByFileCommand
         {
-            FileId = fileId
+            FileId = fileId,
+            UserId = _userContext.UserId
         };
 
-        return _mediator.Send(command);
+        return _mediator.Send(command, context.CancellationToken);
     }
+
+    public override Task<GetStickerPackResponse> GetStickerPackByName(GetStickerPackByNameRequest request, ServerCallContext context)
+    {
+        var command = new GetStickerPackByNameCommand
+        {
+            ShortName = request.ShortName,
+            UserId = _userContext.UserId
+        };
+
+        return _mediator.Send(command, context.CancellationToken);
+    }
+
+    // --- Наборы стикеров пользователя ---
+
+    public override Task<ListMyStickerPacksResponse> ListMyStickerPacks(ListMyStickerPacksRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new ListMyStickerPacksCommand { UserId = _userContext.UserId }, context.CancellationToken);
+    }
+
+    public override Task<AddMyStickerPackResponse> AddMyStickerPack(AddMyStickerPackRequest request, ServerCallContext context)
+    {
+        var command = new AddMyStickerPackCommand
+        {
+            UserId = _userContext.UserId,
+            PackId = ParsePackId(request.PackId)
+        };
+
+        return _mediator.Send(command, context.CancellationToken);
+    }
+
+    public override Task<RemoveMyStickerPackResponse> RemoveMyStickerPack(RemoveMyStickerPackRequest request, ServerCallContext context)
+    {
+        var command = new RemoveMyStickerPackCommand
+        {
+            UserId = _userContext.UserId,
+            PackId = ParsePackId(request.PackId)
+        };
+
+        return _mediator.Send(command, context.CancellationToken);
+    }
+
+    private static Guid ParsePackId(string packId) =>
+        Guid.TryParse(packId, out var id) ? id : throw new StickerPackNotFoundException();
 }

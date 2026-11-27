@@ -1,5 +1,6 @@
 using BarkFluff.Files.Features.GetStickerPack;
 using BarkFluff.Files.Features.GetStickerPackByFile;
+using BarkFluff.Shared.Exceptions.Files;
 
 using MediatR;
 
@@ -33,11 +34,11 @@ public class GetStickerPackByFileCommandHandlerTests : IAsyncLifetime
 
         var expected = new BarkFluff.Proto.Files.GetStickerPackResponse();
         _mediator
-            .Setup(m => m.Send(It.Is<GetStickerPackCommand>(c => c.PackId == pack.Id), It.IsAny<CancellationToken>()))
+            .Setup(m => m.Send(It.Is<GetStickerPackCommand>(c => c.PackId == pack.Id && c.UserId == 5), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
         var result = await _handler.Handle(
-            new GetStickerPackByFileCommand { FileId = fileId }, CancellationToken.None);
+            new GetStickerPackByFileCommand { FileId = fileId, UserId = 5 }, CancellationToken.None);
 
         result.Should().BeSameAs(expected);
     }
@@ -48,6 +49,6 @@ public class GetStickerPackByFileCommandHandlerTests : IAsyncLifetime
         var act = () => _handler.Handle(
             new GetStickerPackByFileCommand { FileId = Guid.NewGuid() }, CancellationToken.None);
 
-        await act.Should().ThrowAsync<Exception>().WithMessage("Стикер не найден");
+        await act.Should().ThrowAsync<StickerPackNotFoundException>();
     }
 }

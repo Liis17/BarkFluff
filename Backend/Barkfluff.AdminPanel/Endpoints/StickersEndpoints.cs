@@ -7,6 +7,8 @@ using BarkFluff.Proto.Shared;
 
 using Google.Protobuf;
 
+using Grpc.Core;
+
 namespace Barkfluff.AdminPanel.Endpoints;
 
 public static class StickersEndpoints
@@ -76,6 +78,7 @@ public static class StickersEndpoints
                 {
                     id = p.Id,
                     name = p.Name,
+                    shortName = p.ShortName,
                     description = p.Description,
                     stickerCount = p.StickerCount,
                     coverUrl,
@@ -102,12 +105,21 @@ public static class StickersEndpoints
                 return Results.BadRequest("Name is required");
 
             // Создаём пак
-            var createResponse = await filesClient.CreateStickerPackAsync(new CreateStickerPackRequest
+            CreateStickerPackResponse createResponse;
+            try
             {
-                CreatorUserId = 0,
-                Name = name,
-                Description = form["description"].FirstOrDefault() ?? string.Empty
-            });
+                createResponse = await filesClient.CreateStickerPackAsync(new CreateStickerPackRequest
+                {
+                    CreatorUserId = 0,
+                    Name = name,
+                    Description = form["description"].FirstOrDefault() ?? string.Empty,
+                    ShortName = form["shortName"].FirstOrDefault() ?? string.Empty
+                });
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.FailedPrecondition)
+            {
+                return Results.BadRequest(ex.Status.Detail);
+            }
 
             var pack = createResponse.Pack;
 
@@ -144,6 +156,7 @@ public static class StickersEndpoints
             {
                 id = pack.Id,
                 name = pack.Name,
+                shortName = pack.ShortName,
                 description = pack.Description,
                 stickerCount = pack.StickerCount
             });
@@ -178,6 +191,7 @@ public static class StickersEndpoints
             {
                 id = pack.Id,
                 name = pack.Name,
+                shortName = pack.ShortName,
                 description = pack.Description,
                 coverStickerId = pack.CoverStickerId,
                 coverUrl,
@@ -197,7 +211,7 @@ public static class StickersEndpoints
         })
         .WithName("GetStickerPack");
 
-        // PUT /api/stickers/packs/{id} — обновить пак (name, description, coverStickerId)
+        // PUT /api/stickers/packs/{id} — обновить пак (name, description, coverStickerId, shortName; пустой shortName не меняет имя)
         group.MapPut("/packs/{id}", async (
             string id,
             HttpRequest request,
@@ -207,18 +221,28 @@ public static class StickersEndpoints
             if (body == null)
                 return Results.BadRequest("Invalid request body");
 
-            var response = await filesClient.UpdateStickerPackAsync(new UpdateStickerPackRequest
+            UpdateStickerPackResponse response;
+            try
             {
-                PackId = id,
-                Name = body.Name ?? string.Empty,
-                Description = body.Description ?? string.Empty,
-                CoverStickerId = body.CoverStickerId ?? string.Empty
-            });
+                response = await filesClient.UpdateStickerPackAsync(new UpdateStickerPackRequest
+                {
+                    PackId = id,
+                    Name = body.Name ?? string.Empty,
+                    Description = body.Description ?? string.Empty,
+                    CoverStickerId = body.CoverStickerId ?? string.Empty,
+                    ShortName = body.ShortName ?? string.Empty
+                });
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.FailedPrecondition)
+            {
+                return Results.BadRequest(ex.Status.Detail);
+            }
 
             return Results.Ok(new
             {
                 id = response.Pack.Id,
                 name = response.Pack.Name,
+                shortName = response.Pack.ShortName,
                 description = response.Pack.Description,
                 coverStickerId = response.Pack.CoverStickerId,
                 stickerCount = response.Pack.StickerCount
@@ -368,6 +392,6 @@ public static class StickersEndpoints
         .WithName("RemoveSticker");
     }
 
-    private sealed record UpdatePackBody(string? Name, string? Description, string? CoverStickerId);
+    private sealed record UpdatePackBody(string? Name, string? Description, string? CoverStickerId, string? ShortName);
     private sealed record UpdateStickerBody(string? Emoji);
 }

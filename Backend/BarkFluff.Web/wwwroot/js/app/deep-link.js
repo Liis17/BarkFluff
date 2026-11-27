@@ -1,7 +1,8 @@
 /**
  * Opening a chat from outside the messenger: the bf_open_chat cookie (public user page), the ?chat= URL
  * parameter and push notifications. A link to a chat that is not in the loaded list first reloads the list once.
- * Requires: BF.api
+ * The ?stickers=<short name> parameter (redirect from /addstickers/<short name>) opens the sticker pack window.
+ * Requires: BF.api; optional BF.stickerPack
  * Exposes: BF.deepLink
  */
 (function () {
@@ -84,14 +85,18 @@
     }
 
     // ?chat=<id> (клик по push, переход по ссылке): параметр снимается из адреса, чат открывается.
+    // ?stickers=<имя> (ссылка /addstickers/<имя>): параметр снимается, открывается окно набора стикеров.
     function openFromUrl() {
         var url = new URL(window.location.href);
         var chatId = url.searchParams.get('chat');
-        if (!chatId) return;
+        var stickerPackName = url.searchParams.get('stickers');
+        if (!chatId && !stickerPackName) return;
         url.searchParams.delete('chat');
         url.searchParams.delete('call');
+        url.searchParams.delete('stickers');
         window.history.replaceState({}, '', url.pathname + url.search + url.hash);
-        openFromPush(chatId);
+        if (chatId) openFromPush(chatId);
+        if (stickerPackName && BF.stickerPack) BF.stickerPack.openByName(stickerPackName);
     }
 
     function openPending() {

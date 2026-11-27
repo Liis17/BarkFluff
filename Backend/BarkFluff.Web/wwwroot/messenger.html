@@ -184,13 +184,20 @@
                         <button class="rpb-close" id="epbClose" data-i18n-title="composer.edit.cancel" title="Отменить редактирование" data-i18n-aria-label="composer.edit.cancel" aria-label="Отменить редактирование"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
                     </div>
                     <div class="input-bar-inner">
-                        <div class="sticker-picker" id="stickerPicker">
-                            <div class="sticker-search">
-                                <span class="bf-icon" data-bf-icon="search" aria-hidden="true"></span>
-                                <input type="text" id="stickerSearch" data-i18n-placeholder="sticker.searchPlaceholder" placeholder="Поиск по emoji…" maxlength="24" autocomplete="off">
+                        <div class="sticker-picker" id="stickerPicker" data-tabs="bottom">
+                            <div class="sticker-picker-main">
+                                <div class="sticker-search">
+                                    <span class="bf-icon" data-bf-icon="search" aria-hidden="true"></span>
+                                    <input type="text" id="stickerSearch" data-i18n-placeholder="sticker.searchPlaceholder" placeholder="Поиск по emoji…" maxlength="24" autocomplete="off" data-i18n-aria-label="sticker.searchPlaceholder" aria-label="Поиск по emoji…">
+                                </div>
+                                <form class="sticker-link-form" id="stickerLinkForm" hidden>
+                                    <span class="bf-icon" data-bf-icon="link" aria-hidden="true"></span>
+                                    <input type="text" id="stickerLinkInput" data-i18n-placeholder="sticker.linkPlaceholder" placeholder="Ссылка или короткое имя набора" maxlength="256" autocomplete="off" data-i18n-aria-label="sticker.linkPlaceholder" aria-label="Ссылка или короткое имя набора">
+                                    <button type="submit" class="sticker-link-submit" data-i18n="sticker.open">Открыть</button>
+                                </form>
+                                <div class="sticker-feed" id="stickerFeed"></div>
                             </div>
-                            <div class="sticker-packs-bar" id="stickerPacksBar"></div>
-                            <div class="sticker-grid" id="stickerGrid"></div>
+                            <div class="sticker-packs-bar" id="stickerPacksBar" role="tablist" data-i18n-aria-label="composer.stickers" aria-label="Стикеры"></div>
                         </div>
                         <button class="btn-attach" id="attachBtn" data-i18n-title="composer.attach" data-i18n-aria-label="composer.attach" title="Прикрепить файл" aria-label="Прикрепить файл">
                             <span class="bf-icon" data-bf-icon="attach-file" aria-hidden="true"></span>
@@ -544,14 +551,25 @@
 
     <!-- Sticker pack overlay -->
     <div class="profile-overlay" id="stickerPackOverlay">
-        <div class="profile-panel stickerpack-panel">
-            <button class="profile-close" id="spClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
-            <div class="profile-header">
-                <div class="profile-avatar sp-cover" id="spCover"></div>
-                <div class="profile-name" id="spName"></div>
-                <div class="profile-status-line" id="spDesc"></div>
+        <div class="profile-panel stickerpack-panel" role="dialog" aria-modal="true" aria-labelledby="spName">
+            <div class="sp-hero">
+                <div class="sp-hero-bg" id="spHeroBg" aria-hidden="true"></div>
+                <button class="sp-hero-btn sp-close" id="spClose" data-i18n-aria-label="common.close" aria-label="Закрыть"><span class="bf-icon" data-bf-icon="close" aria-hidden="true"></span></button>
+                <button class="sp-hero-btn sp-more" id="spMore" aria-haspopup="menu" aria-expanded="false" data-i18n-aria-label="sticker.packMenu" aria-label="Действия с набором"><span class="bf-icon" data-bf-icon="more" aria-hidden="true"></span></button>
+                <div class="sp-menu" id="spMenu" role="menu" hidden>
+                    <button type="button" role="menuitem" id="spCopyLink"><span class="bf-icon" data-bf-icon="link" aria-hidden="true"></span><span data-i18n="sticker.copyLink">Скопировать ссылку</span></button>
+                    <button type="button" role="menuitem" class="danger" id="spRemove"><span class="bf-icon" data-bf-icon="delete" aria-hidden="true"></span><span data-i18n="sticker.removePack">Удалить набор</span></button>
+                </div>
+            </div>
+            <div class="sp-head">
+                <div class="sp-cover" id="spCover"></div>
+                <div class="sp-name" id="spName"></div>
+                <div class="sp-desc" id="spDesc"></div>
             </div>
             <div class="sp-grid" id="spGrid"></div>
+            <div class="sp-footer" id="spFooter" hidden>
+                <button type="button" class="sp-add-btn" id="spAdd" data-i18n="sticker.addPack">Добавить набор</button>
+            </div>
         </div>
     </div>
 

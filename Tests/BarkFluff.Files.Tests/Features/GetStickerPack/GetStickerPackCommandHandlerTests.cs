@@ -1,5 +1,6 @@
 using BarkFluff.Files.Features.GetStickerPack;
 using BarkFluff.GrpcServer.Settings;
+using BarkFluff.Shared.Exceptions.Files;
 
 namespace BarkFluff.Files.Tests.Features.GetStickerPack;
 
@@ -15,6 +16,7 @@ public class GetStickerPackCommandHandlerTests : IAsyncLifetime
 
         _handler = new GetStickerPackCommandHandler(
             _helper.StickerPacksStorage,
+            _helper.UserStickerPacksStorage,
             config.Object,
             new RunSettings { Http1Port = 7005 });
 
@@ -44,6 +46,19 @@ public class GetStickerPackCommandHandlerTests : IAsyncLifetime
         var act = () => _handler.Handle(
             new GetStickerPackCommand { PackId = Guid.NewGuid() }, CancellationToken.None);
 
-        await act.Should().ThrowAsync<Exception>().WithMessage("Стикерпак не найден");
+        await act.Should().ThrowAsync<StickerPackNotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_PackAddedByUser_IsAddedTrue()
+    {
+        var pack = await _helper.SeedStickerPack();
+        await _helper.SeedUserStickerPack(userId: 7, pack.Id);
+
+        var added = await _handler.Handle(new GetStickerPackCommand { PackId = pack.Id, UserId = 7 }, CancellationToken.None);
+        var other = await _handler.Handle(new GetStickerPackCommand { PackId = pack.Id, UserId = 8 }, CancellationToken.None);
+
+        added.IsAdded.Should().BeTrue();
+        other.IsAdded.Should().BeFalse();
     }
 }

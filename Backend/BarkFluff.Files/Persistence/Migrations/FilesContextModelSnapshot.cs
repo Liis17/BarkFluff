@@ -18,7 +18,7 @@ namespace BarkFluff.Files.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -121,9 +121,16 @@ namespace BarkFluff.Files.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ShortName")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatorUserId");
+
+                    b.HasIndex("ShortName")
+                        .IsUnique();
 
                     b.ToTable("StickerPacks");
                 });
@@ -261,10 +268,39 @@ namespace BarkFluff.Files.Persistence.Migrations
                     b.ToTable("UploadOperations");
                 });
 
+            modelBuilder.Entity("BarkFluff.Files.Domain.UserStickerPack", b =>
+                {
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("StickerPackId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "StickerPackId");
+
+                    b.HasIndex("StickerPackId");
+
+                    b.ToTable("UserStickerPacks");
+                });
+
             modelBuilder.Entity("BarkFluff.Files.Domain.Sticker", b =>
                 {
                     b.HasOne("BarkFluff.Files.Domain.StickerPack", "StickerPack")
                         .WithMany("Stickers")
+                        .HasForeignKey("StickerPackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StickerPack");
+                });
+
+            modelBuilder.Entity("BarkFluff.Files.Domain.UserStickerPack", b =>
+                {
+                    b.HasOne("BarkFluff.Files.Domain.StickerPack", "StickerPack")
+                        .WithMany()
                         .HasForeignKey("StickerPackId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

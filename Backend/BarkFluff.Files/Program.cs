@@ -58,6 +58,7 @@ public class Program
         builder.Services.AddScoped<BadgeImagesStorage>();
         builder.Services.AddScoped<StickerPacksStorage>();
         builder.Services.AddScoped<StickersStorage>();
+        builder.Services.AddScoped<UserStickerPacksStorage>();
 
         // Стриминг файла ноде-партнёру (этап 3.2) — не через MediatR: результат поток, не сообщение.
         builder.Services.AddScoped<Features.FetchFileStream.FetchFileStreamQueryHandler>();

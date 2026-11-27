@@ -1,7 +1,9 @@
 using BarkFluff.Files.Domain;
+using BarkFluff.Files.Helpers;
 using BarkFluff.Files.Mapping;
 using BarkFluff.Files.Persistence;
 using BarkFluff.Proto.Files;
+using BarkFluff.Shared.Exceptions.Files;
 
 using MediatR;
 
@@ -20,9 +22,20 @@ public class CreateStickerPackCommandHandler : IRequestHandler<CreateStickerPack
 
     public async Task<CreateStickerPackResponse> Handle(CreateStickerPackCommand request, CancellationToken cancellationToken)
     {
+        var packId = Guid.NewGuid();
+        var shortName = string.IsNullOrWhiteSpace(request.ShortName)
+            ? StickerPackShortName.Generate(packId)
+            : StickerPackShortName.Normalize(request.ShortName);
+
+        if (!StickerPackShortName.IsValid(shortName))
+            throw new StickerPackShortNameNotValidException();
+        if (await _stickerPacksStorage.IsShortNameTakenAsync(shortName, cancellationToken: cancellationToken))
+            throw new StickerPackShortNameTakenException();
+
         var pack = new StickerPack
         {
-            Id = Guid.NewGuid(),
+            Id = packId,
+            ShortName = shortName,
             CreatorUserId = request.CreatorUserId,
             Name = request.Name,
             Description = request.Description,

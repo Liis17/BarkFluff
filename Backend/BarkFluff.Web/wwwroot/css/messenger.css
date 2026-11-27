@@ -2539,12 +2539,124 @@
 
         /* === STICKER PACK OVERLAY === */
 
-        .sp-cover {
-            width: 72px;
-            height: 72px;
-            border-radius: 16px;
+        /* Окно набора стикеров: размытая обложка в шапке, кнопка «Добавить» внизу */
+        .stickerpack-panel {
+            width: 440px;
             overflow: hidden;
+        }
+
+        .sp-hero {
+            position: relative;
+            height: 104px;
             flex-shrink: 0;
+        }
+
+        .sp-hero-bg {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            border-radius: 24px 24px 0 0;
+            background: var(--profile-info-bg);
+        }
+
+        .sp-hero-bg img {
+            position: absolute;
+            inset: -24px;
+            width: calc(100% + 48px);
+            height: calc(100% + 48px);
+            object-fit: cover;
+            filter: blur(22px) saturate(1.3);
+            opacity: 0.7;
+        }
+
+        .sp-hero-btn {
+            position: absolute;
+            top: 12px;
+            width: 34px;
+            height: 34px;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.72);
+            color: #292524;
+            cursor: pointer;
+            z-index: 2;
+            transition: background 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+        }
+
+        .sp-hero-btn .bf-icon { width: 18px; height: 18px; }
+        .sp-hero-btn:hover { background: rgba(255, 255, 255, 0.92); }
+        .sp-hero-btn:active { transform: scale(0.96); }
+        .sp-close { left: 12px; }
+        .sp-more { right: 12px; }
+        .sp-more[hidden] { display: none; }
+
+        .sp-menu {
+            position: absolute;
+            top: 52px;
+            right: 12px;
+            z-index: 3;
+            min-width: 210px;
+            padding: 5px;
+            border-radius: 14px;
+            background: var(--dialog-bg);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+            transform-origin: top right;
+            animation: sp-menu-in 0.16s var(--ease-out);
+        }
+
+        .sp-menu[hidden] { display: none; }
+
+        @keyframes sp-menu-in {
+            from { opacity: 0; transform: scale(0.95); }
+        }
+
+        .sp-menu button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 9px 10px;
+            border: none;
+            border-radius: 9px;
+            background: none;
+            color: var(--text-main);
+            font: inherit;
+            font-size: 14px;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .sp-menu button[hidden] { display: none; }
+        .sp-menu button .bf-icon { width: 18px; height: 18px; color: var(--text-sub); }
+        .sp-menu button:hover, .sp-menu button:focus-visible { background: var(--primary-alpha); outline: none; }
+        .sp-menu button.danger, .sp-menu button.danger .bf-icon { color: var(--error); }
+
+        .sp-head {
+            position: relative;
+            margin-top: -40px;
+            padding: 0 24px 4px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .sp-cover {
+            width: 76px;
+            height: 76px;
+            margin: 0 auto;
+            border-radius: 20px;
+            overflow: hidden;
+            background: var(--profile-info-bg);
+            box-shadow: 0 0 0 4px var(--profile-bg), 0 6px 18px rgba(0, 0, 0, 0.18);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--text-sub);
         }
 
         .sp-cover img {
@@ -2553,14 +2665,30 @@
             object-fit: cover;
         }
 
+        .sp-name {
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+            overflow-wrap: anywhere;
+        }
+
+        .sp-desc {
+            margin-top: 3px;
+            font-size: 13px;
+            line-height: 1.4;
+            color: var(--text-sub);
+            overflow-wrap: anywhere;
+        }
+
         .sp-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 4px;
             overflow-y: auto;
             flex: 1;
-            margin-top: 12px;
-            padding: 2px;
+            min-height: 0;
+            padding: 12px 14px 14px;
             scrollbar-width: thin;
             scrollbar-color: var(--scrollbar) transparent;
         }
@@ -2584,6 +2712,37 @@
             text-align: center;
             color: var(--text-sub);
             font-size: 14px;
+        }
+
+        .sp-footer {
+            padding: 10px 16px 16px;
+            border-top: 1px solid var(--card-border);
+            flex-shrink: 0;
+        }
+
+        .sp-footer[hidden] { display: none; }
+
+        .sp-add-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 14px;
+            background: var(--primary);
+            color: #fff;
+            font: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+        }
+
+        .sp-add-btn:hover { background: var(--primary-hover); }
+        .sp-add-btn:active { transform: scale(0.98); }
+        .sp-add-btn:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .sp-menu { animation: none; }
+            .sp-hero-btn, .sp-add-btn { transition: none; }
         }
 
         .profile-bio {
@@ -4748,6 +4907,7 @@
         .btn-sticker.active { color: var(--primary); }
 
         /* === STICKER PICKER === */
+        /* Лента: «Недавние», затем добавленные наборы разделами. Вкладки снизу или слева (data-tabs). */
 
         .sticker-picker {
             display: none;
@@ -4755,7 +4915,7 @@
             bottom: 100%;
             left: 0;
             right: 0;
-            height: 320px;
+            height: 340px;
             background: var(--sidebar-bg);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -4769,25 +4929,45 @@
         }
 
         .sticker-picker.visible { display: flex; }
+        .sticker-picker[data-tabs="side"] { flex-direction: row; }
 
-        .sticker-search {
+        .sticker-picker-main {
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sticker-search,
+        .sticker-link-form {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin: 10px 12px 2px;
+            margin: 10px 12px 4px;
             padding: 7px 10px;
             border-radius: 12px;
             background: rgba(0, 0, 0, 0.05);
             flex-shrink: 0;
+            transition: box-shadow 0.15s var(--ease-out);
         }
 
-        .sticker-search .bf-icon {
+        .sticker-link-form { margin-top: 2px; }
+        .sticker-link-form[hidden] { display: none; }
+
+        .sticker-search:focus-within,
+        .sticker-link-form:focus-within { box-shadow: 0 0 0 3px var(--input-focus); }
+
+        .sticker-search .bf-icon,
+        .sticker-link-form .bf-icon {
             width: 15px;
             height: 15px;
             color: var(--text-sub);
+            flex-shrink: 0;
         }
 
-        .sticker-search input {
+        .sticker-search input,
+        .sticker-link-form input {
             flex: 1;
             min-width: 0;
             border: none;
@@ -4799,42 +4979,141 @@
             padding: 0;
         }
 
+        /* Кольцо фокуса рисует обёртка (:focus-within) — без двойной рамки у самого поля */
+        .sticker-search input:focus-visible,
+        .sticker-link-form input:focus-visible { box-shadow: none; }
+
+        .sticker-link-submit {
+            border: none;
+            border-radius: 8px;
+            padding: 4px 10px;
+            background: var(--primary);
+            color: #fff;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .sticker-feed {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 0 10px 10px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--scrollbar) transparent;
+        }
+
+        .sticker-feed::-webkit-scrollbar { width: 4px; }
+        .sticker-feed::-webkit-scrollbar-track { background: transparent; }
+        .sticker-feed::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 2px; }
+
+        .sticker-section-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 10px 4px 4px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .sticker-section-title span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sticker-section-open {
+            border: none;
+            background: none;
+            padding: 2px 4px;
+            border-radius: 6px;
+            color: var(--primary);
+            font: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .sticker-section-open:hover { background: var(--primary-alpha); }
+
+        .sticker-section-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+            gap: 2px;
+        }
+
+        .sticker-section-grid img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: contain;
+            cursor: pointer;
+            border-radius: 10px;
+            padding: 3px;
+            transition: background 0.15s;
+        }
+
+        .sticker-section-grid img:hover { background: rgba(0, 0, 0, 0.06); }
+
         .sticker-packs-bar {
             display: flex;
             gap: 6px;
             padding: 8px 12px;
-            border-bottom: 1px solid var(--card-border);
+            border-top: 1px solid var(--card-border);
             overflow-x: auto;
             scrollbar-width: none;
             flex-shrink: 0;
         }
 
+        .sticker-picker[data-tabs="side"] .sticker-packs-bar {
+            order: -1;
+            flex-direction: column;
+            padding: 10px 8px;
+            border-top: none;
+            border-right: 1px solid var(--card-border);
+            background: rgba(0, 0, 0, 0.02);
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
         .sticker-packs-bar::-webkit-scrollbar { display: none; }
 
         .sticker-pack-tab {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            border: 2px solid transparent;
+            width: 38px;
+            height: 38px;
+            padding: 3px;
+            border-radius: 11px;
+            border: none;
             cursor: pointer;
             overflow: hidden;
             flex-shrink: 0;
-            background: rgba(0, 0, 0, 0.05);
+            background: transparent;
             display: flex;
             align-items: center;
             justify-content: center;
+            font: inherit;
             font-size: 14px;
             font-weight: 600;
             color: var(--text-sub);
-            transition: border-color 0.15s;
+            transition: background 0.15s, box-shadow 0.15s;
         }
 
-        .sticker-pack-tab.active { border-color: var(--primary); }
+        .sticker-pack-tab:hover { background: rgba(0, 0, 0, 0.05); }
+        .sticker-pack-tab.active { background: var(--primary-alpha); box-shadow: inset 0 0 0 1.5px var(--primary); }
 
         .sticker-pack-tab img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            border-radius: 8px;
         }
 
         .sticker-pack-tab .bf-icon {
@@ -4845,6 +5124,16 @@
 
         .sticker-pack-tab.active .bf-icon { color: var(--primary); }
 
+        .sticker-pack-tab.add {
+            margin-left: auto;
+            box-shadow: inset 0 0 0 1.5px var(--input-border);
+        }
+
+        .sticker-picker[data-tabs="side"] .sticker-pack-tab.add {
+            margin-left: 0;
+            margin-top: auto;
+        }
+
         .sticker-pack-empty {
             padding: 24px;
             text-align: center;
@@ -4852,32 +5141,33 @@
             font-size: 14px;
         }
 
-        .sticker-grid {
-            flex: 1;
-            overflow-y: auto;
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 2px;
-            padding: 8px 12px;
-            scrollbar-width: thin;
-            scrollbar-color: var(--scrollbar) transparent;
+        .sticker-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            max-width: 320px;
+            margin: 0 auto;
+            padding: 36px 16px;
+            text-align: center;
         }
 
-        .sticker-grid::-webkit-scrollbar { width: 4px; }
-        .sticker-grid::-webkit-scrollbar-track { background: transparent; }
-        .sticker-grid::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 2px; }
+        .sticker-empty-state .bf-icon { width: 40px; height: 40px; color: var(--text-sub); }
+        .sticker-empty-state strong { font-size: 15px; color: var(--text-main); }
+        .sticker-empty-state p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text-sub); }
 
-        .sticker-grid img {
-            width: 100%;
-            aspect-ratio: 1;
-            object-fit: contain;
+        .sticker-empty-state button {
+            margin-top: 8px;
+            border: none;
+            border-radius: 12px;
+            padding: 9px 16px;
+            background: var(--primary-alpha);
+            color: var(--primary);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 600;
             cursor: pointer;
-            border-radius: 10px;
-            padding: 2px;
-            transition: background 0.15s;
         }
-
-        .sticker-grid img:hover { background: rgba(0, 0, 0, 0.06); }
 
         /* === MOBILE RESPONSIVE === */
 
@@ -4971,11 +5261,6 @@
                 max-height: 92vh;
                 border-radius: 20px 20px 0 0;
                 margin-top: auto;
-            }
-
-            /* Sticker grid: fewer columns on mobile */
-            .sticker-grid {
-                grid-template-columns: repeat(6, 1fr);
             }
 
             /* Sticker pack overlay grid: fewer columns on mobile */

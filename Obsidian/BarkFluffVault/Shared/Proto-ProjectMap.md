@@ -42,7 +42,7 @@
 
 ## `files_api.proto` — `BarkFluff.Proto.Files`
 
-- `FilesApi`: `GetUploadUrl`, `GetTempDownloadUrl`, `CheckFileHash`, `GetUserStorageInfo`, `ListStickerPacks`, `GetStickerPack`, `GetStickerPackByFile`.
+- `FilesApi`: `GetUploadUrl`, `GetTempDownloadUrl`, `CheckFileHash`, `GetUserStorageInfo`, `ListStickerPacks` (устарел: все наборы ноды), `GetStickerPack`, `GetStickerPackByFile`, `GetStickerPackByName`, `ListMyStickerPacks`, `AddMyStickerPack`, `RemoveMyStickerPack`.
 
 - `FilesServerApi`: `GetFileData`, `GetFilesData`, `DeleteUserProfileImages`, `UploadBadgeImage`, `GetUserStorageInfoServer`, `UploadAvatarServer`, `UploadPosterServer`, `UploadFileServer`, `GetTempDownloadUrlServer`, `CreateStickerPack`, `UpdateStickerPack`, `DeleteStickerPack`, `ListStickerPacks`, `GetStickerPack`, `AddSticker`, `RemoveSticker`, `UpdateSticker`, `GetStickers`, `UploadStickerImage`, `FetchFileStream`, `CheckFedAvatarAccess`.
 

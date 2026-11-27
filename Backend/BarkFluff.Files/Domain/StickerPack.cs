@@ -16,6 +16,10 @@ public class StickerPack
 
     public string Description { get; set; } = string.Empty;
 
+    /// <summary>Уникальное короткое имя для ссылки /addstickers/&lt;ShortName&gt;, в нижнем регистре.</summary>
+    [MaxLength(64)]
+    public string? ShortName { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public List<Sticker> Stickers { get; set; } = new();
