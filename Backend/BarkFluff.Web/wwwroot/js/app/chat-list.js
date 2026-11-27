@@ -368,6 +368,7 @@
         var time = timeTs ? u.formatChatListTime(timeTs) : '';
         var unread = chat.countUnread || 0;
         var unreadText = unread > 99 ? '99+' : unread;
+        var muted = !!(BF.attention && BF.attention.isChatMuted(chat));
 
         var peerUserId = null;
         if (!chat.isGroupChat && chat.members && chat.members.length > 0) {
@@ -406,6 +407,10 @@
             '">' +
             avatarHtml +
             onlineDot +
+            // Счётчик на аватаре — для узкой панели, где строка без текста (виден только там, см. CSS).
+            (unread > 0
+                ? '<span class="chat-avatar-unread' + (muted ? ' muted' : '') + '">' + unreadText + '</span>'
+                : '') +
             '</div>' +
             '<div class="chat-info"><div class="chat-info-top">' +
             '<span class="chat-name">' +
@@ -430,7 +435,7 @@
             '</span>' +
             '<span class="chat-unread' +
             (unread > 0 ? ' visible' : '') +
-            (BF.attention && BF.attention.isChatMuted(chat) ? ' muted' : '') +
+            (muted ? ' muted' : '') +
             '">' +
             unreadText +
             '</span></div></div>'

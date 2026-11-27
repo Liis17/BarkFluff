@@ -576,6 +576,8 @@ test('adjacent unread chats form one group (as on Android): first, middle, last;
     assert.deepEqual(group(1005), ['unread-single']);
     assert.equal(h.row(1001).classList.contains('is-unread'), true, 'every unread row is marked for styling');
     assert.equal(h.row(1000).classList.contains('is-unread'), false);
+    assert.match(h.row(1001).innerHTML, /<span class="chat-avatar-unread">1<\/span>/, 'the avatar carries the count for the collapsed sidebar');
+    assert.doesNotMatch(h.row(1000).innerHTML, /chat-avatar-unread/);
 
     h.chats()[2].countUnread = 0; // чат прочитан — группа распадается
     h.BF.chatList.render();

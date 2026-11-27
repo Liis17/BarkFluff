@@ -402,13 +402,14 @@
             border-radius: 14px;
             box-shadow: 0 4px 12px rgba(140, 53, 28, 0.3);
         }
-        html.sidebar-compact .newchat-menu { right: auto; left: 68px; bottom: 12px; align-items: flex-start; }
-        /* Непрочитанный чат в узкой панели — кольцо вокруг аватара вместо карточки */
+        html.sidebar-compact .newchat-menu { right: auto; left: 68px; bottom: 12px; transform-origin: bottom left; }
+        /* В узкой панели под меню нечего размывать: список и так без текста */
+        html.sidebar-compact .newchat-scrim { display: none; }
+        /* Непрочитанный чат в узкой панели — счётчик на аватаре вместо карточки и точки «в сети» */
         html.sidebar-compact .chat-item.is-unread::before { display: none; }
-        html.sidebar-compact .chat-item.is-unread .chat-avatar {
-            transform: none;
-            box-shadow: 0 0 0 2px var(--sidebar-bg), 0 0 0 4px var(--primary);
-        }
+        html.sidebar-compact .chat-item.is-unread .chat-avatar { transform: none; }
+        html.sidebar-compact .chat-item.is-unread .online-dot { display: none; }
+        html.sidebar-compact .chat-avatar-unread { display: block; }
         html.sidebar-compact .chat-list { padding-bottom: 220px; }
 
         /* === SIDEBAR HEADER === */
@@ -727,6 +728,26 @@
         }
 
         .online-dot.visible { display: block; }
+
+        .chat-avatar-unread {
+            display: none;
+            position: absolute;
+            top: -3px;
+            right: -5px;
+            z-index: 1;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 5px;
+            border: 2px solid var(--dialog-bg);
+            border-radius: 10px;
+            background: var(--unread-badge-bg);
+            color: #fff;
+            font-size: 10.5px;
+            font-weight: 700;
+            line-height: 16px;
+            text-align: center;
+        }
+        .chat-avatar-unread.muted { background: var(--text-sub); }
 
         .chat-info {
             flex: 1;
@@ -4782,19 +4803,26 @@
             transition: opacity 200ms var(--ease-out), visibility 0s linear;
         }
 
+        /* Меню создания — карточка над кнопкой: плитка-иконка, название и пояснение */
         .newchat-menu {
             position: absolute;
             right: 12px;
             bottom: 80px;
             z-index: 31;
+            min-width: 240px;
+            max-width: calc(100vw - 24px);
             display: flex;
             flex-direction: column;
-            align-items: flex-end;
-            gap: 8px;
+            gap: 2px;
+            padding: 6px;
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            background: var(--dialog-bg);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06), 0 14px 36px rgba(0, 0, 0, 0.16);
             opacity: 0;
             visibility: hidden;
             pointer-events: none;
-            transform: translateY(8px);
+            transform: translateY(6px) scale(0.97);
             transform-origin: bottom right;
             transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out), visibility 0s linear 120ms;
         }
@@ -4810,39 +4838,37 @@
         .newchat-menu button {
             display: flex;
             align-items: center;
-            gap: 10px;
-            height: 44px;
-            padding: 0 18px 0 7px;
+            gap: 12px;
+            width: 100%;
+            padding: 8px;
             border: none;
-            border-radius: 22px;
-            background: var(--dialog-bg);
+            border-radius: 12px;
+            background: transparent;
             color: var(--text-main);
             font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            white-space: nowrap;
+            text-align: left;
             cursor: pointer;
-            box-shadow: 0 0 0 1px var(--card-border), 0 8px 20px rgba(60, 40, 20, 0.14);
-            transition: background 0.15s, color 0.15s;
+            transition: background 0.15s;
         }
+        .newchat-menu button:hover,
+        .newchat-menu button:focus-visible { background: var(--sidebar-fill); }
 
         .newchat-menu-icon {
-            width: 30px;
-            height: 30px;
+            width: 36px;
+            height: 36px;
             flex-shrink: 0;
-            border-radius: 50%;
+            border-radius: 11px;
             background: var(--primary-alpha);
             color: var(--primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.15s, color 0.15s;
         }
-        .newchat-menu-icon .bf-icon { width: 16px; height: 16px; }
-        .newchat-menu button:hover,
-        .newchat-menu button:focus-visible { background: var(--primary); color: #fff; }
-        .newchat-menu button:hover .newchat-menu-icon,
-        .newchat-menu button:focus-visible .newchat-menu-icon { background: rgba(255, 255, 255, 0.18); color: #fff; }
+        .newchat-menu-icon .bf-icon { width: 18px; height: 18px; }
+
+        .newchat-menu-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .newchat-menu-text > span { font-size: 14px; font-weight: 600; }
+        .newchat-menu-text small { font-size: 12px; color: var(--text-sub); white-space: nowrap; }
 
         .newchat-dialog { max-width: 420px; display: flex; flex-direction: column; }
 
