@@ -386,7 +386,9 @@ public class TelegramBotService : IHostedService, IStepUpSender
                       target +
                       $"🕐 Время: {time} UTC\n" +
                       $"\n" +
-                      $"Подтверждение действует {StepUpService.ApprovalValidFor.TotalMinutes:0} минут после одобрения.";
+                      $"Подтверждение действует {StepUpService.ApprovalValidFor.TotalMinutes:0} минут после одобрения. " +
+                      $"После выполнения действия эта сессия {StepUpService.SessionGraceWindow.TotalMinutes:0} минут с момента одобрения " +
+                      $"выполняет защищённые действия без повторного подтверждения.";
 
         var keyboard = new InlineKeyboardMarkup(new[]
         {

@@ -77,13 +77,20 @@ public static class DockerEndpoints
         .WithOpenApi()
         .RequirePermission(AdminPermissions.DockerControl);
 
-        // Перезапустить контейнер
+        // Перезапустить контейнер (задача в очереди деплоя)
         group.MapPost("/containers/{name}/restart", async (
+            DeployJobService deployJobs,
             DockerService dockerService,
-            string name) =>
+            string name,
+            CancellationToken ct) =>
         {
-            var result = await dockerService.RestartContainerAsync(name);
-            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+            var service = await dockerService.ResolveServiceNameAsync(name, ct);
+            var job = deployJobs.EnqueueRestart([service]);
+            return Results.Ok(new DeployJobStartDto
+            {
+                JobId = job.Id,
+                Message = $"Перезапуск {name} поставлен в очередь"
+            });
         })
         .WithName("RestartContainer")
         .WithOpenApi()
@@ -342,6 +349,23 @@ public static class DockerEndpoints
         })
         .WithName("GetDeployJob")
         .WithOpenApi();
+
+        // Отменить задачу деплоя, которая ещё не начала выполняться
+        group.MapPost("/deploy/jobs/{id:guid}/cancel", (
+            DeployJobService deployJobs,
+            Guid id) =>
+        {
+            var job = deployJobs.GetJob(id);
+            if (job is null)
+                return Results.NotFound(new ContainerActionResponseDto { Success = false, Message = $"Задача {id} не найдена" });
+
+            return deployJobs.TryCancel(id)
+                ? Results.Ok(new ContainerActionResponseDto { Success = true, Message = "Задача снята из очереди" })
+                : Results.Conflict(new ContainerActionResponseDto { Success = false, Message = "Задача уже выполняется или завершена" });
+        })
+        .WithName("CancelDeployJob")
+        .WithOpenApi()
+        .RequirePermission(AdminPermissions.DockerControl);
     }
 
     /// <summary>Проекция задачи в JSON-ответ со строковыми состояниями</summary>

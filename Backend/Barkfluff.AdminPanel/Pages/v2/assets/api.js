@@ -195,6 +195,7 @@
           <div style="font-size:20px;font-weight:600;margin-bottom:8px;">Подтверждение действия</div>
           <div style="font-size:14px;color:var(--md-on-surface-variant,#5f6368);margin-bottom:20px;">
             <b></b> — запрос отправлен в Telegram. Подтвердите его в течение 5 минут.
+            После подтверждения эта сессия 10 минут выполняет защищённые действия без повторных запросов.
           </div>
           <div class="bf-stepup-status" style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant,#5f6368);margin-bottom:20px;">
             <span style="width:16px;height:16px;border-radius:50%;border:2px solid var(--md-primary,#8c351c);border-top-color:transparent;display:inline-block;animation:bf-spin 1s linear infinite;"></span>
@@ -231,7 +232,8 @@
     return new Promise(function (r) { setTimeout(r, ms); });
   }
 
-  // Requests a Telegram confirmation and resolves with the confirmation id.
+  // Requests a Telegram confirmation and resolves with the confirmation id
+  // (null while the session grace window after a recent confirmation is open).
   BF.confirm = async function (action, parameters) {
     const response = await nativeFetch('/api/stepup/request', {
       method: 'POST',
@@ -245,6 +247,8 @@
       throw new Error(body.message || 'Не удалось отправить подтверждение в Telegram');
     }
     const data = await response.json();
+    // Окно сессии ещё открыто: сервер пропустит действие без подтверждения
+    if (data.grace) return null;
 
     showStepUpModal(data.title || 'Действие');
     setModalStatus('Ожидание подтверждения…', true);
@@ -307,7 +311,7 @@
       const confirmationId = await BF.confirm(body.action, body.parameters);
 
       const headers = new Headers(options.headers || {});
-      headers.set('X-Confirmation-Id', confirmationId);
+      if (confirmationId) headers.set('X-Confirmation-Id', confirmationId);
       response = await nativeFetch(url, Object.assign({}, options, { headers: headers }));
     }
 
@@ -385,7 +389,7 @@
   // For WebSocket connections (SSH console): returns the query string with the confirmation id.
   BF.stepUpQuery = async function (action, parameters) {
     const confirmationId = await BF.confirm(action, parameters);
-    return 'confirmation=' + encodeURIComponent(confirmationId);
+    return confirmationId ? 'confirmation=' + encodeURIComponent(confirmationId) : '';
   };
 
   BF.requireAuth();

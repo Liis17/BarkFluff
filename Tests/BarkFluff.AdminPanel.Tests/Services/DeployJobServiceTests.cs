@@ -273,6 +273,73 @@ public class DeployJobServiceTests
             stored.Select(record => record.Id).OrderBy(id => id));
     }
 
+    [Fact]
+    public void Enqueue_SameActionWhileQueued_ReturnsExistingJob()
+    {
+        using var history = new TempHistory();
+        using var historyDb = new DeployJobDbContext(history.Path);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var service = CreateDeployJobService(
+            CreateDockerService(CreateOperationalRunner("running|healthy"), cache), CreateComposeImageService(), historyDb);
+
+        var first = service.EnqueueRestart(["messages"]);
+        var repeated = service.EnqueueRestart(["Messages"]);
+        var update = service.EnqueueUpdate(["messages"]);
+
+        Assert.Same(first, repeated);
+        Assert.NotEqual(first.Id, update.Id);
+        Assert.Equal(2, service.GetRecentJobs().Count);
+    }
+
+    [Fact]
+    public void TryCancel_QueuedJob_CancelsOnceAndPersists()
+    {
+        using var history = new TempHistory();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        Guid jobId;
+        using (var historyDb = new DeployJobDbContext(history.Path))
+        using (var service = CreateDeployJobService(
+            CreateDockerService(CreateOperationalRunner("running|healthy"), cache), CreateComposeImageService(), historyDb))
+        {
+            var job = service.EnqueueRestart(["messages"]);
+            jobId = job.Id;
+
+            Assert.True(service.TryCancel(job.Id));
+            Assert.False(service.TryCancel(job.Id));
+            Assert.Equal(DeployJobState.Cancelled, job.State);
+            Assert.NotNull(job.FinishedAtUtc);
+            Assert.Equal(DeployStepState.Pending, Assert.Single(job.Steps).State);
+
+            // После отмены такое же действие ставится новой задачей
+            Assert.NotEqual(job.Id, service.EnqueueRestart(["messages"]).Id);
+        }
+
+        var stored = Assert.Single(ReadHistory(history), record => record.Id == jobId);
+        Assert.Equal("Cancelled", stored.State);
+    }
+
+    [Fact]
+    public async Task CancelledJob_IsSkippedByQueue()
+    {
+        using var history = new TempHistory();
+        var runner = CreateOperationalRunner("running|healthy");
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var docker = CreateDockerService(runner, cache);
+        DeployJob? cancelled = null;
+
+        var job = await RunJobAsync(runner, docker, CreateComposeImageService(), history, jobs =>
+        {
+            cancelled = jobs.EnqueueRestart(["messages"]);
+            Assert.True(jobs.TryCancel(cancelled.Id));
+            return jobs.EnqueueUpdate(["messages"]);
+        });
+
+        Assert.Equal(DeployJobState.Completed, job.State);
+        Assert.Equal(DeployJobState.Cancelled, cancelled!.State);
+        Assert.Null(cancelled.StartedAtUtc);
+        Assert.DoesNotContain(runner.Commands, command => command[0] == "restart");
+    }
+
     private const string InterruptedReason = "Прервано перезапуском панели";
 
     private static readonly HttpClient SeqHttpClient = new(new UnexpectedHttpHandler());

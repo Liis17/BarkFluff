@@ -290,7 +290,7 @@ public static class RemoteDockerEndpoints
         }
     }
 
-    private static async Task RunConsoleAsync(WebSocket socket, IRemoteSshShell shell, CancellationToken cancellationToken)
+    internal static async Task RunConsoleAsync(WebSocket socket, IRemoteSshShell shell, CancellationToken cancellationToken)
     {
         using var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var inputTask = ForwardWebSocketInputAsync(socket, shell, sessionCts.Token);
@@ -299,11 +299,15 @@ public static class RemoteDockerEndpoints
         await Task.WhenAny(inputTask, outputTask);
         sessionCts.Cancel();
 
+        // Чтение SSH-потока не реагирует на отмену: без закрытия shell ожидание ниже висит,
+        // пока сервер не пришлёт вывод, и SSH-соединение остаётся открытым после закрытия консоли
+        await shell.DisposeAsync();
+
         try
         {
             await Task.WhenAll(inputTask, outputTask);
         }
-        catch (OperationCanceledException) when (sessionCts.IsCancellationRequested)
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or IOException or WebSocketException)
         {
             // Closing either side ends the interactive session.
         }

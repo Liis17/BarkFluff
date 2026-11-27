@@ -91,7 +91,7 @@ public class AuditService
         var outcome = NormalizeText(filter.Outcome);
         if (outcome == SuccessOutcome)
         {
-            query = query.Where(x => x.Outcome == "ok" || x.Outcome == "confirmed");
+            query = query.Where(x => x.Outcome == "ok" || x.Outcome == "confirmed" || x.Outcome == "grace");
         }
         else if (outcome is not null)
         {
