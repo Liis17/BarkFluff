@@ -23,6 +23,7 @@
     var profileRegDate;
     var profileMediaPanels;
     var badgeTooltip = null;
+    var badgeTooltipImage;
     var badgeTooltipName;
     var badgeTooltipDesc;
     var currentProfileUserId = null;
@@ -108,7 +109,7 @@
         });
     }
 
-    // Подсказка с названием и описанием бейджа: одна на модалку, позиционируется над бейджем.
+    // Подсказка с полным изображением, названием и описанием бейджа: одна на модалку, позиционируется над бейджем.
     function ensureBadgeTooltip() {
         if (badgeTooltip) return badgeTooltip;
         badgeTooltip = document.createElement('div');
@@ -116,10 +117,16 @@
         badgeTooltip.id = 'profileBadgeTooltip';
         badgeTooltip.setAttribute('role', 'tooltip');
         badgeTooltip.hidden = true;
+        // Размер задан в CSS, поэтому позиция верна ещё до загрузки изображения.
+        badgeTooltipImage = document.createElement('img');
+        badgeTooltipImage.className = 'profile-badge-tooltip-image';
+        badgeTooltipImage.alt = '';
+        badgeTooltipImage.decoding = 'async';
         badgeTooltipName = document.createElement('div');
         badgeTooltipName.className = 'profile-badge-tooltip-name';
         badgeTooltipDesc = document.createElement('div');
         badgeTooltipDesc.className = 'profile-badge-tooltip-desc';
+        badgeTooltip.appendChild(badgeTooltipImage);
         badgeTooltip.appendChild(badgeTooltipName);
         badgeTooltip.appendChild(badgeTooltipDesc);
         document.body.appendChild(badgeTooltip);
@@ -127,8 +134,11 @@
     }
 
     function showBadgeTooltip(button, badge) {
-        if (!badge.name && !badge.description) return;
+        var imageUrl = badge.imageUrl || badge.miniImageUrl || '';
+        if (!imageUrl && !badge.name && !badge.description) return;
         var tip = ensureBadgeTooltip();
+        badgeTooltipImage.src = imageUrl;
+        badgeTooltipImage.hidden = !imageUrl;
         badgeTooltipName.textContent = badge.name || '';
         badgeTooltipDesc.textContent = badge.description || '';
         tip.classList.remove('visible');

@@ -369,9 +369,20 @@ async function main() {
         assert.equal(h.els['#profileName'].children.length, 1);
     });
 
-    await test('hovering or focusing a badge shows its name and description; leaving, blur and click hide it', async function () {
+    await test('hovering or focusing a badge shows its full image, name and description; leaving, blur and click hide it', async function () {
         var h = createHarness({
-            badges: { 5: [{ id: 1, name: 'Early', description: 'Joined in the first week', imageUrl: 'https://b/1.png', isPrimary: false }] }
+            badges: {
+                5: [
+                    {
+                        id: 1,
+                        name: 'Early',
+                        description: 'Joined in the first week',
+                        imageUrl: 'https://b/1.png',
+                        miniImageUrl: 'https://b/1m.png',
+                        isPrimary: false
+                    }
+                ]
+            }
         });
         h.BF.profile.open(5);
         h.answer(0, { id: 5, username: 'ann', firstName: 'Ann' });
@@ -382,8 +393,9 @@ async function main() {
         badge.listeners.mouseenter();
         var tip = h.body.children[0];
         assert.equal(tip.hidden, false);
+        assert.equal(tip.children[0].src, 'https://b/1.png', 'the tooltip shows the full image, not the mini one');
         assert.deepEqual(
-            tip.children.map(function (el) {
+            tip.children.slice(1).map(function (el) {
                 return el.textContent;
             }),
             ['Early', 'Joined in the first week']

@@ -3258,25 +3258,37 @@
             outline-offset: 2px;
         }
 
-        /* Подсказка с названием и описанием бейджа при наведении или фокусе. */
+        /* Подсказка с полным изображением, названием и описанием бейджа при наведении или фокусе. */
         .profile-badge-tooltip {
             position: fixed;
             z-index: 96;
-            max-width: 240px;
-            padding: 8px 12px;
-            border-radius: 12px;
-            background: rgba(28, 25, 23, 0.94);
-            color: #fff;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 220px;
+            padding: 16px 16px 14px;
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            background: var(--profile-bg);
+            color: var(--text-main);
+            text-align: center;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22);
             pointer-events: none;
             opacity: 0;
             transform: translateY(4px);
-            transition: opacity 0.12s var(--ease-out), transform 0.12s var(--ease-out);
+            transition: opacity 0.14s var(--ease-out), transform 0.14s var(--ease-out);
         }
         .profile-badge-tooltip.visible { opacity: 1; transform: none; }
         .profile-badge-tooltip[hidden] { display: none; }
-        .profile-badge-tooltip-name { font-size: 13px; font-weight: 700; line-height: 1.3; }
-        .profile-badge-tooltip-desc { margin-top: 2px; font-size: 12px; line-height: 1.4; opacity: 0.8; }
+        .profile-badge-tooltip-image {
+            width: 128px;
+            height: 128px;
+            margin-bottom: 10px;
+            object-fit: contain;
+        }
+        .profile-badge-tooltip-image[hidden] { display: none; }
+        .profile-badge-tooltip-name { font-size: 15px; font-weight: 700; line-height: 1.3; }
+        .profile-badge-tooltip-desc { margin-top: 4px; font-size: 13px; line-height: 1.4; color: var(--text-sub); }
         .profile-badge-tooltip-desc:empty { display: none; }
 
         @media (prefers-reduced-motion: reduce) {
