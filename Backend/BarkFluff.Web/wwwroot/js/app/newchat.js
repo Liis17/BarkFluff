@@ -1,7 +1,8 @@
 /**
  * Создание чатов: ЛС (через GetPersonChatId), группа (CreateGroupChat),
  * приватный E2E-чат (CreatePrivateChat: salt → Argon2id → verifier, как на Android).
- * UI: FAB в сайдбаре → меню → оверлей с поиском пользователей.
+ * UI: кнопка у дока → меню (список под ним размывается) → диалог с переключателем режима,
+ * «Недавними» собеседниками из личных чатов и выбором результата стрелками.
  * Requires: BF.api, BF.privateChat, BF.utils
  * Exposes: BF.newchat
  */
@@ -15,8 +16,9 @@
 
     var fab = $('#newChatFab');
     var menu = $('#newChatMenu');
+    var scrim = $('#newChatScrim');
     var overlay = $('#newChatOverlay');
-    var titleEl = $('#newChatTitle');
+    var modesEl = $('#newChatModes');
     var closeBtn = $('#newChatClose');
     var groupTitleInput = $('#newChatGroupTitle');
     var chipsEl = $('#newChatChips');
@@ -30,40 +32,51 @@
     var createBtn = $('#newChatCreate');
     var cancelBtn = $('#newChatCancel');
 
-    var opts = null;          // { openChat, upsertChat, getMyUserId }
+    var opts = null;          // { openChat, upsertChat, getMyUserId, getChats, getCachedUser, showToast }
     var mode = null;          // 'message' | 'group' | 'private'
     var selected = new Map(); // userId -> user (group: много, private: один)
     var searchTimer = null;
     var lastResults = [];
+    var activeIndex = -1;     // результат, выбранный стрелками
     var busy = false;
+    var RECENT_LIMIT = 5;
 
-    var MODE_TITLE_KEYS = {
-        message: 'newchat.mode.message',
-        group: 'newchat.mode.group',
-        private: 'newchat.mode.private'
-    };
+    function setMenuOpen(open) {
+        menu.classList.toggle('visible', open);
+        if (scrim) scrim.classList.toggle('visible', open);
+        fab.classList.toggle('open', open);
+        fab.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    function openMenu() { setMenuOpen(!menu.classList.contains('visible')); }
+    function closeMenu() { setMenuOpen(false); }
 
-    function openMenu() { menu.classList.toggle('visible'); }
-    function closeMenu() { menu.classList.remove('visible'); }
-
-    function openOverlay(newMode) {
+    // Переключение режима в открытом диалоге сохраняет запрос; выбранные участники сбрасываются.
+    function setMode(newMode) {
         mode = newMode;
         selected = new Map();
-        busy = false;
-        titleEl.textContent = BF.i18n.t(MODE_TITLE_KEYS[mode]);
-        groupTitleInput.value = '';
+        Array.prototype.forEach.call(modesEl.querySelectorAll('[data-mode]'), function (btn) {
+            var active = btn.dataset.mode === mode;
+            btn.classList.toggle('active', active);
+            btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
         groupTitleInput.style.display = mode === 'group' ? '' : 'none';
         chipsEl.style.display = mode === 'group' ? '' : 'none';
         privateFields.style.display = mode === 'private' ? '' : 'none';
         footerEl.style.display = mode === 'message' ? 'none' : '';
+        errorEl.textContent = '';
+        renderChips();
+        doSearch();
+    }
+
+    function openOverlay(newMode) {
+        busy = false;
+        groupTitleInput.value = '';
         passInput.value = '';
         rememberInput.checked = true;
         searchInput.value = '';
-        resultsEl.innerHTML = '';
-        errorEl.textContent = '';
         createBtn.disabled = false;
         createBtn.textContent = BF.i18n.t('common.create');
-        renderChips();
+        setMode(newMode);
         BF.utils.openOverlay(overlay, { focus: mode === 'group' ? groupTitleInput : searchInput });
     }
 
@@ -96,16 +109,67 @@
         return ((user.firstName || '') + ' ' + (user.lastName || '')).trim() || ('@' + (user.username || ''));
     }
 
-    function renderResults(users) {
+    function isAllowed(user) {
+        if (!user || user.id === opts.getMyUserId()) return false;
+        return !(mode === 'private' && user.isBot); // бот не расшифрует E2E
+    }
+
+    // Собеседники последних личных чатов из загруженного списка — подсказка до ввода запроса.
+    function recentUsers() {
+        var myId = opts.getMyUserId();
+        var seen = new Set();
+        var users = [];
+        (opts.getChats ? opts.getChats() : []).some(function (chat) {
+            if (chat.isGroupChat || (chat.chatType || 0) !== 0 || !chat.members) return false;
+            var member = chat.members.find(function (m) { return m.userId !== myId; });
+            var user = member && opts.getCachedUser(member.userId);
+            if (user && !seen.has(user.id) && isAllowed(user) && !u().isRestrictedUser(user)) {
+                seen.add(user.id);
+                users.push(user);
+            }
+            return users.length >= RECENT_LIMIT;
+        });
+        return users;
+    }
+
+    function setActive(index) {
+        var items = resultsEl.querySelectorAll('.search-result-item');
+        activeIndex = items.length ? Math.max(0, Math.min(items.length - 1, index)) : -1;
+        Array.prototype.forEach.call(items, function (el, i) {
+            el.classList.toggle('kb-active', i === activeIndex);
+            el.setAttribute('aria-selected', i === activeIndex ? 'true' : 'false');
+            if (i === activeIndex && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+        });
+    }
+
+    function onSearchKeydown(e) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActive(activeIndex + (e.key === 'ArrowDown' ? 1 : -1));
+        } else if (e.key === 'Enter' && lastResults.length && !e.isComposing) {
+            e.preventDefault();
+            onUserClick(lastResults[activeIndex >= 0 ? activeIndex : 0]);
+        }
+    }
+
+    function renderResults(users, sectionKey) {
         lastResults = users;
+        activeIndex = -1;
         resultsEl.innerHTML = '';
         if (users.length === 0) {
-            resultsEl.innerHTML = '<div class="newchat-empty">' + BF.utils.escapeHtml(BF.i18n.t('common.nothingFound')) + '</div>';
+            if (!sectionKey) resultsEl.innerHTML = '<div class="newchat-empty">' + BF.utils.escapeHtml(BF.i18n.t('common.nothingFound')) + '</div>';
             return;
+        }
+        if (sectionKey) {
+            var header = document.createElement('div');
+            header.className = 'newchat-section';
+            header.textContent = BF.i18n.t(sectionKey);
+            resultsEl.appendChild(header);
         }
         users.forEach(function (user) {
             var el = document.createElement('div');
             el.className = 'search-result-item' + (selected.has(user.id) ? ' selected' : '');
+            el.setAttribute('role', 'option');
             var restricted = u().isRestrictedUser(user);
             var name = displayName(user);
             var initial = (name || '?')[0].toUpperCase();
@@ -145,21 +209,21 @@
             selected.set(user.id, user);
         }
         renderChips();
-        renderResults(lastResults);
+        var active = activeIndex;
+        renderResults(lastResults, searchInput.value.trim() ? null : 'newchat.recent');
+        if (active >= 0) setActive(active);
     }
 
+    var searchToken = 0;
+
     function doSearch() {
+        clearTimeout(searchTimer);
         var query = searchInput.value.trim();
-        if (!query) { resultsEl.innerHTML = ''; lastResults = []; return; }
+        var token = ++searchToken;
+        if (!query) { renderResults(recentUsers(), 'newchat.recent'); return; }
         BF.api.searchUsers(query, 0, 20).then(function (data) {
-            if (!data || !data.users) return;
-            var myId = opts.getMyUserId();
-            var users = data.users.filter(function (usr) {
-                if (usr.id === myId) return false;
-                if (mode === 'private' && usr.isBot) return false; // бот не расшифрует E2E
-                return true;
-            });
-            renderResults(users);
+            if (token !== searchToken || !data || !data.users) return;
+            renderResults(data.users.filter(isAllowed));
         }).catch(function () {});
     }
 
@@ -228,6 +292,14 @@
         if (!fab) return;
 
         fab.addEventListener('click', function (e) { e.stopPropagation(); openMenu(); });
+        if (scrim) scrim.addEventListener('click', closeMenu);
+        modesEl.addEventListener('click', function (e) {
+            var btn = e.target.closest('button[data-mode]');
+            if (!btn || btn.dataset.mode === mode || busy) return;
+            setMode(btn.dataset.mode);
+            (mode === 'group' ? groupTitleInput : searchInput).focus();
+        });
+        searchInput.addEventListener('keydown', onSearchKeydown);
         menu.addEventListener('click', function (e) {
             var btn = e.target.closest('button[data-mode]');
             if (!btn) return;

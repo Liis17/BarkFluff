@@ -13,7 +13,7 @@
     var items = [];        // текущий отфильтрованный список
     var activeIndex = 0;
 
-    var BLOCKING_SELECTOR = '.confirm-overlay.visible, .settings-overlay.visible, ' +
+    var BLOCKING_SELECTOR = '.confirm-overlay.visible, ' +
         '.profile-overlay.visible, .call-permission-overlay.visible, .image-overlay.visible, ' +
         '.newchat-menu.visible, .msg-context-menu.visible';
 

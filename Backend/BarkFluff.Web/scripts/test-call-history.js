@@ -100,12 +100,16 @@ function createHarness(options) {
             },
             restrictedUserName: function () {
                 return 'accountRestriction.userDeleted';
+            }
+        },
+        // Звонки — раздел на месте чата (BF.pages), а не модалка.
+        pages: {
+            register: function () {},
+            show: function (name) {
+                if (name === 'calls') overlayState.open = true;
             },
-            openOverlay: function () {
-                overlayState.open = true;
-            },
-            closeOverlay: function () {
-                overlayState.open = false;
+            hide: function (name) {
+                if (name === 'calls') overlayState.open = false;
             }
         }
     };

@@ -1,6 +1,7 @@
 /**
  * Sidebar drag-resize: тянущаяся граница списка чатов + компакт-режим (только аватары).
- * Requires: нет (только DOM + localStorage)
+ * Компакт-режим включается перетаскиванием границы или кнопкой рядом с поиском.
+ * Requires: BF.i18n (подпись кнопки)
  * Exposes: BF.sidebarResize
  */
 (function () {
@@ -16,6 +17,7 @@
     var STORAGE_KEY_COMPACT = 'bf_sidebar_compact';
 
     var resizer;
+    var collapseBtn;
     var normalWidth = DEFAULT_WIDTH;
     var dragging = false;
 
@@ -29,6 +31,24 @@
 
     function setCompact(on) {
         document.documentElement.classList.toggle('sidebar-compact', on);
+        syncCollapseButton();
+    }
+
+    function syncCollapseButton() {
+        if (!collapseBtn) return;
+        var compact = document.documentElement.classList.contains('sidebar-compact');
+        var label = BF.i18n.t(compact ? 'sidebar.expand' : 'sidebar.collapse');
+        collapseBtn.setAttribute('aria-pressed', compact ? 'true' : 'false');
+        collapseBtn.setAttribute('aria-label', label);
+        collapseBtn.title = label;
+    }
+
+    function toggleCompact() {
+        var compact = !document.documentElement.classList.contains('sidebar-compact');
+        setCompact(compact);
+        if (compact) resetSearchForCompact();
+        applyWidth(compact ? COMPACT_WIDTH : normalWidth);
+        save();
     }
 
     function resetSearchForCompact() {
@@ -100,8 +120,13 @@
 
     function init() {
         resizer = document.getElementById('sidebarResizer');
+        collapseBtn = document.getElementById('sidebarCollapseBtn');
         if (!resizer) return;
         restore();
+        if (collapseBtn) {
+            collapseBtn.addEventListener('click', toggleCompact);
+            BF.i18n.onChange(syncCollapseButton);
+        }
         resizer.addEventListener('pointerdown', onPointerDown);
         window.addEventListener('pointermove', onPointerMove);
         window.addEventListener('pointerup', onPointerUp);

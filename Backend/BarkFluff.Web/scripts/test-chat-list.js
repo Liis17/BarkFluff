@@ -558,6 +558,52 @@ test('an unread badge pops only when its count grows on an already rendered row'
     assert.equal(h.row(1001).classList.contains('unread-up'), false, 'a reset does not pop');
 });
 
+test('adjacent unread chats form one group (as on Android): first, middle, last; a lone one is single', function () {
+    var h = createHarness(6);
+    [1, 2, 3, 5].forEach(function (i) {
+        h.chats()[i].countUnread = 1;
+    });
+    h.BF.chatList.render();
+    function group(id) {
+        return ['unread-single', 'unread-first', 'unread-middle', 'unread-last'].filter(function (name) {
+            return h.row(id).classList.contains(name);
+        });
+    }
+    assert.deepEqual(group(1000), [], 'a read chat is not part of a group');
+    assert.deepEqual(group(1001), ['unread-first']);
+    assert.deepEqual(group(1002), ['unread-middle']);
+    assert.deepEqual(group(1003), ['unread-last']);
+    assert.deepEqual(group(1005), ['unread-single']);
+    assert.equal(h.row(1001).classList.contains('is-unread'), true, 'every unread row is marked for styling');
+    assert.equal(h.row(1000).classList.contains('is-unread'), false);
+    assert.match(h.row(1001).innerHTML, /<span class="chat-avatar-unread">1<\/span>/, 'the avatar carries the count for the collapsed sidebar');
+    assert.doesNotMatch(h.row(1000).innerHTML, /chat-avatar-unread/);
+
+    h.chats()[2].countUnread = 0; // чат прочитан — группа распадается
+    h.BF.chatList.render();
+    assert.deepEqual(group(1001), ['unread-single']);
+    assert.deepEqual(group(1002), []);
+    assert.deepEqual(group(1003), ['unread-single']);
+});
+
+test('a direct chat with only the current user is Saved Messages: own title and icon, no avatar or online dot', function () {
+    var h = createHarness(2);
+    var chat = h.chats()[0];
+    chat.isGroupChat = false;
+    chat.picture = 'https://example.test/me.png';
+    chat.members = [{ userId: 1 }];
+    h.BF.chatList.render();
+    var html = h.row(1000).innerHTML;
+    assert.match(html, /<div class="chat-avatar saved">/);
+    assert.match(html, /<span class="chat-name-text">savedMessages\.title<\/span>/);
+    assert.doesNotMatch(html, /me\.png|online-dot|Chat 0/);
+
+    assert.equal(h.BF.chatList.isSavedMessages({ chatType: 0, membersId: [1, 1] }, 1), true, 'GetChatInfo shape');
+    assert.equal(h.BF.chatList.isSavedMessages({ chatType: 0, members: [{ userId: 1 }, { userId: 2 }] }, 1), false);
+    assert.equal(h.BF.chatList.isSavedMessages({ chatType: 1, members: [{ userId: 1 }] }, 1), false, 'a private chat is not Saved Messages');
+    assert.equal(h.BF.chatList.isSavedMessages({ isGroupChat: true, members: [{ userId: 1 }] }, 1), false);
+});
+
 test('duplicate chat ids from offset paging render a single row', function () {
     var h = createHarness(3);
     h.setChats(h.chats().concat([h.chats()[1]]));
