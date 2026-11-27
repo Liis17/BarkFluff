@@ -1492,6 +1492,21 @@
             function (n) { BF.personalization.setStickerSize(n); });
         body.appendChild(stickerSizeCtl.row);
 
+        var stickerTabsField = document.createElement('div');
+        stickerTabsField.className = 'sd-field';
+        stickerTabsField.style.padding = '12px 20px 0';
+        var stickerTabsLabel = document.createElement('div');
+        stickerTabsLabel.className = 'sd-label';
+        stickerTabsLabel.textContent = BF.i18n.t('personalization.stickerTabs');
+        stickerTabsField.appendChild(stickerTabsLabel);
+        stickerTabsField.appendChild(makeSegmented([
+            { value: 'bottom', labelKey: 'personalization.stickerTabs.bottom' },
+            { value: 'side', labelKey: 'personalization.stickerTabs.side' }
+        ], BF.personalization.getStickerTabsLayout(), function (v) {
+            BF.personalization.setStickerTabsLayout(v);
+        }).el);
+        body.appendChild(stickerTabsField);
+
         var lastSeenField = document.createElement('div');
         lastSeenField.className = 'sd-field';
         lastSeenField.style.padding = '12px 20px 0';

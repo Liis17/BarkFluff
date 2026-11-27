@@ -1,6 +1,8 @@
+using BarkFluff.Files.Helpers;
 using BarkFluff.Files.Mapping;
 using BarkFluff.Files.Persistence;
 using BarkFluff.Proto.Files;
+using BarkFluff.Shared.Exceptions.Files;
 
 using MediatR;
 
@@ -25,7 +27,17 @@ public class UpdateStickerPackCommandHandler : IRequestHandler<UpdateStickerPack
     public async Task<UpdateStickerPackResponse> Handle(UpdateStickerPackCommand request, CancellationToken cancellationToken)
     {
         var pack = await _stickerPacksStorage.GetByIdAsync(request.PackId)
-            ?? throw new Exception("Стикерпак не найден");
+            ?? throw new StickerPackNotFoundException();
+
+        if (!string.IsNullOrWhiteSpace(request.ShortName))
+        {
+            var shortName = StickerPackShortName.Normalize(request.ShortName);
+            if (!StickerPackShortName.IsValid(shortName))
+                throw new StickerPackShortNameNotValidException();
+            if (await _stickerPacksStorage.IsShortNameTakenAsync(shortName, pack.Id, cancellationToken))
+                throw new StickerPackShortNameTakenException();
+            pack.ShortName = shortName;
+        }
 
         pack.Name = request.Name;
         pack.Description = request.Description;

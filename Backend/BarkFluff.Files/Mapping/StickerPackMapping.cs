@@ -18,7 +18,8 @@ public static class StickerPackMapping
             Name = pack.Name,
             Description = pack.Description,
             CreatedAt = Timestamp.FromDateTime(DateTime.SpecifyKind(pack.CreatedAt, DateTimeKind.Utc)),
-            StickerCount = stickerCount
+            StickerCount = stickerCount,
+            ShortName = pack.ShortName ?? string.Empty
         };
     }
 

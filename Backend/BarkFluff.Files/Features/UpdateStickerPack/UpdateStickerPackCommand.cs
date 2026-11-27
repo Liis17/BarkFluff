@@ -13,4 +13,7 @@ public class UpdateStickerPackCommand : IRequest<UpdateStickerPackResponse>
     public string Description { get; set; } = string.Empty;
 
     public Guid? CoverStickerId { get; set; }
+
+    /// <summary>Пусто — короткое имя не меняется.</summary>
+    public string ShortName { get; set; } = string.Empty;
 }

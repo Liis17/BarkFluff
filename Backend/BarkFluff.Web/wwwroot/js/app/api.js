@@ -640,67 +640,74 @@
         });
     }
 
-    function listStickerPacks(offset, size) {
-        var req = new (filePb().ListStickerPacksRequest)();
-        var pg = new (sharedPb().PageRequest)();
-        pg.setOffset(offset || 0);
-        pg.setSize(size || 50);
-        req.setPagination(pg);
-        return readCall(files().listStickerPacks.bind(files()), req).then(function (resp) {
-            return {
-                packs: resp.getPacksList().map(function (p) {
-                    return {
-                        id: p.getId(), name: p.getName(), description: p.getDescription(),
-                        coverStickerId: p.getCoverStickerId(), stickerCount: p.getStickerCount()
-                    };
-                }),
-                totalCount: resp.getTotalCount()
-            };
+    function mapStickerPackInfo(pack) {
+        if (!pack) return null;
+        return {
+            id: pack.getId(),
+            name: pack.getName(),
+            description: pack.getDescription(),
+            shortName: pack.getShortName(),
+            coverStickerId: pack.getCoverStickerId(),
+            stickerCount: pack.getStickerCount()
+        };
+    }
+
+    function mapSticker(s) {
+        return {
+            id: s.getId(),
+            stickerPackId: s.getStickerPackId(),
+            fileId: s.getFileId(),
+            previewFileId: s.getPreviewFileId(),
+            emoji: s.getEmoji()
+        };
+    }
+
+    function mapStickerPackResponse(resp) {
+        return {
+            pack: mapStickerPackInfo(resp.getPack()),
+            stickers: resp.getStickersList().map(mapSticker),
+            isAdded: resp.getIsAdded()
+        };
+    }
+
+    // Наборы, добавленные пользователем, вместе со стикерами; недавно добавленные первыми.
+    function listMyStickerPacks() {
+        var req = new (filePb().ListMyStickerPacksRequest)();
+        return readCall(files().listMyStickerPacks.bind(files()), req).then(function (resp) {
+            return resp.getPacksList().map(function (content) {
+                return { pack: mapStickerPackInfo(content.getPack()), stickers: content.getStickersList().map(mapSticker) };
+            });
         });
     }
 
     function getStickerPack(packId) {
         var req = new (filePb().GetStickerPackRequest)();
         req.setPackId(packId);
-        return readCall(files().getStickerPack.bind(files()), req).then(function (resp) {
-            var pack = resp.getPack();
-            return {
-                pack: pack ? {
-                    id: pack.getId(), name: pack.getName(), description: pack.getDescription(),
-                    coverStickerId: pack.getCoverStickerId()
-                } : null,
-                stickers: resp.getStickersList().map(function (s) {
-                    return {
-                        id: s.getId(),
-                        fileId: s.getFileId(),
-                        previewFileId: s.getPreviewFileId(),
-                        emoji: s.getEmoji()
-                    };
-                })
-            };
-        });
+        return readCall(files().getStickerPack.bind(files()), req).then(mapStickerPackResponse);
     }
 
     function getStickerPackByFile(fileId) {
         var req = new (filePb().GetStickerPackByFileRequest)();
         req.setFileId(fileId);
-        return readCall(files().getStickerPackByFile.bind(files()), req).then(function (resp) {
-            var pack = resp.getPack();
-            return {
-                pack: pack ? {
-                    id: pack.getId(), name: pack.getName(), description: pack.getDescription(),
-                    coverStickerId: pack.getCoverStickerId()
-                } : null,
-                stickers: resp.getStickersList().map(function (s) {
-                    return {
-                        id: s.getId(),
-                        fileId: s.getFileId(),
-                        previewFileId: s.getPreviewFileId(),
-                        emoji: s.getEmoji()
-                    };
-                })
-            };
-        });
+        return readCall(files().getStickerPackByFile.bind(files()), req).then(mapStickerPackResponse);
+    }
+
+    function getStickerPackByName(shortName) {
+        var req = new (filePb().GetStickerPackByNameRequest)();
+        req.setShortName(shortName);
+        return readCall(files().getStickerPackByName.bind(files()), req).then(mapStickerPackResponse);
+    }
+
+    function addMyStickerPack(packId) {
+        var req = new (filePb().AddMyStickerPackRequest)();
+        req.setPackId(packId);
+        return mutationCall(files().addMyStickerPack.bind(files()), req);
+    }
+
+    function removeMyStickerPack(packId) {
+        var req = new (filePb().RemoveMyStickerPackRequest)();
+        req.setPackId(packId);
+        return mutationCall(files().removeMyStickerPack.bind(files()), req);
     }
 
     // --- Users API ---
@@ -1222,9 +1229,12 @@
         getUploadUrl: getUploadUrl,
         checkFileHash: checkFileHash,
         getTempDownloadUrl: getTempDownloadUrl,
-        listStickerPacks: listStickerPacks,
+        listMyStickerPacks: listMyStickerPacks,
         getStickerPack: getStickerPack,
         getStickerPackByFile: getStickerPackByFile,
+        getStickerPackByName: getStickerPackByName,
+        addMyStickerPack: addMyStickerPack,
+        removeMyStickerPack: removeMyStickerPack,
         setOnlineStatus: setOnlineStatus,
         getOnlineStatus: getOnlineStatus,
         setTypingStatus: setTypingStatus,

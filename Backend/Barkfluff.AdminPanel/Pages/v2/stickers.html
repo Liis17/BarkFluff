@@ -181,6 +181,11 @@
                     <label style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">Название <span style="color:var(--md-error);">*</span></label>
                     <input type="text" id="createPackName" required maxlength="100" placeholder="Например: «Котики»" class="md-input-outlined" style="width:100%;">
                 </div>
+                <div>
+                    <label style="font-size:13px;font-weight:500;color:var(--md-on-surface-variant);display:block;margin-bottom:8px;">Короткое имя для ссылки</label>
+                    <input type="text" id="createPackShortName" maxlength="64" pattern="[A-Za-z][A-Za-z0-9_]{2,63}" placeholder="cats" class="md-input-outlined" style="width:100%;">
+                    <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;">Ссылка: /addstickers/&lt;имя&gt;. Латинская буква, затем латиница, цифры и _. Пусто — сгенерируется.</p>
+                </div>
             </div>
             <div class="md-dialog-actions">
                 <button type="button" class="md-btn md-btn-text" onclick="closeCreatePackModal()">Отмена</button>
@@ -218,6 +223,11 @@
                         <button class="md-icon-btn" id="saveNameBtn" onclick="savePackName()" style="display:none;color:var(--md-primary);" aria-label="Сохранить название"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/check.svg);" aria-hidden="true"></span></button>
                     </div>
                     <p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;" id="detailPackInfo"></p>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                        <span style="font-size:13px;color:var(--md-on-surface-variant);">/addstickers/</span>
+                        <input type="text" id="detailPackShortNameInput" maxlength="64" class="md-input-outlined" aria-label="Короткое имя для ссылки" style="flex:1;font-size:13px;">
+                        <button class="md-icon-btn" id="saveShortNameBtn" onclick="savePackShortName()" style="display:none;color:var(--md-primary);" aria-label="Сохранить короткое имя"><span class="bf-icon" style="--bf-icon-url:url(/assets/icons/check.svg);" aria-hidden="true"></span></button>
+                    </div>
                 </div>
             </div>
             <div id="stickersGrid" class="sticker-grid" style="margin-top:16px;"></div>
@@ -598,6 +608,7 @@
         e.preventDefault();
         const fd = new FormData();
         fd.append('name', document.getElementById('createPackName').value);
+        fd.append('shortName', document.getElementById('createPackShortName').value.trim());
         const cover = document.getElementById('createCoverInput').files[0];
         if (cover) fd.append('image', cover);
         const btn = document.getElementById('createPackBtn');
@@ -625,6 +636,8 @@
         document.getElementById('detailPackTitle').textContent = p.name;
         document.getElementById('detailPackNameInput').value = p.name;
         originalPackName = p.name;
+        document.getElementById('detailPackShortNameInput').value = p.shortName || '';
+        document.getElementById('saveShortNameBtn').style.display = 'none';
         const cover = document.getElementById('detailCoverImg');
         if (p.coverUrl) { cover.src = p.coverUrl; cover.style.display = ''; document.getElementById('detailCoverIcon').style.display = 'none'; }
         else { cover.style.display = 'none'; document.getElementById('detailCoverIcon').style.display = ''; }
@@ -650,6 +663,22 @@
         const name = document.getElementById('detailPackNameInput').value.trim();
         if (!name || name === originalPackName) return;
         try { await BF.request(`/api/stickers/packs/${currentPackId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, description: currentPackData.description || '', coverStickerId: currentPackData.coverStickerId || '' }) }); originalPackName = name; document.getElementById('saveNameBtn').style.display = 'none'; await loadPacks(); } catch {}
+    };
+
+    document.getElementById('detailPackShortNameInput').addEventListener('input', () => {
+        const value = document.getElementById('detailPackShortNameInput').value.trim();
+        document.getElementById('saveShortNameBtn').style.display = value && value !== (currentPackData.shortName || '') ? '' : 'none';
+    });
+
+    window.savePackShortName = async function () {
+        const shortName = document.getElementById('detailPackShortNameInput').value.trim();
+        if (!shortName || shortName === currentPackData.shortName) return;
+        try {
+            const updated = await BF.request(`/api/stickers/packs/${currentPackId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: originalPackName, description: currentPackData.description || '', coverStickerId: currentPackData.coverStickerId || '', shortName }) });
+            currentPackData.shortName = updated.shortName;
+            document.getElementById('detailPackShortNameInput').value = updated.shortName;
+            document.getElementById('saveShortNameBtn').style.display = 'none';
+        } catch {}
     };
 
     window.handleCoverChange = function (input) {

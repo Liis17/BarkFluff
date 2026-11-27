@@ -23,6 +23,8 @@ public class FilesContext : DbContext
 
     public DbSet<Sticker> Stickers { get; set; }
 
+    public DbSet<UserStickerPack> UserStickerPacks { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<UploadFile>()
@@ -68,6 +70,22 @@ public class FilesContext : DbContext
             .HasOne(s => s.StickerPack)
             .WithMany(sp => sp.Stickers)
             .HasForeignKey(s => s.StickerPackId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StickerPack>()
+            .HasIndex(x => x.ShortName)
+            .IsUnique();
+
+        modelBuilder.Entity<UserStickerPack>()
+            .HasKey(x => new { x.UserId, x.StickerPackId });
+
+        modelBuilder.Entity<UserStickerPack>()
+            .HasIndex(x => x.StickerPackId);
+
+        modelBuilder.Entity<UserStickerPack>()
+            .HasOne(x => x.StickerPack)
+            .WithMany()
+            .HasForeignKey(x => x.StickerPackId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

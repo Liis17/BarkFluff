@@ -1,6 +1,7 @@
 /**
- * Sticker picker next to the composer: pack tabs, «Recent» tab, emoji search, sending.
- * Requires: BF.api, BF.files, BF.icons, BF.i18n, BF.node, BF.utils
+ * Sticker picker next to the composer: one feed with «Recent» and every pack the user added,
+ * pack tabs (bottom or left, from personalization), emoji search, adding a pack by link, sending.
+ * Requires: BF.api, BF.files, BF.icons, BF.i18n, BF.node, BF.utils; optional BF.personalization, BF.stickerPack
  * Exposes: BF.stickerPicker
  */
 (function () {
@@ -13,16 +14,21 @@
     var stickerPicker;
     var stickerSearch;
     var stickerPacksBar;
-    var stickerGrid;
+    var stickerFeed;
+    var linkForm;
+    var linkInput;
 
-    var stickerPacksCache = null;
-    var stickerPacksContentCache = {}; // packId → { stickers, coverFileId }
-    var currentStickerPackId = null;
     var RECENT_TAB = '__recent__';
     var RECENT_STICKER_LIMIT = 32;
+    var STICKER_LINK_PATTERN = /\/addstickers\/([A-Za-z0-9_]+)/;
+    var SHORT_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{2,63}$/;
+
+    var myPacks = null; // [{ pack, stickers }] — добавленные наборы, недавно добавленные первыми
+    var loading = null;
     var recentStickerIds = [];
-    var stickerSearchQuery = '';
-    var stickerGridRenderVersion = 0;
+    var searchQuery = '';
+    var activeTabId = null;
+    var renderVersion = 0;
 
     function $(selector) {
         return document.querySelector(selector);
@@ -43,179 +49,315 @@
         } catch (_) {}
     }
 
-    // Локальные id резолвятся против закешированных паков: стикер, удалённый из пака, просто исчезает.
+    // Недавние резолвятся по добавленным наборам: стикер из удалённого или убранного набора исчезает.
     function resolveRecentStickers() {
-        var result = [];
-        recentStickerIds.forEach(function (id) {
-            for (var packId in stickerPacksContentCache) {
-                var stickers = stickerPacksContentCache[packId].stickers || [];
-                for (var i = 0; i < stickers.length; i++) {
-                    if (stickers[i].id === id) {
-                        result.push(stickers[i]);
-                        return;
-                    }
-                }
-            }
+        var byId = {};
+        (myPacks || []).forEach(function (entry) {
+            entry.stickers.forEach(function (s) {
+                byId[s.id] = s;
+            });
         });
-        return result;
+        return recentStickerIds
+            .map(function (id) {
+                return byId[id];
+            })
+            .filter(Boolean);
+    }
+
+    function coverFileId(entry) {
+        var stickers = entry.stickers || [];
+        var cover =
+            stickers.find(function (s) {
+                return s.id === entry.pack.coverStickerId;
+            }) || stickers[0];
+        return cover ? cover.previewFileId || cover.fileId : null;
+    }
+
+    function matchesSearch(sticker) {
+        return !searchQuery || (sticker.emoji || '').indexOf(searchQuery) >= 0;
+    }
+
+    // Разделы ленты в порядке отображения: «Недавние», затем наборы.
+    function feedSections() {
+        var sections = [];
+        var recent = resolveRecentStickers();
+        if (recent.length > 0) {
+            sections.push({ id: RECENT_TAB, title: BF.i18n.t('sticker.recent'), stickers: recent, pack: null });
+        }
+        (myPacks || []).forEach(function (entry) {
+            sections.push({ id: entry.pack.id, title: entry.pack.name, stickers: entry.stickers, pack: entry.pack });
+        });
+        return sections;
+    }
+
+    function applyTabsLayout() {
+        if (!stickerPicker) return;
+        var layout =
+            BF.personalization && BF.personalization.getStickerTabsLayout
+                ? BF.personalization.getStickerTabsLayout()
+                : 'bottom';
+        stickerPicker.dataset.tabs = layout;
+    }
+
+    function load(force) {
+        if (myPacks && !force) {
+            render();
+            return Promise.resolve();
+        }
+        if (loading) return loading;
+        loading = BF.api
+            .listMyStickerPacks()
+            .then(function (packs) {
+                myPacks = packs || [];
+                var coverIds = myPacks.map(coverFileId).filter(Boolean);
+                return coverIds.length > 0 ? BF.files.getFileUrls(coverIds) : null;
+            })
+            .then(function () {
+                loading = null;
+                render();
+            })
+            .catch(function () {
+                loading = null;
+                if (stickerFeed) stickerFeed.innerHTML = emptyMarkup('common.loadError');
+            });
+        return loading;
     }
 
     function emptyMarkup(key) {
         return '<div class="sticker-pack-empty">' + BF.utils.escapeHtml(BF.i18n.t(key)) + '</div>';
     }
 
-    function defaultStickerTabId() {
-        return resolveRecentStickers().length > 0 ? RECENT_TAB : stickerPacksCache[0].id;
+    function render() {
+        renderTabs();
+        renderFeed();
     }
 
-    function loadStickerPacks() {
-        if (stickerPacksCache) {
-            if (stickerPacksCache.length === 0) return;
-            renderStickerPackTabs();
-            if (!currentStickerPackId) loadStickerPackContent(defaultStickerTabId());
-            else if (currentStickerPackId === RECENT_TAB) loadStickerPackContent(RECENT_TAB);
-            return;
-        }
-        BF.api
-            .listStickerPacks(0, 50)
-            .then(function (data) {
-                stickerPacksCache = data.packs || [];
-                if (stickerPacksCache.length === 0) {
-                    if (stickerGrid) stickerGrid.innerHTML = emptyMarkup('sticker.noPacks');
-                    return;
-                }
-                // Prefetch всех паков для обложек и кэша контента
-                var loads = stickerPacksCache.map(function (p) {
-                    return BF.api
-                        .getStickerPack(p.id)
-                        .then(function (d) {
-                            var stickers = d.stickers || [];
-                            var cover =
-                                stickers.find(function (s) {
-                                    return s.id === p.coverStickerId;
-                                }) || stickers[0];
-                            stickerPacksContentCache[p.id] = {
-                                stickers: stickers,
-                                coverFileId: cover ? cover.previewFileId || cover.fileId : null
-                            };
-                        })
-                        .catch(function () {
-                            stickerPacksContentCache[p.id] = { stickers: [], coverFileId: null };
-                        });
-                });
-                Promise.all(loads)
-                    .then(function () {
-                        var coverIds = stickerPacksCache
-                            .map(function (p) {
-                                return stickerPacksContentCache[p.id].coverFileId;
-                            })
-                            .filter(Boolean);
-                        return coverIds.length > 0 ? BF.files.getFileUrls(coverIds) : Promise.resolve();
-                    })
-                    .then(function () {
-                        renderStickerPackTabs();
-                        loadStickerPackContent(defaultStickerTabId());
-                    });
-            })
-            .catch(function () {
-                if (stickerGrid) stickerGrid.innerHTML = emptyMarkup('common.loadError');
-            });
+    function makeTab(className, title, onClick) {
+        var tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'sticker-pack-tab' + (className ? ' ' + className : '');
+        tab.title = title;
+        tab.setAttribute('aria-label', title);
+        tab.addEventListener('click', function (event) {
+            event.stopPropagation();
+            onClick();
+        });
+        return tab;
     }
 
-    function renderStickerPackTabs() {
+    function renderTabs() {
         if (!stickerPacksBar) return;
         stickerPacksBar.innerHTML = '';
-        if (resolveRecentStickers().length > 0) {
-            var recentTab = document.createElement('div');
-            recentTab.className = 'sticker-pack-tab recent' + (currentStickerPackId === RECENT_TAB ? ' active' : '');
-            recentTab.title = BF.i18n.t('sticker.recent');
-            recentTab.appendChild(BF.icons.element('history'));
-            recentTab.addEventListener('click', function (event) {
-                event.stopPropagation();
-                loadStickerPackContent(RECENT_TAB);
+        feedSections().forEach(function (section) {
+            var tab = makeTab('', section.title, function () {
+                scrollToSection(section.id);
             });
-            stickerPacksBar.appendChild(recentTab);
-        }
-        stickerPacksCache.forEach(function (pack) {
-            var tab = document.createElement('div');
-            tab.className = 'sticker-pack-tab' + (pack.id === currentStickerPackId ? ' active' : '');
-            tab.title = pack.name || '';
-            var cached = stickerPacksContentCache[pack.id];
-            var coverFid = cached && cached.coverFileId;
-            var fd = coverFid ? BF.files.getCachedFileUrl(coverFid) : null;
-            var url = fd && (fd.previewUrl || fd.url);
-            if (url) {
-                var img = document.createElement('img');
-                img.src = url;
-                img.alt = pack.name || '';
-                BF.files.bindResilientMedia(img, coverFid, true);
-                tab.appendChild(img);
+            tab.dataset.sectionId = section.id;
+            tab.setAttribute('role', 'tab');
+            if (section.id === RECENT_TAB) {
+                tab.classList.add('recent');
+                tab.appendChild(BF.icons.element('history'));
             } else {
-                tab.textContent = (pack.name || '?')[0].toUpperCase();
+                var entry = { pack: section.pack, stickers: section.stickers };
+                var fid = coverFileId(entry);
+                var fd = fid ? BF.files.getCachedFileUrl(fid) : null;
+                var url = fd && (fd.previewUrl || fd.url);
+                if (url) {
+                    var img = document.createElement('img');
+                    img.src = url;
+                    img.alt = '';
+                    BF.files.bindResilientMedia(img, fid, true);
+                    tab.appendChild(img);
+                } else {
+                    tab.textContent = (section.title || '?')[0].toUpperCase();
+                }
             }
-            tab.addEventListener('click', function (event) {
-                event.stopPropagation();
-                loadStickerPackContent(pack.id);
-            });
             stickerPacksBar.appendChild(tab);
         });
+        var addTab = makeTab('add', BF.i18n.t('sticker.addByLink'), toggleLinkForm);
+        addTab.appendChild(BF.icons.element('add'));
+        stickerPacksBar.appendChild(addTab);
+        markActiveTab(activeTabId);
     }
 
-    function currentTabStickers() {
-        if (currentStickerPackId === RECENT_TAB) return resolveRecentStickers();
-        var cached = stickerPacksContentCache[currentStickerPackId];
-        return cached ? cached.stickers : [];
-    }
-
-    function renderStickerGrid() {
-        if (!stickerGrid) return;
-        var renderVersion = ++stickerGridRenderVersion;
-        stickerGrid.innerHTML = '';
-        var stickers = currentTabStickers();
-        if (stickers.length === 0) {
-            stickerGrid.innerHTML = emptyMarkup(
-                currentStickerPackId === RECENT_TAB ? 'sticker.empty' : 'sticker.packEmpty'
-            );
-            return;
-        }
-        if (stickerSearchQuery) {
-            stickers = stickers.filter(function (s) {
-                return (s.emoji || '').indexOf(stickerSearchQuery) >= 0;
-            });
-            if (stickers.length === 0) {
-                stickerGrid.innerHTML = emptyMarkup('sticker.empty');
-                return;
-            }
-        }
-        // Показываем full-версии стикеров (fileId, не preview)
-        var fileIds = stickers
-            .map(function (s) {
-                return s.fileId;
-            })
-            .filter(Boolean);
-        BF.files.getFileUrls(fileIds).then(function () {
-            if (renderVersion !== stickerGridRenderVersion) return;
-            stickers.forEach(function (s) {
-                var fd = BF.files.getCachedFileUrl(s.fileId);
-                var url = fd && fd.url;
-                if (!url) return;
-                var img = document.createElement('img');
-                img.src = url;
-                img.title = s.emoji || '';
-                img.loading = 'lazy';
-                img.addEventListener('click', function () {
-                    send(s);
-                });
-                BF.files.bindResilientMedia(img, s.fileId, false);
-                stickerGrid.appendChild(img);
-            });
+    function markActiveTab(sectionId) {
+        activeTabId = sectionId;
+        if (!stickerPacksBar) return;
+        Array.prototype.forEach.call(stickerPacksBar.children, function (tab) {
+            if (!tab.dataset.sectionId) return;
+            var isActive = tab.dataset.sectionId === sectionId;
+            tab.classList.toggle('active', isActive);
+            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
     }
 
-    function loadStickerPackContent(packId) {
-        currentStickerPackId = packId;
-        renderStickerPackTabs();
-        renderStickerGrid();
+    function renderEmptyState() {
+        var box = document.createElement('div');
+        box.className = 'sticker-empty-state';
+        box.appendChild(BF.icons.element('stickers'));
+        var title = document.createElement('strong');
+        title.textContent = BF.i18n.t('sticker.noPacksTitle');
+        var hint = document.createElement('p');
+        hint.textContent = BF.i18n.t('sticker.noPacksHint');
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = BF.i18n.t('sticker.addByLink');
+        button.addEventListener('click', function (event) {
+            event.stopPropagation();
+            showLinkForm();
+        });
+        box.appendChild(title);
+        box.appendChild(hint);
+        box.appendChild(button);
+        stickerFeed.replaceChildren(box);
+    }
+
+    function renderFeed() {
+        if (!stickerFeed) return;
+        var version = ++renderVersion;
+        var sections = feedSections();
+        if (sections.length === 0) {
+            renderEmptyState();
+            return;
+        }
+        var visible = sections
+            .map(function (section) {
+                return { section: section, stickers: section.stickers.filter(matchesSearch) };
+            })
+            .filter(function (item) {
+                return item.stickers.length > 0;
+            });
+        if (visible.length === 0) {
+            stickerFeed.innerHTML = emptyMarkup('sticker.empty');
+            return;
+        }
+
+        // Полные версии стикеров (fileId, не preview); ссылки запрашиваются одним пакетом.
+        var fileIds = [];
+        visible.forEach(function (item) {
+            item.stickers.forEach(function (s) {
+                if (s.fileId) fileIds.push(s.fileId);
+            });
+        });
+        BF.files.getFileUrls(fileIds).then(function () {
+            if (version !== renderVersion) return;
+            stickerFeed.innerHTML = '';
+            visible.forEach(function (item) {
+                stickerFeed.appendChild(renderSection(item.section, item.stickers));
+            });
+            stickerFeed.scrollTop = 0;
+            markActiveTab(visible[0].section.id);
+        });
+    }
+
+    function renderSection(section, stickers) {
+        var el = document.createElement('section');
+        el.className = 'sticker-section';
+        el.dataset.sectionId = section.id;
+
+        var header = document.createElement('div');
+        header.className = 'sticker-section-title';
+        var title = document.createElement('span');
+        title.textContent = section.title;
+        header.appendChild(title);
+        if (section.pack && BF.stickerPack && BF.stickerPack.openById) {
+            var open = document.createElement('button');
+            open.type = 'button';
+            open.className = 'sticker-section-open';
+            open.textContent = BF.i18n.t('sticker.openPack');
+            open.addEventListener('click', function (event) {
+                event.stopPropagation();
+                closePicker();
+                BF.stickerPack.openById(section.pack.id);
+            });
+            header.appendChild(open);
+        }
+        el.appendChild(header);
+
+        var grid = document.createElement('div');
+        grid.className = 'sticker-section-grid';
+        stickers.forEach(function (s) {
+            var fd = BF.files.getCachedFileUrl(s.fileId);
+            var url = fd && fd.url;
+            if (!url) return;
+            var img = document.createElement('img');
+            img.src = url;
+            img.alt = s.emoji || '';
+            img.title = s.emoji || '';
+            img.loading = 'lazy';
+            img.addEventListener('click', function () {
+                send(s);
+            });
+            BF.files.bindResilientMedia(img, s.fileId, false);
+            grid.appendChild(img);
+        });
+        el.appendChild(grid);
+        return el;
+    }
+
+    function findSectionElement(sectionId) {
+        var children = stickerFeed ? stickerFeed.children : [];
+        for (var i = 0; i < children.length; i++) {
+            if (children[i].dataset && children[i].dataset.sectionId === sectionId) return children[i];
+        }
+        return null;
+    }
+
+    function scrollToSection(sectionId) {
+        var el = findSectionElement(sectionId);
+        if (!el) return;
+        stickerFeed.scrollTop = el.offsetTop;
+        markActiveTab(sectionId);
+    }
+
+    // Активная вкладка — последний раздел, верх которого уже прокручен до верха ленты.
+    function syncActiveTabWithScroll() {
+        var children = stickerFeed.children;
+        var current = null;
+        for (var i = 0; i < children.length; i++) {
+            if (!children[i].dataset || !children[i].dataset.sectionId) continue;
+            if (children[i].offsetTop - 8 <= stickerFeed.scrollTop) current = children[i].dataset.sectionId;
+        }
+        if (!current && children[0] && children[0].dataset) current = children[0].dataset.sectionId;
+        if (current && current !== activeTabId) markActiveTab(current);
+    }
+
+    function showLinkForm() {
+        if (!linkForm) return;
+        linkForm.hidden = false;
+        linkInput.value = '';
+        linkInput.focus();
+    }
+
+    function toggleLinkForm() {
+        if (!linkForm) return;
+        if (linkForm.hidden) showLinkForm();
+        else linkForm.hidden = true;
+    }
+
+    /** Короткое имя набора из ссылки …/addstickers/<имя> или из самого имени; null — не распознано. */
+    function parseStickerLink(value) {
+        var text = String(value || '').trim();
+        var match = text.match(STICKER_LINK_PATTERN);
+        var name = match ? match[1] : text;
+        return SHORT_NAME_PATTERN.test(name) ? name : null;
+    }
+
+    function submitLink(event) {
+        event.preventDefault();
+        var name = parseStickerLink(linkInput.value);
+        if (!name) {
+            deps.showToast(BF.i18n.t('sticker.packNotFound'), true);
+            return;
+        }
+        linkForm.hidden = true;
+        closePicker();
+        if (BF.stickerPack && BF.stickerPack.openByName) BF.stickerPack.openByName(name);
+    }
+
+    function closePicker() {
+        stickerPicker.classList.remove('visible');
+        stickerBtn.classList.remove('active');
     }
 
     function send(sticker) {
@@ -223,8 +365,7 @@
         var sentChatId = deps.getCurrentChatId();
         if (!sentChatId || deps.getCurrentChatType() === 1 || !fileId) return;
         addRecentSticker(sticker.id);
-        stickerPicker.classList.remove('visible');
-        stickerBtn.classList.remove('active');
+        closePicker();
         BF.api
             .sendMessage({ chatId: sentChatId, text: null, fileIds: [fileId] })
             .then(function (resp) {
@@ -235,19 +376,30 @@
             });
     }
 
+    /** Набор добавлен или убран в окне набора — при следующем открытии список перечитывается с сервера. */
+    function invalidate() {
+        myPacks = null;
+        if (stickerPicker && stickerPicker.classList.contains('visible')) load(true);
+    }
+
     function init(options) {
         deps = options;
         stickerBtn = $('#stickerBtn');
         stickerPicker = $('#stickerPicker');
         stickerSearch = $('#stickerSearch');
         stickerPacksBar = $('#stickerPacksBar');
-        stickerGrid = $('#stickerGrid');
+        stickerFeed = $('#stickerFeed');
+        linkForm = $('#stickerLinkForm');
+        linkInput = $('#stickerLinkInput');
 
         try {
             recentStickerIds = JSON.parse(localStorage.getItem(recentStickersKey()) || '[]') || [];
         } catch (_) {
             recentStickerIds = [];
         }
+
+        applyTabsLayout();
+        if (BF.personalization && BF.personalization.onChange) BF.personalization.onChange(applyTabsLayout);
 
         if (stickerBtn) {
             stickerBtn.addEventListener('click', function (e) {
@@ -258,28 +410,35 @@
                 if (!isOpen) {
                     if (stickerSearch) {
                         stickerSearch.value = '';
-                        stickerSearchQuery = '';
+                        searchQuery = '';
                     }
-                    loadStickerPacks();
+                    if (linkForm) linkForm.hidden = true;
+                    applyTabsLayout();
+                    load(false);
                 }
             });
         }
 
         document.addEventListener('click', function (e) {
             if (!stickerPicker || !stickerPicker.classList.contains('visible')) return;
-            if (!stickerPicker.contains(e.target) && !stickerBtn.contains(e.target)) {
-                stickerPicker.classList.remove('visible');
-                stickerBtn.classList.remove('active');
-            }
+            if (!stickerPicker.contains(e.target) && !stickerBtn.contains(e.target)) closePicker();
         });
 
         if (stickerSearch) {
             stickerSearch.addEventListener('input', function () {
-                stickerSearchQuery = stickerSearch.value.trim();
-                renderStickerGrid();
+                searchQuery = stickerSearch.value.trim();
+                renderFeed();
             });
         }
+
+        if (stickerFeed) stickerFeed.addEventListener('scroll', syncActiveTabWithScroll);
+        if (linkForm) linkForm.addEventListener('submit', submitLink);
     }
 
-    window.BF.stickerPicker = { init: init, send: send };
+    window.BF.stickerPicker = {
+        init: init,
+        send: send,
+        invalidate: invalidate,
+        parseStickerLink: parseStickerLink
+    };
 })();

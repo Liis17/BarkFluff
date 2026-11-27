@@ -778,7 +778,7 @@
     }
 
     if (BF.stickerPack && BF.stickerPack.init) {
-        BF.stickerPack.init({ onStickerSend: BF.stickerPicker.send });
+        BF.stickerPack.init({ onStickerSend: BF.stickerPicker.send, showToast: showToast });
     }
 
     BF.realtime.startAll();
