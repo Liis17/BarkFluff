@@ -293,6 +293,80 @@ public sealed class UsersEndpointsTests : IDisposable
             }));
     }
 
+    [Fact]
+    public async Task BadgeBatch_AppliesAllChangesUnderOneStepUpAndReportsFailures()
+    {
+        var calls = new List<string>();
+        _usersClient
+            .Setup(client => client.RemoveUserBadgeAsync(It.IsAny<RemoveUserBadgeRequest>(), It.IsAny<Metadata>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            .Callback((RemoveUserBadgeRequest request, Metadata _, DateTime? __, CancellationToken ___) => calls.Add($"remove:{request.BadgeId}"))
+            .Returns(UnaryCall(new RemoveUserBadgeResponse { Success = true }));
+        _usersClient
+            .Setup(client => client.AssignUserBadgeAsync(It.IsAny<AssignUserBadgeRequest>(), It.IsAny<Metadata>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            .Returns((AssignUserBadgeRequest request, Metadata _, DateTime? __, CancellationToken ___) =>
+            {
+                calls.Add($"add:{request.BadgeId}");
+                if (request.BadgeId == 7)
+                    throw new RpcException(new Status(StatusCode.AlreadyExists, "Бейдж уже назначен"));
+                return UnaryCall(new AssignUserBadgeResponse
+                {
+                    UserBadge = new UserBadge { Badge = new Badge { Id = request.BadgeId, Name = $"b{request.BadgeId}" }, Priority = request.Priority }
+                });
+            });
+        // Step-up is bound to the normalized set, independent of selection order and duplicates.
+        var confirmationId = ApproveStepUp(StepUpActions.UserBadgesUpdate, $"userId={UserId};add=3,7;remove=9");
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/users/{UserId}/badges/batch")
+        {
+            Content = JsonContent.Create(new { add = new[] { 7, 3, 3 }, remove = new[] { 9 } })
+        };
+        request.Headers.Add(RequireStepUpFilter.HeaderName, confirmationId);
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(["remove:9", "add:3", "add:7"], calls);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(3, body.RootElement.GetProperty("added").EnumerateArray().Single().GetProperty("badge").GetProperty("id").GetInt32());
+        Assert.Equal(9, body.RootElement.GetProperty("removed").EnumerateArray().Single().GetInt32());
+        var failure = body.RootElement.GetProperty("failed").EnumerateArray().Single();
+        Assert.Equal(7, failure.GetProperty("badgeId").GetInt32());
+        Assert.Equal("add", failure.GetProperty("operation").GetString());
+        Assert.Equal("Бейдж уже назначен", failure.GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task BadgeBatch_RejectsStepUpApprovedForDifferentSet()
+    {
+        var confirmationId = ApproveStepUp(StepUpActions.UserBadgesUpdate, $"userId={UserId};add=3;remove=");
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/users/{UserId}/badges/batch")
+        {
+            Content = JsonContent.Create(new { add = new[] { 3, 4 } })
+        };
+        request.Headers.Add(RequireStepUpFilter.HeaderName, confirmationId);
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.PreconditionRequired, response.StatusCode);
+        _usersClient.Verify(client => client.AssignUserBadgeAsync(
+            It.IsAny<AssignUserBadgeRequest>(), It.IsAny<Metadata>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"add\":[5],\"remove\":[5]}")]
+    [InlineData("{\"add\":[0]}")]
+    public async Task BadgeBatch_RejectsInvalidChangesBeforeStepUp(string json)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/users/{UserId}/badges/batch")
+        {
+            Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+        };
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private static SearchUsersServerResponse CreateSearchResponse(AccountStatus status)
     {
         var user = new User

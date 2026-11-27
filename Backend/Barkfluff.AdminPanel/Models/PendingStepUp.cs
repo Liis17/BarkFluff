@@ -38,6 +38,7 @@ public static class StepUpActions
     public const string UsersDeletionCancel = "users.deletion.cancel";
     public const string UserBadgeAssign = "users.badges.assign";
     public const string UserBadgeRemove = "users.badges.remove";
+    public const string UserBadgesUpdate = "users.badges.update";
     public const string BadgesUpdate = "badges.update";
     public const string BadgesDelete = "badges.delete";
     public const string DockerBranch = "docker.branch";
@@ -73,6 +74,7 @@ public static class StepUpActions
             [UsersDeletionCancel] = AdminPermissions.UsersDelete,
             [UserBadgeAssign] = AdminPermissions.BadgesManage,
             [UserBadgeRemove] = AdminPermissions.BadgesManage,
+            [UserBadgesUpdate] = AdminPermissions.BadgesManage,
             [BadgesUpdate] = AdminPermissions.BadgesManage,
             [BadgesDelete] = AdminPermissions.BadgesManage,
             [DockerBranch] = AdminPermissions.DockerDeploy,
@@ -115,6 +117,7 @@ public static class StepUpActions
             UsersDeletionCancel => "Отмена удаления пользователя",
             UserBadgeAssign => "Назначение бейджа пользователю",
             UserBadgeRemove => "Удаление бейджа у пользователя",
+            UserBadgesUpdate => "Изменение бейджей пользователя",
             BadgesUpdate => "Изменение бейджа",
             BadgesDelete => "Удаление бейджа",
             DockerBranch => "Переключение ветки обновлений",

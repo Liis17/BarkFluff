@@ -332,6 +332,84 @@ public static class UsersEndpoints
         .RequireStepUp(StepUpActions.UserBadgeRemove, context =>
             "userId=" + context.Request.RouteValues["id"] + ";badgeId=" + context.Request.RouteValues["badgeId"]);
 
+        // POST /api/users/{id}/badges/batch — one step-up covers the whole set of changes.
+        group.MapPost("/{id:long}/badges/batch", async (
+            long id,
+            [FromBody] UpdateUserBadgesBody? body,
+            UsersServerApi.UsersServerApiClient usersClient,
+            CancellationToken cancellationToken) =>
+        {
+            var changes = NormalizeBadgeChanges(body)!;
+            var removed = new List<int>();
+            var added = new List<object>();
+            var failed = new List<object>();
+
+            // Users has no batch RPC: apply sequentially and report per-badge failures instead of aborting.
+            foreach (var badgeId in changes.Remove)
+            {
+                try
+                {
+                    var response = await usersClient.RemoveUserBadgeAsync(
+                        new RemoveUserBadgeRequest { UserId = id, BadgeId = badgeId },
+                        cancellationToken: cancellationToken);
+                    if (response.Success)
+                        removed.Add(badgeId);
+                    else
+                        failed.Add(new { badgeId, operation = "remove", message = "Бейдж не снят" });
+                }
+                catch (Grpc.Core.RpcException ex) when (ex.StatusCode != Grpc.Core.StatusCode.Cancelled)
+                {
+                    failed.Add(new { badgeId, operation = "remove", message = ex.Status.Detail });
+                }
+            }
+
+            foreach (var badgeId in changes.Add)
+            {
+                try
+                {
+                    var response = await usersClient.AssignUserBadgeAsync(
+                        new AssignUserBadgeRequest { UserId = id, BadgeId = badgeId, Priority = 1000 },
+                        cancellationToken: cancellationToken);
+                    added.Add(new
+                    {
+                        badge = new
+                        {
+                            id = response.UserBadge.Badge.Id,
+                            name = response.UserBadge.Badge.Name,
+                            description = response.UserBadge.Badge.Description,
+                            imageUrl = response.UserBadge.Badge.ImageUrl,
+                            miniImageUrl = response.UserBadge.Badge.MiniImageUrl
+                        },
+                        priority = response.UserBadge.Priority,
+                        assignedDate = response.UserBadge.AssignedDate?.ToDateTime(),
+                        isPrimary = response.UserBadge.IsPrimary
+                    });
+                }
+                catch (Grpc.Core.RpcException ex) when (ex.StatusCode != Grpc.Core.StatusCode.Cancelled)
+                {
+                    failed.Add(new { badgeId, operation = "add", message = ex.Status.Detail });
+                }
+            }
+
+            return Results.Ok(new { added, removed, failed });
+        })
+        .WithName("UpdateUserBadges")
+        .RequirePermission(AdminPermissions.BadgesManage)
+        .AddEndpointFilter(async (context, next) =>
+        {
+            var body = context.Arguments.OfType<UpdateUserBadgesBody>().FirstOrDefault();
+            var error = ValidateBadgeChanges(body);
+            return error is null
+                ? await next(context)
+                : Results.BadRequest(new { message = error });
+        })
+        .RequireStepUpFromArguments(StepUpActions.UserBadgesUpdate, context =>
+        {
+            var changes = NormalizeBadgeChanges(context.Arguments.OfType<UpdateUserBadgesBody>().FirstOrDefault());
+            return $"userId={context.HttpContext.Request.RouteValues["id"]};" +
+                   $"add={string.Join(',', changes?.Add ?? [])};remove={string.Join(',', changes?.Remove ?? [])}";
+        });
+
         // PUT /api/users/{id}/storage-limit
         group.MapPut("/{id:long}/storage-limit", async (
             long id,
@@ -582,6 +660,31 @@ public static class UsersEndpoints
     private sealed record GrpcCallResult<T>(T? Value, bool Available) where T : class;
 
     private sealed record AssignBadgeBody(int BadgeId, int? Priority);
+    internal sealed record UpdateUserBadgesBody(int[]? Add, int[]? Remove);
+    private sealed record BadgeChanges(int[] Add, int[] Remove);
+
+    internal const int MaxBadgeChangesPerRequest = 100;
+
+    /// <summary>Sorted distinct ids, so the step-up binding does not depend on selection order.</summary>
+    private static BadgeChanges? NormalizeBadgeChanges(UpdateUserBadgesBody? body) => body is null
+        ? null
+        : new BadgeChanges(
+            (body.Add ?? []).Distinct().Order().ToArray(),
+            (body.Remove ?? []).Distinct().Order().ToArray());
+
+    private static string? ValidateBadgeChanges(UpdateUserBadgesBody? body)
+    {
+        var changes = NormalizeBadgeChanges(body);
+        if (changes is null || changes.Add.Length + changes.Remove.Length == 0)
+            return "Нет изменений бейджей";
+        if (changes.Add.Length + changes.Remove.Length > MaxBadgeChangesPerRequest)
+            return $"Не больше {MaxBadgeChangesPerRequest} изменений за раз";
+        if (changes.Add.Concat(changes.Remove).Any(badgeId => badgeId <= 0))
+            return "Некорректный идентификатор бейджа";
+        if (changes.Add.Intersect(changes.Remove).Any())
+            return "Бейдж не может быть одновременно добавлен и снят";
+        return null;
+    }
     private sealed record UpdateStorageLimitBody(int StorageLimitGb);
     private sealed record DisableOtpBody(int OtpType, string? Reason);
     private sealed record UpdateProfileBody(string? FirstName, string? LastName, string? Bio, string? Username);
