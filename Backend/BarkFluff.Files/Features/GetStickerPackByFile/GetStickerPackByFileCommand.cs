@@ -7,4 +7,6 @@ namespace BarkFluff.Files.Features.GetStickerPackByFile;
 public class GetStickerPackByFileCommand : IRequest<GetStickerPackResponse>
 {
     public Guid FileId { get; set; }
+
+    public long UserId { get; set; }
 }

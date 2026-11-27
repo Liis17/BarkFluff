@@ -177,7 +177,8 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
         {
             CreatorUserId = request.CreatorUserId,
             Name = request.Name,
-            Description = request.Description
+            Description = request.Description,
+            ShortName = request.ShortName
         };
 
         return _mediator.Send(command);
@@ -190,7 +191,8 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
             PackId = Guid.Parse(request.PackId),
             Name = request.Name,
             Description = request.Description,
-            CoverStickerId = string.IsNullOrEmpty(request.CoverStickerId) ? null : Guid.Parse(request.CoverStickerId)
+            CoverStickerId = string.IsNullOrEmpty(request.CoverStickerId) ? null : Guid.Parse(request.CoverStickerId),
+            ShortName = request.ShortName
         };
 
         return _mediator.Send(command);

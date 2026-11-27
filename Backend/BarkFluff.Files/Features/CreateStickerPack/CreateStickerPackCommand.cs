@@ -11,4 +11,7 @@ public class CreateStickerPackCommand : IRequest<CreateStickerPackResponse>
     public string Name { get; set; } = string.Empty;
 
     public string Description { get; set; } = string.Empty;
+
+    /// <summary>Пусто — имя генерируется из id набора.</summary>
+    public string ShortName { get; set; } = string.Empty;
 }

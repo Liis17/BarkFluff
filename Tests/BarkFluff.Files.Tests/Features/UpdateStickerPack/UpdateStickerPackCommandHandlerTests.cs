@@ -1,4 +1,5 @@
 using BarkFluff.Files.Features.UpdateStickerPack;
+using BarkFluff.Shared.Exceptions.Files;
 
 namespace BarkFluff.Files.Tests.Features.UpdateStickerPack;
 
@@ -70,6 +71,42 @@ public class UpdateStickerPackCommandHandlerTests : IAsyncLifetime
 
         var act = () => _handler.Handle(command, CancellationToken.None);
 
-        await act.Should().ThrowAsync<Exception>().WithMessage("Стикерпак не найден");
+        await act.Should().ThrowAsync<StickerPackNotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_ShortNameGiven_NormalizesAndSaves()
+    {
+        var pack = await _helper.SeedStickerPack(shortName: "old_name");
+
+        var result = await _handler.Handle(
+            new UpdateStickerPackCommand { PackId = pack.Id, Name = "Pack", ShortName = "  New_Name " },
+            CancellationToken.None);
+
+        result.Pack.ShortName.Should().Be("new_name");
+    }
+
+    [Fact]
+    public async Task Handle_ShortNameEmpty_KeepsExisting()
+    {
+        var pack = await _helper.SeedStickerPack(shortName: "keep_me");
+
+        var result = await _handler.Handle(
+            new UpdateStickerPackCommand { PackId = pack.Id, Name = "Pack" }, CancellationToken.None);
+
+        result.Pack.ShortName.Should().Be("keep_me");
+    }
+
+    [Fact]
+    public async Task Handle_ShortNameTakenByAnotherPack_Throws()
+    {
+        await _helper.SeedStickerPack(shortName: "taken");
+        var pack = await _helper.SeedStickerPack(shortName: "mine");
+
+        var act = () => _handler.Handle(
+            new UpdateStickerPackCommand { PackId = pack.Id, Name = "Pack", ShortName = "TAKEN" },
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<StickerPackShortNameTakenException>();
     }
 }

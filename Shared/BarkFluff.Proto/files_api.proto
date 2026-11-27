@@ -17,9 +17,16 @@ service FilesApi {
   rpc GetUserStorageInfo(GetUserStorageInfoRequest) returns(GetUserStorageInfoResponse); // Получить информацию о хранилище пользователя
 
   // Стикерпаки (клиентский доступ, только чтение)
-  rpc ListStickerPacks(ListStickerPacksRequest) returns(ListStickerPacksResponse); // Список стикерпаков
+  // Устарело: все стикерпаки ноды. Клиенты показывают только наборы пользователя — ListMyStickerPacks.
+  rpc ListStickerPacks(ListStickerPacksRequest) returns(ListStickerPacksResponse);
   rpc GetStickerPack(GetStickerPackRequest) returns(GetStickerPackResponse); // Получить стикерпак со стикерами
   rpc GetStickerPackByFile(GetStickerPackByFileRequest) returns(GetStickerPackResponse); // Стикерпак по file_id стикера (клик по стикеру в чате)
+  rpc GetStickerPackByName(GetStickerPackByNameRequest) returns(GetStickerPackResponse); // Стикерпак по короткому имени из ссылки /addstickers/<short_name>
+
+  // Наборы стикеров пользователя
+  rpc ListMyStickerPacks(ListMyStickerPacksRequest) returns(ListMyStickerPacksResponse); // Добавленные наборы со стикерами, новые первыми
+  rpc AddMyStickerPack(AddMyStickerPackRequest) returns(AddMyStickerPackResponse); // Добавить набор себе (идемпотентно)
+  rpc RemoveMyStickerPack(RemoveMyStickerPackRequest) returns(RemoveMyStickerPackResponse); // Убрать набор у себя (идемпотентно)
 }
 
 service FilesServerApi {
@@ -252,6 +259,7 @@ message StickerPackInfo {
   string description = 5;
   google.protobuf.Timestamp created_at = 6;
   int32 sticker_count = 7;
+  string short_name = 8; // Уникальное короткое имя для ссылки /addstickers/<short_name>
 }
 
 message StickerInfo {
@@ -269,6 +277,7 @@ message CreateStickerPackRequest {
   int64 creator_user_id = 1;
   string name = 2;
   string description = 3;
+  string short_name = 4; // Пусто — сгенерировать автоматически
 }
 
 message CreateStickerPackResponse {
@@ -280,6 +289,7 @@ message UpdateStickerPackRequest {
   string name = 2;
   string description = 3;
   string cover_sticker_id = 4;
+  string short_name = 5; // Пусто — не менять
 }
 
 message UpdateStickerPackResponse {
@@ -308,7 +318,35 @@ message GetStickerPackRequest {
 message GetStickerPackResponse {
   StickerPackInfo pack = 1;
   repeated StickerInfo stickers = 2;
+  bool is_added = 3; // Набор добавлен у текущего пользователя (заполняет только FilesApi)
 }
+
+message GetStickerPackByNameRequest {
+  string short_name = 1;
+}
+
+message ListMyStickerPacksRequest {}
+
+message ListMyStickerPacksResponse {
+  repeated StickerPackContent packs = 1;
+}
+
+message StickerPackContent {
+  StickerPackInfo pack = 1;
+  repeated StickerInfo stickers = 2;
+}
+
+message AddMyStickerPackRequest {
+  string pack_id = 1;
+}
+
+message AddMyStickerPackResponse {}
+
+message RemoveMyStickerPackRequest {
+  string pack_id = 1;
+}
+
+message RemoveMyStickerPackResponse {}
 
 message GetStickerPackByFileRequest {
   string file_id = 1; // file_id стикера из вложения сообщения

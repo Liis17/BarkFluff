@@ -50,6 +50,19 @@ public class StickerPacksStorage
             .FirstOrDefaultAsync(x => x.Id == id);
     }
 
+    public async Task<StickerPack?> GetByShortNameWithoutStickersAsync(string shortName, CancellationToken cancellationToken = default)
+    {
+        return await _context.StickerPacks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ShortName == shortName, cancellationToken);
+    }
+
+    public Task<bool> IsShortNameTakenAsync(string shortName, Guid? exceptPackId = null, CancellationToken cancellationToken = default)
+    {
+        return _context.StickerPacks
+            .AnyAsync(x => x.ShortName == shortName && x.Id != exceptPackId, cancellationToken);
+    }
+
     public async Task<List<StickerPack>> ListAsync(int offset, int limit)
     {
         return await _context.StickerPacks

@@ -1,6 +1,7 @@
 using BarkFluff.Files.Features.GetStickerPack;
 using BarkFluff.Files.Persistence;
 using BarkFluff.Proto.Files;
+using BarkFluff.Shared.Exceptions.Files;
 
 using MediatR;
 
@@ -25,8 +26,8 @@ public class GetStickerPackByFileCommandHandler : IRequestHandler<GetStickerPack
     public async Task<GetStickerPackResponse> Handle(GetStickerPackByFileCommand request, CancellationToken cancellationToken)
     {
         var sticker = await _stickersStorage.GetByFileIdAsync(request.FileId)
-            ?? throw new Exception("Стикер не найден");
+            ?? throw new StickerPackNotFoundException();
 
-        return await _mediator.Send(new GetStickerPackCommand { PackId = sticker.StickerPackId }, cancellationToken);
+        return await _mediator.Send(new GetStickerPackCommand { PackId = sticker.StickerPackId, UserId = request.UserId }, cancellationToken);
     }
 }

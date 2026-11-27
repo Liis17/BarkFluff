@@ -24,6 +24,7 @@ public class TestHelper
     public BadgeImagesStorage BadgeImagesStorage { get; }
     public StickerPacksStorage StickerPacksStorage { get; }
     public StickersStorage StickersStorage { get; }
+    public UserStickerPacksStorage UserStickerPacksStorage { get; }
     public Mock<IS3Uploader> S3UploaderMock { get; }
     public Mock<IS3BucketRegistry> S3BucketRegistryMock { get; }
     public ImageCompressor ImageCompressor { get; }
@@ -51,6 +52,7 @@ public class TestHelper
         BadgeImagesStorage = new BadgeImagesStorage(DbContext);
         StickerPacksStorage = new StickerPacksStorage(DbContext);
         StickersStorage = new StickersStorage(DbContext);
+        UserStickerPacksStorage = new UserStickerPacksStorage(DbContext);
 
         S3UploaderMock = new Mock<IS3Uploader>(MockBehavior.Loose);
         S3BucketRegistryMock = new Mock<IS3BucketRegistry>(MockBehavior.Loose);
@@ -178,10 +180,12 @@ public class TestHelper
         long creatorUserId = 1,
         string name = "Test Pack",
         string description = "Test Description",
-        Guid? coverStickerId = null)
+        Guid? coverStickerId = null,
+        string? shortName = null)
     {
         var pack = new StickerPack
         {
+            ShortName = shortName,
             Id = id ?? Guid.NewGuid(),
             CreatorUserId = creatorUserId,
             Name = name,
@@ -223,5 +227,17 @@ public class TestHelper
         await DbContext.SaveChangesAsync();
         DetachAll();
         return sticker;
+    }
+
+    public async Task SeedUserStickerPack(long userId, Guid packId, DateTime? addedAt = null)
+    {
+        DbContext.UserStickerPacks.Add(new UserStickerPack
+        {
+            UserId = userId,
+            StickerPackId = packId,
+            AddedAt = addedAt ?? DateTime.UtcNow
+        });
+        await DbContext.SaveChangesAsync();
+        DetachAll();
     }
 }
