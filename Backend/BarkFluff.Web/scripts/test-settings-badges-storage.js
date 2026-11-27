@@ -72,7 +72,7 @@ function makeEl(tag) {
     return el;
 }
 
-function createHarness(api) {
+function createHarness(api, security) {
     var elements = {};
     var langChanges = [];
     ['#settingsOverlay', '#sdBack', '#sdTitle', '#sdBody', '#confirmOverlay', '#sdClose', '#confirmCancel', '#confirmOk'].forEach(
@@ -84,9 +84,21 @@ function createHarness(api) {
     var BF = {
         api: api,
         authUI: { cancelAll: function () {} },
+        confirmations: {
+            call: function (method) {
+                assert.equal(method, 'getSecuritySettings');
+                return security
+                    ? Promise.resolve({ toObject: function () { return security; } })
+                    : Promise.reject(new Error('unavailable'));
+            }
+        },
+        sound: { play: function () {} },
         node: {
             pinned: function () {
                 return true;
+            },
+            origin: function () {
+                return 'https://node.test';
             }
         },
         userBadges: {
@@ -114,6 +126,9 @@ function createHarness(api) {
         i18n: {
             t: function (key, vars) {
                 return vars ? key + ' ' + JSON.stringify(vars) : key;
+            },
+            tp: function (key, count) {
+                return key + ' ' + count;
             },
             onChange: function () {},
             current: function () {
@@ -296,6 +311,12 @@ async function main() {
             },
             getUserStorageInfo: function () {
                 return Promise.resolve({ totalUsed: 0, limit: 0, byType: [] });
+            },
+            getUserBadges: function () {
+                return Promise.resolve({ badges: [] });
+            },
+            getActiveSessions: function () {
+                return Promise.resolve({ sessions: [] });
             }
         });
         var forward = function () {
@@ -358,6 +379,125 @@ async function main() {
         rows[1].listeners.keydown(key(' '));
         assert.deepEqual(h.langChanges, ['ru', 'ru'], 'Enter and Space activate, other keys do not');
         assert.equal(prevented, 2, 'Space must not scroll the sheet');
+    });
+    await test('main screen fills stats and row values; the 2FA warning shows only for password-only sign-in', async function () {
+        var api = {
+            getUser: function () {
+                return Promise.resolve({});
+            },
+            getUserBadges: function () {
+                return Promise.resolve({
+                    badges: [
+                        { id: 1, name: 'Early', isPrimary: false },
+                        { id: 2, name: 'Crown', isPrimary: true }
+                    ]
+                });
+            },
+            getActiveSessions: function () {
+                return Promise.resolve({ sessions: [{ deviceId: 'a' }, { deviceId: 'b' }, { deviceId: 'c' }] });
+            },
+            getUserStorageInfo: function () {
+                return Promise.resolve({ totalUsed: 250, limit: 1000, byType: [] });
+            }
+        };
+        var byClass = function (root, cls) {
+            return findAll(root, function (el) {
+                return el.className === cls;
+            });
+        };
+        var valueOf = function (root, label) {
+            var row = findAll(root, function (el) {
+                return el.className === 'sd-item' && el.innerHTML.indexOf(label) >= 0;
+            })[0];
+            return byClass(row, 'sd-item-value')[0];
+        };
+
+        var h = createHarness(api, { loginMode: 1 });
+        h.BF.settings.open('main');
+        await settle();
+        assert.deepEqual(
+            byClass(h.body, 'sd-stat-value').map(function (el) {
+                return el.textContent;
+            }),
+            ['2', '3', '25%']
+        );
+        assert.equal(byClass(h.body, 'sd-stat-label')[1].textContent, 'settings.stats.sessions 3');
+        assert.equal(valueOf(h.body, 'settings.badges').textContent, 'Crown', 'the primary badge is the row value');
+        assert.equal(valueOf(h.body, 'settings.language.item').textContent, 'English');
+        assert.equal(byClass(h.body, 'sd-alert')[0].hidden, false, 'password-only sign-in shows the warning');
+        assert.match(valueOf(h.body, 'settings.twofa').innerHTML, /settings\.twofa\.off/);
+
+        h = createHarness(api, { loginMode: 3 });
+        h.BF.settings.open('main');
+        await settle();
+        assert.equal(byClass(h.body, 'sd-alert')[0].hidden, true);
+        assert.match(valueOf(h.body, 'settings.twofa').innerHTML, /settings\.twofa\.on/);
+
+        h = createHarness(Object.assign({}, api, {
+            getActiveSessions: function () {
+                return Promise.reject(new Error('down'));
+            }
+        }));
+        h.BF.settings.open('main');
+        await settle();
+        assert.equal(byClass(h.body, 'sd-stat-value')[1].textContent, '—', 'a failed summary shows a dash');
+        assert.equal(byClass(h.body, 'sd-alert')[0].hidden, true, 'unknown security settings show no warning');
+    });
+
+    await test('profile saves name, username and bio separately; a failed field keeps its input and shows its error', async function () {
+        var calls = [];
+        var saved = { firstName: 'Li', lastName: '', username: 'li_is', bio: '' };
+        var h = createHarness({
+            getUser: function () {
+                return Promise.resolve({ user: Object.assign({}, saved) });
+            },
+            changeName: function (fn, ln) {
+                calls.push(['name', fn, ln]);
+                saved.firstName = fn;
+                saved.lastName = ln;
+                return Promise.resolve({});
+            },
+            changeUsername: function (un) {
+                calls.push(['username', un]);
+                return Promise.reject(new Error('conflict'));
+            },
+            changeBio: function (bio) {
+                calls.push(['bio', bio]);
+                saved.bio = bio;
+                return Promise.resolve({});
+            }
+        });
+        h.BF.settings.open('account');
+        await settle();
+        var inputs = findAll(h.body, function (el) {
+            return el.className === 'sd-input';
+        });
+        assert.deepEqual(
+            inputs.map(function (el) {
+                return el.value;
+            }),
+            ['Li', '', 'li_is', ''],
+            'first name, last name, username and bio are separate fields'
+        );
+        inputs[1].value = 'Is';
+        inputs[2].value = 'taken_name';
+        inputs[3].value = 'Hello';
+        var save = findAll(h.body, function (el) {
+            return el.className === 'sd-btn sd-btn-primary';
+        })[0];
+        save.listeners.click();
+        await settle();
+        assert.deepEqual(calls, [['name', 'Li', 'Is'], ['username', 'taken_name'], ['bio', 'Hello']]);
+        assert.equal(inputs[1].value, 'Is');
+        assert.equal(inputs[2].value, 'taken_name', 'the failed username keeps what was typed');
+        assert.equal(inputs[3].value, 'Hello');
+        var errors = findAll(h.body, function (el) {
+            return el.className === 'sd-hint error' && el.textContent;
+        }).map(function (el) {
+            return el.textContent;
+        });
+        assert.deepEqual(errors, ['settings.profile.saveFailed'], 'only the username reports an error');
+        assert.equal(save.disabled, false);
     });
 }
 
