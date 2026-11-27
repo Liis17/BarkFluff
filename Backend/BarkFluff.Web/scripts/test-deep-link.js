@@ -122,6 +122,20 @@ async function main() {
         assert.deepEqual(none.opened, []);
     });
 
+    await test('?stickers= is removed from the address and opens the sticker pack window', async function () {
+        var h = createHarness({ chats: [], href: 'https://web.test/messenger?stickers=shark_liis' });
+        var openedPacks = [];
+        h.BF.stickerPack = {
+            openByName: function (name) {
+                openedPacks.push(name);
+            }
+        };
+        h.BF.deepLink.openFromUrl();
+        assert.deepEqual(h.replaced, ['/messenger']);
+        assert.deepEqual(openedPacks, ['shark_liis']);
+        assert.deepEqual(h.opened, []);
+    });
+
     await test('the bf_open_chat cookie opens the chat of the exactly matching username and is consumed', async function () {
         var h = createHarness({
             cookie: 'a=1; bf_open_chat=Alice; b=2',

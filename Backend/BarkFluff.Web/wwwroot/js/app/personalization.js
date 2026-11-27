@@ -15,7 +15,8 @@
         blurR:  'bf_pers_bg_blur_radius',
         dim:    'bf_pers_bg_dim',
         stickerSize: 'bf_pers_sticker_size',
-        lastSeenFormat: 'bf_pers_last_seen_format'
+        lastSeenFormat: 'bf_pers_last_seen_format',
+        stickerTabs: 'bf_pers_sticker_tabs'
     };
 
     var DEFAULTS = {
@@ -24,7 +25,8 @@
         blurR:  8,
         dim:    30,
         stickerSize: 160,
-        lastSeenFormat: 'relative' // 'relative' | 'exact'
+        lastSeenFormat: 'relative', // 'relative' | 'exact'
+        stickerTabs: 'bottom' // 'bottom' | 'side' — вкладки наборов в панели стикеров
     };
 
     var listeners = [];
@@ -174,6 +176,13 @@
     function setLastSeenFormat(v) {
         localStorage.setItem(KEYS.lastSeenFormat, v === 'exact' ? 'exact' : 'relative');
     }
+    function getStickerTabsLayout() {
+        return readStr(KEYS.stickerTabs, DEFAULTS.stickerTabs) === 'side' ? 'side' : 'bottom';
+    }
+    function setStickerTabsLayout(v) {
+        localStorage.setItem(KEYS.stickerTabs, v === 'side' ? 'side' : 'bottom');
+        applyAll();
+    }
     function applyForChat(chatId) {
         activeChatId = chatId || '';
         activeBackgroundFileId = chatBackgroundFileIds.get(activeChatId) || globalBackgroundFileId;
@@ -240,6 +249,7 @@
         getDim: getDim, setDim: setDim,
         getStickerSize: getStickerSize, setStickerSize: setStickerSize,
         getLastSeenFormat: getLastSeenFormat, setLastSeenFormat: setLastSeenFormat,
+        getStickerTabsLayout: getStickerTabsLayout, setStickerTabsLayout: setStickerTabsLayout,
         getBackgroundFileId: getBackgroundFileId,
         setBackgroundFileId: setBackgroundFileId,
         getChatBackgroundFileId: getChatBackgroundFileId,

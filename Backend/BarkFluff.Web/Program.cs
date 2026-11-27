@@ -461,6 +461,10 @@ if (isProxyMode)
 app.MapGet("/messenger", (IWebHostEnvironment env) =>
     Results.File(Path.Combine(env.WebRootPath, "messenger.html"), "text/html"));
 
+// Ссылка на набор стикеров: мессенджер открывает окно набора по параметру ?stickers=.
+app.MapGet("/addstickers/{shortName}", (string shortName) =>
+    Results.Redirect("/messenger?stickers=" + Uri.EscapeDataString(shortName)));
+
 app.MapReverseProxy();
 
 // Fallback: SPA отдаётся для любого URL, КРОМЕ /api/*, /health и /ping —
