@@ -46,6 +46,24 @@ function makeEl(id) {
         setAttribute: function (name, value) {
             this.attributes[name] = String(value);
         },
+        removeAttribute: function (name) {
+            delete this.attributes[name];
+        },
+        classList: {
+            items: new Set(),
+            add: function (name) {
+                this.items.add(name);
+            },
+            remove: function (name) {
+                this.items.delete(name);
+            },
+            contains: function (name) {
+                return this.items.has(name);
+            }
+        },
+        getBoundingClientRect: function () {
+            return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
+        },
         insertAdjacentHTML: function (where, markup) {
             this.inserted.push(markup);
         }
@@ -160,9 +178,15 @@ function createHarness(options) {
         }
     };
     var clipboardFails = options && options.clipboardFails;
+    var body = makeEl('body');
     var context = vm.createContext({
         BF: BF,
+        innerWidth: 1000,
+        requestAnimationFrame: function (callback) {
+            callback();
+        },
         document: {
+            body: body,
             querySelector: function (selector) {
                 return els[selector] || null;
             },
@@ -226,6 +250,7 @@ function createHarness(options) {
     return {
         BF: BF,
         els: els,
+        body: body,
         tab: tab,
         copyBtn: copyBtn,
         log: log,
@@ -342,6 +367,52 @@ async function main() {
         await settle();
         assert.deepEqual(h.log.badgeRequests, [5, 5]);
         assert.equal(h.els['#profileName'].children.length, 1);
+    });
+
+    await test('hovering or focusing a badge shows its full image, name and description; leaving, blur and click hide it', async function () {
+        var h = createHarness({
+            badges: {
+                5: [
+                    {
+                        id: 1,
+                        name: 'Early',
+                        description: 'Joined in the first week',
+                        imageUrl: 'https://b/1.png',
+                        miniImageUrl: 'https://b/1m.png',
+                        isPrimary: false
+                    }
+                ]
+            }
+        });
+        h.BF.profile.open(5);
+        h.answer(0, { id: 5, username: 'ann', firstName: 'Ann' });
+        await settle();
+        var badge = h.els['#profileBadges'].children[0];
+        assert.equal(badge.attributes['aria-describedby'], 'profileBadgeTooltip');
+
+        badge.listeners.mouseenter();
+        var tip = h.body.children[0];
+        assert.equal(tip.hidden, false);
+        assert.equal(tip.children[0].src, 'https://b/1.png', 'the tooltip shows the full image, not the mini one');
+        assert.deepEqual(
+            tip.children.slice(1).map(function (el) {
+                return el.textContent;
+            }),
+            ['Early', 'Joined in the first week']
+        );
+        badge.listeners.mouseleave();
+        assert.equal(tip.hidden, true);
+
+        badge.listeners.focus();
+        assert.equal(tip.hidden, false);
+        badge.listeners.blur();
+        assert.equal(tip.hidden, true);
+
+        badge.listeners.mouseenter();
+        badge.listeners.click();
+        assert.equal(tip.hidden, true);
+        assert.deepEqual(h.log.viewed, [1]);
+        assert.equal(h.body.children.length, 1, 'the tooltip is created once');
     });
 
     await test('a profile with only a primary badge or without badges hides the badges card', async function () {
