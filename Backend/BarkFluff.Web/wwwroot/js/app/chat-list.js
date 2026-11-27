@@ -388,7 +388,7 @@
         var picture = restricted || saved ? '' : chat.picture;
         var avatarInitial = (title || '?')[0].toUpperCase();
         var avatarHtml = saved
-            ? BF.icons.html('favorites')
+            ? BF.icons.html('bookmark')
             : picture
               ? '<img src="' + u.escapeHtml(picture) + '" alt="">'
               : avatarInitial;

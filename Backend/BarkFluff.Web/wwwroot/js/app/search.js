@@ -430,7 +430,7 @@
                   : hit.chatTitle || (chat && chat.title) || BF.i18n.t('common.chat');
             var picture = !restricted && !saved && chat && chat.picture ? chat.picture : null;
             var avHtml = saved
-                ? BF.icons.html('favorites')
+                ? BF.icons.html('bookmark')
                 : picture
                   ? '<img src="' + u.escapeHtml(picture) + '" alt="">'
                   : (title || '?')[0].toUpperCase();
@@ -509,7 +509,7 @@
                 var title = restricted ? u.restrictedUserName(peer) : chatTitle(chat) || BF.i18n.t('common.chat');
                 var initial = (title || '?')[0].toUpperCase();
                 var avHtml = saved
-                    ? BF.icons.html('favorites')
+                    ? BF.icons.html('bookmark')
                     : !restricted && chat.picture
                       ? '<img src="' + u.escapeHtml(chat.picture) + '" alt="">'
                       : u.escapeHtml(initial);

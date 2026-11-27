@@ -210,7 +210,7 @@
         chatHeaderAvatar.classList.toggle('saved', saved);
         if (!saved) return;
         chatHeaderName.textContent = BF.i18n.t('savedMessages.title');
-        chatHeaderAvatar.innerHTML = BF.icons.html('favorites');
+        chatHeaderAvatar.innerHTML = BF.icons.html('bookmark');
     }
 
     function openSavedMessages() {
