@@ -19,7 +19,6 @@
     var scrim = $('#newChatScrim');
     var overlay = $('#newChatOverlay');
     var modesEl = $('#newChatModes');
-    var hintsEl = $('#newChatHints');
     var closeBtn = $('#newChatClose');
     var groupTitleInput = $('#newChatGroupTitle');
     var chipsEl = $('#newChatChips');
@@ -64,7 +63,6 @@
         chipsEl.style.display = mode === 'group' ? '' : 'none';
         privateFields.style.display = mode === 'private' ? '' : 'none';
         footerEl.style.display = mode === 'message' ? 'none' : '';
-        hintsEl.style.display = mode === 'message' ? '' : 'none';
         errorEl.textContent = '';
         renderChips();
         doSearch();

@@ -45,10 +45,10 @@
             --chat-content-width: 800px;
             --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
             /* Сайдбар: док навигации, заливка непрочитанных (как на Android), фон полей */
-            --dock-bg: #4a413b;
-            --dock-fg: rgba(255, 255, 255, 0.68);
-            --dock-active-bg: #faf8f5;
-            --dock-active-fg: #1c1917;
+            --dock-bg: rgba(255, 255, 255, 0.86);
+            --dock-fg: #78716c;
+            --dock-active-bg: rgba(140, 53, 28, 0.10);
+            --dock-active-fg: #8c351c;
             --unread-row-bg: #f1e2da;
             --unread-row-text: #5c2210;
             --sidebar-fill: rgba(0, 0, 0, 0.05);
@@ -93,10 +93,10 @@
             --card-bg: var(--dialog-bg);
             --msg-incoming-bg: var(--msg-in-bg);
             --msg-outgoing-bg: var(--msg-out-bg);
-            --dock-bg: #2f2a26;
-            --dock-fg: rgba(229, 223, 215, 0.62);
-            --dock-active-bg: #4a3426;
-            --dock-active-fg: #f2d3c1;
+            --dock-bg: rgba(38, 34, 30, 0.92);
+            --dock-fg: #8a8077;
+            --dock-active-bg: rgba(192, 122, 82, 0.16);
+            --dock-active-fg: #e0a47f;
             --unread-row-bg: rgba(192, 122, 82, 0.17);
             --unread-row-text: #f2d3c1;
             --sidebar-fill: rgba(255, 255, 255, 0.06);
@@ -142,10 +142,10 @@
             --card-bg: var(--dialog-bg);
             --msg-incoming-bg: var(--msg-in-bg);
             --msg-outgoing-bg: var(--msg-out-bg);
-            --dock-bg: #1f2340;
-            --dock-fg: rgba(216, 221, 242, 0.6);
-            --dock-active-bg: #2e295e;
-            --dock-active-fg: #e0dbff;
+            --dock-bg: rgba(24, 27, 46, 0.92);
+            --dock-fg: #6e7494;
+            --dock-active-bg: rgba(124, 109, 224, 0.18);
+            --dock-active-fg: #b3a8f5;
             --unread-row-bg: rgba(124, 109, 224, 0.18);
             --unread-row-text: #dcd6ff;
             --sidebar-fill: rgba(255, 255, 255, 0.06);
@@ -367,23 +367,49 @@
             white-space: nowrap;
         }
 
-        /* Док в узкой панели — вертикальный; меню создания раскрывается вправо поверх чата */
+        /* Узкая панель: вкладки и кнопка создания — колонкой квадратных кнопок внизу, без плашки дока;
+           меню создания раскрывается вправо от кнопки поверх чата */
         html.sidebar-compact .sidebar-dock {
-            left: 8px;
-            right: 8px;
+            left: 0;
+            right: 0;
+            bottom: 0;
             flex-direction: column;
+            gap: 4px;
+            padding: 8px 0 12px;
+            border-top: 1px solid var(--card-border);
+            border-radius: 0 0 20px 20px;
+            /* непрозрачный: прокручиваемый список не просвечивает под кнопками */
+            background: var(--dialog-bg);
         }
         html.sidebar-compact .sidebar-nav {
             flex: none;
             flex-direction: column;
-            width: 100%;
+            gap: 4px;
             height: auto;
+            padding: 0;
+            border: none;
+            background: none;
+            box-shadow: none;
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
         }
         html.sidebar-compact .nav-btn,
-        html.sidebar-compact .nav-btn.active { flex: none; height: 46px; padding: 0; }
-        html.sidebar-compact .newchat-fab { width: 48px; height: 48px; }
-        html.sidebar-compact .newchat-menu { right: auto; left: 8px; bottom: 228px; align-items: flex-start; }
-        html.sidebar-compact .chat-list { padding-bottom: 232px; }
+        html.sidebar-compact .nav-btn.active { flex: none; width: 44px; height: 44px; padding: 0; border-radius: 14px; }
+        html.sidebar-compact .newchat-fab {
+            width: 44px;
+            height: 44px;
+            margin-top: 4px;
+            border-radius: 14px;
+            box-shadow: 0 4px 12px rgba(140, 53, 28, 0.3);
+        }
+        html.sidebar-compact .newchat-menu { right: auto; left: 68px; bottom: 12px; align-items: flex-start; }
+        /* Непрочитанный чат в узкой панели — кольцо вокруг аватара вместо карточки */
+        html.sidebar-compact .chat-item.is-unread::before { display: none; }
+        html.sidebar-compact .chat-item.is-unread .chat-avatar {
+            transform: none;
+            box-shadow: 0 0 0 2px var(--sidebar-bg), 0 0 0 4px var(--primary);
+        }
+        html.sidebar-compact .chat-list { padding-bottom: 220px; }
 
         /* === SIDEBAR HEADER === */
 
@@ -448,8 +474,11 @@
             gap: 2px;
             padding: 5px;
             background: var(--dock-bg);
+            border: 1px solid var(--card-border);
             border-radius: 28px;
-            box-shadow: 0 8px 22px rgba(28, 25, 23, 0.22);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.10);
+            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(16px);
         }
 
         .nav-btn {
@@ -496,8 +525,7 @@
             background: var(--dock-active-bg);
             color: var(--dock-active-fg);
         }
-        .nav-btn.active .nav-icon { color: var(--primary); }
-        .nav-btn:hover:not(.active) { color: var(--dock-active-bg); }
+        .nav-btn:hover:not(.active) { color: var(--text-main); background: var(--sidebar-fill); }
 
         .search-container {
             display: flex;
@@ -633,34 +661,25 @@
 
         /* Непрочитанные (как на Android): заливка-карточка, соседние склеиваются в группу со скруглением по краям.
            Класс положения ставит chat-list.js; высота строки фиксирована (виртуализация), зазоры — отступы карточки. */
-        .chat-item.unread-single,
-        .chat-item.unread-first,
-        .chat-item.unread-middle,
-        .chat-item.unread-last { background: transparent; }
-        .chat-item.unread-single::before,
-        .chat-item.unread-first::before,
-        .chat-item.unread-middle::before,
-        .chat-item.unread-last::before {
+        .chat-item.is-unread { background: transparent; }
+        .chat-item.is-unread::before {
             content: '';
             position: absolute;
             inset: 1px 0;
             z-index: -1;
-            border-radius: 6px;
+            border-radius: 3px;
             background: var(--unread-row-bg);
             transition: filter 0.15s;
         }
-        .chat-item.unread-first::before { top: 4px; border-top-left-radius: 22px; border-top-right-radius: 22px; }
-        .chat-item.unread-last::before { bottom: 4px; border-bottom-left-radius: 22px; border-bottom-right-radius: 22px; }
-        .chat-item.unread-single::before { inset: 4px 0; border-radius: 22px; }
-        .chat-item[class*="unread-"]:hover::before { filter: brightness(0.97); }
-        .chat-item.unread-single .chat-avatar,
-        .chat-item.unread-first .chat-avatar,
-        .chat-item.unread-middle .chat-avatar,
-        .chat-item.unread-last .chat-avatar { transform: scale(1.06); }
-        .chat-item[class*="unread-"] .chat-name { font-weight: 700; color: var(--unread-row-text); }
-        .chat-item[class*="unread-"] .chat-preview,
-        .chat-item[class*="unread-"] .chat-time { color: var(--unread-row-text); }
-        .chat-item[class*="unread-"] .chat-preview { font-weight: 500; }
+        .chat-item.unread-first::before { top: 4px; border-top-left-radius: 20px; border-top-right-radius: 20px; }
+        .chat-item.unread-last::before { bottom: 4px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+        .chat-item.unread-single::before { inset: 4px 0; border-radius: 20px; }
+        .chat-item.is-unread:hover::before { filter: brightness(0.97); }
+        .chat-item.is-unread .chat-avatar { transform: scale(1.06); }
+        .chat-item.is-unread .chat-name { font-weight: 700; color: var(--unread-row-text); }
+        .chat-item.is-unread .chat-preview,
+        .chat-item.is-unread .chat-time { color: var(--unread-row-text); }
+        .chat-item.is-unread .chat-preview { font-weight: 500; }
 
         /* «Избранное»: иконка вместо собственного аватара */
         .chat-avatar.saved,
@@ -4916,26 +4935,7 @@
             color: var(--text-sub);
         }
 
-        .newchat-hints {
-            display: flex;
-            justify-content: center;
-            gap: 14px;
-            margin-top: 4px;
-            padding-top: 10px;
-            border-top: 1px solid var(--card-border);
-            font-size: 11.5px;
-            color: var(--text-sub);
-        }
-        .newchat-hints kbd {
-            margin-right: 2px;
-            padding: 0 5px;
-            border: 1px solid var(--input-border);
-            border-radius: 5px;
-            background: var(--input-bg);
-            font: inherit;
-            font-size: 11px;
-        }
-        @media (hover: none) { .newchat-hints { display: none !important; } }
+
 
         .newchat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
         .newchat-chips:empty { display: none; }
@@ -4968,6 +4968,8 @@
         }
 
         .newchat-results .search-result-item { margin: 0; padding: 8px; border-radius: 12px; }
+        /* Пустая строка ошибки не оставляет отступа под результатами */
+        .newchat-dialog .private-pass-error:empty { min-height: 0; margin-bottom: 0; }
         .newchat-results .search-result-item.selected,
         .newchat-results .search-result-item.kb-active {
             background: var(--primary-alpha);
@@ -6290,6 +6292,8 @@
         }
 
         /* === CALL HISTORY MODAL === */
+        /* Звонки — узкая колонка по высоте содержимого (до высоты области) */
+        .page-card.call-history-dialog { max-width: 560px; flex: 0 1 auto; }
         .call-history-dialog .call-history-more { margin-bottom: 12px; }
         .call-history-header {
             display: flex;

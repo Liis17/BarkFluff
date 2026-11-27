@@ -759,8 +759,5 @@
   "newchat.tab.group": "Группа",
   "newchat.tab.private": "Приватный",
   "newchat.search.placeholder": "Поиск пользователей",
-  "newchat.recent": "Недавние",
-  "newchat.hint.select": "выбор",
-  "newchat.hint.open": "открыть",
-  "newchat.hint.close": "закрыть"
+  "newchat.recent": "Недавние"
 }

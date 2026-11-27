@@ -633,6 +633,7 @@
             UNREAD_GROUP_CLASSES.forEach(function (name) {
                 el.classList.toggle(name, name === 'unread-' + group);
             });
+            el.classList.toggle('is-unread', group !== null);
             var isActive = key === activeKey;
             el.classList.toggle('active', isActive);
             el.setAttribute('aria-selected', isActive ? 'true' : 'false');

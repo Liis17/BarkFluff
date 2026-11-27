@@ -750,8 +750,5 @@
   "newchat.tab.group": "Gruppe",
   "newchat.tab.private": "Privat",
   "newchat.search.placeholder": "Benutzer suchen",
-  "newchat.recent": "Zuletzt",
-  "newchat.hint.select": "auswählen",
-  "newchat.hint.open": "öffnen",
-  "newchat.hint.close": "schließen"
+  "newchat.recent": "Zuletzt"
 }

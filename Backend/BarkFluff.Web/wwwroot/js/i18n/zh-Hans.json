@@ -750,8 +750,5 @@
   "newchat.tab.group": "群组",
   "newchat.tab.private": "私密",
   "newchat.search.placeholder": "搜索用户",
-  "newchat.recent": "最近",
-  "newchat.hint.select": "选择",
-  "newchat.hint.open": "打开",
-  "newchat.hint.close": "关闭"
+  "newchat.recent": "最近"
 }
